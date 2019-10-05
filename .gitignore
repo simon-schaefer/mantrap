@@ -1,0 +1,20 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.egg-info/
+
+# Unit test / coverage reports
+.pytest_cache/
+
+# Environments
+venv/
+.DS_Store
+.idea/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Paper collection directory.
+paper/
