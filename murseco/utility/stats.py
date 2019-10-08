@@ -35,6 +35,38 @@ class Distribution2D(JSONSerializer):
         pass
 
 
+class Static2D(Distribution2D):
+    """f(x) = 1 for all x within the rectangular borders, 0 otherwise (not a real probability function)"""
+
+    def __init__(self, borders: np.ndarray):
+        super(Static2D, self).__init__("utility/stats/Static2D")
+
+        assert borders.size == 4, "block array has to be in form (x_min, x_max, y_min, y_max)"
+        assert borders[0] < borders[1], "x_max has to be a larger value than x_min"
+        assert borders[2] < borders[3], "y_max has to be a larger value than y_min"
+
+        self.x_min, self.x_max, self.y_min, self.y_max = borders.tolist()
+
+    def pdf_at(self, x: Union[np.ndarray, float], y: Union[np.ndarray, float]) -> Union[None, np.ndarray]:
+        super(Static2D, self).pdf_at(x, y)
+        mask = np.logical_and(np.logical_and(self.x_min <= x, x <= self.x_max),
+                              np.logical_and(self.y_min <= y, y <= self.y_max))
+        return np.asarray(np.ones_like(x) * mask, dtype=float)
+
+    def sample(self, num_samples: int) -> np.ndarray:
+        raise NotImplementedError
+
+    def summary(self) -> Dict[str, Any]:
+        summary = super(Static2D, self).summary()
+        summary.update({"borders": [self.x_min, self.x_max, self.y_min, self.y_max]})
+        return summary
+
+    @classmethod
+    def from_summary(cls, json_text: Dict[str, Any]):
+        super(Static2D, cls).from_summary(json_text)
+        return cls(np.asarray(json_text["borders"]))
+
+
 class Gaussian2D(Distribution2D):
     """f(x) = 1 / /sqrt(2*pi )^p * det(Sigma)) * exp(-0.5 * (x - mu)^T * Sigma^(-1) * (x - mu))"""
 

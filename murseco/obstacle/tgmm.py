@@ -17,7 +17,7 @@ class TGMMDiscreteTimeObstacle(DiscreteTimeObstacle):
     """
 
     def __init__(self, tmus: np.ndarray, tsigmas: np.ndarray, tweights: np.ndarray):
-        super(TGMMDiscreteTimeObstacle, self).__init__("obstacle/tgmmobstacle/TGMMDiscreteTimeObstacle", tmus.shape[0])
+        super(TGMMDiscreteTimeObstacle, self).__init__("obstacle/tgmm/TGMMDiscreteTimeObstacle", tmus.shape[0])
         assert len(tmus.shape) == 3, "tmus must be in shape (time-step, mode, 2)"
         assert len(tsigmas.shape) == 4, "tsigmas must be in shape (time-step, mode, 2, 2)"
         assert len(tweights.shape) == 2, "tweights must be in shape (time-step, mode)"

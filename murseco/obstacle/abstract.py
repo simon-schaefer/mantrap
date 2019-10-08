@@ -13,6 +13,10 @@ class Obstacle(JSONSerializer):
         """Return the probability density function of the obstacle at the current time."""
         pass
 
+    def forward(self):
+        """Forward simulate the obstacle, e.g. for discrete time obstacles increase time-step"""
+        pass
+
 
 class DiscreteTimeObstacle(Obstacle):
     def __init__(self, name: str, tmax: int):

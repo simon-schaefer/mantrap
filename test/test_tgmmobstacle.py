@@ -2,13 +2,13 @@ import numpy as np
 import pytest
 import scipy.cluster.vq
 
-from murseco.obstacle.tgmmobstacle import TGMMDiscreteTimeObstacle
+from murseco.obstacle.tgmm import TGMMDiscreteTimeObstacle
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
 
 
 @pytest.mark.xfail(raises=AssertionError)
-def test_gmmobstacle_tmax():
+def test_tgmmobstacle_tmax():
     tmus = np.ones((1, 2, 2))
     tsigmas = rand_invsymmpos(1, 2, 2, 2)
     tweights = np.ones((1, 2))
@@ -16,7 +16,7 @@ def test_gmmobstacle_tmax():
     obstacle.forward()
 
 
-def test_gmmobstacle_one_mode():
+def test_tgmmobstacle_one_mode():
     tmus = np.ones((1, 2, 2))
     tsigmas = rand_invsymmpos(1, 2, 2, 2)
     tweights = np.ones((1, 2))
@@ -31,7 +31,7 @@ def test_gmmobstacle_one_mode():
         (np.array([[1.0, -9.3], [5, 5]]), np.stack((np.eye(2) * 0.1, np.eye(2) * 0.001)), np.array([0.1, 1.0])),
     ],
 )
-def test_gmmobstacle_pdf(mus, sigmas, weights):
+def test_tgmmobstacle_pdf(mus, sigmas, weights):
     tmus = np.reshape(mus, (1, -1, 2))
     tsigmas = np.reshape(sigmas, (1, -1, 2, 2))
     tweights = np.reshape(weights, (1, -1))
@@ -44,7 +44,7 @@ def test_gmmobstacle_pdf(mus, sigmas, weights):
 @pytest.mark.parametrize(
     "tmus, tsigmas, tweights", [(np.random.rand(2, 2, 2), rand_invsymmpos(2, 2, 2, 2), np.random.rand(2, 2))]
 )
-def test_stats_gmm_obstacle_json(tmus: np.ndarray, tsigmas: np.ndarray, tweights: np.ndarray):
+def test_tgmmobstacle_json(tmus: np.ndarray, tsigmas: np.ndarray, tweights: np.ndarray):
     gmmobstacle_1 = TGMMDiscreteTimeObstacle(tmus, tsigmas, tweights)
     cache_path = murseco.utility.io.path_from_home_directory("test/cache/gmmobstacle_test.json")
     gmmobstacle_1.to_json(cache_path)

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from murseco.environment.environment import Environment
-from murseco.obstacle.tgmmobstacle import TGMMDiscreteTimeObstacle
+from murseco.obstacle.tgmm import TGMMDiscreteTimeObstacle
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
 import murseco.utility.visualization
