@@ -1,8 +1,11 @@
 from abc import abstractmethod
+import importlib
 import os
 from typing import Any, Dict
 
 import json
+
+import murseco.utility.misc
 
 
 def get_home_directory() -> str:
@@ -26,10 +29,14 @@ class JSONSerializer:
     """The JSONSerializer class is an abstract class that gives an interface for dumping and loading objects
     to a json file, for storing parameters, environments, etc."""
 
+    def __init__(self, name: str):
+        self.name = name
+        self.identifier = murseco.utility.misc.random_string()
+
     @abstractmethod
     def summary(self) -> Dict[str, Any]:
         """Summarize object in json-like dictionary file (should contain "name" key)."""
-        pass
+        return {"name": self.name}
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
@@ -51,3 +58,10 @@ class JSONSerializer:
         with open(filepath, "r") as read_file:
             json_text = json.load(read_file)
         return cls.from_summary(json_text)
+
+    @staticmethod
+    def call_by_summary(json_text: Dict[str, Any]):
+        class_desc = str(json_text["name"]).replace("/", ".")
+        class_lib, class_name = class_desc[:class_desc.rfind(".")], class_desc[class_desc.rfind(".") + 1:]
+        module = importlib.import_module("murseco." + class_lib)
+        return getattr(getattr(module, class_name), "from_summary")(json_text)

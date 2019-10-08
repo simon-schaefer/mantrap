@@ -37,4 +37,3 @@ def rand_invsymmpos(*size) -> np.ndarray:
     a = np.random.rand(size[-2], size[-1])
     a = a.T * a + np.eye(size[-1]) * np.amax(a)
     return np.tile(a, (*size[:-2], 1, 1))
-

@@ -84,9 +84,7 @@ def test_stats_gmm2d_pdf_at(
 
 @pytest.mark.parametrize(
     "mus, sigmas, weights",
-    [
-        (np.array([[4.1, -1.39], [2.1, -9.1]]), np.stack((np.eye(2) * 0.14, np.eye(2))), np.array([0.1, 1.0]))
-    ],
+    [(np.array([[4.1, -1.39], [2.1, -9.1]]), np.stack((np.eye(2) * 0.14, np.eye(2))), np.array([0.1, 1.0]))],
 )
 def test_stats_gmm2d_json(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
     gmm_1 = murseco.utility.stats.GMM2D(mus, sigmas, weights)
@@ -101,7 +99,7 @@ def test_stats_gmm2d_json(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarr
     "mus, sigmas, weights",
     [
         (np.array([[4.1, -1.39], [2.1, -9.1]]), np.stack((np.eye(2) * 0.14, np.eye(2))), np.array([0.1, 1.0])),
-        (np.array([[1.0, -9.3], [5, 5]]), np.stack((np.eye(2) * 0.1, np.eye(2) * 0.001)), np.array([0.1, 1.0]))
+        (np.array([[1.0, -9.3], [5, 5]]), np.stack((np.eye(2) * 0.1, np.eye(2) * 0.001)), np.array([0.1, 1.0])),
     ],
 )
 def test_stats_gaussian2d_sample(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):

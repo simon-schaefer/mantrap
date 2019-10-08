@@ -7,6 +7,8 @@ from murseco.utility.io import JSONSerializer
 
 
 class Distribution2D(JSONSerializer):
+    def __init__(self, name):
+        super(Distribution2D, self).__init__(name)
 
     @abstractmethod
     def pdf_at(self, x: Union[np.ndarray, float], y: Union[np.ndarray, float]) -> Union[None, np.ndarray]:
@@ -37,13 +39,14 @@ class Gaussian2D(Distribution2D):
     """f(x) = 1 / /sqrt(2*pi )^p * det(Sigma)) * exp(-0.5 * (x - mu)^T * Sigma^(-1) * (x - mu))"""
 
     def __init__(self, mu: np.ndarray, sigma: np.ndarray):
-        super(Gaussian2D, self).__init__()
+        super(Gaussian2D, self).__init__("utility/stats/Gaussian2D")
         mu, sigma = np.squeeze(mu), np.squeeze(sigma)  # prevent e.g. sigma.shape = (1, 2, 2)
 
         assert mu.size == 2, "mean vector has to be two dimensional"
         assert sigma.shape == (2, 2), "variance matrix has to be two-by-two"
         assert np.linalg.det(sigma) != 0, "variance matrix has to be invertible"
         assert sigma[0, 1] == sigma[1, 0], "variance matrix has to be symmetric"
+
         self._K1 = 1 / (2 * np.pi * np.sqrt(np.linalg.det(sigma)))
         self._K2 = -0.5 / (sigma[0, 0] * sigma[1, 1] - sigma[0, 1] ** 2)
         self.mu, self.sigma = mu, sigma
@@ -59,7 +62,9 @@ class Gaussian2D(Distribution2D):
         return np.random.multivariate_normal(self.mu, self.sigma, size=num_samples)
 
     def summary(self) -> Dict[str, Any]:
-        return {"name": "gaussian2d", "mu": self.mu.tolist(), "sigma": self.sigma.tolist()}
+        summary = super(Gaussian2D, self).summary()
+        summary.update({"mu": self.mu.tolist(), "sigma": self.sigma.tolist()})
+        return summary
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
@@ -73,7 +78,7 @@ class GMM2D(Distribution2D):
     """f(x) = sum_i w_i * Gaussian2D_i(x)"""
 
     def __init__(self, mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
-        super(GMM2D, self).__init__()
+        super(GMM2D, self).__init__("utility/stats/GMM2D")
         mus = mus.squeeze() if len(mus.shape) > 2 else mus  # prevent e.g. mus.shape = (1, 4, 2) but (1, 2)
         sigmas = sigmas.squeeze() if len(sigmas.shape) > 3 else sigmas
         weights = weights.squeeze() if len(weights.shape) > 1 else weights
@@ -98,7 +103,9 @@ class GMM2D(Distribution2D):
         return np.array([self.gaussians[mode].sample(1) for mode in mode_choices]).squeeze()
 
     def summary(self) -> Dict[str, Any]:
-        return {"name": "gmm2d", "gaussians": [g.summary() for g in self.gaussians], "weights": self.weights.tolist()}
+        summary = super(GMM2D, self).summary()
+        summary.update({"gaussians": [g.summary() for g in self.gaussians], "weights": self.weights.tolist()})
+        return summary
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):

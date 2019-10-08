@@ -3,16 +3,17 @@ from typing import Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-import murseco.utility.stats
+from murseco.environment.environment import Environment
+from murseco.utility.stats import Distribution2D
 
 
 def plot_pdf2d(
     fig: plt.Figure,
     ax: plt.Axes,
-    distribution: murseco.utility.stats.Distribution2D,
+    distribution: Distribution2D,
     xaxis: Tuple[float, float],
     yaxis: Union[Tuple[float, float], None] = None,
-    num_points: int = 1e3,
+    num_points: int = 500,
 ):
     """Plot 2D PDF (probability density function) in mesh grid with the given axes.
     In order to plot the PDF the axes are split up in a constant number of points, i.e. the resolution varies with
@@ -31,7 +32,34 @@ def plot_pdf2d(
     num_points = int(num_points)
     x, y = np.meshgrid(np.linspace(xaxis[0], xaxis[1], num_points), np.linspace(yaxis[0], yaxis[1], num_points))
     pdf = distribution.pdf_at(x, y)
-    color_mesh = ax.pcolormesh(x, y, pdf, cmap='gist_earth')
+    color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    fig.colorbar(color_mesh)
+
+
+def plot_environment(fig: plt.Figure, ax: plt.Axes, env: Environment, num_points: int = 500):
+    """Plot 2D environment including the attached actors like obstacles or robots for current time-step.
+
+    :argument fig: matplotlib figure to draw in.
+    :argument ax: matplotlib axis to draw in.
+    :argument env: environment object to plot.
+    :argument num_points: number of resolution points for axis sampling.
+    """
+    num_points = int(num_points)
+    x, y = np.meshgrid(
+        np.linspace(env.xaxis[0], env.xaxis[1], num_points), np.linspace(env.yaxis[0], env.yaxis[1], num_points)
+    )
+
+    pdf = np.zeros_like(x)
+    for obstacle in env.obstacles:
+        pdf += obstacle.element.pdf.pdf_at(x, y)
+
+    robot = env.robot
+    if robot is not None:
+        raise NotImplementedError
+
+    color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     fig.colorbar(color_mesh, ax=ax)
