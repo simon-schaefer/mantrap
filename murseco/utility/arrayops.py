@@ -25,3 +25,16 @@ def grid_points_from_ranges(xrange: np.ndarray, yrange: np.ndarray) -> np.ndarra
     :return grid_points: grid points array (MxN).
     """
     return np.transpose([np.tile(xrange, len(yrange)), np.repeat(yrange, len(xrange))])
+
+
+def rand_invsymmpos(*size) -> np.ndarray:
+    """Create a random invertible, positive definite and  symmetric matrix with the given dimensions, by breaking it
+    down to 2D (last two dimensions) and repeating this matrix over the other dimensions.
+
+    :argument size: sequence of integers stating matrix shape e.g. *size = 1, 3, 4.
+    """
+    assert len(size) > 2, "size must be at least three-dimensional"
+    a = np.random.rand(size[-2], size[-1])
+    a = a.T * a + np.eye(size[-1]) * np.amax(a)
+    return np.tile(a, (*size[:-2], 1, 1))
+

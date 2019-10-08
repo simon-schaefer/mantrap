@@ -3,6 +3,7 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+import scipy.cluster.vq
 
 import murseco.utility.arrayops
 import murseco.utility.io
@@ -48,12 +49,21 @@ def test_stats_gaussian2d_pdf_at(mu: np.ndarray, sigma: np.ndarray, point: Tuple
     assert np.isclose(distribution.pdf_at(point[0], point[1]), target, rtol=0.1)
 
 
+def test_stats_gaussian2d_sample():
+    mu, sigma = np.array([10, 0]), np.diag([0.01, 2])
+    distribution = murseco.utility.stats.Gaussian2D(mu, sigma)
+    samples = distribution.sample(num_samples=10000)
+    assert np.isclose(np.linalg.norm(np.mean(samples, axis=0) - mu), 0, atol=0.1)
+    assert np.isclose(np.std(samples[:, 0]), np.sqrt(sigma[0, 0]), atol=0.1)
+    assert np.isclose(np.std(samples[:, 1]), np.sqrt(sigma[1, 1]), atol=0.1)
+
+
 def test_stats_gaussian2d_json():
     gauss_1 = murseco.utility.stats.Gaussian2D(np.array([4.1, -1.39]), np.eye(2) * 0.14)
     cache_path = murseco.utility.io.path_from_home_directory("test/cache/gaussian2d_test.json")
     gauss_1.to_json(cache_path)
     gauss_2 = murseco.utility.stats.Gaussian2D.from_json(cache_path)
-    assert gauss_1.description == gauss_2.description
+    assert gauss_1.summary() == gauss_2.summary()
     assert gauss_1.pdf_at(0.0, 0.0) == gauss_2.pdf_at(0.0, 0.0)
 
 
@@ -72,16 +82,37 @@ def test_stats_gmm2d_pdf_at(
     assert np.isclose(distribution.pdf_at(point[0], point[1]), target, rtol=0.1)
 
 
-def test_stats_gmm2d_json():
-    mus = np.array([[4.1, -1.39], [2.1, -9.1]])
-    sigmas = np.stack((np.eye(2) * 0.14, np.eye(2)))
-    weights = np.array([0.1, 1.0])
+@pytest.mark.parametrize(
+    "mus, sigmas, weights",
+    [
+        (np.array([[4.1, -1.39], [2.1, -9.1]]), np.stack((np.eye(2) * 0.14, np.eye(2))), np.array([0.1, 1.0]))
+    ],
+)
+def test_stats_gmm2d_json(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
     gmm_1 = murseco.utility.stats.GMM2D(mus, sigmas, weights)
     cache_path = murseco.utility.io.path_from_home_directory("test/cache/gmm2d_test.json")
     gmm_1.to_json(cache_path)
     gmm_2 = murseco.utility.stats.GMM2D.from_json(cache_path)
-    assert gmm_1.description == gmm_2.description
+    assert gmm_1.summary() == gmm_2.summary()
     assert gmm_1.pdf_at(0.0, 0.0) == gmm_2.pdf_at(0.0, 0.0)
+
+
+@pytest.mark.parametrize(
+    "mus, sigmas, weights",
+    [
+        (np.array([[4.1, -1.39], [2.1, -9.1]]), np.stack((np.eye(2) * 0.14, np.eye(2))), np.array([0.1, 1.0])),
+        (np.array([[1.0, -9.3], [5, 5]]), np.stack((np.eye(2) * 0.1, np.eye(2) * 0.001)), np.array([0.1, 1.0]))
+    ],
+)
+def test_stats_gaussian2d_sample(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
+    # Idea: Multimodal Gaussian is sampled by choosing randomly with Gaussian to sample and then sample from this
+    # Gaussian. Therefore a simple comparison between the samples mean and the mu vector will validate this approach.
+    # Thus, the samples are clustered using k-means-algorithm, while the cluster centers should represent the
+    # the mean of the distributions.
+    gmm = murseco.utility.stats.GMM2D(mus, sigmas, weights)
+    samples = gmm.sample(2000)
+    centers = scipy.cluster.vq.kmeans(samples, k_or_guess=gmm.num_modes)[0]
+    assert np.isclose(np.linalg.norm(np.sort(centers, axis=0) - np.sort(mus, axis=0)), 0, atol=0.1)
 
 
 @pytest.mark.parametrize(
