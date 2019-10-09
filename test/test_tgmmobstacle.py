@@ -7,15 +7,6 @@ from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
 
 
-@pytest.mark.xfail(raises=AssertionError)
-def test_tgmmobstacle_tmax():
-    tmus = np.ones((1, 2, 2))
-    tsigmas = rand_invsymmpos(1, 2, 2, 2)
-    tweights = np.ones((1, 2))
-    obstacle = TGMMDiscreteTimeObstacle(tmus, tsigmas, tweights)
-    obstacle.forward()
-
-
 def test_tgmmobstacle_one_mode():
     tmus = np.ones((1, 2, 2))
     tsigmas = rand_invsymmpos(1, 2, 2, 2)
@@ -31,7 +22,7 @@ def test_tgmmobstacle_one_mode():
         (np.array([[1.0, -9.3], [5, 5]]), np.stack((np.eye(2) * 0.1, np.eye(2) * 0.001)), np.array([0.1, 1.0])),
     ],
 )
-def test_tgmmobstacle_pdf(mus, sigmas, weights):
+def test_tgmmobstacle_pdf(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
     tmus = np.reshape(mus, (1, -1, 2))
     tsigmas = np.reshape(sigmas, (1, -1, 2, 2))
     tweights = np.reshape(weights, (1, -1))

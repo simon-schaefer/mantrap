@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -23,15 +23,19 @@ class TGMMDiscreteTimeObstacle(DiscreteTimeObstacle):
         assert len(tweights.shape) == 2, "tweights must be in shape (time-step, mode)"
         assert tmus.shape[0] == tsigmas.shape[0] == tweights.shape[0], "time dimensions must be equal"
 
-        self.tgmms = [GMM2D(tmus[t, :, :], tsigmas[t, :, :, :], tweights[t, :]) for t in range(self.tmax)]
+        self._tgmm = [GMM2D(tmus[t, :, :], tsigmas[t, :, :, :], tweights[t, :]) for t in range(self.tmax)]
 
     @property
     def pdf(self) -> GMM2D:
-        return self.tgmms[self.tn]
+        return self._tgmm[0]
+
+    @property
+    def tpdf(self) -> List[GMM2D]:
+        return self._tgmm
 
     def summary(self) -> Dict[str, Any]:
         summary = super(TGMMDiscreteTimeObstacle, self).summary()
-        summary.update({"tgmms": [g.summary() for g in self.tgmms]})
+        summary.update({"tgmms": [g.summary() for g in self._tgmm]})
         return summary
 
     @classmethod

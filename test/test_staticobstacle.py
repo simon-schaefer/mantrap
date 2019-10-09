@@ -13,7 +13,7 @@ def test_staticobstacle_pdf():
     assert np.array_equal(pdf, pdf_expected)
 
 
-def test_stats_gmm_obstacle_json():
+def test_staticobstacle_json():
     staticobstacle_1 = StaticObstacle((-5.23, 5, -2, 8.51))
     cache_path = murseco.utility.io.path_from_home_directory("test/cache/staticobstacle_test.json")
     staticobstacle_1.to_json(cache_path)

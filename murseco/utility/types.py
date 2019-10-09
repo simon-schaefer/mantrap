@@ -16,7 +16,6 @@ class EnvActor(JSONSerializer):
 
         assert hasattr(element, "summary"), "object must have `summary` method"
         assert hasattr(element, "pdf"), "object must have `pdf` property/method"
-        assert hasattr(element, "forward"), "object must have `forward` method"
 
         self.category = category
         self.tframe = tframe

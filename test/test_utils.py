@@ -37,6 +37,19 @@ def test_arrayops_grid_points_from_range():
 
 
 @pytest.mark.parametrize(
+    "position, point, target",
+    [
+        (np.array([1.0, 0.0]), (0.0, 0.0), 0),
+        (np.array([1.0, 0.0]), (0.999999, 0.0), np.inf),
+        (np.array([1.0, 0.0]), (1.0, 0.0), np.inf),
+    ],
+)
+def test_stats_point2d_pdf_at(position: np.ndarray, point: Tuple[float, float], target: float):
+    distribution = murseco.utility.stats.Point2D(position)
+    assert np.isclose(distribution.pdf_at(point[0], point[1]), target, rtol=0.1)
+
+
+@pytest.mark.parametrize(
     "mu, sigma, point, target",
     [
         (np.array([1.0, 0.0]), np.eye(2), (0, 0), 0.096),
@@ -47,6 +60,14 @@ def test_arrayops_grid_points_from_range():
 def test_stats_gaussian2d_pdf_at(mu: np.ndarray, sigma: np.ndarray, point: Tuple[float, float], target: float):
     distribution = murseco.utility.stats.Gaussian2D(mu, sigma)
     assert np.isclose(distribution.pdf_at(point[0], point[1]), target, rtol=0.1)
+
+
+def test_stats_point2d_json():
+    point_1 = murseco.utility.stats.Point2D(np.array([4.1, -1.39]))
+    cache_path = murseco.utility.io.path_from_home_directory("test/cache/point2d_test.json")
+    point_1.to_json(cache_path)
+    point_2 = murseco.utility.stats.Point2D.from_json(cache_path)
+    assert point_1.summary() == point_2.summary()
 
 
 def test_stats_gaussian2d_sample():

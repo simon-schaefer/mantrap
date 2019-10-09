@@ -62,6 +62,6 @@ class JSONSerializer:
     @staticmethod
     def call_by_summary(json_text: Dict[str, Any]):
         class_desc = str(json_text["name"]).replace("/", ".")
-        class_lib, class_name = class_desc[:class_desc.rfind(".")], class_desc[class_desc.rfind(".") + 1:]
+        class_lib, class_name = class_desc[: class_desc.rfind(".")], class_desc[class_desc.rfind(".") + 1 :]
         module = importlib.import_module("murseco." + class_lib)
         return getattr(getattr(module, class_name), "from_summary")(json_text)

@@ -35,6 +35,37 @@ class Distribution2D(JSONSerializer):
         pass
 
 
+class Point2D(Distribution2D):
+    """f(x) = direc_delta(x) with x = point (direc_delta is modelled with np.inf)"""
+
+    def __init__(self, position: np.ndarray):
+        super(Point2D, self).__init__("utility/stats/Point2D")
+
+        assert position.size == 2, "position must be two-dimensional"
+        self.x, self.y = position.tolist()
+
+    def pdf_at(self, x: Union[np.ndarray, float], y: Union[np.ndarray, float]) -> Union[None, np.ndarray]:
+        super(Point2D, self).pdf_at(x, y)
+        mask = np.logical_and(np.isclose(self.x, x, rtol=0.01), np.isclose(self.y, y, rtol=0.01)).astype(int)
+        if np.amax(mask) == 0:
+            return np.zeros_like(x)
+        else:
+            return mask * np.inf
+
+    def sample(self, num_samples: int) -> np.ndarray:
+        raise NotImplementedError
+
+    def summary(self) -> Dict[str, Any]:
+        summary = super(Point2D, self).summary()
+        summary.update({"point": [self.x, self.y]})
+        return summary
+
+    @classmethod
+    def from_summary(cls, json_text: Dict[str, Any]):
+        super(Point2D, cls).from_summary(json_text)
+        return cls(np.asarray(json_text["point"]))
+
+
 class Static2D(Distribution2D):
     """f(x) = 1 for all x within the rectangular borders, 0 otherwise (not a real probability function)"""
 
@@ -49,8 +80,9 @@ class Static2D(Distribution2D):
 
     def pdf_at(self, x: Union[np.ndarray, float], y: Union[np.ndarray, float]) -> Union[None, np.ndarray]:
         super(Static2D, self).pdf_at(x, y)
-        mask = np.logical_and(np.logical_and(self.x_min <= x, x <= self.x_max),
-                              np.logical_and(self.y_min <= y, y <= self.y_max))
+        mask = np.logical_and(
+            np.logical_and(self.x_min <= x, x <= self.x_max), np.logical_and(self.y_min <= y, y <= self.y_max)
+        )
         return np.asarray(np.ones_like(x) * mask, dtype=float)
 
     def sample(self, num_samples: int) -> np.ndarray:

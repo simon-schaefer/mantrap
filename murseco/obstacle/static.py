@@ -2,11 +2,11 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 
-from murseco.obstacle.abstract import Obstacle
+from murseco.obstacle.abstract import DiscreteTimeObstacle
 from murseco.utility.stats import Static2D
 
 
-class StaticObstacle(Obstacle):
+class StaticObstacle(DiscreteTimeObstacle):
     """The StaticObstacle class represents a static and rigid obstacle, i.e. at each covered position it will
     be with probability 1.
 
@@ -14,7 +14,7 @@ class StaticObstacle(Obstacle):
     """
 
     def __init__(self, borders: Tuple[float, float, float, float]):
-        super(StaticObstacle, self).__init__("obstacle/static/StaticObstacle")
+        super(StaticObstacle, self).__init__("obstacle/static/StaticObstacle", tmax=100)
         assert len(borders) == 4, "borders tuple has to be in shape (x_min, x_max, y_min, y_max)"
 
         self.block_distribution = Static2D(np.array(borders))
@@ -22,6 +22,10 @@ class StaticObstacle(Obstacle):
     @property
     def pdf(self) -> Static2D:
         return self.block_distribution
+
+    @property
+    def tpdf(self) -> Any:
+        return [self.block_distribution] * self.tmax
 
     def summary(self) -> Dict[str, Any]:
         summary = super(StaticObstacle, self).summary()
