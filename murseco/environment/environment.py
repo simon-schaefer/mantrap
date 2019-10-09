@@ -16,6 +16,7 @@ class Environment(JSONSerializer):
         self.xaxis = tuple(xaxis)
         self.yaxis = tuple(yaxis)
         self.actors = [] if actors is None else actors
+        self._tmax = None
 
     def _add_actor(self, element: Any, category: str, tframe: str) -> str:
         """Add actor to list of actors and create its id from random.
@@ -32,10 +33,12 @@ class Environment(JSONSerializer):
         return actor.identifier
 
     def add_discrete_time_obstacle(self, obstacle: DiscreteTimeObstacle) -> str:
+        self._tmax = obstacle.tmax if self.tmax is None else self.tmax
+        assert self._tmax == obstacle.tmax, "time horizon tmax should be equivalent for all obstacles"
         return self._add_actor(obstacle, "obstacle", "dt")
 
     def add_continuous_time_obstacle(self, obstacle: Any) -> str:
-        return self._add_actor(obstacle, "obstacle", "ct")
+        raise NotImplementedError
 
     def add_static_obstacle(self, obstacle: StaticObstacle) -> str:
         return self._add_actor(obstacle, "obstacle", "none")
@@ -43,10 +46,9 @@ class Environment(JSONSerializer):
     def add_robot(self, robot: Any) -> str:
         return self._add_actor(robot, "robot", "none")
 
-    def forward(self):
-        """Forward step all agents in the environment, i.e. tn = tn + 1 in discrete time."""
-        for obstacle in self.obstacles_dt:
-            obstacle.element.forward()
+    @property
+    def tmax(self) -> int:
+        return self._tmax
 
     @property
     def obstacles(self) -> List[EnvActor]:
@@ -58,7 +60,7 @@ class Environment(JSONSerializer):
 
     @property
     def obstacles_ct(self) -> List[EnvActor]:
-        return [obstacle for obstacle in self.obstacles if obstacle.tframe == "ct"]
+        raise NotImplementedError
 
     @property
     def robot(self) -> Union[None, EnvActor]:

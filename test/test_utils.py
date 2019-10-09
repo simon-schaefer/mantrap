@@ -40,13 +40,19 @@ def test_arrayops_grid_points_from_range():
     "position, point, target",
     [
         (np.array([1.0, 0.0]), (0.0, 0.0), 0),
-        (np.array([1.0, 0.0]), (0.999999, 0.0), np.inf),
-        (np.array([1.0, 0.0]), (1.0, 0.0), np.inf),
+        (np.array([1.0, 0.0]), (0.999999, 0.0), 100),
+        (np.array([1.0, 0.0]), (1.0, 0.0), 100),
     ],
-)
+)  # np.inf = 100 (comp. definition of Point2D distribution)
 def test_stats_point2d_pdf_at(position: np.ndarray, point: Tuple[float, float], target: float):
     distribution = murseco.utility.stats.Point2D(position)
     assert np.isclose(distribution.pdf_at(point[0], point[1]), target, rtol=0.1)
+
+
+def test_stats_point2d_sample():
+    xy = np.array([4.1, 1.23])
+    distribution = murseco.utility.stats.Point2D(xy)
+    assert all([np.array_equal(s, xy) for s in distribution.sample(2)])
 
 
 @pytest.mark.parametrize(

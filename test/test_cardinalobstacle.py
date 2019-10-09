@@ -4,10 +4,12 @@ import numpy as np
 import pytest
 import scipy.cluster.vq
 
+from murseco.environment.environment import Environment
 from murseco.obstacle.cardinal import CardinalDiscreteTimeObstacle
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
 from murseco.utility.misc import cardinal_directions
+from murseco.utility.visualization import plot_env_all_times
 
 
 def test_cardinalobstacle_initialization():
@@ -22,8 +24,8 @@ def test_cardinalobstacle_initialization():
 
 @pytest.mark.parametrize(
     "pinit, point_init, target_init",
-    [(np.array([1, 0]), (0, 0), 0.0), (np.array([1, 0]), (0.999, 0), np.inf), (np.array([1, 0]), (1.0, 0), np.inf)],
-)
+    [(np.array([1, 0]), (0, 0), 0.0), (np.array([1, 0]), (0.999, 0), 100), (np.array([1, 0]), (1.0, 0), 100)],
+)  # np.inf = 100 (comp. definition of Point2D distribution)
 def test_cardinalobstacle_pdf_init(pinit: np.ndarray, point_init: Tuple[float, float], target_init: float):
     pstep, tmax, sigmas, weights = 4, 10, rand_invsymmpos(4, 2, 2), np.ones(4)
     obstacle = CardinalDiscreteTimeObstacle(pinit, pstep, tmax, sigmas, weights)
@@ -47,3 +49,10 @@ def test_cardinalobstacle_json():
     obstacle_2 = CardinalDiscreteTimeObstacle.from_json(cache_path)
     assert obstacle_1.summary() == obstacle_2.summary()
     assert obstacle_1.tpdf[1].pdf_at(0.0, 0.0) == obstacle_2.tpdf[1].pdf_at(0.0, 0.0)
+
+
+def test_cardinalobstacle_visualization_all_times():
+    env = Environment((-10, 10), (-10, 10))
+    tmax, sigmas, weights = 3, np.array([np.eye(2) * 0.25] * 4), np.ones(4)
+    env.add_discrete_time_obstacle(CardinalDiscreteTimeObstacle(np.zeros(2), 1.0, tmax, sigmas, weights))
+    plot_env_all_times(env, murseco.utility.io.path_from_home_directory("test/cache/cardinal_visualization"))

@@ -1,3 +1,5 @@
+from datetime import datetime
+import os
 from typing import Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -38,12 +40,13 @@ def plot_pdf2d(
     fig.colorbar(color_mesh)
 
 
-def plot_environment(fig: plt.Figure, ax: plt.Axes, env: Environment, num_points: int = 500):
-    """Plot 2D environment including the attached actors like obstacles or robots for current time-step.
+def plot_env_at_time(fig: plt.Figure, ax: plt.Axes, env: Environment, time_step: int = 0, num_points: int = 500):
+    """Plot 2D environment including the attached actors like obstacles or robots for given time-step.
 
     :argument fig: matplotlib figure to draw in.
     :argument ax: matplotlib axis to draw in.
     :argument env: environment object to plot.
+    :argument time_step: time-step to plot (0....tmax, default = 0).
     :argument num_points: number of resolution points for axis sampling.
     """
     num_points = int(num_points)
@@ -53,7 +56,7 @@ def plot_environment(fig: plt.Figure, ax: plt.Axes, env: Environment, num_points
 
     pdf = np.zeros_like(x)
     for obstacle in env.obstacles:
-        pdf += obstacle.element.pdf.pdf_at(x, y)
+        pdf += obstacle.element.tpdf[time_step].pdf_at(x, y)
 
     robot = env.robot
     if robot is not None:
@@ -63,3 +66,21 @@ def plot_environment(fig: plt.Figure, ax: plt.Axes, env: Environment, num_points
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     fig.colorbar(color_mesh, ax=ax)
+
+
+def plot_env_all_times(env: Environment, fpath: str, num_points: int = 500):
+    """Plot 2D environment including the attached actors like obstacles or robots over all times in horizon (0...tmax).
+    Therefore create one plot for each time-step, saving all in a created directory.
+
+    :argument env: environment object to plot.
+    :argument fpath: path to store directory in.
+    :argument num_points: number of resolution points for axis sampling.
+    """
+    dirname = os.path.join(fpath, datetime.now().strftime("%Y_%m_%d/%H_%M_%S"))
+    os.makedirs(dirname, exist_ok=True)
+
+    for tn in range(env.tmax):
+        fig, ax = plt.subplots()
+        plot_env_at_time(fig, ax, env, time_step=tn, num_points=num_points)
+        plt.savefig(os.path.join(dirname, f"{tn}.png"))
+        plt.close()

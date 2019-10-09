@@ -36,7 +36,7 @@ class Distribution2D(JSONSerializer):
 
 
 class Point2D(Distribution2D):
-    """f(x) = direc_delta(x) with x = point (direc_delta is modelled with np.inf)"""
+    """f(x) = direc_delta(x) with x = point (direc_delta is modelled with 100)"""
 
     def __init__(self, position: np.ndarray):
         super(Point2D, self).__init__("utility/stats/Point2D")
@@ -46,14 +46,14 @@ class Point2D(Distribution2D):
 
     def pdf_at(self, x: Union[np.ndarray, float], y: Union[np.ndarray, float]) -> Union[None, np.ndarray]:
         super(Point2D, self).pdf_at(x, y)
-        mask = np.logical_and(np.isclose(self.x, x, rtol=0.01), np.isclose(self.y, y, rtol=0.01)).astype(int)
+        mask = np.logical_and(np.isclose(self.x, x, atol=0.1), np.isclose(self.y, y, atol=0.1)).astype(int)
         if np.amax(mask) == 0:
             return np.zeros_like(x)
         else:
-            return mask * np.inf
+            return mask * 100  # np.inf
 
     def sample(self, num_samples: int) -> np.ndarray:
-        raise NotImplementedError
+        return np.reshape(np.array([self.x, self.y] * num_samples), (num_samples, 2))
 
     def summary(self) -> Dict[str, Any]:
         summary = super(Point2D, self).summary()
