@@ -15,7 +15,7 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
     the new GMM distribution is similar to the previous one, just with updated mean values (delta_position added).
 
     :argument pinit: initial 2D position of obstacle (2,).
-    :argument pstep: step distance to go in every time-step either as float (uniform for all directions) or 4d-array.
+    :argument velocity: step distance to go in every time-step either as float (uniform for all directions) or 4d-array.
     :argument tmax: maximal number of time-steps.
     :argument: sigmas: covariance matrices for every cardinal direction (4, 2, 2).
     :argument weights: weights of distribution in every direction (4,).
@@ -24,21 +24,21 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
     def __init__(
         self,
         pinit: np.ndarray,
-        pstep: Union[float, np.ndarray],
+        velocity: Union[float, np.ndarray],
         tmax: int,
         sigmas: np.ndarray,
         weights: np.ndarray,
         tgmm: List[Distribution2D] = None,
     ):
-        super(CardinalDiscreteTimeObstacle, self).__init__("obstacle/cardinal/CardinalDiscreteTimeObstacle", tmax)
-        pstep = np.ones(4) * pstep if type(pstep) != np.ndarray else pstep
+        super(CardinalDiscreteTimeObstacle, self).__init__("obstacle/cardinal/CarsdinalDiscreteTimeObstacle", tmax)
+        velocity = np.ones(4) * velocity if type(velocity) != np.ndarray else velocity
 
         assert pinit.size == 2, "initial position must be two-dimensional"
-        assert pstep.size == 4, "pstep must contain the step distance in all cardinal directions"
-        assert sigmas.shape == (4, 2, 2), "sigmas matrix must be of shape (4, 2, 2) containing 4 covariance matrices "
+        assert velocity.size == 4, "pstep must contain the step distance in all cardinal directions"
+        assert sigmas.shape == (4, 2, 2), "sigmas matrix must be of shape (4, 2, 2) containing 4 covariance matrices"
 
         self._position = pinit
-        self._pstep = np.reshape(pstep, (4, 1))
+        self._velocity = np.reshape(velocity, (4, 1))
         self._sigmas, self._weights = sigmas, weights
         self._tgmm = tgmm if tgmm is not None else self._plan_tgmm()
 
@@ -60,7 +60,7 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
         tgmm = [dist_init]
 
         # Create initial distribution (i.e. GMM(tn = 1)) from position, step and sigmas.
-        mus = self.position + cardinal_directions() * self._pstep
+        mus = self.position + cardinal_directions() * self._velocity
         tgmm.append(GMM2D(mus, self._sigmas, self._weights))
 
         # For whole time range (tn = 2...tmax), repeat:
@@ -70,7 +70,7 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
         # 4) Repeat until tn = tmax
         for tn in range(2, self.tmax):
             position_next = tgmm[-1].sample(num_samples=1)
-            mus = position_next + cardinal_directions() * self._pstep
+            mus = position_next + cardinal_directions() * self._velocity
             tgmm.append(GMM2D(mus, self._sigmas, self._weights))
         return tgmm
 
@@ -79,7 +79,7 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
         summary.update(
             {
                 "position": self.position.tolist(),
-                "pstep": self._pstep.tolist(),
+                "velocity": self._velocity.tolist(),
                 "sigmas": self._sigmas.tolist(),
                 "weights": self._weights.tolist(),
                 "tgmms": [g.summary() for g in self._tgmm],
@@ -92,7 +92,7 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
         super(CardinalDiscreteTimeObstacle, cls).from_summary(json_text)
         tgmm = [cls.call_by_summary(gmm_text) for gmm_text in json_text["tgmms"]]
         position = np.reshape(np.array(json_text["position"]), (2,))
-        pstep = np.reshape(np.array(json_text["pstep"]), (4, 1))
+        pstep = np.reshape(np.array(json_text["velocity"]), (4, 1))
         sigmas = np.reshape(np.array(json_text["sigmas"]), (4, 2, 2))
         weights = np.reshape(np.array(json_text["weights"]), (4,))
         return cls(position, pstep, json_text["tmax"], sigmas, weights, tgmm)

@@ -13,15 +13,15 @@ class CardinalDiscreteTimeRobot(DiscreteTimeRobot):
 
     :argument position: initial two-dimensional position of the robot.
     :argument thorizon: number of discrete time-steps to plan.
-    :argument pstep: step width in dynamics.
+    :argument velocity: step width in dynamics.
     :argument policy: series of actions for the planning horizon (optional).
     """
 
-    def __init__(self, position: np.ndarray, thorizon: int, pstep: float = 0.5, policy: np.ndarray = None):
+    def __init__(self, position: np.ndarray, thorizon: int, velocity: float = 0.5, policy: np.ndarray = None):
         super(CardinalDiscreteTimeRobot, self).__init__("robot/cardinal/CardinalRobot", position, thorizon, policy)
-        assert pstep > 0, "step-width must be larger than 0"
+        assert velocity > 0, "step-width must be larger than 0"
 
-        self._pstep = pstep
+        self._velocity = velocity
 
     def update_policy(self, tpdf: List[Distribution2D]):
         super(CardinalDiscreteTimeRobot, self).update_policy(tpdf)
@@ -30,11 +30,11 @@ class CardinalDiscreteTimeRobot(DiscreteTimeRobot):
     def dynamics(self,  action: np.ndarray, state: np.ndarray = None) -> np.ndarray:
         assert action.size == 1, "action is one-dimensional for cardinal robot"
         state = super(CardinalDiscreteTimeRobot, self).dynamics(action, state)
-        return state + cardinal_directions()[int(action), :] * self._pstep
+        return state + cardinal_directions()[int(action), :] * self._velocity
 
     def summary(self) -> Dict[str, Any]:
         summary = super(CardinalDiscreteTimeRobot, self).summary()
-        summary.update({"pstep": self._pstep})
+        summary.update({"velocity": self._velocity})
         return summary
 
     @classmethod
@@ -43,4 +43,4 @@ class CardinalDiscreteTimeRobot(DiscreteTimeRobot):
         position = np.reshape(np.array(json_text["state"]), (2,))
         thorizon = int(json_text["thorizon"])
         policy = np.reshape(np.array(json_text["policy"]), (thorizon, 1))
-        return cls(position, thorizon, float(json_text["pstep"]), policy)
+        return cls(position, thorizon, float(json_text["velocity"]), policy)

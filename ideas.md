@@ -15,6 +15,7 @@
 
 ## Baseline
 - static pdf for every pedestrian
+- deterministic Kalman prediction model for every pedestrian dependent on simple integrator model / social forces / ....
 
 ## Starting scenario
 - identically distributed, time-invariant 2-modal gaussian distribution relative to starting position

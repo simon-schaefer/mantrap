@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Any, Dict, List
 
 from murseco.utility.io import JSONSerializer
+from murseco.utility.stats import Distribution2D
 
 
 class DiscreteTimeObstacle(JSONSerializer):
@@ -11,12 +12,12 @@ class DiscreteTimeObstacle(JSONSerializer):
         self._tmax = tmax  # maximal time-step.
 
     @abstractmethod
-    def pdf(self) -> Any:
-        """Return the probability density function of the obstacle at the current time."""
+    def pdf(self) -> Distribution2D:
+        """Return the probability density function of the obstacle where to be at the next time step."""
         pass
 
     @abstractmethod
-    def tpdf(self) -> List[Any]:
+    def tpdf(self) -> List[Distribution2D]:
         """Return the probability density function of the obstacle over time."""
         pass
 
