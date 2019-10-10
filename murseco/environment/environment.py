@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Tuple, Union
 
 from murseco.obstacle.abstract import DiscreteTimeObstacle
-from murseco.obstacle.static import StaticObstacle
 from murseco.robot.abstract import DiscreteTimeRobot
 from murseco.utility.types import EnvActor
 from murseco.utility.io import JSONSerializer
@@ -40,9 +39,6 @@ class Environment(JSONSerializer):
 
     def add_continuous_time_obstacle(self, obstacle: Any) -> str:
         raise NotImplementedError
-
-    def add_static_obstacle(self, obstacle: StaticObstacle) -> str:
-        return self._add_actor(obstacle, "obstacle", "none")
 
     def add_robot(self, robot: DiscreteTimeRobot) -> str:
         return self._add_actor(robot, "robot", "none")
