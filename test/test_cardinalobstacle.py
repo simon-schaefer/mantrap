@@ -4,12 +4,10 @@ import numpy as np
 import pytest
 import scipy.cluster.vq
 
-from murseco.environment.environment import Environment
 from murseco.obstacle.cardinal import CardinalDiscreteTimeObstacle
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
 from murseco.utility.misc import cardinal_directions
-from murseco.utility.visualization import plot_env_all_times
 
 
 def test_cardinalobstacle_initialization():
@@ -51,8 +49,3 @@ def test_cardinalobstacle_json():
     assert obstacle_1.tpdf[1].pdf_at(0.0, 0.0) == obstacle_2.tpdf[1].pdf_at(0.0, 0.0)
 
 
-def test_cardinalobstacle_visualization_all_times():
-    env = Environment((-10, 10), (-10, 10))
-    tmax, sigmas, weights = 3, np.array([np.eye(2) * 0.25] * 4), np.ones(4)
-    env.add_discrete_time_obstacle(CardinalDiscreteTimeObstacle(np.zeros(2), 1.0, tmax, sigmas, weights))
-    plot_env_all_times(env, murseco.utility.io.path_from_home_directory("test/cache/cardinal_visualization"))

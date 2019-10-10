@@ -55,12 +55,13 @@ def plot_env_at_time(fig: plt.Figure, ax: plt.Axes, env: Environment, time_step:
     )
 
     pdf = np.zeros_like(x)
-    for obstacle in env.obstacles:
-        pdf += obstacle.element.tpdf[time_step].pdf_at(x, y)
+    for obstacle in env.obstacles_dt:
+        pdf += obstacle.tpdf[time_step].pdf_at(x, y)
 
     robot = env.robot
     if robot is not None:
-        raise NotImplementedError
+        trajectory = robot.trajectory
+        ax.plot(trajectory[:time_step + 1, 0], trajectory[:time_step + 1, 1], "-")
 
     color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
     ax.set_xlabel("x")

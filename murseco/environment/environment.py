@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 from murseco.obstacle.abstract import DiscreteTimeObstacle
 from murseco.obstacle.static import StaticObstacle
+from murseco.robot.abstract import DiscreteTimeRobot
 from murseco.utility.types import EnvActor
 from murseco.utility.io import JSONSerializer
 
@@ -43,7 +44,7 @@ class Environment(JSONSerializer):
     def add_static_obstacle(self, obstacle: StaticObstacle) -> str:
         return self._add_actor(obstacle, "obstacle", "none")
 
-    def add_robot(self, robot: Any) -> str:
+    def add_robot(self, robot: DiscreteTimeRobot) -> str:
         return self._add_actor(robot, "robot", "none")
 
     @property
@@ -55,18 +56,18 @@ class Environment(JSONSerializer):
         return [actor for actor in self.actors if actor.category == "obstacle"]
 
     @property
-    def obstacles_dt(self) -> List[EnvActor]:
-        return [obstacle for obstacle in self.obstacles if obstacle.tframe == "dt"]
+    def obstacles_dt(self) -> List[DiscreteTimeObstacle]:
+        return [obstacle.element for obstacle in self.obstacles if obstacle.tframe == "dt"]
 
     @property
     def obstacles_ct(self) -> List[EnvActor]:
         raise NotImplementedError
 
     @property
-    def robot(self) -> Union[None, EnvActor]:
+    def robot(self) -> Union[None, DiscreteTimeRobot]:
         robots = [actor for actor in self.actors if actor.category == "robot"]
         assert len(robots) < 2, "maximal one robot is allowed in the scene"
-        return robots[0] if len(robots) == 1 else None
+        return robots[0].element if len(robots) == 1 else None
 
     def summary(self) -> Dict[str, Any]:
         summary = super(Environment, self).summary()

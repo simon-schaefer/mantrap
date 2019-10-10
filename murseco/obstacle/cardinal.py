@@ -14,7 +14,7 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
     a direction is drawn from the previous distribution, determining the new position. Following the second assumption
     the new GMM distribution is similar to the previous one, just with updated mean values (delta_position added).
 
-    :argument p_init: initial 2D position of obstacle (2,).
+    :argument pinit: initial 2D position of obstacle (2,).
     :argument pstep: step distance to go in every time-step either as float (uniform for all directions) or 4d-array.
     :argument tmax: maximal number of time-steps.
     :argument: sigmas: covariance matrices for every cardinal direction (4, 2, 2).
@@ -23,7 +23,7 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
 
     def __init__(
         self,
-        p_init: np.ndarray,
+        pinit: np.ndarray,
         pstep: Union[float, np.ndarray],
         tmax: int,
         sigmas: np.ndarray,
@@ -33,14 +33,18 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
         super(CardinalDiscreteTimeObstacle, self).__init__("obstacle/cardinal/CardinalDiscreteTimeObstacle", tmax)
         pstep = np.ones(4) * pstep if type(pstep) != np.ndarray else pstep
 
-        assert p_init.size == 2, "initial position must be two-dimensional"
+        assert pinit.size == 2, "initial position must be two-dimensional"
         assert pstep.size == 4, "pstep must contain the step distance in all cardinal directions"
         assert sigmas.shape == (4, 2, 2), "sigmas matrix must be of shape (4, 2, 2) containing 4 covariance matrices "
 
-        self.position = p_init
+        self._position = pinit
         self._pstep = np.reshape(pstep, (4, 1))
         self._sigmas, self._weights = sigmas, weights
         self._tgmm = tgmm if tgmm is not None else self._plan_tgmm()
+
+    @property
+    def position(self) -> np.ndarray:
+        return self._position
 
     @property
     def pdf(self) -> Distribution2D:

@@ -1,0 +1,72 @@
+from abc import abstractmethod
+from typing import Any, Dict, List, Union
+
+import numpy as np
+
+from murseco.utility.io import JSONSerializer
+from murseco.utility.stats import Distribution2D
+
+
+class DiscreteTimeRobot(JSONSerializer):
+    def __init__(self, name: str, state: np.ndarray, thorizon: int, policy: np.ndarray = None):
+        super(DiscreteTimeRobot, self).__init__(name)
+        assert state.size >= 2, "state vector = (x, y, ...) with (x, y) being the initial position"
+        if policy is not None:
+            assert policy.shape[0] == thorizon, "policy must contain steps equal to planning horizon (thorizon)"
+
+        self._state = state
+        self._policy = policy
+        self._thorizon = thorizon
+
+    @property
+    def position(self) -> np.ndarray:
+        return self._state[:2]
+
+    @property
+    def state(self) -> np.ndarray:
+        return self._state
+
+    @property
+    def trajectory(self) -> Union[np.ndarray, None]:
+        """Build the trajectory from the internal policy and current state, by iteratively applying the model dynamics.
+        Thereby a perfect model i.e. without uncertainty and correct is assumed. If no policy has been determined yet,
+        return None instead of the trajectory.
+
+        :return trajectory: array of ordered positions of the robot over the planning horizon (thorizon, 2).
+        """
+
+        if self._policy is None:
+            return None
+        trajectory = np.zeros((self._policy.shape[0] + 1, 2))
+
+        # initial trajectory point is the current state.
+        trajectory[0, :] = self.position
+
+        # every next state follows from robot's dynamics recursion, basically assuming no model uncertainty.
+        state = self.state.copy()
+        for i in range(self._policy.shape[0]):
+            state = self.dynamics(self._policy[i, :], state)
+            trajectory[i + 1, :] = state[:2].copy()
+        return trajectory
+
+    @property
+    def policy(self) -> np.ndarray:
+        return self._policy
+
+    @property
+    def planning_horizon(self) -> int:
+        return self._thorizon
+
+    @abstractmethod
+    def dynamics(self, action: np.ndarray, state: np.ndarray = None) -> np.ndarray:
+        return self.state if state is None else state
+
+    @abstractmethod
+    def update_policy(self, tpdf: List[Distribution2D]):
+        pass
+
+    @abstractmethod
+    def summary(self) -> Dict[str, Any]:
+        summary = super(DiscreteTimeRobot, self).summary()
+        summary.update({"state": self._state.tolist(), "thorizon": self._thorizon, "policy": self._policy.tolist()})
+        return summary

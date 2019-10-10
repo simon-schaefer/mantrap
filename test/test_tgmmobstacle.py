@@ -23,6 +23,7 @@ def test_tgmmobstacle_one_mode():
     ],
 )
 def test_tgmmobstacle_pdf(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
+    np.random.seed(0)
     tmus = np.reshape(mus, (1, -1, 2))
     tsigmas = np.reshape(sigmas, (1, -1, 2, 2))
     tweights = np.reshape(weights, (1, -1))

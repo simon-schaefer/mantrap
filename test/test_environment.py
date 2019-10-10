@@ -5,9 +5,10 @@ import pytest
 from murseco.environment.environment import Environment
 from murseco.obstacle.cardinal import CardinalDiscreteTimeObstacle
 from murseco.obstacle.tgmm import TGMMDiscreteTimeObstacle
+from murseco.robot.cardinal import CardinalDiscreteTimeRobot
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
-import murseco.utility.visualization
+from murseco.utility.visualization import plot_env_all_times, plot_env_at_time
 
 
 def test_environment_identifier():
@@ -49,3 +50,13 @@ def test_environment_same_tmax():
     pinit, pstep, sigmas, weights = np.zeros(2), 5, rand_invsymmpos(4, 2, 2) * 0.01, np.ones(4)
     env.add_discrete_time_obstacle(CardinalDiscreteTimeObstacle(pinit, pstep, 5, sigmas, weights))
     env.add_discrete_time_obstacle(CardinalDiscreteTimeObstacle(pinit, pstep, 3, sigmas, weights))
+
+
+def test_environment_visualization_all_times():
+    env = Environment((-10, 10), (-10, 10))
+    thorizon = 3
+    sigmas, weights = np.array([np.eye(2) * 0.25] * 4), np.ones(4)
+    env.add_discrete_time_obstacle(CardinalDiscreteTimeObstacle(np.zeros(2), 1.0, thorizon, sigmas, weights))
+    position, pstep, policy = np.array([1.31, 4.3]), 1.0, np.ones((thorizon, 1)) * 2
+    env.add_robot(CardinalDiscreteTimeRobot(position, thorizon, pstep, policy))
+    plot_env_all_times(env, murseco.utility.io.path_from_home_directory("test/cache/cardinal_visualization"))

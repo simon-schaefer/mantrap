@@ -77,6 +77,7 @@ def test_stats_point2d_json():
 
 
 def test_stats_gaussian2d_sample():
+    np.random.seed(0)
     mu, sigma = np.array([10, 0]), np.diag([0.01, 2])
     distribution = murseco.utility.stats.Gaussian2D(mu, sigma)
     samples = distribution.sample(num_samples=10000)
@@ -134,6 +135,7 @@ def test_stats_gaussian2d_sample(mus: np.ndarray, sigmas: np.ndarray, weights: n
     # Gaussian. Therefore a simple comparison between the samples mean and the mu vector will validate this approach.
     # Thus, the samples are clustered using k-means-algorithm, while the cluster centers should represent the
     # the mean of the distributions.
+    np.random.seed(0)
     gmm = murseco.utility.stats.GMM2D(mus, sigmas, weights)
     samples = gmm.sample(2000)
     centers = scipy.cluster.vq.kmeans(samples, k_or_guess=gmm.num_modes)[0]

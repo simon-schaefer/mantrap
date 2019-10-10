@@ -14,7 +14,7 @@
 - position of pedestrians with probability distribution as dynamics
 
 ## Baseline
-??
+- static pdf for every pedestrian
 
 ## Starting scenario
 - identically distributed, time-invariant 2-modal gaussian distribution relative to starting position
