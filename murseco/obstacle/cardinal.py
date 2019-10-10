@@ -23,14 +23,14 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
 
     def __init__(
         self,
-        pinit: np.ndarray,
-        velocity: Union[float, np.ndarray],
-        tmax: int,
-        sigmas: np.ndarray,
-        weights: np.ndarray,
+        pinit: np.ndarray = np.zeros(2),
+        velocity: Union[float, np.ndarray] = 1.0,
+        tmax: int = 10,
+        sigmas: np.ndarray = np.array([np.eye(2)] * 4),
+        weights: np.ndarray = np.ones(4),
         tgmm: List[Distribution2D] = None,
     ):
-        super(CardinalDiscreteTimeObstacle, self).__init__("obstacle/cardinal/CarsdinalDiscreteTimeObstacle", tmax)
+        super(CardinalDiscreteTimeObstacle, self).__init__("obstacle/cardinal/CardinalDiscreteTimeObstacle", tmax)
         velocity = np.ones(4) * velocity if type(velocity) != np.ndarray else velocity
 
         assert pinit.size == 2, "initial position must be two-dimensional"
