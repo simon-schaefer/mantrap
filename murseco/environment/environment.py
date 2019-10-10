@@ -18,46 +18,33 @@ class Environment(JSONSerializer):
         self.actors = [] if actors is None else actors
         self._tmax = None
 
-    def _add_actor(self, element: Any, category: str, tframe: str) -> str:
+    def _add_actor(self, element: Any, category: str) -> str:
         """Add actor to list of actors and create its id from random.
 
         :argument element: actor object to add to list.
         :argument category: type of actor (obstacle, robot)
-        :argument tframe: time frame description (ct, dt, none)
         :return id: obstacle assigned identifier string.
         """
         assert category in ("robot", "obstacle"), "agent type description must be one out of (robot, obstacle)"
-        assert tframe in ("ct", "dt", "none"), "time frame description must be one out of (ct, dt, none)"
-        actor = EnvActor(category=category, tframe=tframe, element=element)
+        actor = EnvActor(category=category, element=element)
         self.actors.append(actor)
         return actor.identifier
 
-    def add_discrete_time_obstacle(self, obstacle: DiscreteTimeObstacle) -> str:
+    def add_obstacle(self, obstacle: DiscreteTimeObstacle) -> str:
         self._tmax = obstacle.tmax if self.tmax is None else self.tmax
         assert self._tmax == obstacle.tmax, "time horizon tmax should be equivalent for all obstacles"
-        return self._add_actor(obstacle, "obstacle", "dt")
-
-    def add_continuous_time_obstacle(self, obstacle: Any) -> str:
-        raise NotImplementedError
+        return self._add_actor(obstacle, "obstacle")
 
     def add_robot(self, robot: DiscreteTimeRobot) -> str:
-        return self._add_actor(robot, "robot", "none")
+        return self._add_actor(robot, "robot")
 
     @property
     def tmax(self) -> int:
         return self._tmax
 
     @property
-    def obstacles(self) -> List[EnvActor]:
-        return [actor for actor in self.actors if actor.category == "obstacle"]
-
-    @property
-    def obstacles_dt(self) -> List[DiscreteTimeObstacle]:
-        return [obstacle.element for obstacle in self.obstacles if obstacle.tframe == "dt"]
-
-    @property
-    def obstacles_ct(self) -> List[EnvActor]:
-        raise NotImplementedError
+    def obstacles(self) -> List[DiscreteTimeObstacle]:
+        return [actor.element for actor in self.actors if actor.category == "obstacle"]
 
     @property
     def robot(self) -> Union[None, DiscreteTimeRobot]:

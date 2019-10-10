@@ -55,7 +55,7 @@ def plot_env_at_time(fig: plt.Figure, ax: plt.Axes, env: Environment, time_step:
     )
 
     pdf = np.zeros_like(x)
-    for obstacle in env.obstacles_dt:
+    for obstacle in env.obstacles:
         pdf += obstacle.tpdf[time_step].pdf_at(x, y)
 
     robot = env.robot
