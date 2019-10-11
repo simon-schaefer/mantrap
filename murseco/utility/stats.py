@@ -147,7 +147,8 @@ class GMM2D(Distribution2D):
         return np.sum(weighted_probabilities, axis=0)
 
     def sample(self, num_samples: int) -> np.ndarray:
-        mode_choices = np.random.choice(range(self.num_modes), size=num_samples, p=self.weights)
+        weights = self.weights / np.sum(self.weights)
+        mode_choices = np.random.choice(range(self.num_modes), size=num_samples, p=weights)
         return np.array([self.gaussians[mode].sample(1) for mode in mode_choices]).squeeze()
 
     def summary(self) -> Dict[str, Any]:

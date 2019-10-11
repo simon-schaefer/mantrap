@@ -33,7 +33,10 @@ def rand_invsymmpos(*size) -> np.ndarray:
 
     :argument size: sequence of integers stating matrix shape e.g. *size = 1, 3, 4.
     """
-    assert len(size) > 2, "size must be at least three-dimensional"
+    assert len(size) > 1, "size must be at least two-dimensional"
     a = np.random.rand(size[-2], size[-1])
     a = a.T * a + np.eye(size[-1]) * np.amax(a)
-    return np.tile(a, (*size[:-2], 1, 1))
+    if len(size) == 2:
+        return a
+    else:
+        return np.tile(a, (*size[:-2], 1, 1))

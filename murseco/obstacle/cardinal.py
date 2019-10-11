@@ -35,11 +35,13 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
 
         assert velocity.size == 4, "pstep must contain the step distance in all cardinal directions"
         assert sigmas.shape == (4, 2, 2), "sigmas matrix must be of shape (4, 2, 2) containing 4 covariance matrices"
+        assert all(weights >= 0), "weights must be semi-positive"
 
         self._velocity = np.reshape(velocity, (4, 1))
-        self._sigmas, self._weights = sigmas, weights
+        self._sigmas = sigmas
+        self._weights = weights
 
-    def pdf(self, history: np.ndarray = None) -> Distribution2D:
+    def pdf(self, history: np.ndarray = None) -> GMM2D:
         history = super(CardinalDiscreteTimeObstacle, self).pdf(history)
         position = history[-1, :]
         mus = position + cardinal_directions() * self._velocity
