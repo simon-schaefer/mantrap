@@ -24,7 +24,7 @@ class CardinalDiscreteTimeObstacle(DiscreteTimeObstacle):
     def __init__(
         self,
         history: np.ndarray = np.zeros(2),
-        velocity: Union[float, np.ndarray] = 1.0,
+        velocity: Union[float, np.ndarray] = 0.2,
         sigmas: np.ndarray = np.array([np.eye(2)] * 4),
         weights: np.ndarray = np.ones(4),
         **kwargs

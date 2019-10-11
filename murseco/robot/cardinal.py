@@ -31,8 +31,8 @@ class CardinalDiscreteTimeRobot(DiscreteTimeRobot):
 
         self._velocity = velocity
 
-    def update_policy(self, tpdf: List[Distribution2D]):
-        super(CardinalDiscreteTimeRobot, self).update_policy(tpdf)
+    def update_policy(self, pdf: Distribution2D):
+        super(CardinalDiscreteTimeRobot, self).update_policy(pdf)
         return np.zeros((self.planning_horizon, 1))
 
     def dynamics(self, action: np.ndarray, state: np.ndarray = None) -> np.ndarray:

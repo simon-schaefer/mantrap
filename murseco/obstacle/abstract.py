@@ -36,7 +36,7 @@ class DiscreteTimeObstacle(JSONSerializer):
             for t in range(thorizon):
                 pdf = self.pdf(history)
                 trajectory[t, :] = pdf.sample(1)
-                history = np.stack((history, trajectory[t, :]))
+                history = np.vstack((history, np.reshape(trajectory[t, :], (1, 2))))
             trajectories.append(trajectory)
         return np.array(trajectories)
 

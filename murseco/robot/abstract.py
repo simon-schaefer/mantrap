@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Union
 
 import numpy as np
 
@@ -62,7 +62,7 @@ class DiscreteTimeRobot(JSONSerializer):
         return self.state if state is None else state
 
     @abstractmethod
-    def update_policy(self, tpdf: List[Distribution2D]):
+    def update_policy(self, pdf: Distribution2D):
         pass
 
     @abstractmethod

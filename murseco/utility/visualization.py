@@ -40,43 +40,38 @@ def plot_pdf2d(
     fig.colorbar(color_mesh)
 
 
-def plot_env_at_time(fig: plt.Figure, ax: plt.Axes, env: Environment, time_step: int = 0, num_points: int = 500):
+def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10, num_points: int = 500):
     """Plot 2D environment including the attached actors like obstacles or robots for given time-step.
-
-    :argument fig: matplotlib figure to draw in.
-    :argument ax: matplotlib axis to draw in.
-    :argument env: environment object to plot.
-    :argument time_step: time-step to plot (0....tmax, default = 0).
-    :argument num_points: number of resolution points for axis sampling.
-    """
-    num_points = int(num_points)
-    x_min, x_max, y_min, y_max = env.xaxis[0], env.xaxis[1], env.yaxis[0], env.yaxis[1]
-    x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
-
-    # robot = env.robot
-    # if robot is not None:
-    #     trajectory = robot.trajectory
-    #     ax.plot(trajectory[:time_step + 1, 0], trajectory[:time_step + 1, 1], "-")
-
-    # color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    # fig.colorbar(color_mesh, ax=ax)
-
-
-def plot_env_all_times(env: Environment, fpath: str, num_points: int = 500):
-    """Plot 2D environment including the attached actors like obstacles or robots over all times in horizon (0...tmax).
-    Therefore create one plot for each time-step, saving all in a created directory.
 
     :argument env: environment object to plot.
     :argument fpath: path to store directory in.
+    :argument num_samples: number of trajectories to sample.
     :argument num_points: number of resolution points for axis sampling.
     """
-    dirname = os.path.join(fpath, datetime.now().strftime("%Y_%m_%d/%H_%M_%S"))
-    os.makedirs(dirname, exist_ok=True)
+    fig, ax = plt.subplots()
+    # num_points = int(num_points)
+    # x_min, x_max, y_min, y_max = env.xaxis[0], env.xaxis[1], env.yaxis[0], env.yaxis[1]
+    # x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
+    time_horizon = 10
 
-    for tn in range(env.tmax):
-        fig, ax = plt.subplots()
-        plot_env_at_time(fig, ax, env, time_step=tn, num_points=num_points)
-        plt.savefig(os.path.join(dirname, f"{tn}.png"))
-        plt.close()
+    robot = env.robot
+    if robot is not None:
+        trajectory = robot.trajectory
+        ax.plot(trajectory[:, 0], trajectory[:, 1], "r-")
+        time_horizon = robot.planning_horizon
+
+    for obstacle in env.obstacles:
+        trajectory_samples = obstacle.trajectory_samples(time_horizon, num_samples=num_samples)
+        for i in range(trajectory_samples.shape[0]):
+            ax.plot(trajectory_samples[i, :, 0], trajectory_samples[i, :, 1], obstacle.color + "--")
+        history = obstacle.history
+        ax.plot(history[:, 0], history[:, 1], "x")
+
+    # pdf = sum([o.pdf().pdf_at(x, y) for o in env.obstacles])
+    # color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
+    # fig.colorbar(color_mesh, ax=ax)
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    plt.savefig(fpath)
+    plt.close()

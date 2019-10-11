@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
 from murseco.environment.environment import Environment
@@ -6,7 +5,7 @@ from murseco.obstacle.cardinal import CardinalDiscreteTimeObstacle
 from murseco.robot.cardinal import CardinalDiscreteTimeRobot
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
-from murseco.utility.visualization import plot_env_all_times
+from murseco.utility.visualization import plot_env_samples
 
 
 def test_environment_identifier():
@@ -15,17 +14,6 @@ def test_environment_identifier():
         env.add_obstacle(CardinalDiscreteTimeObstacle(sigmas=rand_invsymmpos(4, 2, 2)))
     identifiers = [o.identifier for o in env.obstacles]
     assert len(np.unique(identifiers)) == 10
-
-
-def test_environment_plot():
-    env = Environment((-10, 10), (-10, 10))
-    env.add_obstacle(CardinalDiscreteTimeObstacle(history=np.ones(2) * 3))
-    env.add_obstacle(CardinalDiscreteTimeObstacle(history=np.ones(2) * (-4)))
-
-    cache_path = murseco.utility.io.path_from_home_directory("test/cache/env_test.png")
-    fig, ax = plt.subplots()
-    murseco.utility.visualization.plot_env_at_time(fig, ax, env)
-    plt.savefig(cache_path)
 
 
 def test_environment_json():
@@ -39,8 +27,9 @@ def test_environment_json():
     assert env_1.summary() == env_2.summary()
 
 
-def test_environment_visualization_all_times():
+def test_environment_visualization_samples():
     env = Environment((-10, 10), (-10, 10))
-    env.add_obstacle(CardinalDiscreteTimeObstacle(np.zeros(2), 1.0, np.array([np.eye(2) * 0.25] * 4), np.ones(4)))
+    env.add_obstacle(CardinalDiscreteTimeObstacle(sigmas=np.array([np.diag([1e-4, 1e-4])] * 4),
+                                                  weights=np.array([2, 2, 1, 1])))
     env.add_robot(CardinalDiscreteTimeRobot(np.array([1.31, 4.3]), 4, 1.0, np.ones((4, 1)) * 2))
-    plot_env_all_times(env, murseco.utility.io.path_from_home_directory("test/cache/cardinal_visualization"))
+    plot_env_samples(env, murseco.utility.io.path_from_home_directory("test/cache/env_samples.png"))
