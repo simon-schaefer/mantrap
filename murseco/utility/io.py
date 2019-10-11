@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict
 
 import json
+import numpy as np
 
 import murseco.utility.misc
 
@@ -29,19 +30,36 @@ class JSONSerializer:
     """The JSONSerializer class is an abstract class that gives an interface for dumping and loading objects
     to a json file, for storing parameters, environments, etc."""
 
-    def __init__(self, name: str):
-        self.name = name
-        self.identifier = murseco.utility.misc.random_string()
+    def __init__(self, name: str, is_unique: bool = True, identifier: str = None, color: str = None):
+        self._name = name
+        if is_unique:
+            self._identifier = murseco.utility.misc.random_string() if identifier is None else identifier
+            colors = ["lime", "orange", "oldlace", "lightcoral", "lavender", "yellow", "pink"]
+            self._color = np.random.choice(colors) if color is None else color
+        else:
+            self._identifier = self._color = "none"
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def color(self) -> str:
+        return self._color
+
+    @property
+    def identifier(self) -> str:
+        return self._identifier
 
     @abstractmethod
     def summary(self) -> Dict[str, Any]:
         """Summarize object in json-like dictionary file (should contain "name" key)."""
-        return {"name": self.name}
+        return {"name": self._name, "identifier": self._identifier, "color": self._color}
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
         """Load object parameters from json-style dictionary object."""
-        pass
+        return {"name": json_text["name"], "identifier": json_text["identifier"], "color": json_text["color"]}
 
     def to_json(self, filepath: str):
         """Write summary of given object to json file, containing the distribution type, parameters, etc.

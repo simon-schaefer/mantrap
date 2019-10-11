@@ -17,8 +17,16 @@ class CardinalDiscreteTimeRobot(DiscreteTimeRobot):
     :argument policy: series of actions for the planning horizon (optional).
     """
 
-    def __init__(self, position: np.ndarray, thorizon: int, velocity: float = 0.5, policy: np.ndarray = None):
-        super(CardinalDiscreteTimeRobot, self).__init__("robot/cardinal/CardinalRobot", position, thorizon, policy)
+    def __init__(
+        self,
+        position: np.ndarray = np.zeros(2),
+        thorizon: int = 10,
+        velocity: float = 0.5,
+        policy: np.ndarray = None,
+        **kwargs
+    ):
+        kwargs.update({"name": "robot/cardinal/CardinalRobot"})
+        super(CardinalDiscreteTimeRobot, self).__init__(position, thorizon, policy, **kwargs)
         assert velocity > 0, "step-width must be larger than 0"
 
         self._velocity = velocity
@@ -27,7 +35,7 @@ class CardinalDiscreteTimeRobot(DiscreteTimeRobot):
         super(CardinalDiscreteTimeRobot, self).update_policy(tpdf)
         return np.zeros((self.planning_horizon, 1))
 
-    def dynamics(self,  action: np.ndarray, state: np.ndarray = None) -> np.ndarray:
+    def dynamics(self, action: np.ndarray, state: np.ndarray = None) -> np.ndarray:
         assert action.size == 1, "action is one-dimensional for cardinal robot"
         state = super(CardinalDiscreteTimeRobot, self).dynamics(action, state)
         return state + cardinal_directions()[int(action), :] * self._velocity
@@ -39,8 +47,6 @@ class CardinalDiscreteTimeRobot(DiscreteTimeRobot):
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
-        super(CardinalDiscreteTimeRobot, cls).from_summary(json_text)
-        position = np.reshape(np.array(json_text["state"]), (2,))
-        thorizon = int(json_text["thorizon"])
-        policy = np.reshape(np.array(json_text["policy"]), (thorizon, 1))
-        return cls(position, thorizon, float(json_text["velocity"]), policy)
+        summary = super(CardinalDiscreteTimeRobot, cls).from_summary(json_text)
+        summary.update({"velocity": float(json_text["velocity"])})
+        return cls(**summary)

@@ -8,8 +8,8 @@ from murseco.utility.stats import Distribution2D
 
 
 class DiscreteTimeRobot(JSONSerializer):
-    def __init__(self, name: str, state: np.ndarray, thorizon: int, policy: np.ndarray = None):
-        super(DiscreteTimeRobot, self).__init__(name)
+    def __init__(self, state: np.ndarray, thorizon: int, policy: np.ndarray = None, **kwargs):
+        super(DiscreteTimeRobot, self).__init__(**kwargs)
         assert state.size >= 2, "state vector = (x, y, ...) with (x, y) being the initial position"
         if policy is not None:
             assert policy.shape[0] == thorizon, "policy must contain steps equal to planning horizon (thorizon)"
@@ -69,4 +69,13 @@ class DiscreteTimeRobot(JSONSerializer):
     def summary(self) -> Dict[str, Any]:
         summary = super(DiscreteTimeRobot, self).summary()
         summary.update({"state": self._state.tolist(), "thorizon": self._thorizon, "policy": self._policy.tolist()})
+        return summary
+
+    @classmethod
+    def from_summary(cls, json_text: Dict[str, Any]):
+        summary = super(DiscreteTimeRobot, cls).from_summary(json_text)
+        position = np.reshape(np.array(json_text["state"]), (2,))
+        thorizon = int(json_text["thorizon"])
+        policy = np.reshape(np.array(json_text["policy"]), (thorizon, 1))
+        summary.update({"position": position, "thorizon": thorizon, "policy": policy})
         return summary

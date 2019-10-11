@@ -15,10 +15,10 @@ def test_cardinalrobot_trajectory():
 
 
 def test_cardinalrobot_dynamics():
-    position, pstep = np.array([1.31, 4.3]), 0.1,
-    robot = CardinalDiscreteTimeRobot(position, 10, pstep)
-    state_next = robot.dynamics(np.array([1]))
-    state_expected = position + cardinal_directions()[1] * pstep
+    position, velocity, direction = np.array([1.31, 4.3]), 0.1, 1
+    robot = CardinalDiscreteTimeRobot(position, velocity=velocity)
+    state_next = robot.dynamics(np.array([direction]))
+    state_expected = position + cardinal_directions()[direction] * velocity
     assert np.isclose(np.linalg.norm(state_next - state_expected), 0)
 
 

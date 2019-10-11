@@ -7,8 +7,9 @@ from murseco.utility.io import JSONSerializer
 
 
 class Distribution2D(JSONSerializer):
-    def __init__(self, name):
-        super(Distribution2D, self).__init__(name)
+    def __init__(self, **kwargs):
+        kwargs.update({"is_unique": False})
+        super(Distribution2D, self).__init__(**kwargs)
 
     @abstractmethod
     def pdf_at(self, x: Union[np.ndarray, float], y: Union[np.ndarray, float]) -> Union[None, np.ndarray]:
@@ -34,12 +35,23 @@ class Distribution2D(JSONSerializer):
         """
         pass
 
+    @abstractmethod
+    def summary(self) -> Dict[str, Any]:
+        summary = super(Distribution2D, self).summary()
+        return summary
+
+    @classmethod
+    def from_summary(cls, json_text: Dict[str, Any]):
+        summary = super(Distribution2D, cls).from_summary(json_text)
+        return summary
+
 
 class Point2D(Distribution2D):
     """f(x) = direc_delta(x) with x = point (direc_delta is modelled with 100)"""
 
-    def __init__(self, position: np.ndarray):
-        super(Point2D, self).__init__("utility/stats/Point2D")
+    def __init__(self, position: np.ndarray, **kwargs):
+        kwargs.update({"name": "utility/stats/Point2D"})
+        super(Point2D, self).__init__(**kwargs)
 
         assert position.size == 2, "position must be two-dimensional"
         self.x, self.y = position.tolist()
@@ -57,20 +69,22 @@ class Point2D(Distribution2D):
 
     def summary(self) -> Dict[str, Any]:
         summary = super(Point2D, self).summary()
-        summary.update({"point": [self.x, self.y]})
+        summary.update({"position": [self.x, self.y]})
         return summary
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
-        super(Point2D, cls).from_summary(json_text)
-        return cls(np.asarray(json_text["point"]))
+        summary = super(Point2D, cls).from_summary(json_text)
+        summary.update({"position": np.asarray(json_text["position"])})
+        return cls(**summary)
 
 
 class Gaussian2D(Distribution2D):
     """f(x) = 1 / /sqrt(2*pi )^p * det(Sigma)) * exp(-0.5 * (x - mu)^T * Sigma^(-1) * (x - mu))"""
 
-    def __init__(self, mu: np.ndarray, sigma: np.ndarray):
-        super(Gaussian2D, self).__init__("utility/stats/Gaussian2D")
+    def __init__(self, mu: np.ndarray, sigma: np.ndarray, **kwargs):
+        kwargs.update({"name": "utility/stats/Gaussian2D"})
+        super(Gaussian2D, self).__init__(**kwargs)
         mu, sigma = np.squeeze(mu), np.squeeze(sigma)  # prevent e.g. sigma.shape = (1, 2, 2)
 
         assert mu.size == 2, "mean vector has to be two dimensional"
@@ -99,17 +113,20 @@ class Gaussian2D(Distribution2D):
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
-        super(Gaussian2D, cls).from_summary(json_text)
+        summary = super(Gaussian2D, cls).from_summary(json_text)
         mu = np.asarray(json_text["mu"])
         sigma = np.reshape(np.asarray(json_text["sigma"]), (2, 2))
-        return cls(mu, sigma)
+        summary.update({"mu": mu, "sigma": sigma})
+        return cls(**summary)
 
 
 class GMM2D(Distribution2D):
     """f(x) = sum_i w_i * Gaussian2D_i(x)"""
 
-    def __init__(self, mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
-        super(GMM2D, self).__init__("utility/stats/GMM2D")
+    def __init__(self, mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray, **kwargs):
+        kwargs.update({"name": "utility/stats/GMM2D"})
+        super(GMM2D, self).__init__(**kwargs)
+
         mus = mus.squeeze() if len(mus.shape) > 2 else mus  # prevent e.g. mus.shape = (1, 4, 2) but (1, 2)
         sigmas = sigmas.squeeze() if len(sigmas.shape) > 3 else sigmas
         weights = weights.squeeze() if len(weights.shape) > 1 else weights
@@ -140,9 +157,10 @@ class GMM2D(Distribution2D):
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
-        super(GMM2D, cls).from_summary(json_text)
+        summary = super(GMM2D, cls).from_summary(json_text)
         gaussians = [Gaussian2D.from_summary(g) for g in json_text["gaussians"]]
         mus = np.reshape(np.array([g.mu for g in gaussians]), (-1, 2))
         sigmas = np.reshape(np.array([g.sigma for g in gaussians]), (-1, 2, 2))
         weights = np.array(json_text["weights"])
-        return cls(mus, sigmas, weights)
+        summary.update({"mus": mus, "sigmas": sigmas, "weights": weights})
+        return cls(**summary)
