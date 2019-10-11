@@ -5,7 +5,7 @@ from murseco.obstacle.cardinal import CardinalDiscreteTimeObstacle
 from murseco.robot.cardinal import CardinalDiscreteTimeRobot
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
-from murseco.utility.visualization import plot_env_samples
+from murseco.utility.visualization import plot_env_initial_pdf, plot_env_samples
 
 
 def test_environment_identifier():
@@ -33,3 +33,10 @@ def test_environment_visualization_samples():
                                                   weights=np.array([2, 2, 1, 1])))
     env.add_robot(CardinalDiscreteTimeRobot(np.array([1.31, 4.3]), 4, 1.0, np.ones((4, 1)) * 2))
     plot_env_samples(env, murseco.utility.io.path_from_home_directory("test/cache/env_samples.png"))
+
+
+def test_environment_visualization_initial():
+    env = Environment((-10, 10), (-10, 10))
+    env.add_obstacle(CardinalDiscreteTimeObstacle(velocity=2.0, sigmas=np.array([np.diag([1, 1])] * 4)))
+    env.add_robot(CardinalDiscreteTimeRobot(position=np.array([4.53, 5.1])))
+    plot_env_initial_pdf(env, murseco.utility.io.path_from_home_directory("test/cache/env_initial.png"))

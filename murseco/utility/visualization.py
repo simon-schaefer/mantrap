@@ -40,18 +40,16 @@ def plot_pdf2d(
     fig.colorbar(color_mesh)
 
 
-def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10, num_points: int = 500):
-    """Plot 2D environment including the attached actors like obstacles or robots for given time-step.
+def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10):
+    """Plot N = num_samples possible trajectories for all the dynamic obstacles in the scene as well as the trajectory
+    of the robot, both the obstacle's trajectory samples as well as the robot's planned trajectory for k = planning_
+    horizon of the robot time-steps.
 
     :argument env: environment object to plot.
     :argument fpath: path to store directory in.
     :argument num_samples: number of trajectories to sample.
-    :argument num_points: number of resolution points for axis sampling.
     """
     fig, ax = plt.subplots()
-    # num_points = int(num_points)
-    # x_min, x_max, y_min, y_max = env.xaxis[0], env.xaxis[1], env.yaxis[0], env.yaxis[1]
-    # x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
     time_horizon = 10
 
     robot = env.robot
@@ -65,11 +63,37 @@ def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10, num_po
         for i in range(trajectory_samples.shape[0]):
             ax.plot(trajectory_samples[i, :, 0], trajectory_samples[i, :, 1], obstacle.color + "--")
         history = obstacle.history
-        ax.plot(history[:, 0], history[:, 1], "x")
+        ax.plot(history[:, 0], history[:, 1], "o")
 
-    # pdf = sum([o.pdf().pdf_at(x, y) for o in env.obstacles])
-    # color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
-    # fig.colorbar(color_mesh, ax=ax)
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    plt.savefig(fpath)
+    plt.close()
+
+
+def plot_env_initial_pdf(env: Environment, fpath: str, num_points: int = 500):
+    """Plot the pdf of every dynamic obstacle as well as the robot's and obstacles initial positions in the
+    first time-step.
+
+    :argument env: environment object to plot.
+    :argument fpath: path to store directory in.
+    :argument num_points: number of resolution points for axis sampling.
+    """
+    fig, ax = plt.subplots()
+
+    robot = env.robot
+    if robot is not None:
+        ax.plot(robot.position[0], robot.position[1], "rx")
+
+    for obstacle in env.obstacles:
+        ax.plot(obstacle.position[0], obstacle.position[1], obstacle.color + "o")
+
+    num_points = int(num_points)
+    x_min, x_max, y_min, y_max = env.xaxis[0], env.xaxis[1], env.yaxis[0], env.yaxis[1]
+    x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
+    pdf = sum([o.pdf().pdf_at(x, y) for o in env.obstacles])
+    color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
+    fig.colorbar(color_mesh, ax=ax)
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")
