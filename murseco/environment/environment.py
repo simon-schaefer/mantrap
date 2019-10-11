@@ -14,7 +14,7 @@ class Environment(JSONSerializer):
         robot: DiscreteTimeRobot = None,
         **kwargs
     ):
-        kwargs.update({"name": "environment/environment/Environment"})
+        kwargs.update({"name": "environment/environment/Environment", "is_unique": False})
         super(Environment, self).__init__(**kwargs)
 
         assert xaxis[0] < xaxis[1], "xaxis has to be in the format (x_min, x_max)"
