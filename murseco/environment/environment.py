@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Tuple, Union
 
-from murseco.obstacle.abstract import DiscreteTimeObstacle
+from murseco.obstacle.abstract import DTVObstacle
 from murseco.robot.abstract import DiscreteTimeRobot
 from murseco.utility.io import JSONSerializer
 
@@ -10,7 +10,7 @@ class Environment(JSONSerializer):
         self,
         xaxis: Tuple[float, float],
         yaxis: Tuple[float, float],
-        obstacles: List[DiscreteTimeObstacle] = None,
+        obstacles: List[DTVObstacle] = None,
         robot: DiscreteTimeRobot = None,
         **kwargs
     ):
@@ -26,7 +26,7 @@ class Environment(JSONSerializer):
         self._robot = robot
         self._tmax = None
 
-    def add_obstacle(self, obstacle: DiscreteTimeObstacle):
+    def add_obstacle(self, obstacle: DTVObstacle):
         self._obstacles.append(obstacle)
 
     def add_robot(self, robot: DiscreteTimeRobot):
@@ -39,7 +39,7 @@ class Environment(JSONSerializer):
         return self._tmax
 
     @property
-    def obstacles(self) -> List[DiscreteTimeObstacle]:
+    def obstacles(self) -> List[DTVObstacle]:
         return self._obstacles
 
     @property

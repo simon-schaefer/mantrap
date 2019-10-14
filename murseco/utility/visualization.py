@@ -10,10 +10,9 @@ from murseco.utility.stats import Distribution2D
 
 
 def plot_pdf2d(
-    fig: plt.Figure,
-    ax: plt.Axes,
     distribution: Distribution2D,
     xaxis: Tuple[float, float],
+    fpath: str,
     yaxis: Union[Tuple[float, float], None] = None,
     num_points: int = 500,
 ):
@@ -23,13 +22,14 @@ def plot_pdf2d(
     representation of the distribution while being efficient. If just one axis is given, the other axis is assumed
     to be the same as the given axis.
 
-    :argument fig: matplotlib figure to draw in.
-    :argument ax: matplotlib axis to draw in.
     :argument distribution: 2D distribution as subclass of Distribution2D class in utility.stats.
     :argument xaxis: range of x axis as (lower bound, upper bound).
+    :argument fpath: path to store directory in.
     :argument yaxis: range of y axis as (lower bound, upper bound), assumed to be equal to xaxis if not stated.
     :argument num_points: number of resolution points for axis sampling.
     """
+    fig, ax = plt.subplots()
+
     yaxis = xaxis if yaxis is None else yaxis
     num_points = int(num_points)
     x, y = np.meshgrid(np.linspace(xaxis[0], xaxis[1], num_points), np.linspace(yaxis[0], yaxis[1], num_points))
@@ -38,6 +38,9 @@ def plot_pdf2d(
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     fig.colorbar(color_mesh)
+
+    plt.savefig(fpath)
+    plt.close()
 
 
 def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10):
@@ -65,6 +68,8 @@ def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10):
         history = obstacle.history
         ax.plot(history[:, 0], history[:, 1], "o")
 
+    ax.set_xlim(env.xaxis)
+    ax.set_ylim(env.yaxis)
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     plt.savefig(fpath)
@@ -91,7 +96,7 @@ def plot_env_initial_pdf(env: Environment, fpath: str, num_points: int = 500):
     num_points = int(num_points)
     x_min, x_max, y_min, y_max = env.xaxis[0], env.xaxis[1], env.yaxis[0], env.yaxis[1]
     x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
-    pdf = sum([o.pdf().pdf_at(x, y) for o in env.obstacles])
+    pdf = sum([o.vpdf().pdf_at(x, y) for o in env.obstacles])
     color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
     fig.colorbar(color_mesh, ax=ax)
 

@@ -1,6 +1,5 @@
 from typing import Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 import scipy.cluster.vq
@@ -153,6 +152,4 @@ def test_stats_gaussian2d_sample(mus: np.ndarray, sigmas: np.ndarray, weights: n
 def test_visualization_plot_pdf2d(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray, index: str):
     cache_path = murseco.utility.io.path_from_home_directory(f"test/cache/gmm2d_test_{index}.png")
     distribution = murseco.utility.stats.GMM2D(mus, sigmas, weights)
-    fig, ax = plt.subplots()
-    murseco.utility.visualization.plot_pdf2d(fig, ax, distribution, (-10, 10))
-    plt.savefig(cache_path)
+    murseco.utility.visualization.plot_pdf2d(distribution, (-10, 10), fpath=cache_path)

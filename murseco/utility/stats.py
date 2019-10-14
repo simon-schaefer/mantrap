@@ -141,6 +141,9 @@ class GMM2D(Distribution2D):
         self.weights = weights / np.sum(weights)  # from now on GMM is normalized
         self.weights = np.round(self.weights, 5)  # prevent testing exact comparison problems
 
+    def mode(self, mode: int) -> Gaussian2D:
+        return self.gaussians[mode]
+
     def pdf_at(self, x: Union[np.ndarray, float], y: Union[np.ndarray, float]) -> Union[None, np.ndarray]:
         super(GMM2D, self).pdf_at(x, y)
         weighted_probabilities = np.array([self.weights[i] * g.pdf_at(x, y) for i, g in enumerate(self.gaussians)])

@@ -40,3 +40,4 @@ imply that ρl,N(Zl,··· ,ZN) ≤ ρl,N(Wl,··· ,WN).
 
 # Questions
 - Baseline ? (Probabilistic graph search, just like Astar with time-dependent weights existing ?)
+- most probable path (so what is the maximum of the overall GMM distribution) ? 
