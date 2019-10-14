@@ -18,8 +18,7 @@ def test_cardinalobstacle_initialization():
 
 @pytest.mark.parametrize(
     "velocity, sigmas, weights",
-    [(4, np.array([np.eye(2)] * 4), np.array([0.8, 0.9, 0.9, 0.85])),
-     (10, rand_invsymmpos(4, 2, 2), np.ones(4))]
+    [(4, np.array([np.eye(2)] * 4), np.array([0.8, 0.9, 0.9, 0.85])), (10, rand_invsymmpos(4, 2, 2), np.ones(4))],
 )
 def test_cardinalobstacle_pdf(velocity: float, sigmas: np.ndarray, weights: np.ndarray):
     np.random.seed(0)

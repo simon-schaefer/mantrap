@@ -16,7 +16,7 @@ class DiscreteTimeObstacle(JSONSerializer):
         self._history = np.reshape(history, (-1, 2))  # obstacles last position (or initial position)
 
     @abstractmethod
-    def pdf(self, history: np.ndarray = None) -> Distribution2D:
+    def pdf(self, history: np.ndarray = None) -> np.ndarray:
         """Given the obstacles history (trajectory) determine the probability density function of the next position."""
         return self._history.copy() if history is None else history
 

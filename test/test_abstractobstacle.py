@@ -28,10 +28,7 @@ class AbstractDiscreteTimeObstacle(DiscreteTimeObstacle):
         return cls(**summary)
 
 
-@pytest.mark.parametrize(
-    "direction",
-    [np.random.rand(2), np.zeros(2), np.ones(2), np.array([2.9, -1.7])]
-)
+@pytest.mark.parametrize("direction", [np.random.rand(2), np.zeros(2), np.ones(2), np.array([2.9, -1.7])])
 def test_abstractobstacle_trajectory(direction: np.ndarray):
     obstacle = AbstractDiscreteTimeObstacle(np.zeros(2), direction=direction)
     thorizon = 4

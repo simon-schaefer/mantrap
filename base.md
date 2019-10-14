@@ -11,6 +11,9 @@ with J0 containing the robots traveling cost, final cost, etc.
 - Gaussian over time (nested Gaussians) is not a standard distribution (model non-linear, non-markovian, ...) 
 --> re-interpolate cost function (probability map) while enforcing smoothness constraints
 
+## Simluation
+- Obstacle disturbance in position or velocity space (more realistic in velocity, trajectron in velocity, but planner requires position), so how to transform some distribution from velocity in position space for any (not analytically known, since nested GMMs) distribution efficiently (not just particles) ? 
+--> integrating velocity sequences (particles) directly and build distribution from the obtained positions. Another possibility would be to interpolate the pdf in the velocity space, obtain an analytic formulation and integrate it analytically. However we assume smoothness by interpolation in the velocity space, which probably is a larger assumption than the effect of integration error. 
 
 ## Baseline
 - static pdf for every pedestrian

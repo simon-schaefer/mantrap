@@ -17,5 +17,6 @@ test/cache/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Paper collection directory.
+# Paper collection and miscs directory.
 paper/
+miscs/
