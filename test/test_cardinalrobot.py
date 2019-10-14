@@ -1,6 +1,6 @@
 import numpy as np
 
-from murseco.robot.cardinal import CardinalDTRobot
+from murseco.robot import CardinalDTRobot
 from murseco.utility.misc import cardinal_directions
 import murseco.utility.io
 

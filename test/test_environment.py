@@ -1,8 +1,8 @@
 import numpy as np
 
-from murseco.environment.environment import Environment
-from murseco.obstacle.single_mode import SingleModeDTVObstacle
-from murseco.robot.cardinal import CardinalDTRobot
+from murseco.environment import Environment
+from murseco.obstacle import SingleModeDTVObstacle
+from murseco.robot import CardinalDTRobot
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
 from murseco.utility.visualization import plot_env_samples

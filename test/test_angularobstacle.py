@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from scipy.cluster.vq import kmeans
 
-from murseco.obstacle.angular import AngularDTVObstacle
+from murseco.obstacle import AngularDTVObstacle
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
 

@@ -1,10 +1,9 @@
-import os
 from typing import Any, Dict
 
 import numpy as np
 import pytest
 
-from murseco.obstacle.abstract import DTVObstacle
+from murseco.obstacle import DTVObstacle
 import murseco.utility.io
 from murseco.utility.stats import Point2D
 

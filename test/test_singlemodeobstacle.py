@@ -1,6 +1,6 @@
 import numpy as np
 
-from murseco.obstacle.single_mode import SingleModeDTVObstacle
+from murseco.obstacle import SingleModeDTVObstacle
 from murseco.utility.arrayops import rand_invsymmpos
 import murseco.utility.io
 
