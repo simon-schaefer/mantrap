@@ -34,9 +34,8 @@ class DTRobot(JSONSerializer):
 
         :return trajectory: array of ordered positions of the robot over the planning horizon (thorizon, 2).
         """
-
         if self._policy is None:
-            return None
+            return np.reshape(self.position, (1, 2))
         trajectory = np.zeros((self._policy.shape[0] + 1, 2))
 
         # initial trajectory point is the current state.

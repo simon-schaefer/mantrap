@@ -58,7 +58,7 @@ def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10):
     robot = env.robot
     if robot is not None:
         trajectory = robot.trajectory
-        ax.plot(trajectory[:, 0], trajectory[:, 1], "r-")
+        ax.plot(trajectory[:, 0], trajectory[:, 1], "rx")
         time_horizon = robot.planning_horizon
 
     for obstacle in env.obstacles:
