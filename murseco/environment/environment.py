@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Tuple, Union
 
 from murseco.obstacle.abstract import DTVObstacle
-from murseco.robot.abstract import DiscreteTimeRobot
+from murseco.robot.abstract import DTRobot
 from murseco.utility.io import JSONSerializer
 
 
@@ -11,7 +11,7 @@ class Environment(JSONSerializer):
         xaxis: Tuple[float, float],
         yaxis: Tuple[float, float],
         obstacles: List[DTVObstacle] = None,
-        robot: DiscreteTimeRobot = None,
+        robot: DTRobot = None,
         **kwargs
     ):
         kwargs.update({"name": "environment/environment/Environment", "is_unique": False})
@@ -29,7 +29,7 @@ class Environment(JSONSerializer):
     def add_obstacle(self, obstacle: DTVObstacle):
         self._obstacles.append(obstacle)
 
-    def add_robot(self, robot: DiscreteTimeRobot):
+    def add_robot(self, robot: DTRobot):
         assert self._robot is None, "just one robot possible in environment"
         self._tmax = robot.planning_horizon if self.tmax is None else self.tmax
         self._robot = robot
@@ -43,7 +43,7 @@ class Environment(JSONSerializer):
         return self._obstacles
 
     @property
-    def robot(self) -> Union[None, DiscreteTimeRobot]:
+    def robot(self) -> Union[None, DTRobot]:
         return self._robot
 
     def summary(self) -> Dict[str, Any]:
