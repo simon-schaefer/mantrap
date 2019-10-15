@@ -1,4 +1,7 @@
 from abc import abstractmethod
+import logging
+from functools import partial
+import multiprocessing
 from typing import Any, Dict, List, Union
 
 import numpy as np
@@ -33,21 +36,23 @@ class DTVObstacle(JSONSerializer):
         """Given the obstacles history (trajectory) determine the pdf of the next velocity by mode."""
         return self._history.copy() if history is None else history
 
-    def ppdf(self, thorizon: int, num_samples: int = 500) -> List[GMM2D]:
+    def ppdf(self, thorizon: int, num_samples_per_mode: int = 50) -> List[GMM2D]:
         """Build position probability density function by sampling trajectories for each mode and summarize
         them with a single gaussian distribution for each mode and time-step, given the objects history.
         Assumption: Covariance is estimated as diagonal matrix, i.e. sigma_xy = 0, for computational reasons.
 
         :argument thorizon: length of trajectory samples, i.e. number of predicted time-steps.
-        :argument num_samples: number of trajectory samples.
+        :argument num_samples_per_mode: number of trajectory samples per mode.
         :returns array of future position pdf as GMM2D for each time-step.
         """
+        logging.debug("ppdf -> Sampling trajectories")
         mus, covariances = np.zeros((self.num_modes, thorizon, 2)), np.zeros((self.num_modes, thorizon, 2))
         for m in range(self.num_modes):
-            trajectories_mode = self.trajectory_samples(thorizon, num_samples, mode=m)
+            trajectories_mode = self.trajectory_samples(thorizon, num_samples_per_mode, mode=m)
             mus[m, :, :] = np.mean(trajectories_mode, axis=0)
             covariances[m, :, :] = np.std(trajectories_mode, axis=0)
 
+        logging.debug("ppdf -> Build GMM2D models")
         ppdf = []
         for t in range(thorizon):
             gmm_mus = np.reshape(mus[:, t, :], (self.num_modes, 2))
@@ -55,6 +60,7 @@ class DTVObstacle(JSONSerializer):
             gmm_cov = np.array([np.diag(covariances[m, t, :]) + np.eye(2) * 1e-6 for m in range(self.num_modes)])
             weights = np.ones(self.num_modes)
             ppdf.append(GMM2D(gmm_mus, gmm_cov, weights))
+        logging.debug("ppdf -> done")
         return ppdf
 
     def trajectory_samples(self, thorizon: int, num_samples: int, mode: int = None) -> np.ndarray:
@@ -69,20 +75,22 @@ class DTVObstacle(JSONSerializer):
          :argument mode: mode to sample trajectory from (None = overall distribution).
          :returns array of sampled future trajectories (num_samples, thorizon, 2).
          """
-        trajectories = []
-        for i in range(num_samples):
-            history = self._history.copy()
-            trajectory = np.zeros((thorizon, 2))
-            trajectory[0, :] = history[-1, :]
-            for t in range(1, thorizon):
-                if mode is None:
-                    velocity = self.vpdf(history).sample(1)
-                else:
-                    velocity = self.vpdf_by_mode(mode, history).sample(1)
-                trajectory[t, :] = trajectory[t - 1, :] + velocity * self._dt
-                history = np.vstack((history, np.reshape(trajectory[t, :], (1, 2))))
-            trajectories.append(trajectory)
+        pool = multiprocessing.Pool(8)
+        func = partial(self._sample_trajectory, thorizon=thorizon, mode=mode, history=self._history)
+        trajectories = pool.map(func, list(range(num_samples)))
         return np.array(trajectories)
+
+    def _sample_trajectory(self, iteration: int, thorizon: int, history: np.ndarray, mode: int):
+        trajectory = np.zeros((thorizon, 2))
+        trajectory[0, :] = history[-1, :]
+        for t in range(1, thorizon):
+            if mode is None:
+                velocity = self.vpdf(history).sample(1)
+            else:
+                velocity = self.vpdf_by_mode(mode, history).sample(1)
+            trajectory[t, :] = trajectory[t - 1, :] + velocity * self._dt
+            history = np.vstack((history, np.reshape(trajectory[t, :], (1, 2))))
+        return trajectory
 
     @property
     def position(self) -> np.ndarray:
