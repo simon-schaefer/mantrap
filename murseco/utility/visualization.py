@@ -54,7 +54,7 @@ def plot_env_samples(env: Environment, fpath: str, num_samples_per_mode: int = 1
     :argument num_samples_per_mode: number of trajectories to sample (per mode).
     """
     fig, ax = plt.subplots()
-    time_horizon = env.tmax
+    time_horizon = env.thorizon
 
     robot = env.robot
     if robot is not None:
@@ -85,7 +85,7 @@ def plot_env_tppdf(env: Environment, dir_path: str, num_points: int = 500):
     :argument dir_path: path to store directory in.
     :argument num_points: number of resolution points for axis sampling.
     """
-    time_horizon = env.tmax
+    time_horizon = env.thorizon
     os.makedirs(dir_path, exist_ok=False)
 
     tppdfs = [o.ppdf(time_horizon) for o in env.obstacles]

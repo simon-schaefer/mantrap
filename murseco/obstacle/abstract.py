@@ -16,14 +16,15 @@ class DTVObstacle(JSONSerializer):
     trajectories, build the next pdf in the position space and stores the objects history (position space).
     """
 
-    def __init__(self, history: np.ndarray, num_modes: int, **kwargs):
+    def __init__(self, history: np.ndarray, num_modes: int, dt: float = 1.0, **kwargs):
         super(DTVObstacle, self).__init__(**kwargs)
         assert num_modes > 0, "number of modes must be larger than 0"
         assert history.size % 2 == 0, "history array must consist of two-dimensional points"
         assert history.size > 0, "history array must not be empty"
+        assert dt > 0, "time-delta between discrete time-steps must be larger 0"
 
         self._history = np.reshape(history, (-1, 2))  # obstacles last position (or initial position)
-        self._dt = 1.0  # [s] between discrete time-steps
+        self._dt = dt
         self._num_modes = num_modes  # number of modes of obstacle distribution
 
     @abstractmethod

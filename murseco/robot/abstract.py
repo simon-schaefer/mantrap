@@ -9,11 +9,12 @@ from murseco.utility.stats import Distribution2D
 
 
 class DTRobot(JSONSerializer):
-    def __init__(self, state: np.ndarray, thorizon: int, policy: np.ndarray = None, **kwargs):
+    def __init__(self, state: np.ndarray, thorizon: int = 10, policy: np.ndarray = None, **kwargs):
         super(DTRobot, self).__init__(**kwargs)
         assert state.size >= 2, "state vector = (x, y, ...) with (x, y) being the initial position"
         if policy is not None:
             assert policy.shape[0] == thorizon, "policy must contain steps equal to planning horizon (thorizon)"
+        assert thorizon > 0, "planning horizon must be larger than 0"
 
         self._state = state
         self._policy = policy

@@ -10,6 +10,8 @@ class Environment(JSONSerializer):
         self,
         xaxis: Tuple[float, float],
         yaxis: Tuple[float, float],
+        dt: float = 1.0,
+        thorizon: int = 10,
         obstacles: List[DTVObstacle] = None,
         robot: DTRobot = None,
         **kwargs
@@ -24,19 +26,20 @@ class Environment(JSONSerializer):
         self.yaxis = tuple(yaxis)
         self._obstacles = [] if obstacles is None else obstacles
         self._robot = robot
-        self._tmax = 10
+        self._thorizon = thorizon
+        self._dt = dt
 
-    def add_obstacle(self, obstacle: DTVObstacle):
+    def add_obstacle(self, obstacle_object, **obstacle_kwargs):
+        obstacle = obstacle_object(dt=self._dt, **obstacle_kwargs)
         self._obstacles.append(obstacle)
 
-    def add_robot(self, robot: DTRobot):
+    def add_robot(self, robot_object, **robot_kwargs):
         assert self._robot is None, "just one robot possible in environment"
-        self._tmax = robot.planning_horizon  # happens only once anyway that robot is added
-        self._robot = robot
+        self._robot = robot_object(thorizon=self._thorizon, **robot_kwargs)
 
     @property
-    def tmax(self) -> int:
-        return self._tmax
+    def thorizon(self) -> int:
+        return self._thorizon
 
     @property
     def obstacles(self) -> List[DTVObstacle]:

@@ -22,17 +22,17 @@ def main():
     obs_1_pinit = np.array([5, -5])
     obs_1_vmu = np.array([0, 1])
     obs_1_vcov = np.diag([0.2, 1e-4])
-    env.add_obstacle(SingleModeDTVObstacle(history=obs_1_pinit, mu=obs_1_vmu, covariance=obs_1_vcov))
+    env.add_obstacle(SingleModeDTVObstacle, history=obs_1_pinit, mu=obs_1_vmu, covariance=obs_1_vcov)
 
     obs_2_p = np.array([-4, -3])
     obs_2_mu = np.array([[0.75, 0], [0.5, 0.02]])
     obs_2_cov = np.array([np.diag([0.001, 0.001]), np.diag([0.001, 0.2])])
     obs2_w = np.ones(2)
-    env.add_obstacle(AngularDTVObstacle(history=obs_2_p, mus=obs_2_mu, covariances=obs_2_cov, weights=obs2_w))
+    env.add_obstacle(AngularDTVObstacle, history=obs_2_p, mus=obs_2_mu, covariances=obs_2_cov, weights=obs2_w)
 
     # Add robot to environment.
-    robot_pinit, robot_thorizon = np.array([-5, 0]), 10
-    env.add_robot(IntegratorDTRobot(position=robot_pinit, thorizon=robot_thorizon))
+    robot_pinit = np.array([-5, 0])
+    env.add_robot(IntegratorDTRobot, position=robot_pinit)
 
     # Store and visualize environment (trajectory samples, tppdf).
     env.to_json(path_from_home_directory(f"config/{scenario_label}.json"))
