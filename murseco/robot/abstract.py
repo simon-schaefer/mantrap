@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import logging
 from typing import Any, Dict, Union
 
 import numpy as np
@@ -62,6 +63,7 @@ class DTRobot(JSONSerializer):
 
     @abstractmethod
     def update_policy(self, pdf: Distribution2D):
+        logging.debug("update_policy -> starting")
         pass
 
     @abstractmethod
