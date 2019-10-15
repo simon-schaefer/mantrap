@@ -58,8 +58,7 @@ class AngularDTVObstacle(DTVObstacle):
             T = self._mus.copy()
             dp = history[-1, :] - history[-2, :]
             weights_history = np.dot(T, dp)
-            weights_history[weights_history < 0] = 0
-            weights = (self._weights / np.sum(self._weights) + 1) + 20 * (weights_history / np.sum(weights_history))
+            weights = self._weights / np.sum(self._weights) + 20 * np.abs(weights_history / np.sum(weights_history))
             weights = weights / np.sum(weights)
         return GMM2D(self._mus, self._covariances, weights)
 

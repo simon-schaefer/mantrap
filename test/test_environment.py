@@ -25,6 +25,7 @@ def test_environment_json():
     env_1.to_json(cache_path)
     env_2 = Environment.from_json(cache_path)
     assert env_1.summary() == env_2.summary()
+    assert [x in env_1.summary().keys() for x in ["obstacles", "xaxis", "yaxis", "robot"]]
 
 
 def test_environment_visualization_samples():

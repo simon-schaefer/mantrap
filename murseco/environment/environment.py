@@ -49,12 +49,15 @@ class Environment(JSONSerializer):
     def summary(self) -> Dict[str, Any]:
         summary = super(Environment, self).summary()
         obstacles = [o.summary() for o in self._obstacles]
-        summary.update({"xaxis": self.xaxis, "yaxis": self.yaxis, "obstacles": obstacles})
+        robot = self._robot.summary()
+        summary.update({"xaxis": self.xaxis, "yaxis": self.yaxis, "obstacles": obstacles, "robot": robot})
         return summary
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
         summary = super(Environment, cls).from_summary(json_text)
         obstacles = [cls.call_by_summary(obstacle_text) for obstacle_text in json_text["obstacles"]]
-        summary.update({"xaxis": json_text["xaxis"], "yaxis": json_text["yaxis"], "obstacles": obstacles})
+        robot = cls.call_by_summary(json_text["robot"])
+        xaxis, yaxis = json_text["xaxis"], json_text["yaxis"]
+        summary.update({"xaxis": xaxis, "yaxis": yaxis, "obstacles": obstacles, "robot": robot})
         return cls(**summary)

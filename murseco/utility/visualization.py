@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from murseco.environment.environment import Environment
+from murseco.utility.misc import MATPLOTLIB_MARKERS
 from murseco.utility.stats import Distribution2D
 
 
@@ -43,14 +44,14 @@ def plot_pdf2d(
     plt.close()
 
 
-def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10):
+def plot_env_samples(env: Environment, fpath: str, num_samples_per_mode: int = 10):
     """Plot N = num_samples possible trajectories for all the dynamic obstacles in the scene as well as the trajectory
     of the robot, both the obstacle's trajectory samples as well as the robot's planned trajectory for k = planning_
     horizon of the robot time-steps.
 
     :argument env: environment object to plot.
     :argument fpath: path to store directory in.
-    :argument num_samples: number of trajectories to sample.
+    :argument num_samples_per_mode: number of trajectories to sample (per mode).
     """
     fig, ax = plt.subplots()
     time_horizon = 10
@@ -62,9 +63,11 @@ def plot_env_samples(env: Environment, fpath: str, num_samples: int = 10):
         time_horizon = robot.planning_horizon
 
     for obstacle in env.obstacles:
-        trajectory_samples = obstacle.trajectory_samples(time_horizon, num_samples=num_samples)
-        for i in range(trajectory_samples.shape[0]):
-            ax.plot(trajectory_samples[i, :, 0], trajectory_samples[i, :, 1], obstacle.color + "--")
+        for m in range(obstacle.num_modes):
+            trajectory_samples = obstacle.trajectory_samples(time_horizon, num_samples=num_samples_per_mode, mode=m)
+            mode_marker = np.random.choice(MATPLOTLIB_MARKERS)
+            for i in range(trajectory_samples.shape[0]):
+                ax.plot(trajectory_samples[i, :, 0], trajectory_samples[i, :, 1], obstacle.color + mode_marker)
         history = obstacle.history
         ax.plot(history[:, 0], history[:, 1], "o")
 

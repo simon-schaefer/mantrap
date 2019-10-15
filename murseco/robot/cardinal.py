@@ -25,7 +25,7 @@ class CardinalDTRobot(DTRobot):
         policy: np.ndarray = None,
         **kwargs
     ):
-        kwargs.update({"name": "robot/cardinal/CardinalRobot"})
+        kwargs.update({"name": "robot/cardinal/CardinalDTRobot"})
         super(CardinalDTRobot, self).__init__(position, thorizon, policy, **kwargs)
         assert velocity > 0, "step-width must be larger than 0"
 

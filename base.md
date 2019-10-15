@@ -2,10 +2,19 @@
 
 ## Handling risk cavities (multimodality, non-markovian)
 - brute-force: tree-search over possible trajectories, mapping to reward function and deciding for the trajectory with largest reward ([1]), paralleled on GPU --> using Hindsight Optimisations instead for more efficient search ([2])
+
 - Mode reduction and modelling: summarise modes to bundles which are modelled by Gaussian Process Models (e.g. "cones"), take the n most probable modes (weighted by the probabilities z_i in the VAE's latent space creating mode_i in bundles
 --> optimisation cost formulation: 
 J = J0 + sum_i^modes gamma_i border_function(mode_constraint) 
 with J0 containing the robots traveling cost, final cost, etc. 
+--> one set of parameters over all times, but quite computationally expensive
+ 
+- Approximate the different ppdfs (positional pdf) in each mode and time-step by 2D Gaussian by sampling N trajectories for each mode and infer Gaussian distribution from it (or one 3D-xyt-Gaussian over time --> assumes smoothness over time ??)
+--> GMM2D at every time step but weight does not change (unrealistic, since once a path/mode has been chosen it is usually way more likely to be continued !)   
+
+- Changing Trajectron model to output GMM at every time-step or change "sampling" to choose most likely mode (removing randomness)
+
+- Grid propagation: 
 
 ## Cost function
 - Gaussian over time (nested Gaussians) is not a standard distribution (model non-linear, non-markovian, ...) 

@@ -34,8 +34,7 @@ class JSONSerializer:
         self._name = name
         if is_unique:
             self._identifier = murseco.utility.misc.random_string() if identifier is None else identifier
-            colors = ["b", "g", "r", "c", "m", "y", "k"]
-            self._color = np.random.choice(colors) if color is None else color
+            self._color = np.random.choice(murseco.utility.misc.MATPLOTLIB_COLORS) if color is None else color
         else:
             self._identifier = self._color = "none"
 

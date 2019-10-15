@@ -67,7 +67,8 @@ class DTRobot(JSONSerializer):
     @abstractmethod
     def summary(self) -> Dict[str, Any]:
         summary = super(DTRobot, self).summary()
-        summary.update({"state": self._state.tolist(), "thorizon": self._thorizon, "policy": self._policy.tolist()})
+        policy = self._policy.tolist() if self._policy is not None else None
+        summary.update({"state": self._state.tolist(), "thorizon": self._thorizon, "policy": policy})
         return summary
 
     @classmethod
@@ -75,6 +76,6 @@ class DTRobot(JSONSerializer):
         summary = super(DTRobot, cls).from_summary(json_text)
         position = np.reshape(np.array(json_text["state"]), (2,))
         thorizon = int(json_text["thorizon"])
-        policy = np.reshape(np.array(json_text["policy"]), (thorizon, 1))
+        policy = np.reshape(np.array(json_text["policy"]), (thorizon, 1)) if json_text["policy"] != "null" else None
         summary.update({"position": position, "thorizon": thorizon, "policy": policy})
         return summary

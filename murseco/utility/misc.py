@@ -4,6 +4,10 @@ import string
 import numpy as np
 
 
+MATPLOTLIB_COLORS = ["b", "g", "r", "c", "m", "y", "k"]
+MATPLOTLIB_MARKERS = ["-", "x", "-.", ":", ".", "o", "v", ">", "<", "1", "2", "3", "4", "s", "p", "*", "h", "+", "d"]
+
+
 def random_string(length: int = 5) -> str:
     """Generate a random string of fixed given length."""
     letters = string.ascii_lowercase
