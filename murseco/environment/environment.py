@@ -24,14 +24,14 @@ class Environment(JSONSerializer):
         self.yaxis = tuple(yaxis)
         self._obstacles = [] if obstacles is None else obstacles
         self._robot = robot
-        self._tmax = None
+        self._tmax = 10
 
     def add_obstacle(self, obstacle: DTVObstacle):
         self._obstacles.append(obstacle)
 
     def add_robot(self, robot: DTRobot):
         assert self._robot is None, "just one robot possible in environment"
-        self._tmax = robot.planning_horizon if self.tmax is None else self.tmax
+        self._tmax = robot.planning_horizon  # happens only once anyway that robot is added
         self._robot = robot
 
     @property

@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import numpy as np
 
@@ -6,12 +7,12 @@ from murseco.environment import Environment
 from murseco.obstacle import SingleModeDTVObstacle, AngularDTVObstacle
 from murseco.robot import IntegratorDTRobot
 from murseco.utility.io import path_from_home_directory
-from murseco.utility.misc import random_string
-from murseco.utility.visualization import plot_env_samples
+from murseco.utility.visualization import plot_env_samples, plot_env_tppdf
 
 
 def main():
-    scenario_label = random_string(5)
+    assert len(sys.argv) > 1, "invalid script call, use `python3 build_env.py 'scenario_label'`"
+    scenario_label = sys.argv[1]
     logging.info(f"Creating scenario with label = {scenario_label}")
     # Build general environment.
     env_xaxis, env_yaxis = (-10, 10), (-10, 10)
@@ -33,9 +34,10 @@ def main():
     robot_pinit, robot_thorizon = np.array([-5, 0]), 10
     env.add_robot(IntegratorDTRobot(position=robot_pinit, thorizon=robot_thorizon))
 
-    # Store and visualize environment.
+    # Store and visualize environment (trajectory samples, tppdf).
     env.to_json(path_from_home_directory(f"config/{scenario_label}.json"))
     plot_env_samples(env, path_from_home_directory(f"config/{scenario_label}.png"))
+    plot_env_tppdf(env, path_from_home_directory(f"config/{scenario_label}"))
     logging.info(f"Saved scenario json and initial scene at config directory")
 
 

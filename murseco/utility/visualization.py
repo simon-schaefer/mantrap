@@ -54,13 +54,12 @@ def plot_env_samples(env: Environment, fpath: str, num_samples_per_mode: int = 1
     :argument num_samples_per_mode: number of trajectories to sample (per mode).
     """
     fig, ax = plt.subplots()
-    time_horizon = 10
+    time_horizon = env.tmax
 
     robot = env.robot
     if robot is not None:
         trajectory = robot.trajectory
         ax.plot(trajectory[:, 0], trajectory[:, 1], "rx")
-        time_horizon = robot.planning_horizon
 
     for obstacle in env.obstacles:
         for m in range(obstacle.num_modes):
@@ -79,31 +78,33 @@ def plot_env_samples(env: Environment, fpath: str, num_samples_per_mode: int = 1
     plt.close()
 
 
-def plot_env_initial_pdf(env: Environment, fpath: str, num_points: int = 500):
-    """Plot the pdf of every dynamic obstacle as well as the robot's and obstacles initial positions in the
-    first time-step.
+def plot_env_tppdf(env: Environment, dir_path: str, num_points: int = 500):
+    """Plot the position PDF of all obstacles (summarized) over the time horizon of the environment.
 
     :argument env: environment object to plot.
-    :argument fpath: path to store directory in.
+    :argument dir_path: path to store directory in.
     :argument num_points: number of resolution points for axis sampling.
     """
-    fig, ax = plt.subplots()
+    time_horizon = env.tmax
+    os.makedirs(dir_path, exist_ok=False)
 
-    robot = env.robot
-    if robot is not None:
-        ax.plot(robot.position[0], robot.position[1], "rx")
+    tppdfs = [o.ppdf(time_horizon) for o in env.obstacles]
 
-    for obstacle in env.obstacles:
-        ax.plot(obstacle.position[0], obstacle.position[1], obstacle.color + "o")
+    for t in range(time_horizon):
+        fig, ax = plt.subplots()
 
-    num_points = int(num_points)
-    x_min, x_max, y_min, y_max = env.xaxis[0], env.xaxis[1], env.yaxis[0], env.yaxis[1]
-    x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
-    pdf = sum([o.vpdf().pdf_at(x, y) for o in env.obstacles])
-    color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
-    fig.colorbar(color_mesh, ax=ax)
+        robot = env.robot
+        if robot is not None:
+            ax.plot(robot.trajectory[t, 0], robot.trajectory[t, 1], "rx")
 
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    plt.savefig(fpath)
-    plt.close()
+        num_points = int(num_points)
+        x_min, x_max, y_min, y_max = env.xaxis[0], env.xaxis[1], env.yaxis[0], env.yaxis[1]
+        x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
+        pdf = sum([tppdfs[i][t].pdf_at(x, y) for i, _ in enumerate(env.obstacles)])
+        color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
+        fig.colorbar(color_mesh, ax=ax)
+
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        plt.savefig(os.path.join(dir_path, f"{t}.png"))
+        plt.close()

@@ -20,3 +20,4 @@ test/cache/
 # Paper collection and miscs directory.
 paper/
 miscs/
+config/
