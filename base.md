@@ -14,7 +14,11 @@ with J0 containing the robots traveling cost, final cost, etc.
 
 - Changing Trajectron model to output GMM at every time-step or change "sampling" to choose most likely mode (removing randomness)
 
-- Grid propagation: 
+- Grid propagation: ...
+
+- Kalman Filter propagation of initial gaussian distribution (single-integrator model)
+--> very computational efficient
+--> neglects any form of non-linear spatioetemporal evolvement 
 
 ## Cost function
 - Gaussian over time (nested Gaussians) is not a standard distribution (model non-linear, non-markovian, ...) 

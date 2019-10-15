@@ -1,6 +1,5 @@
-from datetime import datetime
 import os
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,67 +43,82 @@ def plot_pdf2d(
     plt.close()
 
 
-def plot_env_samples(env: Environment, fpath: str, num_samples_per_mode: int = 10):
+def plot_env_samples(
+    otrajectory_samples: List[np.ndarray],
+    ohistories: List[np.ndarray],
+    ocolors: List[str],
+    xaxis: Tuple[float, float],
+    fpath: str,
+    rtrajectory: Union[np.ndarray, None] = None,
+    yaxis: Union[Tuple[float, float], None] = None,
+):
     """Plot N = num_samples possible trajectories for all the dynamic obstacles in the scene as well as the trajectory
     of the robot, both the obstacle's trajectory samples as well as the robot's planned trajectory for k = planning_
     horizon of the robot time-steps.
 
-    :argument env: environment object to plot.
+    :argument otrajectory_samples: sampled trajectories for each obstacle (obstacle_i, num_modes, N, time-horizon, 2).
+    :argument ohistories: history path of each obstacle (obstacle_i, num_history_points, 2).
+    :argument ocolors: color identifier of each obstacle
+    :argument xaxis: range of x axis as (lower bound, upper bound).
     :argument fpath: path to store directory in.
-    :argument num_samples_per_mode: number of trajectories to sample (per mode).
+    :argument yaxis: range of y axis as (lower bound, upper bound), assumed to be equal to xaxis if not stated.
+    :argument rtrajectory: robot trajectory in the given time-horizon.
     """
+    assert len(otrajectory_samples) == len(ohistories), "unequal number of obstacles in histories and samples"
+    assert len(otrajectory_samples) == len(ocolors), "unequal number of obstacles in colors and samples"
+
     fig, ax = plt.subplots()
-    time_horizon = env.thorizon
+    yaxis = xaxis if yaxis is None else yaxis
 
-    robot = env.robot
-    if robot is not None:
-        trajectory = robot.trajectory
-        ax.plot(trajectory[:, 0], trajectory[:, 1], "rx")
+    if rtrajectory is not None:
+        ax.plot(rtrajectory[:, 0], rtrajectory[:, 1], "rx")
 
-    for obstacle in env.obstacles:
-        for m in range(obstacle.num_modes):
-            trajectory_samples = obstacle.trajectory_samples(time_horizon, num_samples=num_samples_per_mode, mode=m)
+    for trajectory, history, color in zip(otrajectory_samples, ohistories, ocolors):
+        for m in range(trajectory.shape[0]):
             mode_marker = np.random.choice(MATPLOTLIB_MARKERS)
-            for i in range(trajectory_samples.shape[0]):
-                ax.plot(trajectory_samples[i, :, 0], trajectory_samples[i, :, 1], obstacle.color + mode_marker)
-        history = obstacle.history
-        ax.plot(history[:, 0], history[:, 1], "o")
+            for i in range(trajectory.shape[1]):
+                ax.plot(trajectory[m, i, :, 0], trajectory[m, i, :, 1], color + mode_marker)
+            ax.plot(history[:, 0], history[:, 1], color + "o")
 
-    ax.set_xlim(env.xaxis)
-    ax.set_ylim(env.yaxis)
+    ax.set_xlim(xaxis)
+    ax.set_ylim(yaxis)
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     plt.savefig(fpath)
     plt.close()
 
 
-def plot_env_tppdf(env: Environment, dir_path: str, num_points: int = 500):
-    """Plot the position PDF of all obstacles (summarized) over the time horizon of the environment.
+def plot_env_tppdf(
+    tppdf: List[np.ndarray],
+    meshgrid: Tuple[np.ndarray, np.ndarray],
+    dir_path: str,
+    rtrajectory: Union[np.ndarray, None] = None,
+):
+    """Plot pdf in position space in meshgrid and (optionally) the robot's trajectory over the full time horizon,
+    plotting one plot per time-step.
 
-    :argument env: environment object to plot.
+    :argument tppdf: overall pdf in position space for each time-step.
+    :argument meshgrid: (x, y) meshgrid which all the pdfs in tppdf are based on.
     :argument dir_path: path to store directory in.
-    :argument num_points: number of resolution points for axis sampling.
+    :argument rtrajectory: robot trajectory in the given time-horizon.
     """
-    time_horizon = env.thorizon
+    if rtrajectory is not None:
+        assert len(tppdf) == rtrajectory.shape[0], "length of tppdf and robot's trajectory should be equal"
+    assert all([meshgrid[0].shape == ppdf.shape for ppdf in tppdf]), "x grid should have same shape as pdfs"
+    assert all([meshgrid[1].shape == ppdf.shape for ppdf in tppdf]), "y grid should have same shape as pdfs"
+
     os.makedirs(dir_path, exist_ok=False)
 
-    tppdfs = [o.ppdf(time_horizon) for o in env.obstacles]
-
-    for t in range(time_horizon):
+    for t, ppdf in enumerate(tppdf):
         fig, ax = plt.subplots()
 
-        robot = env.robot
-        if robot is not None:
-            ax.plot(robot.trajectory[t, 0], robot.trajectory[t, 1], "rx")
+        if rtrajectory is not None:
+            ax.plot(rtrajectory[t, 0], rtrajectory[t, 1], "rx")
 
-        num_points = int(num_points)
-        x_min, x_max, y_min, y_max = env.xaxis[0], env.xaxis[1], env.yaxis[0], env.yaxis[1]
-        x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
-        pdf = sum([tppdfs[i][t].pdf_at(x, y) for i, _ in enumerate(env.obstacles)])
-        color_mesh = ax.pcolormesh(x, y, pdf, cmap="gist_earth")
+        color_mesh = ax.pcolormesh(meshgrid[0], meshgrid[1], ppdf, cmap="gist_earth")
         fig.colorbar(color_mesh, ax=ax)
 
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        plt.savefig(os.path.join(dir_path, f"{t}.png"))
+        plt.savefig(os.path.join(dir_path, f"{t:04d}.png"))
         plt.close()

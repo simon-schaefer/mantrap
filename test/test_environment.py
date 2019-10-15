@@ -26,10 +26,3 @@ def test_environment_json():
     env_2 = Environment.from_json(cache_path)
     assert env_1.summary() == env_2.summary()
     assert [x in env_1.summary().keys() for x in ["obstacles", "xaxis", "yaxis", "robot"]]
-
-
-def test_environment_visualization_samples():
-    env = Environment((-10, 10), (-10, 10), thorizon=4)
-    env.add_obstacle(SingleModeDTVObstacle, mu=np.array([1, 0]), covariance=np.diag([1e-4, 0.2]))
-    env.add_robot(CardinalDTRobot, position=np.array([1.31, 4.3]), velocity=1.0, policy=np.ones((4, 1)) * 2)
-    plot_env_samples(env, murseco.utility.io.path_from_home_directory("test/cache/env_samples.png"))

@@ -11,7 +11,9 @@ def test_angularobstacle_initialization():
     pinit = np.array([1, 0])
     obstacle = AngularDTVObstacle(pinit, mus=np.zeros((3, 2)), covariances=rand_invsymmpos(3, 2, 2), weights=np.ones(3))
     assert obstacle is not None
-    obstacle = AngularDTVObstacle(pinit, mus=np.random.rand(4, 2), covariances=rand_invsymmpos(4, 2, 2), weights=np.ones(4))
+    obstacle = AngularDTVObstacle(
+        pinit, mus=np.random.rand(4, 2), covariances=rand_invsymmpos(4, 2, 2), weights=np.ones(4)
+    )
     assert obstacle is not None
     obstacle = AngularDTVObstacle()
     assert obstacle is not None
@@ -19,8 +21,7 @@ def test_angularobstacle_initialization():
 
 @pytest.mark.parametrize(
     "mus, covariances, weights",
-    [(np.ones((1, 2)), np.eye(2) * 0.1, np.array([1.0])),
-     (np.zeros(2), rand_invsymmpos(2, 2), np.ones(1))],
+    [(np.ones((1, 2)), np.eye(2) * 0.1, np.array([1.0])), (np.zeros(2), rand_invsymmpos(2, 2), np.ones(1))],
 )
 def test_angularobstacle_pdf(mus: np.ndarray, covariances: np.ndarray, weights: np.ndarray):
     np.random.seed(0)

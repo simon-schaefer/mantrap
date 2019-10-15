@@ -20,15 +20,6 @@ class DTRobot(JSONSerializer):
         self._policy = policy
         self._thorizon = thorizon
 
-    @property
-    def position(self) -> np.ndarray:
-        return self._state[:2]
-
-    @property
-    def state(self) -> np.ndarray:
-        return self._state
-
-    @property
     def trajectory(self) -> Union[np.ndarray, None]:
         """Build the trajectory from the internal policy and current state, by iteratively applying the model dynamics.
         Thereby a perfect model i.e. without uncertainty and correct is assumed. If no policy has been determined yet,
@@ -49,6 +40,14 @@ class DTRobot(JSONSerializer):
             state = self.dynamics(self._policy[i, :], state)
             trajectory[i + 1, :] = state[:2].copy()
         return trajectory
+
+    @property
+    def position(self) -> np.ndarray:
+        return self._state[:2]
+
+    @property
+    def state(self) -> np.ndarray:
+        return self._state
 
     @property
     def policy(self) -> np.ndarray:

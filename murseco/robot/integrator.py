@@ -16,13 +16,7 @@ class IntegratorDTRobot(DTRobot):
     :argument policy: series of actions for the planning horizon (optional).
     """
 
-    def __init__(
-        self,
-        position: np.ndarray = np.zeros(2),
-        thorizon: int = 10,
-        policy: np.ndarray = None,
-        **kwargs
-    ):
+    def __init__(self, position: np.ndarray = np.zeros(2), thorizon: int = 10, policy: np.ndarray = None, **kwargs):
         kwargs.update({"name": "robot/integrator/IntegratorDTRobot"})
         super(IntegratorDTRobot, self).__init__(position, thorizon, policy, **kwargs)
 

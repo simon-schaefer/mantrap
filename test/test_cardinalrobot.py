@@ -8,7 +8,7 @@ import murseco.utility.io
 def test_cardinalrobot_trajectory():
     position, thorizon, pstep = np.array([1.31, 4.3]), 10, 0.1
     policy = np.zeros((thorizon, 1))
-    trajectory = CardinalDTRobot(position, thorizon, pstep, policy).trajectory
+    trajectory = CardinalDTRobot(position, thorizon, pstep, policy).trajectory()
     last_position = trajectory[-1, :]
     last_position_expected = position + cardinal_directions()[0, :] * thorizon * pstep
     assert np.isclose(np.linalg.norm(last_position - last_position_expected), 0)

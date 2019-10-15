@@ -86,12 +86,5 @@ class AngularDTVObstacle(DTVObstacle):
         covariances = np.reshape(np.array(json_text["covariances"]), (num_modes, 2, 2))
         weights = np.reshape(np.array(json_text["weights"]), (num_modes,))
         is_adapting = str(json_text["is_adapting"]) == "True"
-        summary.update(
-            {
-                "mus": mus,
-                "covariances": covariances,
-                "weights": weights,
-                "is_adapting": is_adapting,
-            }
-        )
+        summary.update({"mus": mus, "covariances": covariances, "weights": weights, "is_adapting": is_adapting})
         return cls(**summary)

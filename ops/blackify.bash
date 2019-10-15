@@ -16,3 +16,7 @@ done
 echo "Reformatting test files ..."
 cd "$PROJECT_HOME"/test || return
 black *.py "$OPTIONS"
+
+echo "Reformatting scripts files ..."
+cd "$PROJECT_HOME"/scripts || return
+black *.py "$OPTIONS"

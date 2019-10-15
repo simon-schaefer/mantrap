@@ -16,7 +16,7 @@ def main():
     logging.info(f"Creating scenario with label = {scenario_label}")
     # Build general environment.
     env_xaxis, env_yaxis = (-10, 10), (-10, 10)
-    env = Environment(env_xaxis, env_yaxis)
+    env = Environment(env_xaxis, env_yaxis, thorizon=10, dt=1.0)
 
     # Add dynamic obstacles to environment.
     obs_1_pinit = np.array([5, -5])
@@ -33,13 +33,30 @@ def main():
     # Add robot to environment.
     robot_pinit = np.array([-5, 0])
     env.add_robot(IntegratorDTRobot, position=robot_pinit)
+    logging.info(f"Built environment with {len(env.obstacles)} dynamic obstacles")
 
     # Store and visualize environment (trajectory samples, tppdf).
     env.to_json(path_from_home_directory(f"config/{scenario_label}.json"))
-    plot_env_samples(env, path_from_home_directory(f"config/{scenario_label}.png"))
-    plot_env_tppdf(env, path_from_home_directory(f"config/{scenario_label}"))
+
+    otrajectory_samples = env.generate_trajectory_samples()
+    ohistories = [o.history for o in env.obstacles]
+    ocolors = [o.color for o in env.obstacles]
+    tppdf, meshgrid = env.tppdf()
+    rtrajectory = env.robot.trajectory()
+
+    plot_env_samples(
+        otrajectory_samples,
+        ohistories,
+        ocolors,
+        xaxis=env.xaxis,
+        fpath=path_from_home_directory(f"config/{scenario_label}.png"),
+        rtrajectory=rtrajectory,
+    )
+    plot_env_tppdf(
+        tppdf, meshgrid, dir_path=path_from_home_directory(f"config/{scenario_label}"), rtrajectory=rtrajectory
+    )
     logging.info(f"Saved scenario json and initial scene at config directory")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

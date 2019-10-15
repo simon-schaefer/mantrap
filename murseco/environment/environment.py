@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Tuple, Union
 
+import numpy as np
+
 from murseco.obstacle.abstract import DTVObstacle
 from murseco.robot.abstract import DTRobot
 from murseco.utility.io import JSONSerializer
@@ -28,6 +30,42 @@ class Environment(JSONSerializer):
         self._robot = robot
         self._thorizon = thorizon
         self._dt = dt
+
+    def tppdf(self, num_points: int = 300) -> Tuple[List[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+        """Determine pdf of obstacles in position space over full (discrete) time-horizon.
+        Therefore at first determine for each obstacle the pdf in position space (ppdf) over the full time horizon
+        and afterwards for each time-step sum the pdf over all obstacles to one overall pdf. While the ppdf of
+        each obstacle and time-step is stored at "general" distribution (i.e. Gaussian2D) at first, for summation
+        the pdf is evaluated at each point of a grid (2D numpy linspace).
+
+        :argument num_points: number of resolution points for grid sampling for each axis.
+        :returns overall pdf in position space for each time-step (list), (x, y) meshgrid
+        """
+        tppdfs = [o.ppdf(self.thorizon) for o in self.obstacles]
+
+        num_points = int(num_points)
+        x_min, x_max, y_min, y_max = self.xaxis[0], self.xaxis[1], self.yaxis[0], self.yaxis[1]
+        x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
+
+        tppdfs_overall = [sum([tppdfs[i][t].pdf_at(x, y) for i in range(len(tppdfs))]) for t in range(self.thorizon)]
+        return tppdfs_overall, (x, y)
+
+    def generate_trajectory_samples(self, num_samples_per_mode: int = 5) -> List[np.ndarray]:
+        """Generate trajectory samples for each obstacle in the environment, split by the obstacle's mode.
+        Therefore for each obstacle create N = num_samples_per_mode trajectories in each mode, by calling the obstacles
+        `trajectory_samples` with some mode, ending up in an array (num_modes, N, time-horizon, 2) per obstacle.
+
+        :argument num_samples_per_mode: number of trajectories to sample (per mode).
+        :returns trajectories for every mode for every obstacle in the environment
+        """
+        samples = []
+        for obstacle in self.obstacles:
+            obstacle_samples = np.zeros((obstacle.num_modes, num_samples_per_mode, self.thorizon, 2))
+            for m in range(obstacle.num_modes):
+                mode_samples = obstacle.trajectory_samples(self.thorizon, num_samples=num_samples_per_mode, mode=m)
+                obstacle_samples[m, :, :, :] = mode_samples
+            samples.append(obstacle_samples)
+        return samples
 
     def add_obstacle(self, obstacle_object, **obstacle_kwargs):
         obstacle = obstacle_object(dt=self._dt, **obstacle_kwargs)
