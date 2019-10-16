@@ -1,11 +1,10 @@
 from abc import abstractmethod
 import logging
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Union
 
 import numpy as np
 
 from murseco.utility.io import JSONSerializer
-from murseco.utility.stats import Distribution2D
 
 
 class DTRobot(JSONSerializer):
@@ -28,7 +27,7 @@ class DTRobot(JSONSerializer):
         :return trajectory: array of ordered positions of the robot over the planning horizon (thorizon, 2).
         """
         if self._policy is None:
-            return np.tile(self.position, (self.planning_horizon, 2))
+            return np.tile(self.position, (self.planning_horizon + 1, 2))
         trajectory = np.zeros((self._policy.shape[0] + 1, 2))
 
         # initial trajectory point is the current state.
@@ -62,7 +61,7 @@ class DTRobot(JSONSerializer):
         return self.state if state is None else state
 
     @abstractmethod
-    def update_policy(self, pdf: Distribution2D):
+    def update_policy(self, tppdf: List[np.ndarray]):
         logging.debug("update_policy -> starting")
         pass
 

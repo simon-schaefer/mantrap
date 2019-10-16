@@ -14,15 +14,21 @@ with J0 containing the robots traveling cost, final cost, etc.
 
 - Changing Trajectron model to output GMM at every time-step or change "sampling" to choose most likely mode (removing randomness)
 
-- Grid propagation: ...
+- Grid propagation: pyramidal grid prediction i.e. start with high-resoluted GMM grid at t=1, then insert every grid point as next point in trajectron model (like as being sampled from GMM) to build up t=2 grid, repeat until t=N with decreasing resolution (uncertainty in time increases anyway)
+--> "smart" grid: only use grid points with P(x) > eps
 
 - Kalman Filter propagation of initial gaussian distribution (single-integrator model)
 --> very computational efficient
---> neglects any form of non-linear spatioetemporal evolvement 
+--> neglects any form of non-linear spatiotemporal evolvement 
 
-## Cost function
-- Gaussian over time (nested Gaussians) is not a standard distribution (model non-linear, non-markovian, ...) 
---> re-interpolate cost function (probability map) while enforcing smoothness constraints
+## Optimization Constraint Formulation (Gaussian over time (nested Gaussians) is not a standard distribution (model non-linear, non-markovian, ...), however for efficient optimisation an analytic description of the ppdf at every point in time would be preferable)
+- re-interpolate ppdf while enforcing smoothness constraints for analytic constraint
+
+- Gaussian smoothing of tpdf grid for smoothing, as having polymodal GMM -> therefore analytic formulation (!local minima)
+
+- Polytopic level set: find analytic formulation for eps-probability level set in grid (in simplest case just linear inequality constraints e.g. x_5 < [4.0, 1.3])
+
+--> PROBLEM: Multiplication introduces non-convexity (bilinear) therefore using Gaussian directly is not feasible !!
 
 ## Simluation
 - Obstacle disturbance in position or velocity space (more realistic in velocity, trajectron in velocity, but planner requires position), so how to transform some distribution from velocity in position space for any (not analytically known, since nested GMMs) distribution efficiently (not just particles) ? 
@@ -44,13 +50,6 @@ with J0 containing the robots traveling cost, final cost, etc.
 - roughly average or maximum number of modes per pedestrian ==> max 16
 - how do we get discrete trajectories for every mode, when sampling after every time-step (not like a branching tree) ? ==> iteratively sampling n trajectories sequences by re-applying the model
 
-
-# Definitions
-- Time Consistency of Risk Measure: A dynamic risk measure {ρk,N }Nk=0 is called time-consistent if, for all 0 ≤ l < k ≤ N and all sequences Z, W ∈ Zl,N, the conditions 
-Zi =Wi, i=l,···,k−1, and ρk,N(Zk,··· ,ZN) ≤ ρk,N(Wk,··· ,WN),
-imply that ρl,N(Zl,··· ,ZN) ≤ ρl,N(Wl,··· ,WN).
-
-
 # Questions
 - Baseline ? (Probabilistic graph search, just like Astar with time-dependent weights existing ?)
-- most probable path (so what is the maximum of the overall GMM distribution) ? 
+- how to handle inter obstacle dependence (like if obs_1 goes to position A, obs_2 might go to another position than if obs_1 would have gone to position B) ??

@@ -4,7 +4,6 @@ from typing import List, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from murseco.environment.environment import Environment
 from murseco.utility.misc import MATPLOTLIB_MARKERS
 from murseco.utility.stats import Distribution2D
 
@@ -43,7 +42,7 @@ def plot_pdf2d(
     plt.close()
 
 
-def plot_env_samples(
+def plot_trajectory_samples(
     otrajectory_samples: List[np.ndarray],
     ohistories: List[np.ndarray],
     ocolors: List[str],
@@ -60,7 +59,7 @@ def plot_env_samples(
     :argument ohistories: history path of each obstacle (obstacle_i, num_history_points, 2).
     :argument ocolors: color identifier of each obstacle
     :argument xaxis: range of x axis as (lower bound, upper bound).
-    :argument fpath: path to store directory in.
+    :argument fpath: path to store plot in.
     :argument yaxis: range of y axis as (lower bound, upper bound), assumed to be equal to xaxis if not stated.
     :argument rtrajectory: robot trajectory in the given time-horizon.
     """
@@ -88,10 +87,10 @@ def plot_env_samples(
     plt.close()
 
 
-def plot_env_tppdf(
+def plot_tppdf(
     tppdf: List[np.ndarray],
     meshgrid: Tuple[np.ndarray, np.ndarray],
-    dir_path: str,
+    dpath: str,
     rtrajectory: Union[np.ndarray, None] = None,
 ):
     """Plot pdf in position space in meshgrid and (optionally) the robot's trajectory over the full time horizon,
@@ -99,26 +98,61 @@ def plot_env_tppdf(
 
     :argument tppdf: overall pdf in position space for each time-step.
     :argument meshgrid: (x, y) meshgrid which all the pdfs in tppdf are based on.
-    :argument dir_path: path to store directory in.
+    :argument dpath: path to store directory in.
     :argument rtrajectory: robot trajectory in the given time-horizon.
     """
     if rtrajectory is not None:
-        assert len(tppdf) == rtrajectory.shape[0], "length of tppdf and robot's trajectory should be equal"
+        assert len(tppdf) == rtrajectory.shape[0] - 1, "length of tppdf (t >= 1) and robot's trajectory (t >= 0)"
     assert all([meshgrid[0].shape == ppdf.shape for ppdf in tppdf]), "x grid should have same shape as pdfs"
     assert all([meshgrid[1].shape == ppdf.shape for ppdf in tppdf]), "y grid should have same shape as pdfs"
 
-    os.makedirs(dir_path, exist_ok=False)
+    os.makedirs(dpath, exist_ok=True)
 
     for t, ppdf in enumerate(tppdf):
         fig, ax = plt.subplots()
 
         if rtrajectory is not None:
-            ax.plot(rtrajectory[t, 0], rtrajectory[t, 1], "rx")
+            ax.plot(rtrajectory[:t + 1, 0], rtrajectory[:t + 1, 1], "rx")
 
         color_mesh = ax.pcolormesh(meshgrid[0], meshgrid[1], ppdf, cmap="gist_earth")
         fig.colorbar(color_mesh, ax=ax)
 
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        plt.savefig(os.path.join(dir_path, f"{t:04d}.png"))
+        plt.savefig(os.path.join(dpath, f"{t:04d}.png"))
         plt.close()
+
+
+def plot_position_input_risk(positions: np.ndarray, inputs: np.ndarray, risk: np.ndarray, fpath: str):
+    """Plot output of optimization, namely positions, input and risk values in separate plots over time-horizon.
+
+    :argument positions: positions of agent (time-horizon, N).
+    :argument inputs: control inputs (time-horizon, num_inputs).
+    :argument risk: risk vector (time-horizon,).
+    :argument fpath: path to store plot in.
+    """
+
+    thorizon = positions.shape[0]
+    assert positions.shape[0] == risk.size, "time-horizon of positions and risk must be equal"
+    assert positions.shape[0] == inputs.shape[0] + 1, "time-horizon of positions and inputs (+1) must be equal"
+
+    fig, ax = plt.subplots(3, figsize=(10, 7))
+
+    ax[0].plot(np.linspace(0, thorizon - 1, thorizon), positions[:, 0], label="x")
+    ax[0].plot(np.linspace(0, thorizon - 1, thorizon), positions[:, 1], label="y")
+    ax[0].set_xlabel("x_k")
+    ax[0].set_ylabel("t_k")
+    ax[0].legend()
+
+    ax[1].plot(np.linspace(0, thorizon - 2, thorizon - 1), np.linalg.norm(inputs, axis=1), label="u")
+    ax[1].set_xlabel("u_k")
+    ax[1].set_ylabel("t_k")
+    ax[1].legend()
+
+    ax[2].plot(np.linspace(0, thorizon - 1, thorizon), risk, label="ux")
+    ax[2].set_xlabel("r_k")
+    ax[2].set_ylabel("t_k")
+    ax[2].legend()
+
+    plt.savefig(fpath)
+    plt.close()

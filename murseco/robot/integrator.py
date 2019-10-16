@@ -1,10 +1,8 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from murseco.robot.abstract import DTRobot
 
 import numpy as np
-
-from murseco.utility.stats import Distribution2D
 
 
 class IntegratorDTRobot(DTRobot):
@@ -20,8 +18,8 @@ class IntegratorDTRobot(DTRobot):
         kwargs.update({"name": "robot/integrator/IntegratorDTRobot"})
         super(IntegratorDTRobot, self).__init__(position, thorizon, policy, **kwargs)
 
-    def update_policy(self, pdf: Distribution2D):
-        super(IntegratorDTRobot, self).update_policy(pdf)
+    def update_policy(self, tppdf: List[np.ndarray]):
+        super(IntegratorDTRobot, self).update_policy(tppdf)
         return np.zeros((self.planning_horizon, 2))
 
     def dynamics(self, action: np.ndarray, state: np.ndarray = None) -> np.ndarray:
