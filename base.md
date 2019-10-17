@@ -28,6 +28,8 @@ with J0 containing the robots traveling cost, final cost, etc.
 
 - Polytopic level set: find analytic formulation for eps-probability level set in grid (in simplest case just linear inequality constraints e.g. x_5 < [4.0, 1.3])
 
+- Formulate distance to Gaussian as cone constraint (comp. [5], [6])
+
 --> PROBLEM: Multiplication introduces non-convexity (bilinear) therefore using Gaussian directly is not feasible !!
 
 ## Simluation
@@ -36,14 +38,28 @@ with J0 containing the robots traveling cost, final cost, etc.
 
 ## Baseline
 - static pdf for every pedestrian
+
 - deterministic Kalman prediction model for every pedestrian dependent on simple integrator model / social forces / ....
+
+- running RRT algorithm multiple times while selecting the path with minimum approximate path collision probability (comp. [4], Related Work)
+
+- using other pedestrian prediction models (such as Social Forces, etc.)
+
 
 ## Evaluation metrics
 - empirical probability of failure in Monte-Carlo simulations (i.e. use derived policy and simulate 10000 runs while sampling from distributions, comp. [3])
 
+- Time-expanded graph with tppdf(t+1, y|t, x) as edge cost (i.e. several graphs stacked in time, one for each time step)
+--> enforce time by introducing infinite cost at non-neighbors in graph searches last step
+--> time-expanded graph is a static (!) graph so provable optimal solvable 
+--> probably resolve resolution in time (pyramidal resolution structure) 
+
 [1] On Infusing Reachability-Based Safety Assurance within Probabilistic Planning Frameworks for Human-Robot Vehicle Interactions
 [2] Probabilistic Planning via Determinization in Hindsight
 [3] Chance-Constrained Dynamic Programming with Application to Risk-Aware Robotic Space Exploration
+[4] Monte Carlo Motion Planning for Robot Trajectory Optimization Under Uncertainty
+[5] On Distributionally Robust Chance-Constrained Linear Programs
+[6] Advanced Topics in Control (Jan)
 
 # Trajectron
 - query time with n pedestrians ==> ~ 20 ms
