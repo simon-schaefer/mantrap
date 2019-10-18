@@ -52,9 +52,7 @@ def main():
         fpath=path_from_home_directory(f"config/{scenario_label}.png"),
         rtrajectory=rtrajectory,
     )
-    plot_tppdf(
-        tppdf, meshgrid, dpath=path_from_home_directory(f"config/{scenario_label}"), rtrajectory=rtrajectory
-    )
+    plot_tppdf(tppdf, meshgrid, dpath=path_from_home_directory(f"config/{scenario_label}"), rtrajectory=rtrajectory)
     logging.info(f"Saved scenario json and initial scene at config directory")
 
 

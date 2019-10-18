@@ -45,14 +45,14 @@ with J0 containing the robots traveling cost, final cost, etc.
 
 - using other pedestrian prediction models (such as Social Forces, etc.)
 
-
-## Evaluation metrics
-- empirical probability of failure in Monte-Carlo simulations (i.e. use derived policy and simulate 10000 runs while sampling from distributions, comp. [3])
-
 - Time-expanded graph with tppdf(t+1, y|t, x) as edge cost (i.e. several graphs stacked in time, one for each time step)
 --> enforce time by introducing infinite cost at non-neighbors in graph searches last step
 --> time-expanded graph is a static (!) graph so provable optimal solvable 
 --> probably resolve resolution in time (pyramidal resolution structure) 
+
+
+## Evaluation metrics
+- empirical probability of failure in Monte-Carlo simulations (i.e. use derived policy and simulate 10000 runs while sampling from distributions, comp. [3])
 
 [1] On Infusing Reachability-Based Safety Assurance within Probabilistic Planning Frameworks for Human-Robot Vehicle Interactions
 [2] Probabilistic Planning via Determinization in Hindsight

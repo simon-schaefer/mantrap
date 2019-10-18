@@ -3,7 +3,7 @@ import numpy as np
 from murseco.environment import Environment
 from murseco.obstacle import SingleModeDTVObstacle
 from murseco.robot import CardinalDTRobot
-from murseco.utility.arrayops import rand_invsymmpos
+from murseco.utility.array import rand_invsymmpos
 import murseco.utility.io
 from murseco.utility.visualization import plot_trajectory_samples
 

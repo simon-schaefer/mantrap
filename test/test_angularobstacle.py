@@ -3,7 +3,7 @@ import pytest
 from scipy.cluster.vq import kmeans
 
 from murseco.obstacle import AngularDTVObstacle
-from murseco.utility.arrayops import rand_invsymmpos
+from murseco.utility.array import rand_invsymmpos
 import murseco.utility.io
 
 

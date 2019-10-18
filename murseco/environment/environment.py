@@ -39,7 +39,7 @@ class Environment(JSONSerializer):
         the pdf is evaluated at each point of a grid (2D numpy linspace).
 
         :argument num_points: number of resolution points for grid sampling for each axis.
-        :returns overall pdf in position space for each time-step (list), (x, y) meshgrid
+        :returns overall pdf in position space for each time-step in meshgrid, (x, y) meshgrid
         """
         tppdfs = [o.ppdf(self.thorizon) for o in self.obstacles]
 

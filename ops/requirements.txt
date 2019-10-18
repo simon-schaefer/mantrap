@@ -1,4 +1,5 @@
 cvxpy
+python-igraph
 matplotlib
 numpy
 pytest

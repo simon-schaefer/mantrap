@@ -112,7 +112,7 @@ def plot_tppdf(
         fig, ax = plt.subplots()
 
         if rtrajectory is not None:
-            ax.plot(rtrajectory[:t + 1, 0], rtrajectory[:t + 1, 1], "rx")
+            ax.plot(rtrajectory[: t + 1, 0], rtrajectory[: t + 1, 1], "rx")
 
         color_mesh = ax.pcolormesh(meshgrid[0], meshgrid[1], ppdf, cmap="gist_earth")
         fig.colorbar(color_mesh, ax=ax)
