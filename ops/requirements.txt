@@ -1,5 +1,5 @@
 cvxpy
-python-igraph
+cython
 matplotlib
 numpy
 pytest

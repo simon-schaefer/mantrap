@@ -7,10 +7,10 @@ echo "Reformatting src files ..."
 black "$PROJECT_HOME"/murseco/*.py "$OPTIONS"
 for dir in "$PROJECT_HOME"/murseco/*/
 do
-  if [[ -n "$(ls "$dir"/*.py)" ]]
-  then
-    black "$dir"/*.py "$OPTIONS"
-  fi
+  for file in "$dir"/*.py; do
+    [ -f "$file" ] || break
+    black "$file" "$OPTIONS"
+  done
 done
 
 echo "Reformatting test files ..."
