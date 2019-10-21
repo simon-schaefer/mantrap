@@ -1,3 +1,4 @@
+import cython
 import numpy as np
 cimport numpy as np
 
@@ -37,15 +38,11 @@ cdef dynamics(float x, float y, float ux, float uy):
 
 
 cdef cost(float x, float y, float xg, float yg, float ux, float uy):
-    return ux * ux + uy * uy
+    return (x - xg) * (x - xg) + (y - yg) * (y - yg) + ux * ux + uy * uy
 
 
-cdef heuristic(float x, float y, float xg, float yg):
-    return (x - xg) * (x - xg) + (y - yg) * (y - yg)
-
-
-cdef constraint(float pdf_sum, float pdf):
-    return pdf_sum + pdf < 0.002
+cdef constraint(float x, float y, float xl, float yl, int ix, int iy, int ixl, int iyl, float pdf):
+    return pdf < 0.005
 
 
 cdef class Node:
@@ -55,16 +52,25 @@ cdef class Node:
     cdef public int t
     cdef public float cost
     cdef public float pdf
+    cdef public Node parent
 
-    def __cinit__(self, float x, float y, float cost, float pdf, int time):
+    def __cinit__(self, float x, float y, float cost, float pdf, int time, Node parent):
         self.x = x
         self.y = y
         self.cost = cost
         self.pdf = pdf
         self.t = time
+        self.parent = parent
+
 
 cdef dijkstra_constrained(
-        float x_start, float y_start, float x_goal, float y_goal, list tppdf, tuple meshgrid, float u_max
+    float x_start,
+    float y_start,
+    float x_goal,
+    float y_goal,
+    list tppdf,
+    tuple meshgrid,
+    float u_max
 ):
     cdef int x_grid_size = meshgrid[0].shape[1]
     cdef int y_grid_size = meshgrid[1].shape[1]
@@ -76,7 +82,7 @@ cdef dijkstra_constrained(
 
     cdef int u_delta_x = int(u_max / ((meshgrid[0][0, -1] - meshgrid[0][0, 0]) / x_grid_size))
     cdef int u_delta_y = int(u_max / ((meshgrid[1][-1, 0] - meshgrid[1][0, 0]) / y_grid_size))
-    cdef int thorizon = len(tppdf) + 1
+    cdef int thorizon = len(tppdf)
 
     cdef int ix_start = -1
     cdef int iy_start = -1
@@ -85,53 +91,58 @@ cdef dijkstra_constrained(
     cdef int iy_goal = -1
     ix_goal, iy_goal = cont_2_discrete(x_goal, y_goal, grid_data)
 
-    cdef list queue = []
-    cdef list path = []
-    cdef float pdf_sum = 0
     cdef int ix = -1
     cdef int iy = -1
     ix, iy = cont_2_discrete(x_start, y_start, grid_data)
 
-    # Initialization.
-    node = Node(x_start, y_start, 0.0, tppdf[0][ix, iy], 0)
-    queue.append(node)
+    # Initialization - Build safe graph.
+    cdef Node start_node = Node(x_start, y_start, 0.0, tppdf[0][iy, ix], 0, None)
+    cdef list queue = [start_node]
+    cdef Node goal_node = None
+    cdef float min_cost_goal = 9999999.9
 
-    # Loop.
     while len(queue) > 0:
         node = queue.pop(0)
-        # if not constraint(pdf_sum, node.pdf):
-        #     continue
 
-        ix, iy = cont_2_discrete(node.x, node.y, grid_data)
-        path.append((node.x, node.y))
-        pdf_sum = pdf_sum + node.pdf
-
-        if ix == ix_goal and iy == iy_goal:
-            return path, pdf_sum
-
-        for ux from -u_delta_x <= ux <= u_delta_x:
-            for uy from -u_delta_y <= uy <= u_delta_y:
+        # for ux from -u_delta_x <= ux <= u_delta_x:
+        #     for uy from -u_delta_y <= uy <= u_delta_y:
+        for ux from +1 <= ux <= +1:
+            for uy from -1 <= uy <= +1:
                 x_next, y_next = dynamics(node.x, node.y, ux, uy)
                 cost_next = node.cost + cost(node.x, node.y, x_goal, y_goal, ux, uy)
                 ix_next, iy_next = cont_2_discrete(x_next, y_next, grid_data)
-                node_next = Node(x_next, y_next, cost_next, tppdf[node.t + 1][ix_next, iy_start], node.t + 1)
+                pdf_next = node.pdf + tppdf[node.t][iy_next, ix_next]
+                node_next = Node(x_next, y_next, cost_next, pdf_next, node.t + 1, node)
 
-                if ix_next >= 0 and iy_next >= 0:  # node within grid
-                    # if constraint(pdf_sum, node_next.pdf):  # constraint not violated
-                    i = 0
-                    while i < len(queue) and \
-                        cost_next + heuristic(node_next.x, node_next.y, x_goal, y_goal) > \
-                        queue[i].cost + heuristic(queue[i].x, queue[i].y, x_goal, y_goal):
-                        i = i + 1
-                    queue.insert(i, node_next)
+                # Add only to neighbour if node within grid and constraints not violated.
+                if ix_next >= 0 and iy_next >= 0:
+                    if constraint(node_next.x, node_next.y, node.x, node.y, ix_next, iy_next, ix, iy, node_next.pdf):
 
-    return None, pdf_sum
+                        if ix_next == ix_goal and iy_next == iy_goal:
+                            if node_next.cost < min_cost_goal:
+                                goal_node = node_next
+                                min_cost_goal = node_next.cost
+
+                        if node_next.t < thorizon and node_next.cost < min_cost_goal:
+                            queue.append(node_next)
+
+        #   print(node.x, node.y, node.pdf, node.t)
+
+    # Get shortest path by recursively getting the parent node, starting from the goal node found.
+    cdef list path = []
+    if goal_node is not None:
+        node = goal_node
+        while node is not None:
+            path.insert(0, (node.x, node.y))
+            node = node.parent
+        return path, goal_node.pdf
+
+    else:
+        return path, None
 
 
-
-def time_expanded_graph_search(np.ndarray pos_start, np.ndarray pos_goal,list tppdf, tuple meshgrid, float u_max = 3.0):
+def time_expanded_graph_search(np.ndarray pos_start, np.ndarray pos_goal,list tppdf, tuple meshgrid, float u_max = 1.0):
     trajectory, risk_sum = dijkstra_constrained(
         pos_start[0], pos_start[1], pos_goal[0], pos_goal[1], tppdf, meshgrid, u_max
     )
-    trajectory = trajectory + [pos_goal] * (len(tppdf) - len(trajectory) + 1)
     return np.array(trajectory), risk_sum

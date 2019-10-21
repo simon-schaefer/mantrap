@@ -30,7 +30,7 @@ with J0 containing the robots traveling cost, final cost, etc.
 
 - Formulate distance to Gaussian as cone constraint (comp. [5], [6])
 
-- Modern portfolio theory: convex (w^T * sigma
+- Modern portfolio theory: convex (w^T * sigma ...)
 
 --> PROBLEM: Multiplication introduces non-convexity (bilinear) therefore using Gaussian directly is not feasible !!
 
