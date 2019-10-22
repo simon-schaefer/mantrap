@@ -1,4 +1,5 @@
 cvxpy
+cython
 matplotlib
 numpy
 pytest

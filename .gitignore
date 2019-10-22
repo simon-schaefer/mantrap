@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 *.pyc
 *.egg-info/
+build/
+
 
 # Unit test / coverage reports
 .pytest_cache/

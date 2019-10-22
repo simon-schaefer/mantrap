@@ -30,6 +30,8 @@ with J0 containing the robots traveling cost, final cost, etc.
 
 - Formulate distance to Gaussian as cone constraint (comp. [5], [6])
 
+- Modern portfolio theory: convex (w^T * sigma ...)
+
 --> PROBLEM: Multiplication introduces non-convexity (bilinear) therefore using Gaussian directly is not feasible !!
 
 ## Simluation
@@ -45,14 +47,22 @@ with J0 containing the robots traveling cost, final cost, etc.
 
 - using other pedestrian prediction models (such as Social Forces, etc.)
 
-
-## Evaluation metrics
-- empirical probability of failure in Monte-Carlo simulations (i.e. use derived policy and simulate 10000 runs while sampling from distributions, comp. [3])
-
 - Time-expanded graph with tppdf(t+1, y|t, x) as edge cost (i.e. several graphs stacked in time, one for each time step)
 --> enforce time by introducing infinite cost at non-neighbors in graph searches last step
 --> time-expanded graph is a static (!) graph so provable optimal solvable 
 --> probably resolve resolution in time (pyramidal resolution structure) 
+
+- constant velocity assumption for pedestrian
+
+- multimodal vs unimodal prediction for pedestrian movement (summarise the outputted GMM as one Gaussian ?)
+
+
+## Evaluation metrics
+- empirical probability of failure in Monte-Carlo simulations (i.e. use derived policy and simulate 10000 runs while sampling from distributions, comp. [3])
+
+- measures: comfort, travel-time, minimal distance to pedestrians, ...
+
+- human in the loop comparison (steering wheel)
 
 [1] On Infusing Reachability-Based Safety Assurance within Probabilistic Planning Frameworks for Human-Robot Vehicle Interactions
 [2] Probabilistic Planning via Determinization in Hindsight

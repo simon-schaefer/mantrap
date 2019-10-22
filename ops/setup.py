@@ -1,5 +1,4 @@
 import glob
-import logging
 import os
 import re
 import setuptools
@@ -13,12 +12,7 @@ scripts = None
 requirements_file = None
 requirements = None
 dependency_links = None
-
-# ----- control flags -----
-# don't include subdir named 'tests' in package_data
-skip_tests = True
-# print some extra debugging info
-debug = True
+version = "0.0"
 
 
 def find_scripts():
@@ -26,20 +20,12 @@ def find_scripts():
 
 
 def package_to_path(package_path):
-    """
-      Convert a package (as found by setuptools.find_packages)
-      e.g. "foo.bar" to usable path
-      e.g. "foo/bar"
-      No idea if this works on windows
-      """
+    """Convert a package (as found by setuptools.find_packages) e.g. "foo.bar" to "foo/bar"."""
     return package_path.replace(".", "/")
 
 
 def find_subdirectories(package_path):
-    """
-      Get the subdirectories within a package
-      This will include resources (non-submodules) and submodules
-      """
+    """Get the subdirectories within a package. This will include resources (non-submodules) and submodules."""
     try:
         subdirectories = [f for f in glob.glob(package_to_path(package_path) + "**/", recursive=True)]
     except StopIteration:
@@ -48,42 +34,31 @@ def find_subdirectories(package_path):
 
 
 def subdir_findall(directory, subdir):
+    """Find all files in a subdirectory and return paths relative to dir
+    This is similar to (and uses) setuptools.findall However, the paths returned are in the form
+    needed for package_data
     """
-      Find all files in a subdirectory and return paths relative to dir
-      This is similar to (and uses) setuptools.findall
-      However, the paths returned are in the form needed for package_data
-      """
     strip_n = len(directory.split("/"))
     path = "/".join((directory, subdir))
     return ["/".join(s.split("/")[strip_n:]) for s in setuptools.findall(path)]
 
 
 def find_package_data(packages_list):
+    """For a list of packages, find the package_data.
+    This function scans the subdirectories of a package and considers all non-submodule subdirectories as resources,
+    including them in the package_data. Returns a dictionary suitable for setup(package_data=<result>)
     """
-      For a list of packages, find the package_data
-      This function scans the subdirectories of a package and considers all
-      non-submodule subdirectories as resources, including them in
-      the package_data.
-      Returns a dictionary suitable for setup(package_data=<result>)
-      """
     data = {}
     for p in packages_list:
         data[p] = []
         for subdir in find_subdirectories(p):
-            if ".".join((p, subdir)) in packages_list:  # skip submodules
-                logging.debug("skipping submodule %s/%s" % (p, subdir))
-                continue
-            if skip_tests and (subdir == "tests"):  # skip tests
-                logging.debug("skipping tests %s/%s" % (p, subdir))
-                continue
             data[p] += subdir_findall(package_to_path(p), subdir)
     return data
 
 
 def parse_requirements(file_name):
-    """
-      Parse package requirements from requirements.txt file.
-      http://cburgmer.posterous.com/pip-requirementstxt-and-setuppy
+    """Parse package requirements from requirements.txt file.
+    http://cburgmer.posterous.com/pip-requirementstxt-and-setuppy
     """
     reqs = []
     with open(file_name, "r") as f:
@@ -100,9 +75,8 @@ def parse_requirements(file_name):
 
 
 def parse_dependency_links(file_name):
-    """
-      Parse package dependencies from requirements.txt file.
-      http://cburgmer.posterous.com/pip-requirementstxt-and-setuppy
+    """Parse package dependencies from requirements.txt file.
+    http://cburgmer.posterous.com/pip-requirementstxt-and-setuppy
     """
     dep_links = []
     with open(file_name) as f:
@@ -113,12 +87,8 @@ def parse_dependency_links(file_name):
 
 
 # Set logging mode to debug (if debug flag is set).
-if debug:
-    logging.basicConfig(level=logging.DEBUG)
 if not (hasattr(setuptools, "dist") and setuptools.dist):
     raise ImportError("distribute was not found and fallback to setuptools was not allowed")
-else:
-    logging.debug("distribute_setup.py not found, defaulted to system distribute")
 # Examine directory, i.e. search for package name, data, scripts, etc.
 if packages is None:
     packages = setuptools.find_packages()
@@ -142,22 +112,13 @@ else:
         requirements = []
     if dependency_links is None:
         dependency_links = []
-# Print derived information.
-if debug:
-    logging.debug("Module name: %s" % package_name)
-    for package in packages:
-        logging.debug("Package: %s" % package)
-        logging.debug("\tData: %s" % str(package_data[package]))
-    logging.debug("Requirements:")
-    for req in requirements:
-        logging.debug("\t%s" % req)
-    logging.debug("Dependency links:")
-    for dl in dependency_links:
-        logging.debug("\t%s" % dl)
-# Install directory using setuptools library.
+
+# Install main directory using setuptools library, while skipping test.
+packages = [package for package in packages if package != "test"]
+package_data = {k: v for k, v in package_data.items() if k != "test"}
 setuptools.setup(
     name=package_name,
-    version="0.0",
+    version=version,
     packages=packages,
     scripts=scripts,
     package_data=package_data,

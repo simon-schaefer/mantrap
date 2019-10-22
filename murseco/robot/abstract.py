@@ -77,6 +77,6 @@ class DTRobot(JSONSerializer):
         summary = super(DTRobot, cls).from_summary(json_text)
         position = np.reshape(np.array(json_text["state"]), (2,))
         thorizon = int(json_text["thorizon"])
-        policy = np.reshape(np.array(json_text["policy"]), (thorizon, 1)) if json_text["policy"] != "null" else None
+        policy = np.reshape(np.array(json_text["policy"]), (thorizon, 1)) if json_text["policy"] is not None else None
         summary.update({"position": position, "thorizon": thorizon, "policy": policy})
         return summary

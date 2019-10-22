@@ -23,7 +23,7 @@ def plot_pdf2d(
 
     :argument distribution: 2D distribution as subclass of Distribution2D class in utility.stats.
     :argument xaxis: range of x axis as (lower bound, upper bound).
-    :argument fpath: path to store directory in.
+    :argument fpath: path to store plot file in.
     :argument yaxis: range of y axis as (lower bound, upper bound), assumed to be equal to xaxis if not stated.
     :argument num_points: number of resolution points for axis sampling.
     """
@@ -59,7 +59,7 @@ def plot_trajectory_samples(
     :argument ohistories: history path of each obstacle (obstacle_i, num_history_points, 2).
     :argument ocolors: color identifier of each obstacle
     :argument xaxis: range of x axis as (lower bound, upper bound).
-    :argument fpath: path to store plot in.
+    :argument fpath: path to store plot file in.
     :argument yaxis: range of y axis as (lower bound, upper bound), assumed to be equal to xaxis if not stated.
     :argument rtrajectory: robot trajectory in the given time-horizon.
     """
@@ -87,7 +87,7 @@ def plot_trajectory_samples(
     plt.close()
 
 
-def plot_tppdf(
+def plot_tppdf_trajectory(
     tppdf: List[np.ndarray],
     meshgrid: Tuple[np.ndarray, np.ndarray],
     dpath: str,
@@ -102,25 +102,54 @@ def plot_tppdf(
     :argument rtrajectory: robot trajectory in the given time-horizon.
     """
     if rtrajectory is not None:
-        assert len(tppdf) == rtrajectory.shape[0] - 1, "length of tppdf (t >= 1) and robot's trajectory (t >= 0)"
+        assert len(rtrajectory) != 0, "robot trajectory must not be empty !"
     assert all([meshgrid[0].shape == ppdf.shape for ppdf in tppdf]), "x grid should have same shape as pdfs"
     assert all([meshgrid[1].shape == ppdf.shape for ppdf in tppdf]), "y grid should have same shape as pdfs"
 
     os.makedirs(dpath, exist_ok=True)
+    steps = min(len(tppdf), rtrajectory.shape[0]) if rtrajectory is not None else len(tppdf)
 
-    for t, ppdf in enumerate(tppdf):
+    for t in range(steps):
         fig, ax = plt.subplots()
 
         if rtrajectory is not None:
-            ax.plot(rtrajectory[:t + 1, 0], rtrajectory[:t + 1, 1], "rx")
+            ax.plot(rtrajectory[:t, 0], rtrajectory[:t, 1], "rx", alpha=0.5)
+            ax.plot(rtrajectory[t, 0], rtrajectory[t, 1], "rx", alpha=1.0)
 
-        color_mesh = ax.pcolormesh(meshgrid[0], meshgrid[1], ppdf, cmap="gist_earth")
+        color_mesh = ax.pcolormesh(meshgrid[0], meshgrid[1], tppdf[t], cmap="gist_earth")
         fig.colorbar(color_mesh, ax=ax)
 
         ax.set_xlabel("x")
         ax.set_ylabel("y")
         plt.savefig(os.path.join(dpath, f"{t:04d}.png"))
         plt.close()
+
+
+def plot_ppdf_points(
+    ppdf: np.ndarray, meshgrid: Tuple[np.ndarray, np.ndarray], fpath: str, points: Union[np.ndarray, None] = None
+):
+    """Plot ppdf on given meshgrid and if available a set of points on top of it.
+
+    :argument ppdf: overall pdf in position space.
+    :argument meshgrid: (x, y) meshgrid which all the pdfs in tppdf are based on.
+    :argument fpath: path to store plot file in.
+    :argument points: set of points to draw in meshgrid.
+    """
+    assert all([meshgrid[0].shape == ppdf.shape]), "x grid should have same shape as ppdf"
+    assert all([meshgrid[1].shape == ppdf.shape]), "y grid should have same shape as ppdf"
+
+    fig, ax = plt.subplots()
+
+    if points is not None:
+        ax.plot(points[:, 0], points[:, 1], "rx")
+
+    color_mesh = ax.pcolormesh(meshgrid[0], meshgrid[1], ppdf, cmap="gist_earth")
+    fig.colorbar(color_mesh, ax=ax)
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    plt.savefig(fpath)
+    plt.close()
 
 
 def plot_position_input_risk(positions: np.ndarray, inputs: np.ndarray, risk: np.ndarray, fpath: str):
