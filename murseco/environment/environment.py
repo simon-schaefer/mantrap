@@ -13,7 +13,7 @@ class Environment(JSONSerializer):
         xaxis: Tuple[float, float],
         yaxis: Tuple[float, float],
         dt: float = 1.0,
-        thorizon: int = 10,
+        thorizon: int = 20,
         obstacles: List[DTVObstacle] = None,
         robot: DTRobot = None,
         **kwargs
@@ -31,7 +31,7 @@ class Environment(JSONSerializer):
         self._thorizon = thorizon
         self._dt = dt
 
-    def tppdf(self, num_points: int = 300) -> Tuple[List[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    def tppdf(self, num_points: int = 1000) -> Tuple[List[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """Determine pdf of obstacles in position space over full (discrete) time-horizon.
         Therefore at first determine for each obstacle the pdf in position space (ppdf) over the full time horizon
         and afterwards for each time-step sum the pdf over all obstacles to one overall pdf. While the ppdf of

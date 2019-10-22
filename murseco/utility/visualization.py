@@ -107,13 +107,14 @@ def plot_tppdf_trajectory(
     assert all([meshgrid[1].shape == ppdf.shape for ppdf in tppdf]), "y grid should have same shape as pdfs"
 
     os.makedirs(dpath, exist_ok=True)
-    steps = min(len(tppdf), rtrajectory.shape[0] + 1) if rtrajectory is not None else len(tppdf)
+    steps = min(len(tppdf), rtrajectory.shape[0]) if rtrajectory is not None else len(tppdf)
 
     for t in range(steps):
         fig, ax = plt.subplots()
 
         if rtrajectory is not None:
-            ax.plot(rtrajectory[: t + 1, 0], rtrajectory[: t + 1, 1], "rx")
+            ax.plot(rtrajectory[:t, 0], rtrajectory[:t, 1], "rx", alpha=0.5)
+            ax.plot(rtrajectory[t, 0], rtrajectory[t, 1], "rx", alpha=1.0)
 
         color_mesh = ax.pcolormesh(meshgrid[0], meshgrid[1], tppdf[t], cmap="gist_earth")
         fig.colorbar(color_mesh, ax=ax)
