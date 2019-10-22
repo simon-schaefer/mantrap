@@ -47,5 +47,5 @@ def visualize_environment_tppdf():
 
     tppdf, meshgrid = env.tppdf(num_points=200, mproc=False)
 
-    dpath = path_from_home_directory("test/cache/scenario_double_two_mode")
+    dpath = path_from_home_directory("test/graphs/scenario_double_two_mode")
     plot_tppdf_trajectory(tppdf, meshgrid, dpath=dpath)

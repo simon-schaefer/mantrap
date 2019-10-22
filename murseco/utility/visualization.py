@@ -92,6 +92,7 @@ def plot_tppdf_trajectory(
     meshgrid: Tuple[np.ndarray, np.ndarray],
     dpath: str,
     rtrajectory: Union[np.ndarray, None] = None,
+    titles: Union[List[str], None] = None
 ):
     """Plot pdf in position space in meshgrid and (optionally) the robot's trajectory over the full time horizon,
     plotting one plot per time-step.
@@ -100,9 +101,12 @@ def plot_tppdf_trajectory(
     :argument meshgrid: (x, y) meshgrid which all the pdfs in tppdf are based on.
     :argument dpath: path to store directory in.
     :argument rtrajectory: robot trajectory in the given time-horizon.
+    :argument titles: plot titles for every frame.
     """
     if rtrajectory is not None:
         assert len(rtrajectory) != 0, "robot trajectory must not be empty !"
+    if titles is not None:
+        assert len(titles) != 0, "titles list must not be empty"
     assert all([meshgrid[0].shape == ppdf.shape for ppdf in tppdf]), "x grid should have same shape as pdfs"
     assert all([meshgrid[1].shape == ppdf.shape for ppdf in tppdf]), "y grid should have same shape as pdfs"
 
@@ -121,6 +125,8 @@ def plot_tppdf_trajectory(
 
         ax.set_xlabel("x")
         ax.set_ylabel("y")
+        if titles is not None:
+            ax.set_title(titles[t])
         plt.savefig(os.path.join(dpath, f"{t:04d}.png"))
         plt.close()
 

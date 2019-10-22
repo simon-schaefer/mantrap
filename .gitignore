@@ -10,6 +10,7 @@ build/
 # Unit test / coverage reports
 .pytest_cache/
 test/cache/
+test/graphs/
 
 # Environments
 .venv_*/
