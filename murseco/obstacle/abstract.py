@@ -37,19 +37,20 @@ class DTVObstacle(JSONSerializer):
         """Given the obstacles history (trajectory) determine the pdf of the next velocity by mode."""
         return self._history.copy() if history is None else history
 
-    def ppdf(self, thorizon: int, num_samples_per_mode: int = 50) -> List[GMM2D]:
+    def ppdf(self, thorizon: int, num_samples_per_mode: int = 50, mproc: bool = True) -> List[GMM2D]:
         """Build position probability density function by sampling trajectories for each mode and summarize
         them with a single gaussian distribution for each mode and time-step, given the objects history.
         Assumption: Covariance is estimated as diagonal matrix, i.e. sigma_xy = 0, for computational reasons.
 
         :argument thorizon: length of trajectory samples, i.e. number of predicted time-steps.
         :argument num_samples_per_mode: number of trajectory samples per mode.
+        :argument mproc: run in multiprocessing (8 processes).
         :returns array of future position pdf as GMM2D for each time-step.
         """
         logging.debug("ppdf -> Sampling trajectories")
         mus, covariances = np.zeros((self.num_modes, thorizon, 2)), np.zeros((self.num_modes, thorizon, 2))
         for m in range(self.num_modes):
-            trajectories_mode = self.trajectory_samples(thorizon, num_samples_per_mode, mode=m)
+            trajectories_mode = self.trajectory_samples(thorizon, num_samples_per_mode, mode=m, mproc=mproc)
             mus[m, :, :] = np.mean(trajectories_mode, axis=0)
             covariances[m, :, :] = np.std(trajectories_mode, axis=0)
 
@@ -64,7 +65,7 @@ class DTVObstacle(JSONSerializer):
         logging.debug("ppdf -> done")
         return ppdf
 
-    def trajectory_samples(self, thorizon: int, num_samples: int, mode: int = None) -> np.ndarray:
+    def trajectory_samples(self, thorizon: int, num_samples: int, mode: int = None, mproc: bool = True) -> np.ndarray:
         """Sample possible (future) trajectories given the currently stored, thorizon steps in the future.
          Therefore iteratively call the pdf() method, sample the next velocity from that pdf, forward integrate
          the samples velocity to obtain the next position, append the history and repeat until the time horizon
@@ -74,14 +75,20 @@ class DTVObstacle(JSONSerializer):
          :argument thorizon: length of trajectory samples, i.e. number of predicted time-steps.
          :argument num_samples: number of trajectory samples.
          :argument mode: mode to sample trajectory from (None = overall distribution).
+         :argument mproc: run in multiprocessing (8 processes).
          :returns array of sampled future trajectories (num_samples, thorizon, 2).
          """
-        pool = multiprocessing.Pool(8)
-        func = partial(self._sample_trajectory, thorizon=thorizon, mode=mode, history=self._history)
-        trajectories = pool.map(func, list(range(num_samples)))
+        if mproc:
+            pool = multiprocessing.Pool(8)
+            func = partial(self._sample_trajectory, thorizon=thorizon, mode=mode, history=self._history)
+            trajectories = pool.map(func, list(range(num_samples)))
+        else:
+            trajectories = []
+            for _ in range(num_samples):
+                trajectories.append(self._sample_trajectory(None, thorizon=thorizon, history=self._history, mode=mode))
         return np.array(trajectories)
 
-    def _sample_trajectory(self, iteration: int, thorizon: int, history: np.ndarray, mode: int):
+    def _sample_trajectory(self, iteration: Union[int, None], thorizon: int, history: np.ndarray, mode: int):
         trajectory = np.zeros((thorizon, 2))
         trajectory[0, :] = history[-1, :]
         for t in range(1, thorizon):

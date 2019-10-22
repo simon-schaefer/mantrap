@@ -1,5 +1,4 @@
 import glob
-import logging
 import os
 import re
 import setuptools
@@ -13,12 +12,7 @@ scripts = None
 requirements_file = None
 requirements = None
 dependency_links = None
-
-# ----- control flags -----
-# don't include subdir named 'tests' in package_data
-skip_tests = True
-# print some extra debugging info
-debug = False
+version = "0.0"
 
 
 def find_scripts():
@@ -58,12 +52,6 @@ def find_package_data(packages_list):
     for p in packages_list:
         data[p] = []
         for subdir in find_subdirectories(p):
-            if ".".join((p, subdir)) in packages_list:  # skip submodules
-                logging.debug("skipping submodule %s/%s" % (p, subdir))
-                continue
-            if skip_tests and (subdir == "tests"):  # skip tests
-                logging.debug("skipping tests %s/%s" % (p, subdir))
-                continue
             data[p] += subdir_findall(package_to_path(p), subdir)
     return data
 
@@ -99,12 +87,8 @@ def parse_dependency_links(file_name):
 
 
 # Set logging mode to debug (if debug flag is set).
-if debug:
-    logging.basicConfig(level=logging.DEBUG)
 if not (hasattr(setuptools, "dist") and setuptools.dist):
     raise ImportError("distribute was not found and fallback to setuptools was not allowed")
-else:
-    logging.debug("distribute_setup.py not found, defaulted to system distribute")
 # Examine directory, i.e. search for package name, data, scripts, etc.
 if packages is None:
     packages = setuptools.find_packages()
@@ -128,22 +112,13 @@ else:
         requirements = []
     if dependency_links is None:
         dependency_links = []
-# Print derived information.
-if debug:
-    logging.debug("Module name: %s" % package_name)
-    for package in packages:
-        logging.debug("Package: %s" % package)
-        logging.debug("\tData: %s" % str(package_data[package]))
-    logging.debug("Requirements:")
-    for req in requirements:
-        logging.debug("\t%s" % req)
-    logging.debug("Dependency links:")
-    for dl in dependency_links:
-        logging.debug("\t%s" % dl)
-# Install directory using setuptools library.
+
+# Install main directory using setuptools library, while skipping test.
+packages = [package for package in packages if package != "test"]
+package_data = {k: v for k, v in package_data.items() if k != "test"}
 setuptools.setup(
     name=package_name,
-    version="0.0",
+    version=version,
     packages=packages,
     scripts=scripts,
     package_data=package_data,

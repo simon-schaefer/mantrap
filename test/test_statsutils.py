@@ -7,7 +7,7 @@ import scipy.cluster.vq
 import murseco.utility.array
 import murseco.utility.io
 import murseco.utility.stats
-import murseco.utility.visualization
+from murseco.utility.visualization import plot_pdf2d
 
 
 @pytest.mark.parametrize(
@@ -114,17 +114,3 @@ def test_stats_gaussian2d_sample(mus: np.ndarray, sigmas: np.ndarray, weights: n
     samples = gmm.sample(2000)
     centers = scipy.cluster.vq.kmeans(samples, k_or_guess=gmm.num_modes)[0]
     assert np.isclose(np.linalg.norm(np.sort(centers, axis=0) - np.sort(mus, axis=0)), 0, atol=0.1)
-
-
-@pytest.mark.parametrize(
-    "mus, sigmas, weights, index",
-    [
-        (np.array([[4, 2], [0, 0]]), np.stack((np.eye(2), np.eye(2))), np.array([1, 1]), "1"),
-        (np.array([[5, 5], [-5, -5]]), np.stack((np.eye(2) * 0.01, np.eye(2) * 0.1)), np.array([1, 1]), "2"),
-        (np.array([[0, 0], [0, 0]]), np.stack((np.diag([0.01, 10]), np.eye(2))), np.array([1, 0]), "3"),
-    ],
-)
-def test_visualization_plot_pdf2d(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray, index: str):
-    cache_path = murseco.utility.io.path_from_home_directory(f"test/cache/gmm2d_test_{index}.png")
-    distribution = murseco.utility.stats.GMM2D(mus, sigmas, weights)
-    murseco.utility.visualization.plot_pdf2d(distribution, (-10, 10), fpath=cache_path)

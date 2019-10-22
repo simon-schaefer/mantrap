@@ -4,7 +4,7 @@ from scipy.cluster.vq import kmeans
 
 from murseco.obstacle import AngularDTVObstacle
 from murseco.utility.array import rand_invsymmpos
-import murseco.utility.io
+from murseco.utility.io import path_from_home_directory
 
 
 def test_angularobstacle_initialization():
@@ -35,7 +35,7 @@ def test_angularobstacle_pdf(mus: np.ndarray, covariances: np.ndarray, weights: 
 def test_angularobstacle_json():
     pinit, mus, covariances, weights = np.zeros(2), np.random.rand(3, 2), rand_invsymmpos(3, 2, 2), np.ones(3)
     obstacle_1 = AngularDTVObstacle(pinit, mus, covariances, weights)
-    cache_path = murseco.utility.io.path_from_home_directory("test/cache/angularobstacle_test.json")
+    cache_path = path_from_home_directory("test/cache/angularobstacle_test.json")
     obstacle_1.to_json(cache_path)
     obstacle_2 = AngularDTVObstacle.from_json(cache_path)
     assert obstacle_1.summary() == obstacle_2.summary()
