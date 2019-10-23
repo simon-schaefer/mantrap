@@ -1,5 +1,104 @@
 # Ideas Spreadsheet
 
+
+## Path planning approaches
+The path planning must deal with multimodal, stochastically time-evolving disturbances. While the position of each obstacles for t1 = t0 + 1 is a GMM (analytically determinable), for t > t1 the distribution is basically anything, since it depends on a sample of the distribution at t = t1 (nested GMM). Therefore the problem is neither linear nor markovian ... Therefore there are basically two main approaches tackling the problem: 
+
+1) Choose action while unrolling: As described above working with the distribution for t > t1 might be hard, thus we might predict only one time-step at a time, plan one path, append the trajectories/histories according to the prediction and repredict. Repeat this loop until the planning time horizon is reached. 
++ ppdf are GMMs (not any distribution)
++ interaction-aware (i.e. takes into account the reaction to the robot's actions)
+- might be greedy (hardly globally optimal) since only optimising over one step
+==> Monte Carlo Tree Search
+
+
+2) Predict the full time-horizon at once 
++ might be more globally optimal 
+- loss of interaction awareness
+==> Chance-constrained MPC 
+
+
+
+## Chance-constrained MPC
+CCMPC introduces the risk of failure as a constraint in a sense that the accumulated (uniformly weighted, linear sum) risk over the planning horizon should be smaller than some constant, while the risk taken at every time-step r_k is introduced as optimisation variable and can therefore be "smartly" distributed over the planning horizon. However Gaussian distributions (or GMMs or whatever pdf) are not in general linear or convex, therefore they cannot be used directly in a constraint, but has to be reformulated as following: 
+
+--> Modern Portfolio Theory: w^T * sigma * w - q * R^T * w for representing unimodal Gaussians in a constraint (R = [mu_1, ..., mu_N])
+
+--> Using Taylor series expansion to express the distance to every modes mean ||x_k - z_k||_2
+
+--> Represent Gaussian eps-probability level set as polytopic constraint (in simplest case just linear inequality constraints e.g. x_5 < [4.0, 1.3])
+
+--> Formulate distance to Gaussian as cone constraint (comp. [5], [6])
+
+
+
+## Baseline
+In order to show the (hopefully) advantage gained using planning based on multimodal, stochastic, time-evolving distributions or to show the trade-off between computational efficiency and optimality the obstacle distribution can be simplified in many ways:  
+
+- Time-expanded graph search (optimal D2TS problem)
+--> enforce dynamics by creating edges based on robot dynamics function
+--> enforce constraints by cutting leaves which are not fulfilling these constraints
+--> time-expanded graph is a static (!) graph so provable optimal solvable for discrete state and input space but very computationally complex (increases for more relaxing constraints)
+
+- Constant-Velocity/Kalman obstacle (any problem)
+--> obstacles velocity is assumed to be constant over time and equal to the initial/mean of most probable mode velocity
+--> alternatively: additionally propagate uncertainty of velocity using Kalman filter (and pedestrian integrator model)
+--> advantage of multimodality, time-evolving, stochasticity
+
+- Static vpdf obstacle (any problem)
+--> obstacles velocity are sampled from the same (maybe multimodal) distribution for all times
+--> advantage of time-evolving
+
+- Unimodal vpdf obstacle (any problem)
+--> merely take most probable mode into account for obstacle prediction 
+--> advantage of multi-modality
+
+- RRT algorithm multiple times while selecting the path with minimum approximate path collision probability (comp. [4], Related Work)
+--> efficiency ? 
+--> safety guarantees ? 
+
+- (eventually) using other pedestrian prediction models (such as Social Forces, etc.) + initial obstacle state for prediction part
+
+
+
+## Evaluation
+For evaluation some underlying distribution for the obstacles/pedestrians is assumed and sampled during testing time. The planner either knows this distribution (in order to make the evaluation  independent from perception errors) and either exploits its full knowledge (e.g. time-expanded graph search, MPC, etc.) or just part of it (e.g. single mode, initial/mean velocity) to plan a trajectory. During repeated experiments while the robot always drives the same planned trajectory, the obstacles move stochastically.  
+
+- Monte-Carlo simulations (i.e. use derived policy and simulate N runs while sampling from distribution, comp. [3]) with the following measures
+--> empirical probability of failure vs risk
+--> comfort (smooth acceleration, etc.)
+--> travel-time
+--> minimal distance to obstacles
+
+- (eventually) human in the loop comparison (steering wheel)
+
+
+
+## Trajectron Information [7]
+- query time with n pedestrians ==> ~ 20 ms
+- roughly average or maximum number of modes per pedestrian ==> max 16
+- how do we get discrete trajectories for every mode, when sampling after every time-step (not like a branching tree) ? ==> iteratively sampling n trajectories sequences by re-applying the model
+
+
+
+[1] On Infusing Reachability-Based Safety Assurance within Probabilistic Planning Frameworks for Human-Robot Vehicle Interactions
+[2] Probabilistic Planning via Determinization in Hindsight
+[3] Chance-Constrained Dynamic Programming with Application to Risk-Aware Robotic Space Exploration
+[4] Monte Carlo Motion Planning for Robot Trajectory Optimization Under Uncertainty
+[5] On Distributionally Robust Chance-Constrained Linear Programs
+[7] The Trajectron: Probabilistic Multi-Agent Trajectory Modeling With Dynamic Spatiotemporal Graphs
+
+
+
+# Questions
+- Path planning while unrolling: Which points do we add to the history of obstacles/pedestrians after predicting one step ? We do know the distribution and its a GMM but we do need to add one specific point ... 
+- Path planning while unrolling: How do we perform state transitions/simulation for Monte Carlo tree search ? Do we have to re-evaluate the trajectron model every time ?
+
+
+
+####################################################################################################
+### OLD ############################################################################################
+####################################################################################################
+
 ## Handling risk cavities (multimodality, non-markovian)
 - brute-force: tree-search over possible trajectories, mapping to reward function and deciding for the trajectory with largest reward ([1]), paralleled on GPU --> using Hindsight Optimisations instead for more efficient search ([2])
 
@@ -20,62 +119,3 @@ with J0 containing the robots traveling cost, final cost, etc.
 - Kalman Filter propagation of initial gaussian distribution (single-integrator model)
 --> very computational efficient
 --> neglects any form of non-linear spatiotemporal evolvement 
-
-## Optimization Constraint Formulation (Gaussian over time (nested Gaussians) is not a standard distribution (model non-linear, non-markovian, ...), however for efficient optimisation an analytic description of the ppdf at every point in time would be preferable)
-- re-interpolate ppdf while enforcing smoothness constraints for analytic constraint
-
-- Gaussian smoothing of tpdf grid for smoothing, as having polymodal GMM -> therefore analytic formulation (!local minima)
-
-- Polytopic level set: find analytic formulation for eps-probability level set in grid (in simplest case just linear inequality constraints e.g. x_5 < [4.0, 1.3])
-
-- Formulate distance to Gaussian as cone constraint (comp. [5], [6])
-
-- Modern portfolio theory: convex (w^T * sigma ...)
-
---> PROBLEM: Multiplication introduces non-convexity (bilinear) therefore using Gaussian directly is not feasible !!
-
-## Simluation
-- Obstacle disturbance in position or velocity space (more realistic in velocity, trajectron in velocity, but planner requires position), so how to transform some distribution from velocity in position space for any (not analytically known, since nested GMMs) distribution efficiently (not just particles) ? 
---> integrating velocity sequences (particles) directly and build distribution from the obtained positions. Another possibility would be to interpolate the pdf in the velocity space, obtain an analytic formulation and integrate it analytically. However we assume smoothness by interpolation in the velocity space, which probably is a larger assumption than the effect of integration error. 
-
-## Baseline
-- static pdf for every pedestrian
-
-- deterministic Kalman prediction model for every pedestrian dependent on simple integrator model / social forces / ....
-
-- running RRT algorithm multiple times while selecting the path with minimum approximate path collision probability (comp. [4], Related Work)
-
-- using other pedestrian prediction models (such as Social Forces, etc.)
-
-- Time-expanded graph with tppdf(t+1, y|t, x) as edge cost (i.e. several graphs stacked in time, one for each time step)
---> enforce time by introducing infinite cost at non-neighbors in graph searches last step
---> time-expanded graph is a static (!) graph so provable optimal solvable 
---> probably resolve resolution in time (pyramidal resolution structure) 
-
-- constant velocity assumption for pedestrian
-
-- multimodal vs unimodal prediction for pedestrian movement (summarise the outputted GMM as one Gaussian ?)
-
-
-## Evaluation metrics
-- empirical probability of failure in Monte-Carlo simulations (i.e. use derived policy and simulate 10000 runs while sampling from distributions, comp. [3])
-
-- measures: comfort, travel-time, minimal distance to pedestrians, ...
-
-- human in the loop comparison (steering wheel)
-
-[1] On Infusing Reachability-Based Safety Assurance within Probabilistic Planning Frameworks for Human-Robot Vehicle Interactions
-[2] Probabilistic Planning via Determinization in Hindsight
-[3] Chance-Constrained Dynamic Programming with Application to Risk-Aware Robotic Space Exploration
-[4] Monte Carlo Motion Planning for Robot Trajectory Optimization Under Uncertainty
-[5] On Distributionally Robust Chance-Constrained Linear Programs
-[6] Advanced Topics in Control (Jan)
-
-# Trajectron
-- query time with n pedestrians ==> ~ 20 ms
-- roughly average or maximum number of modes per pedestrian ==> max 16
-- how do we get discrete trajectories for every mode, when sampling after every time-step (not like a branching tree) ? ==> iteratively sampling n trajectories sequences by re-applying the model
-
-# Questions
-- Baseline ? (Probabilistic graph search, just like Astar with time-dependent weights existing ?)
-- how to handle inter obstacle dependence (like if obs_1 goes to position A, obs_2 might go to another position than if obs_1 would have gone to position B) ??

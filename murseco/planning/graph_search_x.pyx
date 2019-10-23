@@ -36,7 +36,7 @@ cdef dynamics_integrator(float x, float y, float ux, float uy):
     return x + ux, y + uy
 
 
-cdef cost(float x, float y, float xg, float yg, float ux, float uy, float w_x, float w_u):
+cdef cost_integrator(float x, float y, float xg, float yg, float ux, float uy, float w_x, float w_u):
     return w_x * ((x - xg) * (x - xg) + (y - yg) * (y - yg)) + w_u * (ux * ux + uy * uy)
 
 
@@ -111,7 +111,7 @@ cdef dijkstra_constrained(
                 u_xm = ux * u_resolution
                 u_ym = uy * u_resolution
                 x_next, y_next = dynamics_integrator(node.x, node.y, u_xm, u_ym)
-                cost_next = node.cost + cost(node.x, node.y, x_goal, y_goal, u_xm, u_ym, w_x, w_u)
+                cost_next = node.cost + cost_integrator(node.x, node.y, x_goal, y_goal, u_xm, u_ym, w_x, w_u)
                 ix_next, iy_next = cont2discrete(x_next, y_next, grid_data)
                 pdf_next = node.pdf + tppdf[<int>coord3index(ix_next, iy_next, node.t, x_grid_size, y_grid_size)]
                 node_next = Node(x_next, y_next, cost_next, pdf_next, node.t + 1, node)
