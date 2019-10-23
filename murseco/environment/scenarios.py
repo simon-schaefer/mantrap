@@ -20,6 +20,18 @@ def vertical_fast(thorizon: int = 20, dt: float = 1.0) -> Environment:
     obs_w = np.ones(2)
     env.add_obstacle(AngularDTVObstacle, history=obs_position, mus=obs_mu, covariances=obs_cov, weights=obs_w)
 
+    obs_position = np.array([-4, -7])
+    obs_mu = np.array([[0.75, 0]])
+    obs_cov = np.array([np.diag([0.01, 0.1])])
+    obs_w = np.ones(1)
+    env.add_obstacle(AngularDTVObstacle, history=obs_position, mus=obs_mu, covariances=obs_cov, weights=obs_w)
+
+    obs_position = np.array([-4, 3])
+    obs_mu = np.array([[0.5, 0]])
+    obs_cov = np.array([np.diag([0.01, 0.1])])
+    obs_w = np.ones(1)
+    env.add_obstacle(AngularDTVObstacle, history=obs_position, mus=obs_mu, covariances=obs_cov, weights=obs_w)
+
     return env
 
 

@@ -13,7 +13,7 @@ def time_expanded_graph_search(
     risk_max: float,
     u_max: float = 1.0,
     u_resolution: float = 1.0,
-) -> Tuple[Union[np.ndarray, None], float]:
+) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
     """Create time-expanded graph from temporal-position-based pdf as well as costs function and search for shortest
     path from initial to final position.
     A time-expanded graph consists of sub-graphs, one graph for each time step (time horizon is inferred from the
@@ -34,11 +34,12 @@ def time_expanded_graph_search(
     :argument risk_max: maximal accumulated (i.e. summed over time) risk.
     :argument u_max: maximal L2-norm of input in one time-step [m].
     :argument u_resolution: resolution of input as L2-norm [m].
+    :returns optimal trajectory and accumulated risk at every step, up to step t, (or None if no trajectory found)
     """
     assert u_max % u_resolution == 0, "u_max must be evenly dividable by its resolution"
     assert risk_max > 0, "accumulated risk must be positive"
 
-    trajectory, risk_sum = murseco.planning.graph_search_x.time_expanded_graph_search(
+    trajectory, risks_accumulated = murseco.planning.graph_search_x.time_expanded_graph_search(
         pos_start.flatten().astype(np.float32),
         pos_goal.flatten().astype(np.float32),
         np.array(tppdf).flatten().astype(np.float32),
@@ -52,5 +53,8 @@ def time_expanded_graph_search(
         u_resolution,
     )
 
-    trajectory = np.array(trajectory) if trajectory is not None else None
-    return trajectory, risk_sum
+    if trajectory is None:
+        return None, None
+    else:
+        risks_accumulated = [risks_accumulated[t] for t in range(len(risks_accumulated))]
+        return np.array(trajectory), np.array(risks_accumulated)

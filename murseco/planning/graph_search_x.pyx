@@ -133,12 +133,14 @@ cdef dijkstra_constrained(
 
     # Get shortest path by recursively getting the parent node, starting from the goal node found.
     cdef list path = []
+    cdef list pdfs = []
     if goal_node is not None:
         node = goal_node
         while node is not None:
             path.insert(0, (node.x, node.y))
+            pdfs.insert(0, node.pdf)
             node = node.parent
-        return path, goal_node.pdf
+        return path, pdfs
 
     else:
         return None, None

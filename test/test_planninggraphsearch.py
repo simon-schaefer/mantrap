@@ -22,14 +22,15 @@ def test_planninggraphsearch_static_none(risk_max: float):
 
 def plan_and_visualize(pos_start: np.ndarray, pos_goal: np.ndarray, tppdf: List[np.ndarray], meshgrid: Tuple[np.ndarray, np.ndarray], risk_max: float, dpath: str):
     x_grid, y_grid = meshgrid
-    trajectory, risk_sum = time_expanded_graph_search(pos_start, pos_goal, tppdf, meshgrid, risk_max)
+    trajectory, acc_risks = time_expanded_graph_search(pos_start, pos_goal, tppdf, meshgrid, risk_max)
 
-    assert risk_sum <= risk_max
+    assert acc_risks[-1] <= risk_max
     assert trajectory.shape[0] <= len(tppdf)
     assert np.isclose(np.linalg.norm(trajectory[0, :] - pos_start), 0)
     assert np.isclose(np.linalg.norm(trajectory[-1, :] - pos_goal), 0)
 
-    plot_tppdf_trajectory(tppdf, (x_grid, y_grid), dpath=dpath, rtrajectory=trajectory)
+    titles = [f"acc. risk = {risk:.5f}" for risk in acc_risks]
+    plot_tppdf_trajectory(tppdf, (x_grid, y_grid), dpath=dpath, rtrajectory=trajectory, titles=titles)
 
 
 def plan_env_and_visualize(pos_start: np.ndarray, pos_goal: np.ndarray, thorizon: int, risk_max: float, dpath: str):
@@ -43,7 +44,7 @@ def visualize_planninggraphsearch_static():
     steps, grid_size, pos_start, pos_goal, risk_max = 20, 100, np.array([-5, -2]), np.array([7.0, 3.0]), 0.005
     ppdf = GMM2D(np.array([[3.8, -1], [-3, 3]]), np.array([np.eye(2) * 1.0, np.eye(2) * 2.2]), weights=np.ones(2))
     x_grid, y_grid = np.meshgrid(np.linspace(-10, 10, grid_size), np.linspace(-10, 10, grid_size))
-    dpath = path_from_home_directory(f"test/cache/graph_search_static_{risk_max}")
+    dpath = path_from_home_directory(f"test/graphs/graph_search_static_{risk_max}")
 
     tppdf = [ppdf.pdf_at(x_grid, y_grid)] * steps
     plan_and_visualize(pos_start, pos_goal, tppdf, (x_grid, y_grid), risk_max, dpath=dpath)
@@ -52,7 +53,7 @@ def visualize_planninggraphsearch_static():
 def visualize_planninggraphsearch_dynamic_001():
     pos_start, pos_goal = np.array([-5, 0]), np.array([7, 0])
     risk_max, thorizon = 0.01, 20
-    dpath = path_from_home_directory(f"test/cache/graph_search_dynamic_001")
+    dpath = path_from_home_directory(f"test/graphs/graph_search_dynamic_001")
 
     plan_env_and_visualize(pos_start, pos_goal, thorizon, risk_max, dpath)
 
@@ -60,7 +61,7 @@ def visualize_planninggraphsearch_dynamic_001():
 def visualize_planninggraphsearch_dynamic_010():
     pos_start, pos_goal = np.array([-5, 0]), np.array([7, 0])
     risk_max, thorizon = 0.1, 20
-    dpath = path_from_home_directory(f"test/cache/graph_search_dynamic_010")
+    dpath = path_from_home_directory(f"test/graphs/graph_search_dynamic_010")
 
     plan_env_and_visualize(pos_start, pos_goal, thorizon, risk_max, dpath)
 
@@ -68,7 +69,7 @@ def visualize_planninggraphsearch_dynamic_010():
 def visualize_planninggraphsearch_dynamic_100():
     pos_start, pos_goal = np.array([-5, 0]), np.array([7, 0])
     risk_max, thorizon = 1.0, 20
-    dpath = path_from_home_directory(f"test/cache/graph_search_dynamic_100")
+    dpath = path_from_home_directory(f"test/graphs/graph_search_dynamic_100")
 
     plan_env_and_visualize(pos_start, pos_goal, thorizon, risk_max, dpath)
 
