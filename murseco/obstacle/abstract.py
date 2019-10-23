@@ -37,7 +37,7 @@ class DTVObstacle(JSONSerializer):
         """Given the obstacles history (trajectory) determine the pdf of the next velocity by mode."""
         return self._history.copy() if history is None else history
 
-    def ppdf(self, thorizon: int, num_samples_per_mode: int = 50, mproc: bool = True) -> List[GMM2D]:
+    def tppdf(self, thorizon: int, num_samples_per_mode: int = 50, mproc: bool = True) -> List[GMM2D]:
         """Build position probability density function by sampling trajectories for each mode and summarize
         them with a single gaussian distribution for each mode and time-step, given the objects history.
         Assumption: Covariance is estimated as diagonal matrix, i.e. sigma_xy = 0, for computational reasons.
@@ -47,14 +47,14 @@ class DTVObstacle(JSONSerializer):
         :argument mproc: run in multiprocessing (8 processes).
         :returns array of future position pdf as GMM2D for each time-step.
         """
-        logging.debug("ppdf -> Sampling trajectories")
+        logging.debug(f"{self.name}: sampling trajectories")
         mus, covariances = np.zeros((self.num_modes, thorizon, 2)), np.zeros((self.num_modes, thorizon, 2))
         for m in range(self.num_modes):
             trajectories_mode = self.trajectory_samples(thorizon, num_samples_per_mode, mode=m, mproc=mproc)
             mus[m, :, :] = np.mean(trajectories_mode, axis=0)
             covariances[m, :, :] = np.std(trajectories_mode, axis=0)
 
-        logging.debug("ppdf -> Build GMM2D models")
+        logging.debug(f"{self.name}: build gmm2d models")
         ppdf = []
         for t in range(thorizon):
             gmm_mus = np.reshape(mus[:, t, :], (self.num_modes, 2))
@@ -62,7 +62,7 @@ class DTVObstacle(JSONSerializer):
             gmm_cov = np.array([np.diag(covariances[m, t, :]) + np.eye(2) * 1e-6 for m in range(self.num_modes)])
             weights = np.ones(self.num_modes)
             ppdf.append(GMM2D(gmm_mus, gmm_cov, weights))
-        logging.debug("ppdf -> done")
+        logging.debug(f"{self.name}: ppdf done")
         return ppdf
 
     def trajectory_samples(self, thorizon: int, num_samples: int, mode: int = None, mproc: bool = True) -> np.ndarray:

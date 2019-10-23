@@ -18,7 +18,7 @@ def test_environment_identifier():
 
 
 def test_environment_json():
-    env_1 = Environment((-10, 10), (-10, 10), thorizon=4)
+    env_1 = Environment((-10, 10), (-10, 10))
     env_1.add_obstacle(SingleModeDTVObstacle, history=np.array([1.4, 4.2]))
     env_1.add_obstacle(SingleModeDTVObstacle, history=np.array([5.4, -2.94]))
     env_1.add_robot(IntegratorDTRobot, position=np.array([1.31, 4.3]))
@@ -30,9 +30,9 @@ def test_environment_json():
 
 
 def visualize_environment_scenario_scenario_samples():
-    env = murseco.environment.scenarios.double_two_mode(thorizon=10)
+    env = murseco.environment.scenarios.double_two_mode()
 
-    otrajectory_samples = env.generate_trajectory_samples()
+    otrajectory_samples = env.generate_trajectory_samples(mproc=False)
     ohistories = [o.history for o in env.obstacles]
     ocolors = [o.color for o in env.obstacles]
 
@@ -41,7 +41,7 @@ def visualize_environment_scenario_scenario_samples():
 
 
 def visualize_environment_tppdf():
-    env = murseco.environment.scenarios.double_two_mode(thorizon=20)
+    env = murseco.environment.scenarios.double_two_mode()
     robot_pinit = np.array([-5, 0])
     env.add_robot(IntegratorDTRobot, position=robot_pinit)
 

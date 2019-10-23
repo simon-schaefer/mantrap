@@ -14,13 +14,9 @@ class IntegratorDTRobot(DTRobot):
     :argument policy: series of actions for the planning horizon (optional).
     """
 
-    def __init__(self, position: np.ndarray = np.zeros(2), thorizon: int = 10, policy: np.ndarray = None, **kwargs):
+    def __init__(self, position: np.ndarray = np.zeros(2), **kwargs):
         kwargs.update({"name": "robot/integrator/IntegratorDTRobot"})
-        super(IntegratorDTRobot, self).__init__(position, thorizon, policy, **kwargs)
-
-    def update_policy(self, tppdf: List[np.ndarray]):
-        super(IntegratorDTRobot, self).update_policy(tppdf)
-        return np.zeros((self.planning_horizon, 2))
+        super(IntegratorDTRobot, self).__init__(position, **kwargs)
 
     def dynamics(self, action: np.ndarray, state: np.ndarray = None) -> np.ndarray:
         assert action.size == 2, "action is two-dimensional position change for integrator robot"

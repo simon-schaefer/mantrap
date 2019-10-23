@@ -127,7 +127,7 @@ class GMM2D(Distribution2D):
         kwargs.update({"name": "utility/stats/GMM2D"})
         super(GMM2D, self).__init__(**kwargs)
 
-        mus = mus.squeeze() if len(mus.shape) > 2 else mus  # prevent e.g. mus.shape = (1, 4, 2) but (1, 2)
+        mus = mus.squeeze() if len(mus.shape) > 2 else mus  # prevent e.g. mus.shape = (1, 4, 2) but (4, 2)
         sigmas = sigmas.squeeze() if len(sigmas.shape) > 3 else sigmas
         weights = weights.squeeze() if len(weights.shape) > 1 else weights
 

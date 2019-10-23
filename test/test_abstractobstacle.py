@@ -47,7 +47,7 @@ def test_abstractobstacle_trajectory(direction: np.ndarray):
 def test_abstractobstacle_ppdf(direction: np.ndarray):
     pinit, thorizon = np.zeros(2), 4
     obstacle = AbstractDTVObstacle(history=pinit, direction=direction)
-    ppdf = obstacle.ppdf(thorizon)
+    ppdf = obstacle.tppdf(thorizon)
     for t in range(thorizon):
         mu_expected = pinit + direction * t
         mu_ppdf = ppdf[t].gaussians[0].mu
