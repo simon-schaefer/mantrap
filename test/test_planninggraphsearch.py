@@ -1,75 +1,75 @@
-from typing import List, Tuple
-
 import numpy as np
 import pytest
 
 import murseco.environment.scenarios
+from murseco.environment import Environment
 from murseco.planning import time_expanded_graph_search
+from murseco.problem import D2TSProblem
+from murseco.obstacle import SingleModeDTVObstacle, StaticDTVObstacle
+from murseco.robot import IntegratorDTRobot
 from murseco.utility.io import path_from_home_directory
-from murseco.utility.stats import Gaussian2D, GMM2D
 from murseco.utility.visualization import plot_tppdf_trajectory
 
 
 @pytest.mark.parametrize("risk_max", [0.0001])
 def test_planninggraphsearch_static_none(risk_max: float):
-    ppdf = Gaussian2D(np.array([0, 0]), np.eye(2))
-    x_grid, y_grid = np.meshgrid(np.linspace(-10, 10, 100), np.linspace(-10, 10, 100))
-    tppdf = [ppdf.pdf_at(x_grid, y_grid)] * 20
     pos_start, pos_goal = np.array([0.001, -0.05]), np.array([9, 9])
-    trajectory, _ = time_expanded_graph_search(pos_start, pos_goal, tppdf, (x_grid, y_grid), risk_max)
+
+    env = Environment()
+    env.add_obstacle(SingleModeDTVObstacle, history=np.array([0, 0]), mu=np.array([0, 0]), covariance=np.eye(2))
+    env.add_robot(IntegratorDTRobot, position=pos_start)
+    problem = D2TSProblem(env, x_goal=pos_goal)
+    trajectory, _ = time_expanded_graph_search(problem)
     assert trajectory is None
 
 
-def plan_and_visualize(pos_start: np.ndarray, pos_goal: np.ndarray, tppdf: List[np.ndarray], meshgrid: Tuple[np.ndarray, np.ndarray], risk_max: float, dpath: str):
-    x_grid, y_grid = meshgrid
-    trajectory, acc_risks = time_expanded_graph_search(pos_start, pos_goal, tppdf, meshgrid, risk_max)
+def plan_and_visualize(env: Environment, pos_goal: np.ndarray, risk_max: float, thorizon: int, dpath: str):
+    problem = D2TSProblem(env, x_goal=pos_goal, risk_max=risk_max, thorizon=thorizon, mproc=False, grid_resolution=0.05)
+    trajectory, acc_risks = time_expanded_graph_search(problem)
 
     assert acc_risks[-1] <= risk_max
-    assert trajectory.shape[0] <= len(tppdf)
-    assert np.isclose(np.linalg.norm(trajectory[0, :] - pos_start), 0)
-    assert np.isclose(np.linalg.norm(trajectory[-1, :] - pos_goal), 0)
+    assert trajectory.shape[0] <= problem.params.thorizon
+    assert np.isclose(np.linalg.norm(trajectory[0, :] - problem.x_start_goal[0]), 0)
+    assert np.isclose(np.linalg.norm(trajectory[-1, :] - problem.x_start_goal[1]), 0)
 
+    tppdf, (x_grid, y_grid) = problem.grid
     titles = [f"acc. risk = {risk:.5f}" for risk in acc_risks]
     plot_tppdf_trajectory(tppdf, (x_grid, y_grid), dpath=dpath, rtrajectory=trajectory, titles=titles)
 
 
-def plan_env_and_visualize(pos_start: np.ndarray, pos_goal: np.ndarray, thorizon: int, risk_max: float, dpath: str):
-    env = murseco.environment.scenarios.vertical_fast(thorizon=thorizon)
-    tppdf, (x_grid, y_grid) = env.tppdf(num_points=200, mproc=False)
-
-    plan_and_visualize(pos_start, pos_goal, tppdf, (x_grid, y_grid), risk_max, dpath=dpath)
-
-
 def visualize_planninggraphsearch_static():
-    steps, grid_size, pos_start, pos_goal, risk_max = 20, 100, np.array([-5, -2]), np.array([7.0, 3.0]), 0.005
-    ppdf = GMM2D(np.array([[3.8, -1], [-3, 3]]), np.array([np.eye(2) * 1.0, np.eye(2) * 2.2]), weights=np.ones(2))
-    x_grid, y_grid = np.meshgrid(np.linspace(-10, 10, grid_size), np.linspace(-10, 10, grid_size))
+    steps, pos_start, pos_goal, risk_max = 20, np.array([-5, -2]), np.array([7.0, 3.0]), 0.005
     dpath = path_from_home_directory(f"test/graphs/graph_search_static_{risk_max}")
 
-    tppdf = [ppdf.pdf_at(x_grid, y_grid)] * steps
-    plan_and_visualize(pos_start, pos_goal, tppdf, (x_grid, y_grid), risk_max, dpath=dpath)
+    env = Environment()
+    env.add_obstacle(StaticDTVObstacle, mu=np.array([3.8, -1]), covariance=np.eye(2))
+    env.add_obstacle(StaticDTVObstacle, mu=np.array([-3, 3]), covariance=np.eye(2) * 2.2)
+    env.add_robot(IntegratorDTRobot, position=pos_start)
+    plan_and_visualize(env, pos_goal, risk_max=risk_max, thorizon=steps, dpath=dpath)
 
 
 def visualize_planninggraphsearch_dynamic_001():
     pos_start, pos_goal = np.array([-5, 0]), np.array([7, 0])
-    risk_max, thorizon = 0.01, 20
     dpath = path_from_home_directory(f"test/graphs/graph_search_dynamic_001")
+    env = murseco.environment.scenarios.vertical_fast()
+    env.add_robot(IntegratorDTRobot, position=pos_start)
 
-    plan_env_and_visualize(pos_start, pos_goal, thorizon, risk_max, dpath)
+    plan_and_visualize(env, pos_goal, risk_max=0.01, thorizon=20, dpath=dpath)
 
 
 def visualize_planninggraphsearch_dynamic_010():
     pos_start, pos_goal = np.array([-5, 0]), np.array([7, 0])
-    risk_max, thorizon = 0.1, 20
     dpath = path_from_home_directory(f"test/graphs/graph_search_dynamic_010")
+    env = murseco.environment.scenarios.vertical_fast()
+    env.add_robot(IntegratorDTRobot, position=pos_start)
 
-    plan_env_and_visualize(pos_start, pos_goal, thorizon, risk_max, dpath)
+    plan_and_visualize(env, pos_goal, risk_max=0.1, thorizon=20, dpath=dpath)
 
 
 def visualize_planninggraphsearch_dynamic_100():
     pos_start, pos_goal = np.array([-5, 0]), np.array([7, 0])
-    risk_max, thorizon = 1.0, 20
     dpath = path_from_home_directory(f"test/graphs/graph_search_dynamic_100")
+    env = murseco.environment.scenarios.vertical_fast()
+    env.add_robot(IntegratorDTRobot, position=pos_start)
 
-    plan_env_and_visualize(pos_start, pos_goal, thorizon, risk_max, dpath)
-
+    plan_and_visualize(env, pos_goal, risk_max=1.0, thorizon=20, dpath=dpath)
