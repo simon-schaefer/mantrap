@@ -17,3 +17,14 @@ def random_string(length: int = 5) -> str:
 def cardinal_directions() -> np.ndarray:
     """Return cardinal directions as unit vectors in (4, 2) array."""
     return np.array([[1, 0], [0, 1], [-1, 0], [0, -1]])
+
+
+class DictObject:
+    """Convert dictionary to class object in order to access dictionary values as attribues, e.g.
+    >> d = {"a": 5, "i": 10}
+    >> do = DictObject(d)
+    >> d.a # 5
+    """
+
+    def __init__(self, dictionary):
+        self.__dict__ = dictionary

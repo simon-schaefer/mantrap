@@ -92,7 +92,7 @@ def plot_tppdf_trajectory(
     meshgrid: Tuple[np.ndarray, np.ndarray],
     dpath: str,
     rtrajectory: Union[np.ndarray, None] = None,
-    titles: Union[List[str], None] = None
+    titles: Union[List[str], None] = None,
 ):
     """Plot pdf in position space in meshgrid and (optionally) the robot's trajectory over the full time horizon,
     plotting one plot per time-step.

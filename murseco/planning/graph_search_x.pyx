@@ -1,15 +1,10 @@
-"""Create time-expanded graph from temporal-position-based pdf as well as costs function and search for shortest
-path from initial to final position.
-A time-expanded graph consists of sub-graphs, one graph for each time step (time horizon is inferred from the
-length of the tppdf), so each grid cell is associated with one node in each sub-graph. Edges can merely go
-forward in time. In order to reduce the number of edges, for scalability, the input is constrained to be smaller
-than u_max (L2-norm).
-For shortest path search the Dijkstra algorithm is used. However storing all costs and node status in array would not 
-be scalable to a large number of nodes (e.g. for a 100x100 grid, 20 time-steps the usually utilised adjacency 
-representation of the graph would use roughly 300 GB of memory, using floats). Therefore it is exploited that the 
-edges can only go forward in time, so that the resulting graph is in fact a tree structure, i.e. the leafs that are 
-expanded from node n1(t = t*) do not have any edges to another node n2(t = t*). Nodes can therefore not be revisited, 
-therefore there is no need to store a list containing the node's status (!).
+"""Cython implementation of algorithm described in graph_search.py.
+Cython basically is a C-extension of Python, thus it has to be compiled to a static library before running it.
+Using Cython especially decreases the runtime of for loops (or of handling list structures in general), which very
+frequently occur while dealing with graphs. For further information/baselines:
+https://medium.com/@mindfiresolutions.usa/difference-between-python-and-cython-8733fb577d52
+https://smerity.com/articles/2018/cython_for_high_and_low.html
+https://notes-on-cython.readthedocs.io/en/latest/fibo_speed.html
 """
 
 
@@ -37,12 +32,12 @@ cdef coord3index(int ix, int iy, int t, int x_size, int y_size):
     return t * x_size * x_size + iy * x_size + ix
 
 
-cdef dynamics(float x, float y, float ux, float uy):
+cdef dynamics_integrator(float x, float y, float ux, float uy):
     return x + ux, y + uy
 
 
-cdef cost(float x, float y, float xg, float yg, float ux, float uy):
-    return (x - xg) * (x - xg) + (y - yg) * (y - yg) + ux * ux + uy * uy
+cdef cost_integrator(float x, float y, float xg, float yg, float ux, float uy, float w_x, float w_u):
+    return w_x * ((x - xg) * (x - xg) + (y - yg) * (y - yg)) + w_u * (ux * ux + uy * uy)
 
 
 cdef class Node:
@@ -76,6 +71,8 @@ cdef dijkstra_constrained(
     int thorizon,
     float risk_max,
     float u_max,
+    float w_x,
+    float w_u,
     float u_resolution
 ):
     cdef int x_grid_size = x_grid_dimension
@@ -111,8 +108,10 @@ cdef dijkstra_constrained(
         # for ux from 0 <= ux <= u_delta_x:
         for ux from +1 <= ux <= u_delta:
             for uy from -u_delta <= uy <= u_delta:
-                x_next, y_next = dynamics(node.x, node.y, ux * u_resolution, uy * u_resolution)
-                cost_next = node.cost + cost(node.x, node.y, x_goal, y_goal, ux * u_resolution , uy * u_resolution)
+                u_xm = ux * u_resolution
+                u_ym = uy * u_resolution
+                x_next, y_next = dynamics_integrator(node.x, node.y, u_xm, u_ym)
+                cost_next = node.cost + cost_integrator(node.x, node.y, x_goal, y_goal, u_xm, u_ym, w_x, w_u)
                 ix_next, iy_next = cont2discrete(x_next, y_next, grid_data)
                 pdf_next = node.pdf + tppdf[<int>coord3index(ix_next, iy_next, node.t, x_grid_size, y_grid_size)]
                 node_next = Node(x_next, y_next, cost_next, pdf_next, node.t + 1, node)
@@ -148,10 +147,10 @@ cdef dijkstra_constrained(
 
 def time_expanded_graph_search(float[:] pos_start, float[:] pos_goal, float[:] tppdf, float[:] x_grid, float[:] y_grid,
                                int x_grid_dimension, int y_grid_dimension, int thorizon,
-                               float risk_max, float u_max, float u_resolution
+                               float risk_max, float u_max, float w_x, float w_u, float u_resolution
 ):
     trajectory, risk_sum = dijkstra_constrained(pos_start[0], pos_start[1], pos_goal[0], pos_goal[1], tppdf,
                                                 x_grid, y_grid, x_grid_dimension, y_grid_dimension, thorizon,
-                                                risk_max, u_max, u_resolution
+                                                risk_max, u_max, w_x, w_u, u_resolution
     )
     return trajectory, risk_sum

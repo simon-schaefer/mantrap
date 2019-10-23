@@ -12,7 +12,7 @@ class SingleModeDTVObstacle(DTVObstacle):
 
     :argument history: initial 2D position of obstacle (2,) or history of previous positions (n, 2).
     :argument mu: mean vector for velocity gaussian (2,) [m/s].
-    :argument: sigma: covariance matrices for velocity gaussian (2, 2).
+    :argument: covariance: covariance matrices for velocity gaussian (2, 2).
     """
 
     def __init__(

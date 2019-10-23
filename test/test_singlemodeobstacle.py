@@ -2,7 +2,7 @@ import numpy as np
 
 from murseco.obstacle import SingleModeDTVObstacle
 from murseco.utility.array import rand_invsymmpos
-import murseco.utility.io
+from murseco.utility.io import path_from_home_directory
 
 
 def test_singlemodeobstacle_iid():
@@ -16,7 +16,7 @@ def test_singlemodeobstacle_iid():
 
 def test_singlemodeobstacle_json():
     obstacle_1 = SingleModeDTVObstacle(history=np.zeros(2), covariance=rand_invsymmpos(2, 2))
-    cache_path = murseco.utility.io.path_from_home_directory("test/cache/singlemodeobstacle_test.json")
+    cache_path = path_from_home_directory("test/cache/singlemodeobstacle_test.json")
     obstacle_1.to_json(cache_path)
     obstacle_2 = SingleModeDTVObstacle.from_json(cache_path)
     assert obstacle_1.summary() == obstacle_2.summary()

@@ -4,9 +4,9 @@ from murseco.environment import Environment
 from murseco.obstacle import AngularDTVObstacle, SingleModeDTVObstacle
 
 
-def vertical_fast(thorizon: int = 20, dt: float = 1.0) -> Environment:
+def vertical_fast(dt: float = 1.0) -> Environment:
     env_xaxis, env_yaxis = (-10, 10), (-10, 10)
-    env = Environment(env_xaxis, env_yaxis, thorizon=thorizon, dt=dt)
+    env = Environment(env_xaxis, env_yaxis, dt=dt)
 
     obs_position = np.array([2, -10])
     obs_mu = np.array([[0.0, 1.9]])
@@ -35,9 +35,9 @@ def vertical_fast(thorizon: int = 20, dt: float = 1.0) -> Environment:
     return env
 
 
-def double_two_mode(thorizon: int = 20, dt: float = 1.0) -> Environment:
+def double_two_mode(dt: float = 1.0) -> Environment:
     env_xaxis, env_yaxis = (-10, 10), (-10, 10)
-    env = Environment(env_xaxis, env_yaxis, thorizon=thorizon, dt=dt)
+    env = Environment(env_xaxis, env_yaxis, dt=dt)
 
     obs_1_pinit = np.array([5, -5])
     obs_1_vmu = np.array([0, 1])

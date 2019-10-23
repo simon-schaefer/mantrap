@@ -11,13 +11,12 @@ from murseco.utility.io import JSONSerializer
 class Environment(JSONSerializer):
     def __init__(
         self,
-        xaxis: Tuple[float, float],
-        yaxis: Tuple[float, float],
+        xaxis: Tuple[float, float] = (-10, 10),
+        yaxis: Tuple[float, float] = (-10, 10),
         dt: float = 1.0,
-        thorizon: int = 20,
         obstacles: List[DTVObstacle] = None,
         robot: DTRobot = None,
-        **kwargs
+        **kwargs,
     ):
         kwargs.update({"name": "environment/environment/Environment", "is_unique": False})
         super(Environment, self).__init__(**kwargs)
@@ -29,48 +28,53 @@ class Environment(JSONSerializer):
         self.yaxis = tuple(yaxis)
         self._obstacles = [] if obstacles is None else obstacles
         self._robot = robot
-        self._thorizon = thorizon
         self._dt = dt
 
-    def tppdf(self, num_points: int = 1000, mproc: bool = True) -> Tuple[List[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    def tppdf(
+        self, thorizon: int = 20, num_points: int = 1000, mproc: bool = True
+    ) -> Tuple[List[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """Determine pdf of obstacles in position space over full (discrete) time-horizon.
         Therefore at first determine for each obstacle the pdf in position space (ppdf) over the full time horizon
         and afterwards for each time-step sum the pdf over all obstacles to one overall pdf. While the ppdf of
         each obstacle and time-step is stored at "general" distribution (i.e. Gaussian2D) at first, for summation
         the pdf is evaluated at each point of a grid (2D numpy linspace).
 
+        :argument thorizon: number of time-steps to forward simulate i.e. number of ppdf instances.
         :argument num_points: number of resolution points for grid sampling for each axis.
         :argument mproc: run in multiprocessing (8 processes).
         :returns overall pdf in position space for each time-step in meshgrid, (x, y) meshgrid
         """
-        tppdfs = [o.ppdf(self.thorizon, mproc=mproc) for o in self.obstacles]
-        logging.debug(f"determined analytical tppdf distribution")
+        tppdfs = [o.tppdf(thorizon, mproc=mproc) for o in self.obstacles]
+        logging.debug(f"{self.name}: determined analytical tppdf distribution")
 
         num_points = int(num_points)
         x_min, x_max, y_min, y_max = self.xaxis[0], self.xaxis[1], self.yaxis[0], self.yaxis[1]
         x, y = np.meshgrid(np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points))
 
-        tppdfs_overall = [sum([tppdfs[i][t].pdf_at(x, y) for i in range(len(tppdfs))]) for t in range(self.thorizon)]
-        logging.debug(f"determined grid tppdf distribution")
+        tppdfs_overall = [sum([tppdfs[i][t].pdf_at(x, y) for i in range(len(tppdfs))]) for t in range(thorizon)]
+        logging.debug(f"{self.name}: determined grid tppdf distribution")
         return tppdfs_overall, (x, y)
 
-    def generate_trajectory_samples(self, num_samples_per_mode: int = 5, mproc: bool = True) -> List[np.ndarray]:
+    def generate_trajectory_samples(
+        self, thorizon: int = 20, num_samples_per_mode: int = 5, mproc: bool = True
+    ) -> List[np.ndarray]:
         """Generate trajectory samples for each obstacle in the environment, split by the obstacle's mode.
         Therefore for each obstacle create N = num_samples_per_mode trajectories in each mode, by calling the obstacles
         `trajectory_samples` with some mode, ending up in an array (num_modes, N, time-horizon, 2) per obstacle.
 
+        :argument thorizon: number of time-steps i.e. length of trajectory.
         :argument num_samples_per_mode: number of trajectories to sample (per mode).
         :argument mproc: run in multiprocessing (8 processes).
         :returns trajectories for every mode for every obstacle in the environment
         """
         samples = []
         for obstacle in self.obstacles:
-            obstacle_samples = np.zeros((obstacle.num_modes, num_samples_per_mode, self.thorizon, 2))
+            obstacle_samples = np.zeros((obstacle.num_modes, num_samples_per_mode, thorizon, 2))
             for m in range(obstacle.num_modes):
-                mode_samples = obstacle.trajectory_samples(self.thorizon, num_samples_per_mode, mode=m, mproc=mproc)
+                mode_samples = obstacle.trajectory_samples(thorizon, num_samples_per_mode, mode=m, mproc=mproc)
                 obstacle_samples[m, :, :, :] = mode_samples
             samples.append(obstacle_samples)
-        logging.debug(f"generated {len(samples)} trajectory samples")
+        logging.debug(f"{self.name}: generated {len(samples)} trajectory samples")
         return samples
 
     def add_obstacle(self, obstacle_object, **obstacle_kwargs):
@@ -79,11 +83,7 @@ class Environment(JSONSerializer):
 
     def add_robot(self, robot_object, **robot_kwargs):
         assert self._robot is None, "just one robot possible in environment"
-        self._robot = robot_object(thorizon=self._thorizon, **robot_kwargs)
-
-    @property
-    def thorizon(self) -> int:
-        return self._thorizon
+        self._robot = robot_object(**robot_kwargs)
 
     @property
     def obstacles(self) -> List[DTVObstacle]:

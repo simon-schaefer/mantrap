@@ -1,18 +1,14 @@
-from typing import List, Tuple, Union
+from typing import Tuple, Union
 
+import logging
 import numpy as np
 
+from murseco.problem import D2TSProblem
 import murseco.planning.graph_search_x
 
 
 def time_expanded_graph_search(
-    pos_start: np.ndarray,
-    pos_goal: np.ndarray,
-    tppdf: List[np.ndarray],
-    meshgrid: Tuple[np.ndarray, np.ndarray],
-    risk_max: float,
-    u_max: float = 1.0,
-    u_resolution: float = 1.0,
+    problem: D2TSProblem, u_resolution: float = 1.0
 ) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
     """Create time-expanded graph from temporal-position-based pdf as well as costs function and search for shortest
     path from initial to final position.
@@ -27,31 +23,33 @@ def time_expanded_graph_search(
     expanded from node n1(t = t*) do not have any edges to another node n2(t = t*). Nodes can therefore not be revisited,
     therefore there is no need to store a list containing the node's status (!).
 
-    :argument pos_start: start position of agent (2,).
-    :argument pos_goal: goal position of agent (2,).
-    :argument tppdf: list of overall obstacle probability density functions (time-steps, x_grid, y_grid).
-    :argument meshgrid: (x, y) coordinate meshgrid (which the tppdf is based on).
-    :argument risk_max: maximal accumulated (i.e. summed over time) risk.
-    :argument u_max: maximal L2-norm of input in one time-step [m].
+    :argument problem: temporally and spatial discrete problem formulation.
     :argument u_resolution: resolution of input as L2-norm [m].
     :returns optimal trajectory and accumulated risk at every step, up to step t, (or None if no trajectory found)
     """
-    assert u_max % u_resolution == 0, "u_max must be evenly dividable by its resolution"
-    assert risk_max > 0, "accumulated risk must be positive"
+    assert problem.params.u_max % u_resolution == 0, "u_max must be evenly dividable by its resolution"
+    assert problem.params.risk_max > 0, "accumulated risk must be positive"
 
+    x_start, x_goal = problem.x_start_goal
+    tppdf, (x_grid, y_grid) = problem.grid
+
+    logging.debug("starting D2TS time-expanded graph search")
     trajectory, risks_accumulated = murseco.planning.graph_search_x.time_expanded_graph_search(
-        pos_start.flatten().astype(np.float32),
-        pos_goal.flatten().astype(np.float32),
+        x_start.flatten().astype(np.float32),
+        x_goal.flatten().astype(np.float32),
         np.array(tppdf).flatten().astype(np.float32),
-        meshgrid[0].flatten().astype(np.float32),
-        meshgrid[0].flatten().astype(np.float32),
-        meshgrid[0].shape[1],
-        meshgrid[1].shape[0],
-        len(tppdf),
-        risk_max,
-        u_max,
+        x_grid.flatten().astype(np.float32),
+        y_grid.flatten().astype(np.float32),
+        x_grid.shape[1],
+        y_grid.shape[0],
+        problem.params.thorizon,
+        problem.params.risk_max,
+        problem.params.u_max,
+        problem.params.w_x,
+        problem.params.w_u,
         u_resolution,
     )
+    logging.debug(f"found D2TS time-expanded graph search solution ? {trajectory is not None}")
 
     if trajectory is None:
         return None, None
