@@ -5,7 +5,7 @@ from murseco.utility.array import rand_inv_pos_symmetric_matrix
 from murseco.utility.io import path_from_home_directory
 
 
-def test_staticobstacle_ppdf():
+def test_ppdf():
     np.random.seed(0)
     mu, cov = np.random.rand(2), np.abs(np.diag(np.random.rand(2)))
     obstacle = StaticDTVObstacle(mu=mu, covariance=cov)
@@ -19,7 +19,7 @@ def test_staticobstacle_ppdf():
         assert np.isclose(np.linalg.norm(cov_y - np.sqrt(cov[1, 1])), 0, atol=0.1)
 
 
-def test_staticobstacle_samples():
+def test_samples():
     np.random.seed(0)
     mu, cov = np.random.rand(2), np.eye(2)
     obstacle = StaticDTVObstacle(mu=mu, covariance=cov)
@@ -30,7 +30,7 @@ def test_staticobstacle_samples():
     assert np.isclose(np.linalg.norm(np.array([mean_x, mean_y]) - mu), 0, atol=0.1)
 
 
-def test_staticobstacle_json():
+def test_json():
     obstacle_1 = StaticDTVObstacle(mu=np.zeros(2), covariance=rand_inv_pos_symmetric_matrix(2, 2))
     cache_path = path_from_home_directory("test/cache/staticobstacle_test.json")
     obstacle_1.to_json(cache_path)

@@ -9,7 +9,7 @@ from murseco.utility.io import path_from_home_directory
 from murseco.utility.visualization import plot_trajectory_samples, plot_tppdf_trajectory
 
 
-def test_environment_identifier():
+def test_identifier():
     env = Environment((0, 10), (0, 10))
     for i in range(10):
         env.add_obstacle(SingleModeDTVObstacle, covariance=rand_inv_pos_symmetric_matrix(2, 2))
@@ -17,7 +17,7 @@ def test_environment_identifier():
     assert len(np.unique(identifiers)) == 10
 
 
-def test_environment_json():
+def test_json():
     env_1 = Environment((-10, 10), (-10, 10))
     env_1.add_obstacle(SingleModeDTVObstacle, history=np.array([1.4, 4.2]))
     env_1.add_obstacle(SingleModeDTVObstacle, history=np.array([5.4, -2.94]))

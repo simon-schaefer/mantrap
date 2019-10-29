@@ -7,7 +7,7 @@ from murseco.utility.array import rand_inv_pos_symmetric_matrix
 from murseco.utility.io import path_from_home_directory
 
 
-def test_angularobstacle_initialization():
+def test_initialization():
     pinit = np.array([1, 0])
     obstacle = AngularDTVObstacle(
         pinit, mus=np.zeros((3, 2)), covariances=rand_inv_pos_symmetric_matrix(3, 2, 2), weights=np.ones(3)
@@ -28,7 +28,7 @@ def test_angularobstacle_initialization():
         (np.zeros(2), rand_inv_pos_symmetric_matrix(2, 2), np.ones(1)),
     ],
 )
-def test_angularobstacle_pdf(mus: np.ndarray, covariances: np.ndarray, weights: np.ndarray):
+def test_pdf(mus: np.ndarray, covariances: np.ndarray, weights: np.ndarray):
     np.random.seed(0)
     obstacle = AngularDTVObstacle(mus=mus, covariances=covariances, weights=weights)
     samples = obstacle.vpdf().sample(3000)
@@ -37,7 +37,7 @@ def test_angularobstacle_pdf(mus: np.ndarray, covariances: np.ndarray, weights: 
     assert np.isclose(np.linalg.norm(np.sort(center, axis=0) - np.sort(center_expected, axis=0)), 0, atol=0.1)
 
 
-def test_angularobstacle_json():
+def test_json():
     pinit, mus, covariances, weights = (
         np.zeros(2),
         np.random.rand(3, 2),

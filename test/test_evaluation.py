@@ -26,13 +26,13 @@ def pseudo_planner(
     return trajectory, risks
 
 
-def test_evaluation_runtime():
+def test_runtime():
     evaluation = murseco.evaluation.Evaluation(PseudoProblem(), pseudo_planner, runtime=0.005, reuse_results=False)
     runtime_mean = evaluation.results_mean[murseco.evaluation.COL_RUNTIME_MS]
     assert np.isclose(runtime_mean, 5, atol=2.0)
 
 
-def test_evaluation():
+def test_d2ts_problem():
     np.random.seed(0)
     env = Environment()
     env.add_obstacle(StaticDTVObstacle, mu=np.array([0, 0]), covariance=np.eye(2) * 0.01)
@@ -59,7 +59,7 @@ def test_evaluation():
         (np.reshape(np.vstack((np.linspace(-6, 4, num=20), np.zeros(20))).T, (1, 20, 2)), False),
     ],
 )
-def test_evaluation_risk_standalone(obstacle_trajectories: np.ndarray, flag: bool):
+def test_risk_standalone(obstacle_trajectories: np.ndarray, flag: bool):
     thorizon = 20
     robot_trajectory = np.vstack((np.linspace(-5, 5, num=thorizon), np.zeros(thorizon))).T
 
@@ -76,6 +76,6 @@ def test_evaluation_risk_standalone(obstacle_trajectories: np.ndarray, flag: boo
         (np.zeros((20, 2)), np.ones(2), None)
     ],
 )
-def test_evaluation_number_of_steps_standalone(trajectory: np.ndarray, x_goal: np.ndarray, num_steps: Union[int, None]):
+def test_number_of_steps_standalone(trajectory: np.ndarray, x_goal: np.ndarray, num_steps: Union[int, None]):
     number_of_steps = murseco.evaluation.Evaluation.number_of_steps(trajectory, x_goal)
     assert number_of_steps == num_steps

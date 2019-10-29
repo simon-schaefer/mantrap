@@ -5,7 +5,7 @@ from murseco.utility.array import rand_inv_pos_symmetric_matrix
 from murseco.utility.io import path_from_home_directory
 
 
-def test_singlemodeobstacle_iid():
+def test_iid():
     obstacle = SingleModeDTVObstacle(covariance=rand_inv_pos_symmetric_matrix(2, 2))
     history_1, history_2 = np.random.rand(2, 2), np.random.rand(5, 2)
     history_1[-1, :] = history_2[-1, :]  # last position must be equivalent for mean
@@ -14,7 +14,7 @@ def test_singlemodeobstacle_iid():
     assert pdf_1.summary() == pdf_2.summary()
 
 
-def test_singlemodeobstacle_json():
+def test_json():
     obstacle_1 = SingleModeDTVObstacle(history=np.zeros(2), covariance=rand_inv_pos_symmetric_matrix(2, 2))
     cache_path = path_from_home_directory("test/cache/singlemodeobstacle_test.json")
     obstacle_1.to_json(cache_path)

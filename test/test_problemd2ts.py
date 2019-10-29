@@ -9,13 +9,13 @@ from murseco.utility.io import path_from_home_directory
 
 
 @pytest.mark.xfail(raises=AssertionError)
-def test_problemd2ts_assert():
+def test_assert():
     env = Environment(xaxis=(-10, 10), yaxis=(-10, 10))
     env.add_robot(IntegratorDTRobot, position=np.array([25, 8]))
     D2TSProblem(env, x_goal=np.array([10, 10]))
 
 
-def test_problemd2ts_json():
+def test_json():
     # env = murseco.environment.scenarios.double_two_mode()
     env = Environment()
     env.add_robot(IntegratorDTRobot)

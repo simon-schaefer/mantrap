@@ -26,7 +26,7 @@ def plan_and_visualize(env: Environment, pos_goal: np.ndarray, risk_max: float, 
 
 
 @pytest.mark.parametrize("risk_max, thorizon", [(0.005, 20)])
-def test_planninggraphsearch_static_none(risk_max: float, thorizon: int):
+def test_static_none(risk_max: float, thorizon: int):
     pos_start, pos_goal = np.array([-5, -2]), np.array([7.0, 3.0])
 
     env = Environment()
