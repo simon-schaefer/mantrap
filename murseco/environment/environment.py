@@ -88,6 +88,10 @@ class Environment(JSONSerializer):
     def robot(self) -> Union[None, DTRobot]:
         return self._robot
 
+    @property
+    def dt(self) -> float:
+        return self._dt
+
     def summary(self) -> Dict[str, Any]:
         summary = super(Environment, self).summary()
         obstacles = [o.summary() for o in self._obstacles]

@@ -12,6 +12,7 @@ from murseco.utility.array import spline_re_sampling
 COL_RUNTIME_MS = "runtime"
 COL_RISK_EMPIRICAL = "risk_empirical"
 COL_RISK_CONSTRAINT = "risk_constraint"
+COL_TRAVEL_TIME_S = "travel_time"
 
 
 class Evaluation:
@@ -20,7 +21,8 @@ class Evaluation:
         problem: Union[PROBLEMS],
         planner: Callable[[Union[PROBLEMS], Any], Tuple[np.ndarray, np.ndarray]],
         test_risk: bool = True,
-        test_time: bool = True,
+        test_travel_time: bool = True,
+        test_runtime: bool = True,
         reuse_results: bool = False,
         num_runs: int = 100,
         **planner_kwargs,
@@ -34,8 +36,10 @@ class Evaluation:
         if test_risk:
             tests.append(COL_RISK_EMPIRICAL)
             tests.append(COL_RISK_CONSTRAINT)
-        if test_time:
+        if test_runtime:
             tests.append(COL_RUNTIME_MS)
+        if test_travel_time:
+            tests.append(COL_TRAVEL_TIME_S)
         self._results_df = pd.DataFrame(columns=tests)
 
         trajectory, risks, runtime = self._solve(problem, planner, **planner_kwargs)
@@ -46,11 +50,15 @@ class Evaluation:
             if not reuse_results:
                 trajectory, risks, runtime = self._solve(problem, planner, **planner_kwargs)
 
-            if test_risk and hasattr(problem, "params") and hasattr(problem, "generate_trajectory_samples"):
-                obstacle_trajectories = problem.generate_trajectory_samples(num_samples=1).squeeze()
-                results[COL_RISK_CONSTRAINT] = problem.params.risk_max
-                results[COL_RISK_EMPIRICAL] = int(self.check_for_collision(trajectory, obstacle_trajectories))
-            if test_time:
+            if hasattr(problem, "params"):
+                if test_risk and hasattr(problem, "generate_trajectory_samples"):
+                    obstacle_trajectories = problem.generate_trajectory_samples(num_samples=1).squeeze()
+                    results[COL_RISK_CONSTRAINT] = problem.params.risk_max
+                    results[COL_RISK_EMPIRICAL] = int(self.check_for_collision(trajectory, obstacle_trajectories))
+                if test_travel_time and hasattr(problem, "x_start_goal"):
+                    _, x_goal = problem.x_start_goal
+                    results[COL_TRAVEL_TIME_S] = self.number_of_steps(trajectory, x_goal) * problem.params.dt
+            if test_runtime:
                 results[COL_RUNTIME_MS] = runtime
             self._results_df = self._results_df.append(results, ignore_index=True)
 
@@ -97,6 +105,31 @@ class Evaluation:
         interstate_distances = np.linalg.norm(obstacle_trajectories_re[:, :, :] - robot_trajectory_re[:, :2], axis=2)
         num_collisions = np.sum(interstate_distances < max_collision_distance)
         return num_collisions > 0
+
+    @staticmethod
+    def number_of_steps(robot_trajectory: np.ndarray, x_goal: np.ndarray) -> Union[int, None]:
+        """Count the number of time-steps until the robot reaches its goal state and (!) stays there until the end
+        of the time-horizon. Otherwise return None.
+
+        :argument robot_trajectory: trajectory of robot (time-horizon, n_state >= 2).
+        :argument x_goal: robot's goal state (n_state >= 2).
+        :return number of steps to reach the goal (None if not reached).
+        """
+        assert robot_trajectory.shape[1] == x_goal.shape[0], "trajectory and goal states must have same dimension"
+
+        goal_reached = np.where(np.isclose(np.linalg.norm(robot_trajectory - x_goal, axis=1), 0, atol=0.1))[0]
+
+        # Goal is only reached when the robot gets there and stays until the end of the time-horizon, therefore check
+        # whether the last index of the trajectory is close to the goal. If not return None.
+        if len(goal_reached) == 0 or goal_reached[-1] != robot_trajectory.shape[0] - 1:
+            return None
+        # Otherwise look for the smallest index for that the robot reaches the goal and stays there until the end of
+        # the time-horizon and return it.
+        else:
+            goal_index = goal_reached[-1]
+            while goal_index - 1 in goal_reached:
+                goal_index = goal_index - 1
+            return goal_index
 
     @property
     def results_df(self) -> pd.DataFrame:

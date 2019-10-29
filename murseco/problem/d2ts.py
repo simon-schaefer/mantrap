@@ -38,6 +38,7 @@ class D2TSProblem(JSONSerializer):
         c_goal: float = 1000.0,
         risk_max: float = 0.1,
         u_max: float = 1.0,
+        dt: float = 1.0,
         mproc: bool = True,
         grid_resolution: float = 0.01,
         **kwargs,
@@ -60,7 +61,15 @@ class D2TSProblem(JSONSerializer):
         self._env = env
         self._x_goal = x_goal
         self._optim_dict = DictObject(
-            {"w_x": w_x, "w_u": w_u, "c_goal": c_goal, "risk_max": risk_max, "u_max": u_max, "thorizon": thorizon}
+            {
+                "w_x": w_x,
+                "w_u": w_u,
+                "c_goal": c_goal,
+                "risk_max": risk_max,
+                "u_max": u_max,
+                "dt": env.dt,
+                "thorizon": thorizon,
+            }
         )
 
         # Temporal and spatial discretization.

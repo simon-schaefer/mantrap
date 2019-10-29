@@ -5,7 +5,7 @@ import murseco.environment.scenarios
 from murseco.environment import Environment
 from murseco.planning import time_expanded_graph_search
 from murseco.problem import D2TSProblem
-from murseco.obstacle import SingleModeDTVObstacle, StaticDTVObstacle
+from murseco.obstacle import StaticDTVObstacle
 from murseco.robot import IntegratorDTRobot
 from murseco.utility.io import path_from_home_directory
 from murseco.utility.visualization import plot_tppdf_trajectory

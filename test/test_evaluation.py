@@ -1,7 +1,8 @@
 import time
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
+import pytest
 
 from murseco.environment import Environment
 from murseco.obstacle import StaticDTVObstacle
@@ -15,21 +16,23 @@ class PseudoProblem:
 
 
 def pseudo_planner(
-    problem, trajectory: np.ndarray = np.zeros((20, 2)), risks: np.ndarray = np.ones(20) * 0.01, runtime: float = 0.0, **kwargs
+    problem,
+    trajectory: np.ndarray = np.zeros((20, 2)),
+    risks: np.ndarray = np.ones(20) * 0.01,
+    runtime: float = 0.0,
+    **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
     time.sleep(runtime)
     return trajectory, risks
 
 
 def test_evaluation_runtime():
-    evaluation = murseco.evaluation.Evaluation(
-        PseudoProblem(), pseudo_planner, runtime=0.005, reuse_results=False
-    )
+    evaluation = murseco.evaluation.Evaluation(PseudoProblem(), pseudo_planner, runtime=0.005, reuse_results=False)
     runtime_mean = evaluation.results_mean[murseco.evaluation.COL_RUNTIME_MS]
     assert np.isclose(runtime_mean, 5, atol=2.0)
 
 
-def test_evaluation_risk():
+def test_evaluation():
     np.random.seed(0)
     env = Environment()
     env.add_obstacle(StaticDTVObstacle, mu=np.array([0, 0]), covariance=np.eye(2) * 0.01)
@@ -44,3 +47,35 @@ def test_evaluation_risk():
     evaluation_mean_df = evaluation.results_mean
 
     assert evaluation_mean_df[murseco.evaluation.COL_RISK_EMPIRICAL] > 0
+    assert 0 < evaluation_mean_df[murseco.evaluation.COL_TRAVEL_TIME_S] / problem.params.dt <= problem.params.thorizon
+
+
+@pytest.mark.parametrize(
+    "obstacle_trajectories, flag",
+    [
+        (np.zeros((2, 20, 2)), True),
+        (np.ones((2, 20, 2)) * 0.05, True),
+        (np.ones((5, 20, 2)) * 1.0, False),
+        (np.reshape(np.vstack((np.linspace(-6, 4, num=20), np.zeros(20))).T, (1, 20, 2)), False),
+    ],
+)
+def test_evaluation_risk_standalone(obstacle_trajectories: np.ndarray, flag: bool):
+    thorizon = 20
+    robot_trajectory = np.vstack((np.linspace(-5, 5, num=thorizon), np.zeros(thorizon))).T
+
+    is_colliding = murseco.evaluation.Evaluation.check_for_collision(
+        robot_trajectory, obstacle_trajectories, max_collision_distance=0.1
+    )
+    assert is_colliding == flag
+
+
+@pytest.mark.parametrize(
+    "trajectory, x_goal, num_steps",
+    [
+        (np.vstack((np.zeros(20), np.hstack((np.zeros(10), np.ones(10))))).T, np.array([0, 1]), 10),
+        (np.zeros((20, 2)), np.ones(2), None)
+    ],
+)
+def test_evaluation_number_of_steps_standalone(trajectory: np.ndarray, x_goal: np.ndarray, num_steps: Union[int, None]):
+    number_of_steps = murseco.evaluation.Evaluation.number_of_steps(trajectory, x_goal)
+    assert number_of_steps == num_steps
