@@ -1,7 +1,7 @@
 import numpy as np
 
 from murseco.obstacle import StaticDTVObstacle
-from murseco.utility.array import rand_invsymmpos
+from murseco.utility.array import rand_inv_pos_symmetric_matrix
 from murseco.utility.io import path_from_home_directory
 
 
@@ -23,7 +23,7 @@ def test_staticobstacle_samples():
     np.random.seed(0)
     mu, cov = np.random.rand(2), np.eye(2)
     obstacle = StaticDTVObstacle(mu=mu, covariance=cov)
-    trajectory_samples = obstacle.trajectory_samples(thorizon=20, num_samples=10)
+    trajectory_samples = obstacle.trajectory_samples(thorizon=20, num_samples=200)
 
     mean_x = np.mean(trajectory_samples[:, :, 0])
     mean_y = np.mean(trajectory_samples[:, :, 1])
@@ -31,7 +31,7 @@ def test_staticobstacle_samples():
 
 
 def test_staticobstacle_json():
-    obstacle_1 = StaticDTVObstacle(mu=np.zeros(2), covariance=rand_invsymmpos(2, 2))
+    obstacle_1 = StaticDTVObstacle(mu=np.zeros(2), covariance=rand_inv_pos_symmetric_matrix(2, 2))
     cache_path = path_from_home_directory("test/cache/staticobstacle_test.json")
     obstacle_1.to_json(cache_path)
     obstacle_2 = StaticDTVObstacle.from_json(cache_path)

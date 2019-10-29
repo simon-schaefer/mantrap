@@ -11,30 +11,36 @@ from murseco.utility.io import path_from_home_directory
 from murseco.utility.visualization import plot_tppdf_trajectory
 
 
-@pytest.mark.parametrize("risk_max", [0.0001])
-def test_planninggraphsearch_static_none(risk_max: float):
-    pos_start, pos_goal = np.array([0.001, -0.05]), np.array([9, 9])
-
-    env = Environment()
-    env.add_obstacle(SingleModeDTVObstacle, history=np.array([0, 0]), mu=np.array([0, 0]), covariance=np.eye(2))
-    env.add_robot(IntegratorDTRobot, position=pos_start)
-    problem = D2TSProblem(env, x_goal=pos_goal)
-    trajectory, _ = time_expanded_graph_search(problem)
-    assert trajectory is None
-
-
 def plan_and_visualize(env: Environment, pos_goal: np.ndarray, risk_max: float, thorizon: int, dpath: str):
     problem = D2TSProblem(env, x_goal=pos_goal, risk_max=risk_max, thorizon=thorizon, mproc=False, grid_resolution=0.05)
     trajectory, acc_risks = time_expanded_graph_search(problem)
 
     assert acc_risks[-1] <= risk_max
-    assert trajectory.shape[0] <= problem.params.thorizon
+    assert trajectory.shape[0] == problem.params.thorizon
     assert np.isclose(np.linalg.norm(trajectory[0, :] - problem.x_start_goal[0]), 0)
     assert np.isclose(np.linalg.norm(trajectory[-1, :] - problem.x_start_goal[1]), 0)
 
     tppdf, (x_grid, y_grid) = problem.grid
     titles = [f"acc. risk = {risk:.5f}" for risk in acc_risks]
     plot_tppdf_trajectory(tppdf, (x_grid, y_grid), dpath=dpath, rtrajectory=trajectory, titles=titles)
+
+
+@pytest.mark.parametrize("risk_max, thorizon", [(0.005, 20)])
+def test_planninggraphsearch_static_none(risk_max: float, thorizon: int):
+    pos_start, pos_goal = np.array([-5, -2]), np.array([7.0, 3.0])
+
+    env = Environment()
+    env.add_obstacle(StaticDTVObstacle, mu=np.array([-3, 3]), covariance=np.eye(2) * 2.2)
+    env.add_robot(IntegratorDTRobot, position=pos_start)
+
+    problem = D2TSProblem(env, x_goal=pos_goal, risk_max=risk_max, thorizon=thorizon, mproc=False, grid_resolution=0.05)
+    trajectory, acc_risks = time_expanded_graph_search(problem)
+
+    assert acc_risks.size == problem.params.thorizon
+    assert trajectory.shape[0] == problem.params.thorizon
+    assert acc_risks[-1] <= risk_max
+    assert np.isclose(np.linalg.norm(trajectory[0, :] - problem.x_start_goal[0]), 0)
+    assert np.isclose(np.linalg.norm(trajectory[-1, :] - problem.x_start_goal[1]), 0)
 
 
 def visualize_planninggraphsearch_static():

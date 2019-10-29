@@ -68,6 +68,11 @@ class D2TSProblem(JSONSerializer):
         num_points_per_axis = int((env.xaxis[1] - env.xaxis[0]) / grid_resolution)
         self._tppdf, self._meshgrid = env.tppdf(num_points=num_points_per_axis, mproc=mproc)
 
+    def generate_trajectory_samples(self, num_samples: int = 10, **generate_kwargs) -> np.ndarray:
+        return self._env.generate_trajectory_samples(
+            thorizon=self._optim_dict.thorizon, num_samples=num_samples, **generate_kwargs
+        )
+
     @property
     def params(self):
         return self._optim_dict

@@ -54,5 +54,15 @@ def time_expanded_graph_search(
     if trajectory is None:
         return None, None
     else:
-        risks_accumulated = [risks_accumulated[t] for t in range(len(risks_accumulated))]
-        return np.array(trajectory), np.array(risks_accumulated)
+        trajectory = np.array(trajectory)
+        risks_accumulated = np.array([risks_accumulated[t] for t in range(len(risks_accumulated))])
+
+        # If trajectory is shorter then problem's time horizon, then repetitively append goal point and last
+        # accumulated risk to arrays.
+        num_to_add = problem.params.thorizon - trajectory.shape[0]
+        trajectory_additional = np.reshape(np.array([x_goal] * num_to_add), (num_to_add, 2))
+        trajectory = np.vstack((trajectory, trajectory_additional))
+        risks_accumulated_additional = np.array([risks_accumulated[-1]] * num_to_add)
+        risks_accumulated = np.hstack((risks_accumulated, risks_accumulated_additional))
+
+        return trajectory, risks_accumulated

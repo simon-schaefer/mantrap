@@ -55,25 +55,20 @@ class Environment(JSONSerializer):
         logging.debug(f"{self.name}: determined grid tppdf distribution")
         return tppdfs_overall, (x, y)
 
-    def generate_trajectory_samples(
-        self, thorizon: int = 20, num_samples_per_mode: int = 5, mproc: bool = True
-    ) -> List[np.ndarray]:
-        """Generate trajectory samples for each obstacle in the environment, split by the obstacle's mode.
-        Therefore for each obstacle create N = num_samples_per_mode trajectories in each mode, by calling the obstacles
-        `trajectory_samples` with some mode, ending up in an array (num_modes, N, time-horizon, 2) per obstacle.
+    def generate_trajectory_samples(self, thorizon: int = 20, num_samples: int = 10, mproc: bool = True) -> np.ndarray:
+        """Generate trajectory samples for each obstacle in the environment. Therefore for each obstacle create
+        N = num_samples_per_obstacle trajectories in each mode, by calling the obstacles `trajectory_samples` with
+        some mode, ending up in an array (num_samples, num_obstacles, time-horizon, 2) per obstacle.
 
         :argument thorizon: number of time-steps i.e. length of trajectory.
-        :argument num_samples_per_mode: number of trajectories to sample (per mode).
+        :argument num_samples: number of trajectories to sample (per obstacle).
         :argument mproc: run in multiprocessing (8 processes).
-        :returns trajectories for every mode for every obstacle in the environment
+        :returns trajectories for every obstacle in the environment (num_samples, num_obstacles, time-horizon, 2).
         """
-        samples = []
-        for obstacle in self.obstacles:
-            obstacle_samples = np.zeros((obstacle.num_modes, num_samples_per_mode, thorizon, 2))
-            for m in range(obstacle.num_modes):
-                mode_samples = obstacle.trajectory_samples(thorizon, num_samples_per_mode, mode=m, mproc=mproc)
-                obstacle_samples[m, :, :, :] = mode_samples
-            samples.append(obstacle_samples)
+        samples = np.zeros((num_samples, len(self.obstacles), thorizon, 2))
+        for k in range(num_samples):
+            for io, obstacle in enumerate(self.obstacles):
+                samples[k, io, :, :] = obstacle.trajectory_samples(thorizon, num_samples=1, mproc=mproc)
         logging.debug(f"{self.name}: generated {len(samples)} trajectory samples")
         return samples
 
