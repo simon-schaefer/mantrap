@@ -7,7 +7,6 @@ import scipy.cluster.vq
 import murseco.utility.array
 import murseco.utility.io
 import murseco.utility.stats
-from murseco.utility.visualization import plot_pdf2d
 
 
 @pytest.mark.parametrize(
@@ -18,12 +17,12 @@ from murseco.utility.visualization import plot_pdf2d
         (np.array([1.0, 0.0]), (1.0, 0.0), 100),
     ],
 )  # np.inf = 100 (comp. definition of Point2D distribution)
-def test_stats_point2d_pdf_at(position: np.ndarray, point: Tuple[float, float], target: float):
+def test_point2d_pdf_at(position: np.ndarray, point: Tuple[float, float], target: float):
     distribution = murseco.utility.stats.Point2D(position)
     assert np.isclose(distribution.pdf_at(point[0], point[1]), target, rtol=0.1)
 
 
-def test_stats_point2d_sample():
+def test_point2d_sample():
     xy = np.array([4.1, 1.23])
     distribution = murseco.utility.stats.Point2D(xy)
     assert all([np.array_equal(s, xy) for s in distribution.sample(2)])
@@ -37,12 +36,12 @@ def test_stats_point2d_sample():
         (np.array([0.0, 0.0]), np.diag([0.01, 10.0]), (0, 10), 0.0033),
     ],
 )
-def test_stats_gaussian2d_pdf_at(mu: np.ndarray, sigma: np.ndarray, point: Tuple[float, float], target: float):
+def test_gaussian2d_pdf_at(mu: np.ndarray, sigma: np.ndarray, point: Tuple[float, float], target: float):
     distribution = murseco.utility.stats.Gaussian2D(mu, sigma)
     assert np.isclose(distribution.pdf_at(point[0], point[1]), target, rtol=0.1)
 
 
-def test_stats_point2d_json():
+def test_point2d_json():
     point_1 = murseco.utility.stats.Point2D(np.array([4.1, -1.39]))
     cache_path = murseco.utility.io.path_from_home_directory("test/cache/point2d_test.json")
     point_1.to_json(cache_path)
@@ -50,7 +49,7 @@ def test_stats_point2d_json():
     assert point_1.summary() == point_2.summary()
 
 
-def test_stats_gaussian2d_sample():
+def test_gaussian2d_sample():
     np.random.seed(0)
     mu, sigma = np.array([10, 0]), np.diag([0.01, 2])
     distribution = murseco.utility.stats.Gaussian2D(mu, sigma)
@@ -60,7 +59,7 @@ def test_stats_gaussian2d_sample():
     assert np.isclose(np.std(samples[:, 1]), np.sqrt(sigma[1, 1]), atol=0.1)
 
 
-def test_stats_gaussian2d_json():
+def test_gaussian2d_json():
     gauss_1 = murseco.utility.stats.Gaussian2D(np.array([4.1, -1.39]), np.eye(2) * 0.14)
     cache_path = murseco.utility.io.path_from_home_directory("test/cache/gaussian2d_test.json")
     gauss_1.to_json(cache_path)
@@ -77,7 +76,7 @@ def test_stats_gaussian2d_json():
         (np.array([[0, 0], [0, 0]]), np.stack((np.diag([0.01, 10]), np.eye(2))), np.array([1, 0]), (0, 10), 0.0033),
     ],
 )
-def test_stats_gmm2d_pdf_at(
+def test_gmm2d_pdf_at(
     mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray, point: Tuple[float, float], target: float
 ):
     distribution = murseco.utility.stats.GMM2D(mus, sigmas, weights)
@@ -88,7 +87,7 @@ def test_stats_gmm2d_pdf_at(
     "mus, sigmas, weights",
     [(np.array([[4.1, -1.39], [2.1, -9.1]]), np.stack((np.eye(2) * 0.14, np.eye(2))), np.array([0.1, 1.0]))],
 )
-def test_stats_gmm2d_json(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
+def test_gmm2d_json(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
     gmm_1 = murseco.utility.stats.GMM2D(mus, sigmas, weights)
     cache_path = murseco.utility.io.path_from_home_directory("test/cache/gmm2d_test.json")
     gmm_1.to_json(cache_path)
@@ -104,7 +103,7 @@ def test_stats_gmm2d_json(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarr
         (np.array([[1.0, -9.3], [5, 5]]), np.stack((np.eye(2) * 0.1, np.eye(2) * 0.001)), np.array([0.1, 1.0])),
     ],
 )
-def test_stats_gaussian2d_sample(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
+def test_gaussian2d_sample(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndarray):
     # Idea: Multimodal Gaussian is sampled by choosing randomly with Gaussian to sample and then sample from this
     # Gaussian. Therefore a simple comparison between the samples mean and the mu vector will validate this approach.
     # Thus, the samples are clustered using k-means-algorithm, while the cluster centers should represent the

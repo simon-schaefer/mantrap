@@ -4,20 +4,20 @@ from murseco.environment import Environment
 import murseco.environment.scenarios
 from murseco.obstacle import SingleModeDTVObstacle
 from murseco.robot import IntegratorDTRobot
-from murseco.utility.array import rand_invsymmpos
+from murseco.utility.array import rand_inv_pos_symmetric_matrix
 from murseco.utility.io import path_from_home_directory
 from murseco.utility.visualization import plot_trajectory_samples, plot_tppdf_trajectory
 
 
-def test_environment_identifier():
+def test_identifier():
     env = Environment((0, 10), (0, 10))
     for i in range(10):
-        env.add_obstacle(SingleModeDTVObstacle, covariance=rand_invsymmpos(2, 2))
+        env.add_obstacle(SingleModeDTVObstacle, covariance=rand_inv_pos_symmetric_matrix(2, 2))
     identifiers = [o.identifier for o in env.obstacles]
     assert len(np.unique(identifiers)) == 10
 
 
-def test_environment_json():
+def test_json():
     env_1 = Environment((-10, 10), (-10, 10))
     env_1.add_obstacle(SingleModeDTVObstacle, history=np.array([1.4, 4.2]))
     env_1.add_obstacle(SingleModeDTVObstacle, history=np.array([5.4, -2.94]))
@@ -33,10 +33,10 @@ def visualize_environment_scenario_scenario_samples():
     env = murseco.environment.scenarios.double_two_mode()
 
     otrajectory_samples = env.generate_trajectory_samples(mproc=False)
-    ohistories = [o.history for o in env.obstacles]
+    ohistories = np.array([o.history for o in env.obstacles])
     ocolors = [o.color for o in env.obstacles]
 
-    fpath = path_from_home_directory("test/cache/scenario_double_two.png")
+    fpath = path_from_home_directory("test/graphs/scenario_double_two.png")
     plot_trajectory_samples(otrajectory_samples, ohistories, ocolors, xaxis=env.xaxis, fpath=fpath)
 
 

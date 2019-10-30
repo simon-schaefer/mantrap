@@ -31,7 +31,8 @@ class StaticDTVObstacle(DTVObstacle):
         return [GMM2D(mus, sigmas, weights=np.ones(1))] * thorizon
 
     def trajectory_samples(self, thorizon: int, num_samples: int, mode: int = None, mproc: bool = True) -> np.ndarray:
-        return np.array([Gaussian2D(self._position_mu, self._position_cov).sample(thorizon) for _ in range(thorizon)])
+        samples = [Gaussian2D(self._position_mu, self._position_cov).sample(thorizon) for _ in range(num_samples)]
+        return np.array(samples)
 
     def vpdf(self, history: np.ndarray = None) -> Gaussian2D:
         super(StaticDTVObstacle, self).vpdf(history)

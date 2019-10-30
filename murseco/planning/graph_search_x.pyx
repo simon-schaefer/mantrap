@@ -48,14 +48,18 @@ cdef class Node:
     cdef public float cost
     cdef public float pdf
     cdef public Node parent
+    cdef public float ux
+    cdef public float uy
 
-    def __cinit__(self, float x, float y, float cost, float pdf, int time, Node parent):
+    def __cinit__(self, float x, float y, float cost, float pdf, int time, float ux, float uy, Node parent):
         self.x = x
         self.y = y
         self.cost = cost
         self.pdf = pdf
         self.t = time
         self.parent = parent
+        self.ux = ux
+        self.uy = uy
 
 
 cdef dijkstra_constrained(
@@ -97,7 +101,7 @@ cdef dijkstra_constrained(
 
     # Initialization - Build safe graph.
     cdef start_pdf = tppdf[<int>coord3index(ix_start, iy_start, 0, x_grid_size, y_grid_size)]
-    cdef Node start_node = Node(x_start, y_start, 0.0, start_pdf, 0, None)
+    cdef Node start_node = Node(x_start, y_start, 0.0, start_pdf, 0, -1, -1, None)
     cdef list queue = [start_node]
     cdef Node goal_node = None
     cdef float min_cost_goal = 9999999.9
@@ -114,7 +118,7 @@ cdef dijkstra_constrained(
                 cost_next = node.cost + cost_integrator(node.x, node.y, x_goal, y_goal, u_xm, u_ym, w_x, w_u)
                 ix_next, iy_next = cont2discrete(x_next, y_next, grid_data)
                 pdf_next = node.pdf + tppdf[<int>coord3index(ix_next, iy_next, node.t, x_grid_size, y_grid_size)]
-                node_next = Node(x_next, y_next, cost_next, pdf_next, node.t + 1, node)
+                node_next = Node(x_next, y_next, cost_next, pdf_next, node.t + 1, ux, uy, node)
 
                 # Add only to neighbour if node within grid and constraints not violated.
                 if ix_next >= 0 and iy_next >= 0:
@@ -132,25 +136,27 @@ cdef dijkstra_constrained(
 
     # Get shortest path by recursively getting the parent node, starting from the goal node found.
     cdef list path = []
+    cdef list controls = []
     cdef list pdfs = []
     if goal_node is not None:
         node = goal_node
         while node is not None:
             path.insert(0, (node.x, node.y))
+            controls.insert(0, (node.ux, node.uy))
             pdfs.insert(0, node.pdf)
             node = node.parent
-        return path, pdfs
+        return path, controls, pdfs
 
     else:
-        return None, None
+        return None, None, None
 
 
 def time_expanded_graph_search(float[:] pos_start, float[:] pos_goal, float[:] tppdf, float[:] x_grid, float[:] y_grid,
                                int x_grid_dimension, int y_grid_dimension, int thorizon,
                                float risk_max, float u_max, float w_x, float w_u, float u_resolution
 ):
-    trajectory, risk_sum = dijkstra_constrained(pos_start[0], pos_start[1], pos_goal[0], pos_goal[1], tppdf,
-                                                x_grid, y_grid, x_grid_dimension, y_grid_dimension, thorizon,
-                                                risk_max, u_max, w_x, w_u, u_resolution
+    trajectory, controls, risk_sum = dijkstra_constrained(pos_start[0], pos_start[1], pos_goal[0], pos_goal[1], tppdf,
+                                                          x_grid, y_grid, x_grid_dimension, y_grid_dimension, thorizon,
+                                                          risk_max, u_max, w_x, w_u, u_resolution
     )
-    return trajectory, risk_sum
+    return trajectory, controls, risk_sum

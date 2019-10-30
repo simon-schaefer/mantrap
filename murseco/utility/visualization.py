@@ -4,7 +4,6 @@ from typing import List, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from murseco.utility.misc import MATPLOTLIB_MARKERS
 from murseco.utility.stats import Distribution2D
 
 
@@ -43,8 +42,8 @@ def plot_pdf2d(
 
 
 def plot_trajectory_samples(
-    otrajectory_samples: List[np.ndarray],
-    ohistories: List[np.ndarray],
+    otrajectory_samples: np.ndarray,
+    ohistories: np.ndarray,
     ocolors: List[str],
     xaxis: Tuple[float, float],
     fpath: str,
@@ -63,8 +62,8 @@ def plot_trajectory_samples(
     :argument yaxis: range of y axis as (lower bound, upper bound), assumed to be equal to xaxis if not stated.
     :argument rtrajectory: robot trajectory in the given time-horizon.
     """
-    assert len(otrajectory_samples) == len(ohistories), "unequal number of obstacles in histories and samples"
-    assert len(otrajectory_samples) == len(ocolors), "unequal number of obstacles in colors and samples"
+    assert otrajectory_samples.shape[1] == ohistories.shape[0], "unequal number of obstacles in histories and samples"
+    assert otrajectory_samples.shape[1] == len(ocolors), "unequal number of obstacles in colors and samples"
 
     fig, ax = plt.subplots()
     yaxis = xaxis if yaxis is None else yaxis
@@ -72,12 +71,10 @@ def plot_trajectory_samples(
     if rtrajectory is not None:
         ax.plot(rtrajectory[:, 0], rtrajectory[:, 1], "rx")
 
-    for trajectory, history, color in zip(otrajectory_samples, ohistories, ocolors):
-        for m in range(trajectory.shape[0]):
-            mode_marker = np.random.choice(MATPLOTLIB_MARKERS)
-            for i in range(trajectory.shape[1]):
-                ax.plot(trajectory[m, i, :, 0], trajectory[m, i, :, 1], color + mode_marker)
-            ax.plot(history[:, 0], history[:, 1], color + "o")
+    for trajectory_sample in otrajectory_samples:
+        for trajectory, history, color in zip(trajectory_sample, ohistories, ocolors):
+            ax.plot(trajectory[:, 0], trajectory[:, 1], color + "-")
+            ax.plot(history[:, 0], history[:, 1], color + "--")
 
     ax.set_xlim(xaxis)
     ax.set_ylim(yaxis)
