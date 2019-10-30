@@ -20,7 +20,7 @@ class Evaluation:
     def __init__(
         self,
         problem: Union[PROBLEMS],
-        planner: Callable[[Union[PROBLEMS], Any], Tuple[np.ndarray, np.ndarray]],
+        planner: Callable[[Union[PROBLEMS], Any], Tuple[np.ndarray, np.ndarray, np.ndarray]],
         test_risk: bool = True,
         test_travel_time: bool = True,
         test_runtime: bool = True,
@@ -46,13 +46,13 @@ class Evaluation:
             tests.append(COL_MIN_DISTANCE)
         self._results_df = pd.DataFrame(columns=tests)
 
-        trajectory, risks, runtime = self._solve(problem, planner, **planner_kwargs)
+        trajectory, controls, risks, runtime = self._solve(problem, planner, **planner_kwargs)
         for k in range(num_runs):
             logging.debug(f"evaluation: starting run {k}/{num_runs} ...")
             results = {}
 
             if not reuse_results:
-                trajectory, risks, runtime = self._solve(problem, planner, **planner_kwargs)
+                trajectory, controls, risks, runtime = self._solve(problem, planner, **planner_kwargs)
 
             if hasattr(problem, "params"):
                 if hasattr(problem, "generate_trajectory_samples"):
@@ -72,16 +72,16 @@ class Evaluation:
     @staticmethod
     def _solve(
         problem: Union[PROBLEMS],
-        planner: Callable[[Union[PROBLEMS], Any], Tuple[np.ndarray, np.ndarray]],
+        planner: Callable[[Union[PROBLEMS], Any], Tuple[np.ndarray, np.ndarray, np.ndarray]],
         **planner_kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray, float]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
         """Running planner/solver for a given problem. However it is not possible to check against specific types
         aka that the type of problem (e.g. D2TS) the planner gets is actually the one the it is designed for (!).
         Therefore this has to be ensured by the user. """
         start_time = time.time()
-        trajectory, risks = planner(problem, **planner_kwargs)
+        trajectory, controls, risks = planner(problem, **planner_kwargs)
         runtime = (time.time() - start_time) * 1000  # [ms]
-        return trajectory, risks, runtime
+        return trajectory, controls, risks, runtime
 
     @staticmethod
     def check_for_collision(

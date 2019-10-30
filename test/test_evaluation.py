@@ -18,12 +18,13 @@ class PseudoProblem:
 def pseudo_planner(
     problem,
     trajectory: np.ndarray = np.zeros((20, 2)),
+    controls: np.ndarray = np.zeros((20, 2)),
     risks: np.ndarray = np.ones(20) * 0.01,
     runtime: float = 0.0,
     **kwargs
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     time.sleep(runtime)
-    return trajectory, risks
+    return trajectory, controls, risks
 
 
 def test_runtime():

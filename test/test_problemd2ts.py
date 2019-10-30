@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-import murseco.environment.scenarios
 from murseco.environment import Environment
 from murseco.robot import IntegratorDTRobot
 from murseco.problem import D2TSProblem
@@ -16,7 +15,6 @@ def test_assert():
 
 
 def test_json():
-    # env = murseco.environment.scenarios.double_two_mode()
     env = Environment()
     env.add_robot(IntegratorDTRobot)
     problem_1 = D2TSProblem(env, x_goal=np.array([9.1, -5.0]), w_x=2.15, w_u=102.9)

@@ -9,7 +9,7 @@ import murseco.planning.graph_search_x
 
 def time_expanded_graph_search(
     problem: D2TSProblem, u_resolution: float = 1.0
-) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
+) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None], Union[np.ndarray, None]]:
     """Create time-expanded graph from temporal-position-based pdf as well as costs function and search for shortest
     path from initial to final position.
     A time-expanded graph consists of sub-graphs, one graph for each time step (time horizon is inferred from the
@@ -25,7 +25,7 @@ def time_expanded_graph_search(
 
     :argument problem: temporally and spatial discrete problem formulation.
     :argument u_resolution: resolution of input as L2-norm [m].
-    :returns optimal trajectory and accumulated risk at every step, up to step t, (or None if no trajectory found)
+    :returns optimal trajectory, controls and accumulated risks at every step (or None if no trajectory found)
     """
     assert problem.params.u_max % u_resolution == 0, "u_max must be evenly dividable by its resolution"
     assert problem.params.risk_max > 0, "accumulated risk must be positive"
@@ -34,7 +34,7 @@ def time_expanded_graph_search(
     tppdf, (x_grid, y_grid) = problem.grid
 
     logging.debug("starting D2TS time-expanded graph search")
-    trajectory, risks_accumulated = murseco.planning.graph_search_x.time_expanded_graph_search(
+    trajectory, controls, risks_accumulated = murseco.planning.graph_search_x.time_expanded_graph_search(
         x_start.flatten().astype(np.float32),
         x_goal.flatten().astype(np.float32),
         np.array(tppdf).flatten().astype(np.float32),
@@ -52,9 +52,10 @@ def time_expanded_graph_search(
     logging.debug(f"found D2TS time-expanded graph search solution ? {trajectory is not None}")
 
     if trajectory is None:
-        return None, None
+        return None, None, None
     else:
         trajectory = np.array(trajectory)
+        controls = np.array(controls)
         risks_accumulated = np.array([risks_accumulated[t] for t in range(len(risks_accumulated))])
 
         # If trajectory is shorter then problem's time horizon, then repetitively append goal point and last
@@ -62,7 +63,8 @@ def time_expanded_graph_search(
         num_to_add = problem.params.thorizon - trajectory.shape[0]
         trajectory_additional = np.reshape(np.array([x_goal] * num_to_add), (num_to_add, 2))
         trajectory = np.vstack((trajectory, trajectory_additional))
+        controls = np.vstack((controls, np.zeros((num_to_add, controls.shape[1]))))
         risks_accumulated_additional = np.array([risks_accumulated[-1]] * num_to_add)
         risks_accumulated = np.hstack((risks_accumulated, risks_accumulated_additional))
 
-        return trajectory, risks_accumulated
+        return trajectory, controls, risks_accumulated

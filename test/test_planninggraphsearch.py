@@ -13,7 +13,7 @@ from murseco.utility.visualization import plot_tppdf_trajectory
 
 def plan_and_visualize(env: Environment, pos_goal: np.ndarray, risk_max: float, thorizon: int, dpath: str):
     problem = D2TSProblem(env, x_goal=pos_goal, risk_max=risk_max, thorizon=thorizon, mproc=False, grid_resolution=0.05)
-    trajectory, acc_risks = time_expanded_graph_search(problem)
+    trajectory, _, acc_risks = time_expanded_graph_search(problem)
 
     assert acc_risks[-1] <= risk_max
     assert trajectory.shape[0] == problem.params.thorizon
@@ -34,7 +34,7 @@ def test_static_none(risk_max: float, thorizon: int):
     env.add_robot(IntegratorDTRobot, position=pos_start)
 
     problem = D2TSProblem(env, x_goal=pos_goal, risk_max=risk_max, thorizon=thorizon, mproc=False, grid_resolution=0.05)
-    trajectory, acc_risks = time_expanded_graph_search(problem)
+    trajectory, _, acc_risks = time_expanded_graph_search(problem)
 
     assert acc_risks.size == problem.params.thorizon
     assert trajectory.shape[0] == problem.params.thorizon
