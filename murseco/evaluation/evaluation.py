@@ -9,6 +9,7 @@ from murseco.problem import PROBLEMS
 from murseco.utility.array import spline_re_sampling
 
 
+COL_MIN_DISTANCE = "min_robot_obstacle_distance"
 COL_RUNTIME_MS = "runtime"
 COL_RISK_EMPIRICAL = "risk_empirical"
 COL_RISK_CONSTRAINT = "risk_constraint"
@@ -23,6 +24,7 @@ class Evaluation:
         test_risk: bool = True,
         test_travel_time: bool = True,
         test_runtime: bool = True,
+        test_min_distance: bool = True,
         reuse_results: bool = False,
         num_runs: int = 100,
         **planner_kwargs,
@@ -40,6 +42,8 @@ class Evaluation:
             tests.append(COL_RUNTIME_MS)
         if test_travel_time:
             tests.append(COL_TRAVEL_TIME_S)
+        if test_min_distance:
+            tests.append(COL_MIN_DISTANCE)
         self._results_df = pd.DataFrame(columns=tests)
 
         trajectory, risks, runtime = self._solve(problem, planner, **planner_kwargs)
@@ -51,10 +55,13 @@ class Evaluation:
                 trajectory, risks, runtime = self._solve(problem, planner, **planner_kwargs)
 
             if hasattr(problem, "params"):
-                if test_risk and hasattr(problem, "generate_trajectory_samples"):
+                if hasattr(problem, "generate_trajectory_samples"):
                     obstacle_trajectories = problem.generate_trajectory_samples(num_samples=1).squeeze()
-                    results[COL_RISK_CONSTRAINT] = problem.params.risk_max
-                    results[COL_RISK_EMPIRICAL] = int(self.check_for_collision(trajectory, obstacle_trajectories))
+                    if test_risk:
+                        results[COL_RISK_CONSTRAINT] = problem.params.risk_max
+                        results[COL_RISK_EMPIRICAL] = int(self.check_for_collision(trajectory, obstacle_trajectories))
+                    if test_min_distance:
+                        results[COL_MIN_DISTANCE] = self.robot_obstacle_min_distance(trajectory, obstacle_trajectories)
                 if test_travel_time and hasattr(problem, "x_start_goal"):
                     _, x_goal = problem.x_start_goal
                     results[COL_TRAVEL_TIME_S] = self.number_of_steps(trajectory, x_goal) * problem.params.dt
@@ -94,17 +101,39 @@ class Evaluation:
         :argument max_collision_distance: minimal L2 distance between robot and obstacle to be collision-free.
         :return flag indicating whether there is a collision happening (True) or not (False)
         """
+        robot_obstacle_distances = Evaluation.robot_obstacle_distances(robot_trajectory, obstacle_trajectories)
+        num_collisions = np.sum(robot_obstacle_distances < max_collision_distance)
+        return num_collisions > 0
+
+    @staticmethod
+    def robot_obstacle_distances(
+        robot_trajectory: np.ndarray, obstacle_trajectories: np.ndarray, num_samples: int = 1000
+    ) -> np.ndarray:
+        """Determine the L2-distance between the robot and every obstacle trajectory. As described in the
+        `check_for_collision`-method simply looking at the distance at every controlled time-step might overestimate
+        the actual distance, since they could get closer in the time between two time-steps. Therefore re-sample
+        the trajectories to a much denser resolution using B-splines (assuming to not violate the dynamics for
+        reasonable small controlled dt) and return distances between the denser sampled trajectories.
+
+        :argument robot_trajectory: trajectory of robot (time-horizon, n_state >= 2).
+        :argument obstacle_trajectories: trajectory of every obstacle (num_obstacles, time-horizon, 2).
+        :argument num_samples: number of sub-sampling samples.
+        :return distances between robot and each obstacle (2, num_samples).
+        """
         assert robot_trajectory.shape[0] == obstacle_trajectories.shape[1], "trajectories time-horizon must be equal"
         assert robot_trajectory.shape[1] == 2, "robot trajectories must be two-dimensional"
         assert obstacle_trajectories.shape[2] == 2, "obstacle trajectories must be two-dimensional"
 
-        robot_trajectory_re = spline_re_sampling(robot_trajectory, num_sub_samples=1000)
-        obstacle_trajectories_re = [spline_re_sampling(x, num_sub_samples=1000) for x in obstacle_trajectories]
+        robot_trajectory_re = spline_re_sampling(robot_trajectory, num_sub_samples=num_samples)
+        obstacle_trajectories_re = [spline_re_sampling(x, num_sub_samples=num_samples) for x in obstacle_trajectories]
         obstacle_trajectories_re = np.array(obstacle_trajectories_re)
 
-        interstate_distances = np.linalg.norm(obstacle_trajectories_re[:, :, :] - robot_trajectory_re[:, :2], axis=2)
-        num_collisions = np.sum(interstate_distances < max_collision_distance)
-        return num_collisions > 0
+        return np.linalg.norm(obstacle_trajectories_re[:, :, :] - robot_trajectory_re[:, :2], axis=2)
+
+    @staticmethod
+    def robot_obstacle_min_distance(robot_trajectory: np.ndarray, obstacle_trajectories: np.ndarray) -> float:
+        robot_obstacle_distances = Evaluation.robot_obstacle_distances(robot_trajectory, obstacle_trajectories)
+        return np.amin(robot_obstacle_distances)
 
     @staticmethod
     def number_of_steps(robot_trajectory: np.ndarray, x_goal: np.ndarray) -> Union[int, None]:
