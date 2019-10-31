@@ -6,6 +6,7 @@ import numpy as np
 from murseco.obstacle.abstract import DTVObstacle
 from murseco.robot.abstract import DTRobot
 from murseco.utility.io import JSONSerializer
+from murseco.utility.stats import GMM2D
 
 
 class Environment(JSONSerializer):
@@ -30,10 +31,10 @@ class Environment(JSONSerializer):
         self._robot = robot
         self._dt = dt
 
-    def tppdf(
+    def tppdf_grid(
         self, thorizon: int = 20, num_points: int = 1000, mproc: bool = True
     ) -> Tuple[List[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
-        """Determine pdf of obstacles in position space over full (discrete) time-horizon.
+        """Determine pdf of obstacles in position space over full (discrete) time-horizon in discrete space.
         Therefore at first determine for each obstacle the pdf in position space (ppdf) over the full time horizon
         and afterwards for each time-step sum the pdf over all obstacles to one overall pdf. While the ppdf of
         each obstacle and time-step is stored at "general" distribution (i.e. Gaussian2D) at first, for summation
@@ -54,6 +55,24 @@ class Environment(JSONSerializer):
         tppdfs_overall = [sum([tppdfs[i][t].pdf_at(x, y) for i in range(len(tppdfs))]) for t in range(thorizon)]
         logging.debug(f"{self.name}: determined grid tppdf distribution")
         return tppdfs_overall, (x, y)
+
+    def tppdf(self, thorizon: int = 20, mproc: bool = True) -> List[GMM2D]:
+        """Determine pdf of obstacles in position space over full (discrete) time-horizon in continuous space.
+
+        :argument thorizon: number of time-steps to forward simulate i.e. number of ppdf instances.
+        :argument mproc: run in multiprocessing (8 processes).
+        :returns overall pdf in position space for each time-step as GMM2D
+        """
+        tppdfs = [o.tppdf(thorizon, mproc=mproc) for o in self.obstacles]
+        logging.debug(f"{self.name}: determined analytical tppdf distribution")
+
+        if len(tppdfs) == 1:
+            return tppdfs[0]
+        else:
+            overall_ppdf = [[tppdfs[io][t] for io, _ in enumerate(self.obstacles)] for t in range(thorizon)]
+            overall_ppdf_sum = [sum(ppdf) for ppdf in overall_ppdf]  # calling GMM2D.__add__ method to merge two GMM2Ds
+            logging.debug(f"{self.name}: determined overall i.e. summed analytical distribution")
+            return overall_ppdf_sum
 
     def generate_trajectory_samples(self, thorizon: int = 20, num_samples: int = 10, mproc: bool = True) -> np.ndarray:
         """Generate trajectory samples for each obstacle in the environment. Therefore for each obstacle create

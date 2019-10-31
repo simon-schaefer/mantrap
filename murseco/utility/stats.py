@@ -130,6 +130,7 @@ class GMM2D(Distribution2D):
         mus = mus.squeeze() if len(mus.shape) > 2 else mus  # prevent e.g. mus.shape = (1, 4, 2) but (4, 2)
         sigmas = sigmas.squeeze() if len(sigmas.shape) > 3 else sigmas
         weights = weights.squeeze() if len(weights.shape) > 1 else weights
+        weights = weights.flatten()
 
         assert len(mus.shape) == 2, "mus must be a stack of two-dimensional vectors"
         assert len(sigmas.shape) == 3, "sigmas must be a stack of 2x2 matrices"
@@ -140,6 +141,19 @@ class GMM2D(Distribution2D):
         self.gaussians = [Gaussian2D(mus[i, :], sigmas[i, :, :]) for i in range(self.num_modes)]
         self.weights = weights / np.sum(weights)  # from now on GMM is normalized
         self.weights = np.round(self.weights, 5)  # prevent testing exact comparison problems
+
+    def __add__(self, other):
+        gaussians = self.gaussians + other.gaussians
+        mus = np.stack([g.mu for g in gaussians])
+        sigmas = np.stack([g.sigma for g in gaussians])
+        weights = np.stack([self.weights, other.weights])
+        return self.__class__(mus, sigmas, weights)
+
+    def __radd__(self, other):
+        if other == 0:  # self is called as 0 (int) for whatever reason
+            return self
+        else:
+            return self.__add__(other)
 
     def mode(self, mode: int) -> Gaussian2D:
         return self.gaussians[mode]
@@ -153,6 +167,10 @@ class GMM2D(Distribution2D):
         weights = self.weights / np.sum(self.weights)
         mode_choices = np.random.choice(range(self.num_modes), size=num_samples, p=weights)
         return np.array([self.gaussians[mode].sample(1) for mode in mode_choices]).squeeze()
+
+    @property
+    def mus(self) -> np.ndarray:
+        return np.array([g.mu for g in self.gaussians])
 
     def summary(self) -> Dict[str, Any]:
         summary = super(GMM2D, self).summary()

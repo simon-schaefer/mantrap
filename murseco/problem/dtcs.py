@@ -1,15 +1,16 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
 
 from murseco.environment import Environment
 from murseco.problem.abstract import AbstractProblem
+from murseco.utility.stats import GMM2D
 
 
-class D2TSProblem(AbstractProblem):
-    """The DiscreteTimeDiscreteSpace (D2TS) Problem defines the optimization problem as following, for the time-step
-    0 <= k <= N, the discrete space vector x_k, the system dynamics f(x_k, u_k) and the time and spatially dependent
-    probability density function of the risk pdf(x_k, k):
+class DTCSProblem(AbstractProblem):
+    """The CTDSProblem (CTDS) Problem defines the optimization problem as following, for the time-step
+    0 <= k <= N, the continuous space vector x_k, the system dynamics f(x_k, u_k) and the time and spatially dependent
+    continuous probability density function of the risk pdf(x_k, k):
 
     Cost:
         J(x(t)) = sum_{k=0}^{N-1} l(x_k, u_k) + l_f(x_N)
@@ -38,11 +39,10 @@ class D2TSProblem(AbstractProblem):
         u_max: float = 1.0,
         dt: float = 1.0,
         mproc: bool = True,
-        grid_resolution: float = 0.01,
         **kwargs,
     ):
-        kwargs.update({"name": "problem/d2ts/D2TSProblem"})
-        super(D2TSProblem, self).__init__(
+        kwargs.update({"name": "problem/dtcs/DTCSProblem"})
+        super(DTCSProblem, self).__init__(
             env=env,
             x_goal=x_goal,
             thorizon=thorizon,
@@ -56,20 +56,18 @@ class D2TSProblem(AbstractProblem):
             **kwargs,
         )
 
-        # Temporal and spatial discretization.
-        assert env.xaxis == env.yaxis, "discretization assumes equal axes for simplification (and nicer graphs)"
-        num_points_per_axis = int((env.xaxis[1] - env.xaxis[0]) / grid_resolution)
-        self._tppdf, self._meshgrid = env.tppdf_grid(num_points=num_points_per_axis, mproc=mproc)
+        # Position-based obstacle probability distribution function.
+        self._tppdf = env.tppdf(thorizon=thorizon, mproc=mproc)
 
     @property
-    def grid(self) -> Tuple[List[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
-        return self._tppdf, self._meshgrid
+    def tppdf(self) -> List[GMM2D]:
+        return self._tppdf
 
     def summary(self) -> Dict[str, Any]:
-        summary = super(D2TSProblem, self).summary()
+        summary = super(DTCSProblem, self).summary()
         return summary
 
     @classmethod
     def from_summary(cls, json_text: Dict[str, Any]):
-        summary = super(D2TSProblem, cls).from_summary(json_text)
+        summary = super(DTCSProblem, cls).from_summary(json_text)
         return cls(**summary)

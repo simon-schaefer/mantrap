@@ -45,7 +45,7 @@ def visualize_environment_tppdf():
     robot_pinit = np.array([-5, 0])
     env.add_robot(IntegratorDTRobot, position=robot_pinit)
 
-    tppdf, meshgrid = env.tppdf(num_points=200, mproc=False)
+    tppdf, meshgrid = env.tppdf_grid(num_points=200, mproc=False)
 
     dpath = path_from_home_directory("test/graphs/scenario_double_two_mode")
     plot_tppdf_trajectory(tppdf, meshgrid, dpath=dpath)

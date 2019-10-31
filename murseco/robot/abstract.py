@@ -1,6 +1,5 @@
-from abc import abstractmethod
-import logging
-from typing import Any, Dict, List, Union
+from abc import abstractmethod, abstractproperty
+from typing import Any, Dict, Union
 
 import numpy as np
 
@@ -40,6 +39,15 @@ class DTRobot(JSONSerializer):
     @property
     def state(self) -> np.ndarray:
         return self._state
+
+    @property
+    def state_size(self) -> int:
+        return self._state.size
+
+    @property
+    @abstractmethod
+    def input_size(self) -> int:
+        return -1
 
     @abstractmethod
     def dynamics(self, action: np.ndarray, state: np.ndarray = None) -> np.ndarray:
