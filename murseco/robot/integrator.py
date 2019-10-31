@@ -23,6 +23,10 @@ class IntegratorDTRobot(DTRobot):
         state = super(IntegratorDTRobot, self).dynamics(action, state)
         return state + action
 
+    @property
+    def input_size(self) -> int:
+        return self._state.size  # x_k+1 = x_k + u_k, i.e. size(x) = size(u)
+
     def summary(self) -> Dict[str, Any]:
         summary = super(IntegratorDTRobot, self).summary()
         return summary

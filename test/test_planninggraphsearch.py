@@ -26,11 +26,9 @@ def plan_and_visualize(env: Environment, pos_goal: np.ndarray, risk_max: float, 
 
 
 @pytest.mark.parametrize("risk_max, thorizon", [(0.005, 20)])
-def test_static_none(risk_max: float, thorizon: int):
+def test_static(risk_max: float, thorizon: int):
     pos_start, pos_goal = np.array([-5, -2]), np.array([7.0, 3.0])
-
-    env = Environment()
-    env.add_obstacle(StaticDTVObstacle, mu=np.array([-3, 3]), covariance=np.eye(2) * 2.2)
+    env = murseco.environment.scenarios.single_static()
     env.add_robot(IntegratorDTRobot, position=pos_start)
 
     problem = D2TSProblem(env, x_goal=pos_goal, risk_max=risk_max, thorizon=thorizon, mproc=False, grid_resolution=0.05)

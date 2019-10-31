@@ -113,3 +113,20 @@ def test_gaussian2d_sample(mus: np.ndarray, sigmas: np.ndarray, weights: np.ndar
     samples = gmm.sample(2000)
     centers = scipy.cluster.vq.kmeans(samples, k_or_guess=gmm.num_modes)[0]
     assert np.isclose(np.linalg.norm(np.sort(centers, axis=0) - np.sort(mus, axis=0)), 0, atol=0.1)
+
+
+def test_gmm2d_add():
+    mus_1, sigmas_1, weights_1 = np.ones((2, 2)), np.stack((np.eye(2) * 0.14, np.eye(2))), np.ones(2)
+    gmm_1 = murseco.utility.stats.GMM2D(mus_1, sigmas_1, weights_1)
+
+    mus_2, sigmas_2, weights_2 = np.zeros((2, 2)), np.stack((np.eye(2) * 0.1, np.eye(2))), np.array([0.4, 0.2])
+    gmm_2 = murseco.utility.stats.GMM2D(mus_2, sigmas_2, weights_2)
+
+    gmm_3 = gmm_1 + gmm_2
+
+    assert len(gmm_3.gaussians) == 4
+    assert np.isclose(np.linalg.norm(gmm_3.weights - np.array([[0.25, 0.25, 0.33, 0.1667]])), 0, atol=0.1)
+    assert np.array_equal(gmm_3.mus[0, :], np.array([1, 1]))
+    assert np.array_equal(gmm_3.mus[1, :], np.array([1, 1]))
+    assert np.array_equal(gmm_3.mus[2, :], np.array([0, 0]))
+    assert np.array_equal(gmm_3.mus[3, :], np.array([0, 0]))

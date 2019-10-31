@@ -1,7 +1,7 @@
 import numpy as np
 
 from murseco.environment import Environment
-from murseco.obstacle import AngularDTVObstacle, SingleModeDTVObstacle
+from murseco.obstacle import AngularDTVObstacle, SingleModeDTVObstacle, StaticDTVObstacle
 
 
 def vertical_fast(dt: float = 1.0) -> Environment:
@@ -50,4 +50,10 @@ def double_two_mode(dt: float = 1.0) -> Environment:
     obs2_w = np.ones(2)
     env.add_obstacle(AngularDTVObstacle, history=obs_2_p, mus=obs_2_mu, covariances=obs_2_cov, weights=obs2_w)
 
+    return env
+
+
+def single_static() -> Environment:
+    env = Environment()
+    env.add_obstacle(StaticDTVObstacle, mu=np.array([-3, 3]), covariance=np.eye(2) * 2.2)
     return env
