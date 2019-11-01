@@ -41,6 +41,7 @@ class AbstractProblem(JSONSerializer):
         assert risk_max >= 1e-3, "maximal accumulated risk hardly solvable for very small values"
         assert u_max > 0.1, "input norm must be notably positive"
         assert thorizon > 0, "time-horizon for problem must be larger than 0"
+        assert dt == env.dt, "time-step should be identical between environment and problem formulation"
 
         self._env = env
         self._x_goal = x_goal
