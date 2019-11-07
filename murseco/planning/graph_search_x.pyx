@@ -6,8 +6,6 @@ https://medium.com/@mindfiresolutions.usa/difference-between-python-and-cython-8
 https://smerity.com/articles/2018/cython_for_high_and_low.html
 https://notes-on-cython.readthedocs.io/en/latest/fibo_speed.html
 """
-
-
 cdef cont2discrete(float x, float y, list grid_data):
     x_min = grid_data[0]
     x_max = grid_data[1]

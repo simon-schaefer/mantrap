@@ -75,6 +75,10 @@ class AbstractProblem(JSONSerializer):
         return self._env.robot.dynamics
 
     @property
+    def robot_action_space(self) -> np.ndarray:
+        raise NotImplementedError
+
+    @property
     def x_start_goal(self) -> Tuple[np.ndarray, np.ndarray]:
         return self._env.robot.state, self._x_goal
 
