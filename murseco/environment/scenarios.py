@@ -53,7 +53,7 @@ def double_two_mode(dt: float = 1.0) -> Environment:
     return env
 
 
-def single_static() -> Environment:
+def single_static(dt: float = 1.0) -> Environment:
     env = Environment()
     env.add_obstacle(StaticDTVObstacle, mu=np.array([-3, 3]), covariance=np.eye(2) * 2.2)
     return env

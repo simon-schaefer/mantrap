@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -58,12 +58,51 @@ class D2TSProblem(AbstractProblem):
 
         # Temporal and spatial discretization.
         assert env.xaxis == env.yaxis, "discretization assumes equal axes for simplification (and nicer graphs)"
-        num_points_per_axis = int((env.xaxis[1] - env.xaxis[0]) / grid_resolution)
-        self._tppdf, self._meshgrid = env.tppdf_grid(num_points=num_points_per_axis, mproc=mproc)
+        self._grid_resolution = grid_resolution
+        self._num_points_axis = int((env.xaxis[1] - env.xaxis[0]) / grid_resolution)
+        self._tppdf, self._meshgrid = env.tppdf_grid(thorizon=thorizon, num_points=self._num_points_axis, mproc=mproc)
 
     @property
     def grid(self) -> Tuple[List[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         return self._tppdf, self._meshgrid
+
+    def cont2discrete(self, cont: np.ndarray) -> Union[np.ndarray, None]:
+        """Convert continuous 2D point(s) to discrete grid 2D index(s) given internal parameters."""
+        (x_min, x_max), (y_min, y_max) = self._env.xaxis, self._env.yaxis
+        if cont is None:
+            return None
+        elif cont.size == 2:
+            assert x_min <= cont[0] <= x_max, "continuous point outside of problem grid (x)"
+            assert y_min <= cont[1] <= y_max, "continuous point outside of problem grid (y)"
+            x_grid = int(np.round((cont[0] - x_min) / self._grid_resolution))
+            y_grid = int(np.round((cont[1] - y_min) / self._grid_resolution))
+            return np.array([x_grid, y_grid])
+        else:
+            assert cont.shape[1] == 2, "stacked points must be two-dimensional"
+            assert (cont[:, 0] >= x_min).all() and (cont[:, 0] < x_max).all()
+            assert (cont[:, 1] >= y_min).all() and (cont[:, 1] < y_max).all()
+            x_grid = np.round((cont[:, 0] - x_min) / self._grid_resolution).astype(int)
+            y_grid = np.round((cont[:, 1] - y_min) / self._grid_resolution).astype(int)
+            return np.hstack((x_grid, y_grid))
+
+    def discrete2cont(self, discrete: np.ndarray) -> Union[np.ndarray, None]:
+        """Convert discrete 2D grid index(s) to continuous 2D points given internal parameters."""
+        (x_min, x_max), (y_min, y_max) = self._env.xaxis, self._env.yaxis
+        if discrete is None:
+            return None
+        elif discrete.size == 2:
+            assert 0 <= discrete[0] <= self._num_points_axis, "discrete point outside of problem grid (x)"
+            assert 0 <= discrete[1] <= self._num_points_axis, "discrete point outside of problem grid (y)"
+            x_cont = x_min + discrete[0] * self._grid_resolution
+            y_cont = y_min + discrete[1] * self._grid_resolution
+            return np.array([x_cont, y_cont])
+        else:
+            assert discrete.shape[1] == 2, "stacked points must be two-dimensional"
+            assert (discrete[:, 0] >= 0).all() and (discrete[:, 0] < self._num_points_axis).all()
+            assert (discrete[:, 1] >= 0).all() and (discrete[:, 1] < self._num_points_axis).all()
+            x_cont = x_min + discrete[:, 0] * self._grid_resolution
+            y_cont = y_min + discrete[:, 1] * self._grid_resolution
+            return np.stack((x_cont, y_cont)).T
 
     def summary(self) -> Dict[str, Any]:
         summary = super(D2TSProblem, self).summary()
