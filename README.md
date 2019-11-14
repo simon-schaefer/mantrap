@@ -1,12 +1,4 @@
-# MURSECO
+# MANTRAP
 
-## Installation
-```
-source ops/setup.bash
-```
+Minimal - interferring - INteractive - Risk-Aware Planning
 
-## Testing & Visualization
-```
-bash ops/run_tests.bash
-bash ops/run_visualization.bash
-```
