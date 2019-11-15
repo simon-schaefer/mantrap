@@ -1,7 +1,0 @@
-cvxpy
-cython
-matplotlib
-numpy
-pandas
-pytest
-scipy

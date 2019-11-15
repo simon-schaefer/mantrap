@@ -1,0 +1,8 @@
+name = "MANTRAP"
+uuid = "ceb88251-baee-58f1-80cf-3a3b27eec344"
+keywords = ["trajectory", "optimization", "sequential", "convex", "programming"]
+license = "MIT"
+desc = "Guaranteed Sequential Trajectory Optimization (GuSTO) framework."
+version = "1.0.0"
+
+[deps]
