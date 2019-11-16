@@ -2,7 +2,6 @@
 cmake-build-debug/
 build/
 
-
 # Unit test / coverage reports
 test/cache/
 test/graphs/
@@ -14,8 +13,3 @@ test/graphs/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-
-# Paper collection and miscs directory.
-paper/
-miscs/
-config/

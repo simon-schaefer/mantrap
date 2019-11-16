@@ -1,2 +1,0 @@
-include_directories(obstacle)
-include_directories(utility)

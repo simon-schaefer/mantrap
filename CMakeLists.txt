@@ -1,25 +1,30 @@
 cmake_minimum_required(VERSION 3.0)
+project(mantrap)
 
-project(murseco)
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -O3")
-
 set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
+set(CPLUS_INCLUDE_PATH /usr/local/include)
+set(LIBRARY_PATH /usr/local/lib)
 
-set(MURSECO_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
-set(MURSECO_BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
-set(MURSECO_LIB_DIR ${PROJECT_SOURCE_DIR}/lib)
+# place binaries and libraries according to GNU standards
+if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+endif()
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
 
-include_directories(${MURSECO_INCLUDE_DIR})
-include_directories(${MURSECO_LIB_DIR})
+set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
+set(PROJECT_BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
+set(PROJECT_LIB_DIR ${PROJECT_SOURCE_DIR}/lib)
 
-# external packages
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+# external packages.
+add_subdirectory(${PROJECT_LIB_DIR})
 
-# testing
-enable_testing()
-
+# internal packages.
+include_directories(${PROJECT_INCLUDE_DIR})
 add_subdirectory(src)
-add_subdirectory(test)
 
-# install(DIRECTORY include/colormap DESTINATION include)
+# testing.
+enable_testing()
+add_subdirectory(test)
