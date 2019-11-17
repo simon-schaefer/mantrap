@@ -3,15 +3,16 @@
 
 #include "mantrap/types.h"
 
-class Agent
-{
+class Agent {
+
+public:
 
     virtual mantrap::Position2D position();
     virtual mantrap::State state();
-    virtual mantrap::Path history();
-    virtual mantrap::Path trajectory();
+    virtual mantrap::Trajectory history();
+    virtual mantrap::Trajectory trajectory();
 
-}
+};
 
 
 #endif //MANTRAP_AGENT_H

@@ -1,11 +1,13 @@
 # Add gtest include directories.
 enable_testing()
-include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 # Unit testing exectuables.
 add_executable(unit_tests
-    test_types.cpp
-    test_2.cpp
+        test_gmm_stats.cpp
 )
-target_link_libraries(unit_tests gtest_main gtest_main)
+target_link_libraries(unit_tests gtest gtest_main gmm_stats)
 add_test(NAME unit COMMAND ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}/unit_tests)
+
+# Scratch book.
+add_executable(scratch scratch.cpp)
+target_link_libraries(scratch gmm_stats)

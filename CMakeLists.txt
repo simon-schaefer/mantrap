@@ -6,25 +6,37 @@ set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
 set(CPLUS_INCLUDE_PATH /usr/local/include)
 set(LIBRARY_PATH /usr/local/lib)
 
-# place binaries and libraries according to GNU standards
-if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
-endif()
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
-
 set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 set(PROJECT_BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
-set(PROJECT_LIB_DIR ${PROJECT_SOURCE_DIR}/lib)
+set(PROJECT_LIB_DIR ${PROJECT_SOURCE_DIR}/src)
+set(PROJECT_EXTERN_DIR ${PROJECT_SOURCE_DIR}/extern)
 
-# external packages.
-add_subdirectory(${PROJECT_LIB_DIR})
+# external packages - eigen.
+include_directories(${CPLUS_INCLUDE_PATH}/eigen3)
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 # internal packages.
 include_directories(${PROJECT_INCLUDE_DIR})
-add_subdirectory(src)
+
+file(GLOB gmm_stats_src ${PROJECT_LIB_DIR}/gmm_stats/*.cpp)
+add_library(gmm_stats ${gmm_stats_src})
+#file(GLOB mantrap_src ${PROJECT_LIB_DIR}/mantrap/*.cpp)
+#add_library(mantrap ${mantrap_src})
 
 # testing.
-enable_testing()
-add_subdirectory(test)
+option(PACKAGE_TESTS "Build the tests" ON)
+if(PACKAGE_TESTS)
+    enable_testing()
+
+    # Add googletest submodule to project.
+    add_subdirectory(${PROJECT_EXTERN_DIR}/googletest)
+
+    # Exclude googletest from IDE.
+    set_target_properties(gtest PROPERTIES FOLDER extern)
+    set_target_properties(gtest_main PROPERTIES FOLDER extern)
+    set_target_properties(gmock PROPERTIES FOLDER extern)
+    set_target_properties(gmock_main PROPERTIES FOLDER extern)
+
+    # Add test directory.
+    add_subdirectory(test)
+endif()
