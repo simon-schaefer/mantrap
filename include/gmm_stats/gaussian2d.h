@@ -6,22 +6,21 @@
 #include <eigen3/Eigen/Dense>
 
 /* Unimodal Gaussian distribution:
-f(x) = 1 / /sqrt(2*pi )^p * det(Sigma)) * exp(-0.5 * (x - mu)^T * Sigma^(-1) * (x - mu)) */
+f(x) = 1 / /sqrt(2*pi )^p * det(Sigma)) * exp(-0.5 * (x - _mu)^T * Sigma^(-1) * (x - _mu)) */
 class Gaussian2D {
 
-    double _K1, _K2;
+    Eigen::Vector2d _mu;
+    Eigen::Matrix2d _sigma;
 
 public:
 
-    Eigen::Vector2d mu;
-    Eigen::Matrix2d sigma;
-
+    Gaussian2D();
     Gaussian2D(const Eigen::Vector2d & mean, const Eigen::Matrix2d & covariance);
 
     // Get probability density function value at given location.
     // @param position: 2D position vector to sample at.
     // @return pdf value for given (x,y)-pair.
-    [[nodiscard]] double pdf_at(const Eigen::Vector2d & position) const;
+    double pdfAt(const Eigen::Vector2d & position) const;
 
     // Get probability density function value at given locations.
     // The x, y coordinates for a vector of (x, y) pairs, the function is shape containing, i.e. it returns
@@ -29,7 +28,7 @@ public:
     // on (x, y) pairs hence x and y have to be in the same shape.
     // @param positions: std::vector of 2D position vectors to sample at.
     // @return pdf values for given (x,y)-pair.
-    std::vector<double> pdf_at(const std::vector<Eigen::Vector2d> & positions) const;
+    std::vector<double> pdfAt(const std::vector<Eigen::Vector2d> & positions) const;
 
     // Sample a value from 2D distribution.
     // For this, we basically produce data from the normal distribution around zero with identity convariance matrix
@@ -45,17 +44,20 @@ public:
     // sphere around zero. We can transform this vectors x to vectors y which belong to any MVN with any mean and
     // covariance matrix by:
     //
-    // y = lambda**(1/2) * phi * x + mu
+    // y = lambda**(1/2) * phi * x + _mu
     //
     // where lambda a diagonal matrix with the eigenvalues of the convariance matrix as the diagonal elements and phi
     // matrix with the eigenvectors of the convariance matrix at its column.
     // Inspired by http://blog.sarantop.com/notes/mvn.
-    Eigen::Vector2d sample(int num_iterations = 200) const;
+    Eigen::Vector2d sample() const;
 
     // Sample N = num_samples from distribution and return results stacked in x and y std::vector.
     // @param num_samples: number of samples to return.
     // @return std::vector of 2D position vectors.
-    std::vector<Eigen::Vector2d> sample_vector(const int num_samples) const;
+    std::vector<Eigen::Vector2d> sample(int num_samples) const;
+
+    Eigen::Vector2d mean() const        { return _mu;       }
+    Eigen::Matrix2d covariance() const  { return _sigma;    }
 
 };
 
