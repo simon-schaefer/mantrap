@@ -14,16 +14,21 @@ class DTVAdo : mantrap::Agent {
 
 protected:
 
+    mantrap::Position2D _position;
     mantrap::Trajectory _history;
     int _num_modes;
 
 public:
-    DTVAdo(const mantrap::Trajectory& history, const int num_modes)
-    : _num_modes(num_modes) {
+    DTVAdo(const mantrap::Position2D & position, const mantrap::Trajectory& history, const int num_modes)
+    : _num_modes(num_modes)
+    {
         assert(num_modes > 0);
 
-        _history.resize(history.size());
+        _history.resize(history.size() + 1);
         _history.insert(_history.begin(), history.begin(), history.end());
+        _history[-1] = position;
+
+        _position = position;
     }
 
     virtual distribution_t vpdf(const mantrap::Trajectory& history) const = 0;
@@ -39,9 +44,10 @@ public:
     // @param num_samples: number of trajectory samples.
     // @param dt: time step [s] for forward integration.
     // @return vector of sampled future trajectories (num_samples -> thorizon, 2).
-    std::vector<mantrap::Trajectory> trajectory_samples(const int thorizon,
-                                                        const int num_samples,
-                                                        const double dt = 0.1) const  {
+    std::vector<mantrap::Trajectory> trajectory_samples(const int thorizon = 20,
+                                                        const int num_samples = 10,
+                                                        const double dt = 0.1) const
+    {
         assert(dt > 0 && num_samples > 0 && thorizon > 0);
 
         std::vector<mantrap::Trajectory> samples(num_samples);
@@ -68,7 +74,7 @@ public:
     }
 
     int num_modes() const                   { return _num_modes; }
-    mantrap::Position2D position() const    { return *_history.begin(); }
+    mantrap::Position2D position() const    { return _position; }
     mantrap::Trajectory history() const     { return _history; }
 
 };

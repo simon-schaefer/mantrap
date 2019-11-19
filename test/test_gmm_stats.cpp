@@ -5,7 +5,8 @@
 #include "gmm_stats/gmm2d.h"
 
 
-TEST(test_gaussian2d, pdf_at) {
+TEST(test_gaussian2d, pdf_at)
+{
     Eigen::MatrixXd sigma(2, 2);
     sigma << 1, 0.1,
              0.1, 1;
@@ -22,7 +23,8 @@ TEST(test_gaussian2d, pdf_at) {
 }
 
 
-TEST(test_gaussian2d, sampling) {
+TEST(test_gaussian2d, sampling)
+{
     // Define the covariance matrix and the mean.
     Eigen::Matrix2d sigma(2, 2);
     sigma << 10, 7,
@@ -62,7 +64,8 @@ TEST(test_gaussian2d, sampling) {
 }
 
 
-TEST(test_gmm2d, pdf_at) {
+TEST(test_gmm2d, pdf_at)
+{
     gmmstats::Matrix2Xd means(2);
     means[0] << 0, 0;
     means[1] << 0, 0;
@@ -83,7 +86,8 @@ TEST(test_gmm2d, pdf_at) {
 }
 
 
-TEST(test_gmm2d, sampling) {
+TEST(test_gmm2d, sampling)
+{
     gmmstats::Matrix2Xd means(2);
     means[0] << 10, 0;
     means[1] << 0, 10;
