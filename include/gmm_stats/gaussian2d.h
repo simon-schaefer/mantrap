@@ -5,9 +5,13 @@
 
 #include <eigen3/Eigen/Dense>
 
+#include "gmm_stats/types.h"
+
 /* Unimodal Gaussian distribution:
 f(x) = 1 / /sqrt(2*pi )^p * det(Sigma)) * exp(-0.5 * (x - _mu)^T * Sigma^(-1) * (x - _mu)) */
-class Gaussian2D {
+namespace gmmstats {
+
+class Gaussian2D : public gmmstats::Distribution2D {
 
     Eigen::Vector2d _mu;
     Eigen::Matrix2d _sigma;
@@ -15,12 +19,13 @@ class Gaussian2D {
 public:
 
     Gaussian2D();
-    Gaussian2D(const Eigen::Vector2d & mean, const Eigen::Matrix2d & covariance);
+
+    Gaussian2D(const Eigen::Vector2d &mean, const Eigen::Matrix2d &covariance);
 
     // Get probability density function value at given location.
     // @param position: 2D position vector to sample at.
     // @return pdf value for given (x,y)-pair.
-    double pdfAt(const Eigen::Vector2d & position) const;
+    double pdfAt(const Eigen::Vector2d &position) const;
 
     // Get probability density function value at given locations.
     // The x, y coordinates for a vector of (x, y) pairs, the function is shape containing, i.e. it returns
@@ -28,7 +33,7 @@ public:
     // on (x, y) pairs hence x and y have to be in the same shape.
     // @param positions: std::vector of 2D position vectors to sample at.
     // @return pdf values for given (x,y)-pair.
-    std::vector<double> pdfAt(const std::vector<Eigen::Vector2d> & positions) const;
+    std::vector<double> pdfAt(const std::vector<Eigen::Vector2d> &positions) const;
 
     // Sample a value from 2D distribution.
     // For this, we basically produce data from the normal distribution around zero with identity convariance matrix
@@ -56,10 +61,12 @@ public:
     // @return std::vector of 2D position vectors.
     std::vector<Eigen::Vector2d> sample(int num_samples) const;
 
-    Eigen::Vector2d mean() const        { return _mu;       }
-    Eigen::Matrix2d covariance() const  { return _sigma;    }
+    Eigen::Vector2d mean() const { return _mu; }
+
+    Eigen::Matrix2d covariance() const { return _sigma; }
 
 };
+}
 
 
 #endif //GMM_STATS_Gaussian2D_H

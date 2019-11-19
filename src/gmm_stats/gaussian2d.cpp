@@ -5,22 +5,20 @@
 
 #define SAMPLING_NUM_ITERATIONS 200
 
-Gaussian2D::Gaussian2D() {
+gmmstats::Gaussian2D::Gaussian2D() {
     _mu << 0, 0;
     _sigma << 1, 0, 0, 1;
 }
 
 
-Gaussian2D::Gaussian2D(const Eigen::Vector2d & mean, const Eigen::Matrix2d & covariance) {
+gmmstats::Gaussian2D::Gaussian2D(const Eigen::Vector2d & mean, const Eigen::Matrix2d & covariance)
+: _mu(mean), _sigma(covariance) {
     assert(covariance.determinant() != 0);
     assert(covariance(0, 1) == covariance(1, 0));
-
-    _mu = mean;
-    _sigma = covariance;
 }
 
 
-double Gaussian2D::pdfAt(const Eigen::Vector2d & position) const {
+double gmmstats::Gaussian2D::pdfAt(const Eigen::Vector2d & position) const {
     const double sqrt2pi = std::sqrt(2 * M_PI);
     const double quadform  = (position - _mu).transpose() * _sigma.inverse() * (position - _mu);
     const double norm = std::pow(sqrt2pi, - 2) * std::pow(_sigma.determinant(), - 0.5);
@@ -28,7 +26,7 @@ double Gaussian2D::pdfAt(const Eigen::Vector2d & position) const {
 }
 
 
-std::vector<double> Gaussian2D::pdfAt(const std::vector<Eigen::Vector2d> & positions) const {
+std::vector<double> gmmstats::Gaussian2D::pdfAt(const std::vector<Eigen::Vector2d> & positions) const {
     std::vector<double> pdfs(positions.size());
     for(int i = 0; i < positions.size(); i++) {
         pdfs[i] = pdfAt(positions[i]);
@@ -37,7 +35,7 @@ std::vector<double> Gaussian2D::pdfAt(const std::vector<Eigen::Vector2d> & posit
 }
 
 
-Eigen::Vector2d Gaussian2D::sample() const {
+Eigen::Vector2d gmmstats::Gaussian2D::sample() const {
     // Generate x from the N(0, I) distribution
     Eigen::Vector2d x;
     Eigen::Vector2d sum;
@@ -66,7 +64,7 @@ Eigen::Vector2d Gaussian2D::sample() const {
 }
 
 
-std::vector<Eigen::Vector2d> Gaussian2D::sample(const int num_samples) const {
+std::vector<Eigen::Vector2d> gmmstats::Gaussian2D::sample(const int num_samples) const {
     std::vector<Eigen::Vector2d> samples(num_samples);
     for(int i = 0; i < num_samples; i++) {
         samples[i] = sample();

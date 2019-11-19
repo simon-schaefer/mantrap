@@ -7,7 +7,7 @@
 
 namespace mantrap {
     typedef Eigen::Vector2d Position2D;
-    typedef Eigen::VectorXd State;
+    typedef Eigen::Vector2d Velocity2D;
     typedef std::vector<Position2D> Trajectory;
 }
 

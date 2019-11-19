@@ -3,7 +3,6 @@
 
 #include "gmm_stats/gaussian2d.h"
 #include "gmm_stats/gmm2d.h"
-#include "gmm_stats/types.h"
 
 
 TEST(test_gaussian2d, pdf_at) {
@@ -12,7 +11,7 @@ TEST(test_gaussian2d, pdf_at) {
              0.1, 1;
     Eigen::VectorXd mean(2);
     mean << 0, 0;
-    Gaussian2D distribution = Gaussian2D(mean, sigma);
+    gmmstats::Gaussian2D distribution(mean, sigma);
 
     Eigen::Vector2d test;
     test << 0, 0;
@@ -30,7 +29,7 @@ TEST(test_gaussian2d, sampling) {
               7, 5;
     Eigen::Vector2d mean(2);
     mean << 2, 2;
-    Gaussian2D mvn(mean, sigma);
+    gmmstats::Gaussian2D mvn(mean, sigma);
 
     // Sample a number of points.
     const unsigned int points = 1000;
@@ -64,16 +63,16 @@ TEST(test_gaussian2d, sampling) {
 
 
 TEST(test_gmm2d, pdf_at) {
-    GMMStats::Matrix2Xd means(2);
+    gmmstats::Matrix2Xd means(2);
     means[0] << 0, 0;
     means[1] << 0, 0;
-    GMMStats::Matrix22Xd covariances(2);
+    gmmstats::Matrix22Xd covariances(2);
     covariances[0] << 1, 0.1, 0.1, 1;
     covariances[1] << 1, 0.1, 0.1, 1;
     std::vector<double> weights(2);
     weights[0] = 1.0;
     weights[1] = 1.0;
-    GMM2D gmm(means, covariances, weights);
+    gmmstats::GMM2D gmm(means, covariances, weights);
 
     Eigen::Vector2d test;
     test << 0, 0;
@@ -85,16 +84,16 @@ TEST(test_gmm2d, pdf_at) {
 
 
 TEST(test_gmm2d, sampling) {
-    GMMStats::Matrix2Xd means(2);
+    gmmstats::Matrix2Xd means(2);
     means[0] << 10, 0;
     means[1] << 0, 10;
-    GMMStats::Matrix22Xd covariances(2);
+    gmmstats::Matrix22Xd covariances(2);
     covariances[0] << 0.01, 0, 0, 0.01;
     covariances[1] << 0.01, 0, 0, 0.01;
     std::vector<double> weights(2);
     weights[0] = 10.0;
     weights[1] = 1.0;
-    GMM2D gmm(means, covariances, weights);
+    gmmstats::GMM2D gmm(means, covariances, weights);
 
     const int num_samples = 100;
     std::vector<Eigen::Vector2d> samples = gmm.sample(num_samples);

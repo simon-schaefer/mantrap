@@ -10,14 +10,16 @@
 
 /* Gaussian Mixture model distribution:
 f(x) = sum_i w_i * Gaussian2D_i(x) */
-class GMM2D {
+namespace gmmstats {
+
+class GMM2D : public gmmstats::Distribution2D {
 
     std::vector<Gaussian2D> _gaussians;
     std::vector<double> _weights;
 
 public:
-    GMM2D(const GMMStats::Matrix2Xd & means,
-          const GMMStats::Matrix22Xd & covariances,
+    GMM2D(const gmmstats::Matrix2Xd & means,
+          const gmmstats::Matrix22Xd & covariances,
           const std::vector<double> & weights);
 
     // Get probability density function value at given location.
@@ -43,16 +45,18 @@ public:
     // @return std::vector of 2D position vectors.
     std::vector<Eigen::Vector2d> sample(const int num_samples) const;
 
-    GMM2D& operator+(const GMM2D& other);
+    gmmstats::GMM2D& operator+(const GMM2D& other);
 
-    Gaussian2D mode(const int mode_id) const;
-    GMMStats::Matrix2Xd mus() const;
-    GMMStats::Matrix22Xd covariances() const;
+    gmmstats::Gaussian2D mode(const int mode_id) const;
+    gmmstats::Matrix2Xd mus() const;
+    gmmstats::Matrix22Xd covariances() const;
 
     std::vector<double> weights() const         { return _weights;  }
     std::vector<Gaussian2D> gaussians() const   { return _gaussians; }
 
 };
+}
+
 
 
 #endif //GMM_STATS_GMM2D_H
