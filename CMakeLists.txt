@@ -18,11 +18,9 @@ find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 # internal packages.
 include_directories(${PROJECT_INCLUDE_DIR})
 
-file(GLOB gmm_stats_src ${PROJECT_LIB_DIR}/gmm_stats/gaussian2d.cpp ${PROJECT_LIB_DIR}/gmm_stats/gmm2d.cpp)
+file(GLOB gmm_stats_src ${PROJECT_LIB_DIR}/gmm_stats/*.cpp)
 add_library(gmm_stats ${gmm_stats_src})
-file(GLOB mantrap_src ${PROJECT_LIB_DIR}/mantrap/ados/*.cpp
-                      ${PROJECT_LIB_DIR}/mantrap/egos/*.cpp
-                      ${PROJECT_LIB_DIR}/mantrap/simulation/*.cpp)
+file(GLOB mantrap_src ${PROJECT_LIB_DIR}/mantrap/*/*.cpp)
 add_library(mantrap ${mantrap_src})
 
 # testing.

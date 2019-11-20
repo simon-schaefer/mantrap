@@ -4,6 +4,7 @@
 #include <eigen3/Eigen/Dense>
 
 #include "gmm_stats/gaussian2d.h"
+#include "mantrap/constants.h"
 #include "mantrap/types.h"
 #include "mantrap/agents/ados/abstract.h"
 
@@ -17,9 +18,10 @@ class SingeModeDTVAdo : public mantrap::DTVAdo<gmmstats::Gaussian2D> {
 public:
     SingeModeDTVAdo();
 
-    SingeModeDTVAdo(const mantrap::Position2D position,
-                    const mantrap::Velocity2D velocity_mean,
-                    const Eigen::Matrix2d velocity_covariance = Eigen::Matrix2d{1, 0, 0, 1},
+    SingeModeDTVAdo(const mantrap::Position2D & position,
+                    const mantrap::Velocity2D & velocity_mean,
+                    const Eigen::Matrix2d & velocity_covariance,
+                    const double dt = mantrap::sim_dt_default,
                     const mantrap::Trajectory & history = mantrap::Trajectory());
 
     gmmstats::Gaussian2D vpdf(const mantrap::Trajectory& history) const;

@@ -9,22 +9,19 @@
 
 TEST(test_environment, initialization)
 {
-    mantrap::Position2D position;
-    mantrap::Velocity2D v_mean;
+    mantrap::Position2D position(-5, 1);
+    mantrap::Velocity2D v_mean(1, 0);
     Eigen::Matrix2d v_covariance;
-    position << -5.0, 1.0;
-    v_mean << 1.0, 0.0;
     v_covariance << 1.0, 0.0, 0.0, 1.0;
     const mantrap::SingeModeDTVAdo ado_1(position, v_mean, v_covariance);
-    position << 6, -3.0;
-    v_mean << 2.0, -1.0;
+
+    position = mantrap::Position2D(6, -3.0);
+    v_mean = mantrap::Velocity2D(2.0, -1.0);
     v_covariance << 1.0, 0.0, 0.0, 1.0;
     const mantrap::SingeModeDTVAdo ado_2(position, v_mean, v_covariance);
 
-    mantrap::Position2D state;
-    state << 1.0, 0.01;
-    mantrap::Velocity2D action;
-    action << -1.0, 10;
+    mantrap::Position2D state(1.0, 0.01);
+    mantrap::Velocity2D action(-1.0, 10);
     const mantrap::IntegratorDTEgo ego(state);
 
     mantrap::Environment env;

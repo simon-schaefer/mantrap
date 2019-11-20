@@ -13,9 +13,7 @@ mantrap::Environment::generate_trajectory_samples(const int thorizon,
     std::vector<std::vector<mantrap::Trajectory>> samples(num_ados);
     for(int i = 0; i < num_ados; ++i) {
         samples[i].resize(num_samples);
-        samples[i] = std::any_cast<mantrap::SingeModeDTVAdo>(_ados[i]).trajectory_samples(thorizon,
-                                                                                             num_samples,
-                                                                                             _dt);
+        samples[i] = std::any_cast<mantrap::SingeModeDTVAdo>(_ados[i]).trajectory_samples(thorizon, num_samples);
     }
     return samples;
 }

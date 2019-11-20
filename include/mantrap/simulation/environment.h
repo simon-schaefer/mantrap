@@ -6,6 +6,7 @@
 
 #include <eigen3/Eigen/Dense>
 
+#include "mantrap/constants.h"
 #include "mantrap/agents/ados/abstract.h"
 #include "mantrap/agents/egos/abstract.h"
 
@@ -22,9 +23,9 @@ class Environment {
     std::any _ego;
 
 public:
-    Environment(const Eigen::Vector2d xaxis = Eigen::Vector2d{0, 10},
-                const Eigen::Vector2d yaxis = Eigen::Vector2d{0, 10},
-                const double dt = 0.1);
+    Environment(const Eigen::Vector2d xaxis = mantrap::sim_x_axis_default,
+                const Eigen::Vector2d yaxis = mantrap::sim_y_axis_default,
+                const double dt = mantrap::sim_dt_default);
 
     // Generate trajectory samples for each ado in the environment.
     // Therefore iterate over all internally stored ados and call the generate sampling function. The number of
@@ -33,8 +34,9 @@ public:
     // @param thorizon: length of trajectory samples, i.e. number of predicted time-steps.
     // @param num_samples: number of trajectory samples per ado.
     // @return vector of sampled future trajectories (num_samples -> thorizon, 2).
-    std::vector<std::vector<mantrap::Trajectory>> generate_trajectory_samples(const int thorizon = 20,
-                                                                              const int num_samples = 10) const;
+    std::vector<std::vector<mantrap::Trajectory>> generate_trajectory_samples(
+            const int thorizon = mantrap::thorizon_default,
+            const int num_samples = 10) const;
 
     void add_ego(const std::any & ego);
     void add_ado(const std::any & ado);

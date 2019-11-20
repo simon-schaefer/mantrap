@@ -1,5 +1,5 @@
 <package>
-    <name>mantrap</name>
+    <name>mantrap_ros</name>
     <version>0.1.0</version>
     <description>Minimal interferring Interactive Risk-aware Planning</description>
     <maintainer email="sischaef@ethz.ch">Simon Schaefer</maintainer>
@@ -8,8 +8,14 @@
     <buildtool_depend>catkin</buildtool_depend>
 
     <build_depend>roscpp</build_depend>
+    <build_depend>geometry_msgs</build_depend>
+    <build_depend>nav_msgs</build_depend>
     <build_depend>std_msgs</build_depend>
+    <build_depend>message_generation</build_depend>
 
     <run_depend>roscpp</run_depend>
+    <run_depend>geometry_msgs</run_depend>
+    <run_depend>nav_msgs</run_depend>
     <run_depend>std_msgs</run_depend>
+    <run_depend>message_runtime</run_depend>
 </package>
