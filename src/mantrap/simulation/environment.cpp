@@ -1,7 +1,7 @@
 #include "mantrap/simulation/environment.h"
 #include "mantrap/agents/ados/single_mode.h"
 
-mantrap::Environment::Environment(const Eigen::Vector2d xaxis, const Eigen::Vector2d yaxis, const double dt)
+mantrap::Environment::Environment(const mantrap::Axis & xaxis, const mantrap::Axis & yaxis, const double dt)
 : _xaxis(xaxis), _yaxis(yaxis), _dt(dt) {}
 
 

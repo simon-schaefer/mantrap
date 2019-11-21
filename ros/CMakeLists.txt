@@ -25,12 +25,12 @@ add_library(mantrap ${mantrap_src})
 # Get the information about this package's buildtime dependencies.
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs nav_msgs message_generation)
 # Generate package messages.
-add_message_files(FILES Ado.msg Ego.msg)
-generate_messages(DEPENDENCIES std_msgs geometry_msgs nav_msgs)
+add_message_files(FILES Environment.msg Ado.msg Ego.msg Scene.msg)
+generate_messages(DEPENDENCIES std_msgs geometry_msgs nav_msgs mantrap_ros)
 # Declare that this catkin package's runtime dependencies.
 catkin_package(CATKIN_DEPENDS message_runtime)
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 # Build nodes.
-add_executable(env_publisher nodes/env_publisher.cpp)
-target_link_libraries(env_publisher ${catkin_LIBRARIES} mantrap gmm_stats)
+add_executable(scene_publisher nodes/scene_publisher.cpp)
+target_link_libraries(scene_publisher ${catkin_LIBRARIES} mantrap gmm_stats)

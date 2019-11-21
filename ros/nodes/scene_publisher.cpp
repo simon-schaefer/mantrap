@@ -1,16 +1,17 @@
 #include "ros/ros.h"
 
 #include "mantrap/agents/ados/single_mode.h"
+#include "mantrap/simulation/environment.h"
 
-#include "mantrap_ros/Ado.h"
+#include "mantrap_ros/Scene.h"
 #include "mantrap_ros/conversion.h"
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "env_publisher");
     ros::NodeHandle n;
-    ros::Publisher ado_pub = n.advertise<mantrap_ros::Ado>("ado", 1000);
-    ros::Rate loop_rate(10);
+    ros::Publisher scene_pub = n.advertise<mantrap_ros::Scene>("scene", 1000);
+    ros::Rate loop_rate(1);
 
     const mantrap::Position2D position(-5, 1);
     const mantrap::Velocity2D v_mean(1, 0);
@@ -18,10 +19,13 @@ int main(int argc, char **argv)
     v_covariance << 1.0, 0.0, 0.0, 1.0;
     const mantrap::SingeModeDTVAdo ado(position, v_mean, v_covariance);
 
-    mantrap_ros::Ado ado_msg = mantrap_ros::single_mode_2_msg(ado);
+    const mantrap::Environment env;
 
+    mantrap_ros::Scene scene_msg;
+    scene_msg.env = mantrap_ros::env_2_msg(env);
+    scene_msg.ados.push_back(mantrap_ros::single_mode_2_msg(ado));
     while (ros::ok()) {
-        ado_pub.publish(ado_msg);
+        scene_pub.publish(scene_msg);
         ros::spinOnce();
         loop_rate.sleep();
     }

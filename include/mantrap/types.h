@@ -7,6 +7,8 @@
 
 namespace mantrap {
 
+    // navigation containers.
+
     struct Position2D {
         double x;
         double y;
@@ -55,6 +57,15 @@ namespace mantrap {
     };
 
     typedef std::vector<PoseStamped2D> Trajectory;
+
+    // environment utility containers.
+
+    struct Axis {
+        double min;
+        double max;
+
+        Axis(double _min, double _max) : min(_min), max(_max) {}
+    };
 }
 
 #endif //MANTRAP_TYPES_H

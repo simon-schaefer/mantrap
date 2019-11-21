@@ -43,11 +43,11 @@ TEST(test_environment, initialization)
     std::vector< std::vector<mantrap::Trajectory> > samples = env.generate_trajectory_samples(20, 10);
 
     EXPECT_EQ(samples.size(), 2);
-    EXPECT_EQ(samples[0].size(), 10);
+    EXPECT_EQ(samples[0].size(), 20);
     for(int k = 0; k < 2; ++k) {
-        EXPECT_EQ(samples[k].size(), 10);
+        EXPECT_EQ(samples[k].size(), 20);
         for(int i = 0; i < 10; ++i) {
-            EXPECT_EQ(samples[k][i].size(), 20);
+            EXPECT_EQ(samples[k][i].size(), 10);
         }
     }
 }

@@ -50,8 +50,8 @@ public:
     // @param thorizon: length of trajectory samples, i.e. number of predicted time-steps.
     // @param num_samples: number of trajectory samples.
     // @return vector of sampled future trajectories (num_samples -> thorizon, 2).
-    std::vector<mantrap::Trajectory> trajectory_samples(const int thorizon = mantrap::thorizon_default,
-                                                        const int num_samples = 10) const
+    std::vector<mantrap::Trajectory> trajectory_samples(const int num_samples = 10,
+                                                        const int thorizon = mantrap::thorizon_default) const
     {
         assert(num_samples > 0 && thorizon > 0);
 

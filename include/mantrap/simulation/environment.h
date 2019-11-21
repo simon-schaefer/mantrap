@@ -15,16 +15,16 @@ namespace mantrap {
 
 class Environment {
 
-    Eigen::Vector2d _xaxis;
-    Eigen::Vector2d _yaxis;
+    mantrap::Axis _xaxis;
+    mantrap::Axis _yaxis;
     double _dt;
 
     std::vector<std::any> _ados;
     std::any _ego;
 
 public:
-    Environment(const Eigen::Vector2d xaxis = mantrap::sim_x_axis_default,
-                const Eigen::Vector2d yaxis = mantrap::sim_y_axis_default,
+    Environment(const mantrap::Axis & xaxis = mantrap::sim_x_axis_default,
+                const mantrap::Axis & yaxis = mantrap::sim_y_axis_default,
                 const double dt = mantrap::sim_dt_default);
 
     // Generate trajectory samples for each ado in the environment.
@@ -44,6 +44,8 @@ public:
     std::vector<std::any> ados() const                  { return _ados; }
     std::any ego() const                                { return _ego; }
     double dt() const                                   { return _dt; }
+    mantrap::Axis xaxis() const                         { return _xaxis; }
+    mantrap::Axis yaxis() const                         { return _yaxis; }
 };
 }
 
