@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     ros::Publisher scene_pub = n.advertise<mantrap_ros::Scene>("scene", 1000);
     ros::Rate loop_rate(1);
 
-    const mantrap::Position2D position(-5, 1);
+    const mantrap::Position2D position(5, 2);
     const mantrap::Velocity2D v_mean(1, 0);
     Eigen::Matrix2d v_covariance;
     v_covariance << 1.0, 0.0, 0.0, 1.0;

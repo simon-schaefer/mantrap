@@ -67,7 +67,7 @@ mantrap_ros::Ado single_mode_2_msg(const mantrap::SingeModeDTVAdo& ado)
         ado_msg.history.poses[k].pose.orientation = theta_2_quaternion(ado.history()[k].pose.theta);
     }
 
-    const std::vector<mantrap::Trajectory> samples = ado.trajectory_samples(1);
+    const std::vector<mantrap::Trajectory> samples = ado.trajectory_samples();
     ado_msg.trajectories.resize(samples.size());
     for(int i = 0; i < samples.size(); ++i) {
         ado_msg.trajectories[i].header.stamp = time_ros;

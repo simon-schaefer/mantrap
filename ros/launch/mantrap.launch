@@ -1,0 +1,9 @@
+<launch>
+    <group ns="mantrap">
+
+        <!-- Run scene publisher and visualization node. -->
+        <node name="scene_publisher" pkg="mantrap_ros" type="scene_publisher" />
+        <node name="scene_visualizer" pkg="mantrap_ros" type="scene_visualizer.py" />
+
+    </group>
+</launch>
