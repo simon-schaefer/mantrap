@@ -1,9 +1,12 @@
 <launch>
+
+    <env name="ROSCONSOLE_CONFIG_FILE" value="$(find mantrap_ros)/rosconsole.conf"/>
+
     <group ns="mantrap">
 
         <!-- Run scene publisher and visualization node. -->
-        <node name="scene_publisher" pkg="mantrap_ros" type="scene_publisher" />
-        <node name="scene_visualizer" pkg="mantrap_ros" type="scene_visualizer.py" />
+        <node name="scene_publisher" pkg="mantrap_ros" type="scene_publisher" output="screen" />
+        <node name="scene_visualizer" pkg="mantrap_ros" type="scene_visualizer.py" output="screen" />
 
     </group>
 </launch>
