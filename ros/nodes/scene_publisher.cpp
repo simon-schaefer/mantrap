@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 
 #include "mantrap/agents/ados/single_mode.h"
-#include "mantrap/simulation/environment.h"
+#include "mantrap/simulation/gaussian.h"
 
 #include "mantrap_ros/Scene.h"
 #include "mantrap_ros/conversion.h"

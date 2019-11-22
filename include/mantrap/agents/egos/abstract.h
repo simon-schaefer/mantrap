@@ -24,7 +24,8 @@ public:
     // Thereby a perfect model i.e. without uncertainty and correct is assumed.
     // @param policy: sequence of inputs to apply to the robot.
     // @return trajectory: resulting trajectory (no uncertainty in dynamics assumption !).
-    mantrap::Trajectory unroll_trajectory(const std::vector<action_t> & policy) {
+    mantrap::Trajectory unroll_trajectory(const std::vector<action_t> & policy)
+    {
         mantrap::Trajectory trajectory(policy.size() + 1);
 
         // initial trajectory point is the current state.
@@ -33,7 +34,8 @@ public:
         // every next state follows from robot's dynamics recursion, basically assuming no model uncertainty.
         state_t state_at_t = state();
         mantrap::Pose2D pose_at_t;
-        for(int i = 0; i < policy.size(); ++i) {
+        for(int i = 0; i < policy.size(); ++i)
+        {
             state_at_t = dynamics(state_at_t, policy[i]);
             pose_at_t = pose_from_state(state_at_t);
             trajectory[i + 1] = mantrap::PoseStamped2D(pose_at_t, (i + 1) * _dt);

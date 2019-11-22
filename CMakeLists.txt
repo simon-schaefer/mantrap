@@ -15,6 +15,11 @@ set(PROJECT_EXTERN_DIR ${PROJECT_SOURCE_DIR}/extern)
 include_directories(${CPLUS_INCLUDE_PATH}/eigen3)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
+# external packages - torch.
+set(CMAKE_PREFIX_PATH ${CPLUS_INCLUDE_PATH}/libtorch)
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+
 # internal packages.
 include_directories(${PROJECT_INCLUDE_DIR})
 
