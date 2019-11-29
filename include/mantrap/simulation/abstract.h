@@ -34,6 +34,8 @@ public:
     // to each child-class.
     // Dependent on whether the prediction is deterministic or probablistic the output can vary between each child-
     // class, by setting the prediction_t. However the output should be a vector of predictions, one for each ado.
+    // @param thorizon: number of timesteps to predict.
+    // @param ego_trajectory: planned ego trajectory (in case of dependence in behaviour between ado and ego).
     virtual std::vector<prediction_t> predict(
             const int thorizon = mantrap::thorizon_default,
             const mantrap::Trajectory & ego_trajectory = mantrap::Trajectory()) const = 0;

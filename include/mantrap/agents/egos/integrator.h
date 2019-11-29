@@ -7,17 +7,18 @@
 
 namespace mantrap {
 
-class IntegratorDTEgo : public mantrap::DTEgo<mantrap::Position2D, mantrap::Velocity2D> {
+class IntegratorDTEgo : public mantrap::DTEgo<mantrap::Vector2D, mantrap::Vector2D> {
 
 
 public:
-    IntegratorDTEgo(const mantrap::Position2D & position,
+    IntegratorDTEgo(const double x, const double y, const double dt = mantrap::sim_dt_default);
+
+    IntegratorDTEgo(const mantrap::Vector2D & position,
                     const double dt = mantrap::sim_dt_default);
 
-    mantrap::Position2D dynamics(const mantrap::Position2D state, const mantrap::Velocity2D action) const;
-    mantrap::Position2D position_from_state(const mantrap::Position2D & state) const;
-    mantrap::Pose2D pose_from_state(const mantrap::Position2D & state) const;
-
+    mantrap::Vector2D dynamics(const mantrap::Vector2D state, const mantrap::Vector2D action) const;
+    mantrap::Vector2D position_from_state(const mantrap::Vector2D & state) const;
+    mantrap::Pose2D pose_from_state(const mantrap::Vector2D & state) const;
 
 };
 }

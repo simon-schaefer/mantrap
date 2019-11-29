@@ -1,1 +1,1 @@
-from .visualize_env import plot_environment
+from .visualize_scene import plot_scene

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_environment(
+def plot_scene(
     ados,  # List[Tuple[np.ndarray, np.ndarray, np.ndarray]],
     ego,  # Tuple[np.ndarray, np.ndarray, np.ndarray],
     xaxis,  # Tuple[float, float],
@@ -39,7 +39,7 @@ def plot_environment(
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    fig, ax = plt.subplots(figsize=(6, 6))
+    fig, ax = plt.subplots(figsize=(10, 10))
 
     # Plot ados.
     for ado in ados:

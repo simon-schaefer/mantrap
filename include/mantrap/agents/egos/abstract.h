@@ -47,13 +47,14 @@ public:
 
 
     // Transform internal state to 2D pose (x, y, theta) and 2D position (x, y).
-    virtual mantrap::Position2D position_from_state(const state_t & state) const = 0;
+    virtual mantrap::Vector2D position_from_state(const state_t & state) const = 0;
     virtual mantrap::Pose2D pose_from_state(const state_t & state) const = 0;
 
 
+    double dt() const                           { return _dt; }
     state_t state() const                       { return _state; }
     mantrap::Pose2D pose() const                { return pose_from_state(state()); }
-    mantrap::Position2D position() const        { return position_from_state(state()); }
+    mantrap::Vector2D position() const        { return position_from_state(state()); }
     mantrap::Trajectory history() const         { return _history; }
 
 };

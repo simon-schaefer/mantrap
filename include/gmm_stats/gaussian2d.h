@@ -11,7 +11,8 @@
 f(x) = 1 / /sqrt(2*pi )^p * det(Sigma)) * exp(-0.5 * (x - _mu)^T * Sigma^(-1) * (x - _mu)) */
 namespace gmmstats {
 
-class Gaussian2D : public gmmstats::Distribution2D {
+class Gaussian2D : public gmmstats::Distribution2D
+{
 
     Eigen::Vector2d _mu;
     Eigen::Matrix2d _sigma;

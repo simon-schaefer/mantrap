@@ -9,7 +9,7 @@ class Agent {
 
 public:
 
-    virtual mantrap::Position2D position() const = 0;
+    virtual mantrap::Vector2D position() const = 0;
     virtual mantrap::Pose2D pose() const = 0;
     virtual mantrap::Trajectory history() const = 0;
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from datetime import datetime
 import os
+import sys
+
 import numpy as np
 
 import mantrap_visualization
@@ -57,11 +59,15 @@ def callback(data):
     yaxis = (data.env.ymin.data, data.env.ymax.data)
 
     # Plotting.
-    mantrap_visualization.plot_environment(ados, ego, xaxis, yaxis, OUTPUT_PATH)
+    mantrap_visualization.plot_scene(ados, ego, xaxis, yaxis, OUTPUT_PATH)
+
+    # Logging.
+    rospy.loginfo("Stored plot in %s" % OUTPUT_PATH)
+    rospy.signal_shutdown("")
 
 
 def main():
-    rospy.init_node('scene_visualizer')
+    rospy.init_node("scene_visualizer", disable_signals=True)
     rospy.Subscriber("scene", mantrap_ros.msg.Scene, callback)
     rospy.spin()
 
