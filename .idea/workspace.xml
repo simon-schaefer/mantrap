@@ -1,11 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="8bfa4cb6-e6a1-4d74-b2ac-b6b3dd289fb3" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/mantrap/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/agents/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/agents/agent.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/agents/integrator.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/agents/integrator_double.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/constants.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/simulation/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/simulation/abstract.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/utility/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/utility/io.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/utility/linalg.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/visualization/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mantrap/visualization/visualize_simulation.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/test_agents.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/test_social_sim.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/visualize.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/mantrap.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/mantrap.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="ProjectId" id="1UGxcAq8LUn7WBtziq6gLJKKuYA" />
   <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="settings.editor.selected.configurable" value="configurable.group.appearance" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/mantrap/agents" />
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="8bfa4cb6-e6a1-4d74-b2ac-b6b3dd289fb3" name="Default Changelist" comment="" />
+      <created>1574996810043</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1574996810043</updated>
+      <workItem from="1574996812820" duration="343000" />
+      <workItem from="1574997168797" duration="8230000" />
+      <workItem from="1575052084119" duration="21992000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="COLUMN_ORDER" />
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>

@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.egg-info/
+build/
+
+
+# Unit test / coverage reports
+.pytest_cache/
+test/cache/
+test/graphs/
+
+# Environments
+.venv_*/
+.DS_Store
+.idea/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Outputs.
+outs/
