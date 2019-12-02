@@ -45,7 +45,7 @@ def visualize_ados_cross_prediction():
     for t in range(100):
         ado_trajectories = sim.step()
         plot_scene(sim, ado_trajectories=ado_trajectories, output_dir=output_dir, image_tag=f"{sim.sim_time:.2f}")
-    
+
 
 def visualize_dodging_prediction():
     sim = mantrap.simulation.SocialForcesSimulation(x_axis=(-2, 2), y_axis=(-2, 2))
