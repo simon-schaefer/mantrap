@@ -1,4 +1,6 @@
 from abc import abstractmethod
+import random
+import string
 
 import numpy as np
 
@@ -23,6 +25,9 @@ class Agent:
 
         # Create random agent color (reddish), for visualization only.
         self._color = np.hstack((1.0, np.random.rand(2)))
+        # Random identifier.
+        letters = string.ascii_lowercase
+        self._id = ''.join(random.choice(letters) for i in range(3))
 
     def update(self, action: np.ndarray, dt: float = mantrap.constants.sim_dt_default):
         """Update internal state (position, velocity and history) by executing some action for time dt."""
@@ -67,6 +72,10 @@ class Agent:
         """
         pass
 
+    ###########################################################################
+    # State properties ########################################################
+    ###########################################################################
+
     @property
     def state(self) -> np.ndarray:
         return np.hstack((self.pose, self.velocity))
@@ -87,10 +96,22 @@ class Agent:
     def speed(self) -> float:
         return np.linalg.norm(self.velocity)
 
+    ###########################################################################
+    # History properties ######################################################
+    ###########################################################################
+
     @property
     def history(self) -> np.ndarray:
         return self._history
 
+    ###########################################################################
+    # Visualization/Utility properties ########################################
+    ###########################################################################
+
     @property
     def color(self) -> np.ndarray:
         return self._color
+
+    @property
+    def id(self) -> str:
+        return self._id

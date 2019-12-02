@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import torch
@@ -40,13 +40,7 @@ class SocialForcesSimulation(Simulation):
         :param return_policies: return the actual system inputs (at every time to get trajectory).
         :return: predicted trajectory for each ado (deterministic !).
         """
-        # Define simulation parameters (as defined in the paper).
         num_ados = len(self._ados)
-        tau = 0.5  # [s] relaxation time (assumed to be uniform over all agents).
-        v_0 = 2.1  # [m2s-2] repulsive field constant.
-        sigma = 0.3  # [m] repulsive field exponent constant.
-        m = 1  # [kg] mass of ado for velocity update.
-
         forces = np.zeros((t_horizon, num_ados, 2))
 
         # The social forces model predicts from one time-step to another, therefore the ados are actually updated in
@@ -54,51 +48,16 @@ class SocialForcesSimulation(Simulation):
         # vector is copied.
         ados_sim = copy.deepcopy(self.ados)
         for t in range(t_horizon):
+            # Build graph based on simulation ados. Build it once and update it every time is surprisingly difficult
+            # since the gradients/computations are not updated when one of the leafs is updated, resulting in the
+            # same output. However the computational effort of building the graph is negligible (about 1 ms for
+            # 2 agents on Mac Pro 2018).
+            graph_at_t = self._build_graph(ados_sim)
+
+            # Evaluate graph.
             for i in range(num_ados):
-
-                # Alpha ado properties.
-                alpha_goal = torch.tensor(self._ado_goals[i].astype(float))
-                alpha_position = torch.tensor(ados_sim[i].position.astype(float))
-                alpha_velocity = torch.tensor(ados_sim[i].velocity.astype(float))
-
-                alpha_direction = torch.sub(alpha_goal, alpha_position)
-                alpha_direction = normalize_torch(alpha_direction)
-
-                # Destination force - Force pulling the ado to its assigned goal position.
-                force = torch.sub(alpha_direction * ados_sim[i].speed, alpha_velocity) * 1 / tau
-
-                # Interactive force - Repulsive potential field by every other agent.
-                for j in range(num_ados):
-                    if i == j:
-                        continue
-
-                    # Beta ado properties.
-                    beta_position = torch.tensor(ados_sim[j].position.astype(float))
-                    beta_velocity = torch.tensor(ados_sim[j].velocity.astype(float))
-
-                    # Relative properties and their norms.
-                    relative_distance = torch.sub(alpha_position, beta_position)
-                    relative_distance.requires_grad = True
-                    relative_velocity = torch.sub(alpha_velocity, beta_velocity)
-
-                    norm_relative_distance = torch.norm(relative_distance)
-                    norm_relative_velocity = torch.norm(relative_velocity)
-                    norm_diff_position = torch.sub(relative_distance, relative_velocity * self.dt).norm()
-
-                    # Alpha-Beta potential field.
-                    b1 = torch.add(norm_relative_distance, norm_diff_position)
-                    b2 = self.dt * norm_relative_velocity
-                    b = 0.5 * torch.sqrt(torch.sub(torch.pow(b1, 2), torch.pow(b2, 2)))
-                    v = v_0 * torch.exp(-b / sigma)
-                    v.backward()
-
-                    # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
-                    # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
-                    force = torch.sub(force, relative_distance.grad)
-
-                # Update ados velocity (single integrator dynamics) and position.
-                forces[t, i, :] = force.data.numpy()
-                ados_sim[i].update(forces[t, i, :] / m, self.dt)
+                forces[t, i, :] = graph_at_t[f"{ados_sim[i].id}_force"].detach().numpy()
+                ados_sim[i].update(forces[t, i, :], self.dt)  # assuming m = 1 kg
 
         # Collect histories of simulated ados (last t_horizon steps are equal to future trajectories).
         trajectories = np.asarray([ado.history for ado in ados_sim])
@@ -117,8 +76,59 @@ class SocialForcesSimulation(Simulation):
         super(SocialForcesSimulation, self)._add_ado(DoubleIntegratorDTAgent, **ado_kwargs)
         self._ado_goals.append(goal_position)
 
-    def _build_graph(self):
+    def _build_graph(self, ados: List[Agent]) -> Dict[str, torch.Tensor]:
         """Graph:
         --> Input = position & velocities of ados (and ego state & trajectory later on)
         --> Output = Force acting on every ado"""
-        pass
+        # Define simulation parameters (as defined in the paper).
+        num_ados = len(ados)
+        tau = 0.5  # [s] relaxation time (assumed to be uniform over all agents).
+        v_0 = 2.1  # [m2s-2] repulsive field constant.
+        sigma = 0.3  # [m] repulsive field exponent constant.
+
+        graph = {}
+
+        # Add ados to graph as an input - Properties such as goal, position and velocity.
+        for i in range(num_ados):
+            iid = ados[i].id
+            graph[f"{iid}_goal"] = torch.tensor(self._ado_goals[i].astype(float))
+            graph[f"{iid}_position"] = torch.tensor(ados[i].position.astype(float))
+            graph[f"{iid}_velocity"] = torch.tensor(ados[i].velocity.astype(float))
+
+        # Make graph with resulting force as an output.
+        for i in range(num_ados):
+            iid = ados[i].id
+
+            # Destination force - Force pulling the ado to its assigned goal position.
+            direction = torch.sub(graph[f"{iid}_goal"], graph[f"{iid}_position"])
+            direction = normalize_torch(direction)
+            speed = torch.norm(graph[f"{iid}_velocity"])
+            graph[f"{iid}_force"] = torch.sub(direction * speed, graph[f"{iid}_velocity"]) * 1 / tau
+
+            # Interactive force - Repulsive potential field by every other agent.
+            for j in range(num_ados):
+                jid = ados[j].id
+                if iid == jid:
+                    continue
+
+                # Relative properties and their norms.
+                relative_distance = torch.sub(graph[f"{iid}_position"], graph[f"{jid}_position"])
+                relative_distance.requires_grad = True
+                relative_velocity = torch.sub(graph[f"{iid}_velocity"], graph[f"{jid}_velocity"])
+
+                norm_relative_distance = torch.norm(relative_distance)
+                norm_relative_velocity = torch.norm(relative_velocity)
+                norm_diff_position = torch.sub(relative_distance, relative_velocity * self.dt).norm()
+
+                # Alpha-Beta potential field.
+                b1 = torch.add(norm_relative_distance, norm_diff_position)
+                b2 = self.dt * norm_relative_velocity
+                b = 0.5 * torch.sqrt(torch.sub(torch.pow(b1, 2), torch.pow(b2, 2)))
+                v = v_0 * torch.exp(-b / sigma)
+                v.backward()
+
+                # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
+                # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
+                graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], relative_distance.grad)
+
+        return graph

@@ -30,9 +30,6 @@ class Simulation:
         self._dt = dt
         self._sim_time = 0
 
-        self._graph = None
-        self._build_graph()
-
     @abstractmethod
     def predict(
         self,
@@ -72,10 +69,9 @@ class Simulation:
         # Append ado to internal list of ados and rebuilt the graph (could be also extended but small computational
         # to actually rebuild it).
         self._ados.append(ado)
-        self._build_graph()
 
     @abstractmethod
-    def _build_graph(self):
+    def _build_graph(self, ados: List[Agent]) -> Dict[str, torch.Tensor]:
         """The simulation should be defined as differentiable graph. To make it accessible (e.g. for the planner)
         and to save computational effort the graph is pre-built. The exact definition of the graph depends on the
         actual simulation and is therefore defined in the child class."""
@@ -88,10 +84,6 @@ class Simulation:
     @property
     def ego(self) -> Union[Agent, None]:
         return self._ego
-
-    @property
-    def graph(self) -> torch.Tensor:
-        return self._graph
 
     @property
     def dt(self) -> float:

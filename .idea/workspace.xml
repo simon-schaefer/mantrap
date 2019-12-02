@@ -2,26 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="8bfa4cb6-e6a1-4d74-b2ac-b6b3dd289fb3" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/mantrap/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/agents/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/agents/agent.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/agents/integrator.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/agents/integrator_double.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/constants.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/simulation/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/simulation/abstract.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/utility/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/utility/io.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/utility/linalg.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/visualization/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/visualization/visualize_simulation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/test_agents.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/test_social_sim.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/visualize.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/mantrap.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/mantrap.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/agents/agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/agents/agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/simulation/abstract.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/abstract.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -76,6 +61,9 @@
       <workItem from="1574996812820" duration="343000" />
       <workItem from="1574997168797" duration="8230000" />
       <workItem from="1575052084119" duration="21992000" />
+      <workItem from="1575137528366" duration="4136000" />
+      <workItem from="1575173786295" duration="277000" />
+      <workItem from="1575248248035" duration="2005000" />
     </task>
     <servers />
   </component>
