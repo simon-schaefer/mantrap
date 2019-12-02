@@ -19,9 +19,11 @@ class SocialForcesSimulation(Simulation):
         x_axis: Tuple[float, float] = mantrap.constants.sim_x_axis_default,
         y_axis: Tuple[float, float] = mantrap.constants.sim_y_axis_default,
         dt: float = mantrap.constants.sim_dt_default,
+        fluctuations: float = mantrap.constants.sim_social_forces_fluctuations,
     ):
         super(SocialForcesSimulation, self).__init__(ego_type, ego_kwargs, x_axis=x_axis, y_axis=y_axis, dt=dt)
         self._ado_goals = []
+        self._fluctuations = fluctuations
 
     def predict(
         self,
@@ -38,8 +40,13 @@ class SocialForcesSimulation(Simulation):
         :param t_horizon: prediction horizon (number of time-steps of length dt).
         :param ego_trajectory: planned ego trajectory (in case of dependence in behaviour between ado and ego).
         :param return_policies: return the actual system inputs (at every time to get trajectory).
+        :param fluctuations: additive noise (fluctuations) to resulting force on agent to model uncertainties and escape
+                             local minimums
         :return: predicted trajectory for each ado (deterministic !).
         """
+        if ego_trajectory is not None:
+            assert ego_trajectory.shape[0] >= t_horizon, "t_horizon must match length of ego trajectory"
+
         num_ados = len(self._ados)
         forces = np.zeros((t_horizon, num_ados, 2))
 
@@ -52,13 +59,14 @@ class SocialForcesSimulation(Simulation):
             # since the gradients/computations are not updated when one of the leafs is updated, resulting in the
             # same output. However the computational effort of building the graph is negligible (about 1 ms for
             # 2 agents on Mac Pro 2018).
-            graph_at_t = self._build_graph(ados_sim)
+            ego_state = ego_trajectory[t, :] if ego_trajectory is not None else None
+            graph_at_t = self._build_graph(ados_sim, ego_state=ego_state)
 
             # Evaluate graph.
             for i in range(num_ados):
                 forces[t, i, :] = graph_at_t[f"{ados_sim[i].id}_force"].detach().numpy()
 
-                forces[t, i, :] = forces[t, i, :] + np.random.rand(2) * 0.2
+                forces[t, i, :] = forces[t, i, :] + np.random.rand(2) * self._fluctuations
 
                 ados_sim[i].update(forces[t, i, :], self.dt)  # assuming m = 1 kg
 
@@ -79,7 +87,7 @@ class SocialForcesSimulation(Simulation):
         super(SocialForcesSimulation, self)._add_ado(DoubleIntegratorDTAgent, **ado_kwargs)
         self._ado_goals.append(goal_position)
 
-    def _build_graph(self, ados: List[Agent]) -> Dict[str, torch.Tensor]:
+    def _build_graph(self, ados: List[Agent], ego_state: np.ndarray = None) -> Dict[str, torch.Tensor]:
         """Graph:
         --> Input = position & velocities of ados (and ego state & trajectory later on)
         --> Output = Force acting on every ado"""
@@ -110,16 +118,17 @@ class SocialForcesSimulation(Simulation):
             speed = torch.norm(graph[f"{iid}_velocity"])
             graph[f"{iid}_force"] = torch.sub(direction * speed, graph[f"{iid}_velocity"]) * 1 / tau
 
-            # Interactive force - Repulsive potential field by every other agent.
-            for j in range(num_ados):
-                jid = ados[j].id
-                if iid == jid:
-                    continue
+            def _repulsive_force(
+                alpha_position: torch.Tensor,
+                beta_position: torch.Tensor,
+                alpha_velocity: torch.Tensor,
+                beta_velocity: torch.Tensor,
+            ):
 
                 # Relative properties and their norms.
-                relative_distance = torch.sub(graph[f"{iid}_position"], graph[f"{jid}_position"])
+                relative_distance = torch.sub(alpha_position, beta_position)
                 relative_distance.retain_grad()  # get gradient without being leaf node
-                relative_velocity = torch.sub(graph[f"{iid}_velocity"], graph[f"{jid}_velocity"])
+                relative_velocity = torch.sub(alpha_velocity, beta_velocity)
 
                 norm_relative_distance = torch.norm(relative_distance)
                 norm_relative_velocity = torch.norm(relative_velocity)
@@ -133,7 +142,29 @@ class SocialForcesSimulation(Simulation):
 
                 # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
                 # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
-                v_grad = torch.autograd.grad(v, relative_distance)[0]
+                return torch.autograd.grad(v, relative_distance)[0]
+
+            # Interactive force - Repulsive potential field by every other agent.
+            for j in range(num_ados):
+                jid = ados[j].id
+                if iid == jid:
+                    continue
+                v_grad = _repulsive_force(
+                    graph[f"{iid}_position"],
+                    graph[f"{jid}_position"],
+                    graph[f"{iid}_velocity"],
+                    graph[f"{jid}_velocity"],
+                )
+                graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], v_grad)
+
+            # Interactive force w.r.t. ego - Repulsive potential field.
+            if ego_state is not None:
+                graph[f"ego_position"] = torch.tensor(ego_state[0:2].astype(float))
+                graph[f"ego_position"].requires_grad = True
+                graph[f"ego_velocity"] = torch.tensor(ego_state[2:4].astype(float))
+                v_grad = _repulsive_force(
+                    graph[f"{iid}_position"], graph[f"ego_position"], graph[f"{iid}_velocity"], graph[f"ego_velocity"]
+                )
                 graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], v_grad)
 
         return graph

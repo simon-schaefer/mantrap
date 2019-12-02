@@ -27,7 +27,7 @@ class Agent:
         self._color = np.hstack((1.0, np.random.rand(2)))
         # Random identifier.
         letters = string.ascii_lowercase
-        self._id = ''.join(random.choice(letters) for i in range(3))
+        self._id = "".join(random.choice(letters) for i in range(3))
 
     def update(self, action: np.ndarray, dt: float = mantrap.constants.sim_dt_default):
         """Update internal state (position, velocity and history) by executing some action for time dt."""

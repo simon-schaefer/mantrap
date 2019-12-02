@@ -50,19 +50,19 @@ class Simulation:
         """
         pass
 
-    def step(self, ego_trajectory: np.ndarray = None) -> np.ndarray:
+    def step(self, ego_policy: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
         """Run simulation step (time-step = dt). Update state and history of ados and ego. Also reset simulation time
         to sim_time_new = sim_time + dt.
-        :param ego_trajectory: planned ego trajectory (in case of dependence in behaviour between ado and ego).
+        :param ego_policy: planned ego policy (in case of dependence in behaviour between ado and ego).
         """
         logging.debug(f"Simulation update step: {self.sim_time:.2f} -> {self.sim_time + self.dt:.2f}")
-        ado_trajectories, policies = self.predict(t_horizon=mantrap.constants.t_horizon_default,
-                                                  ego_trajectory=ego_trajectory,
-                                                    return_policies=True)
+        ego_trajectory = self._ego.unroll_trajectory(ego_policy, dt=self.dt) if ego_policy is not None else None
+        ado_trajectories, policies = self.predict(t_horizon=1, ego_trajectory=ego_trajectory, return_policies=True)
         for i, ado in enumerate(self._ados):
             ado.update(policies[0, i], dt=self.dt)
+        self._ego.update(ego_policy[0, :], dt=self.dt)
         self._sim_time = self.sim_time + self.dt
-        return ado_trajectories
+        return ado_trajectories, ego_trajectory
 
     def _add_ado(self, ado_type: Agent.__class__ = None, **ado_kwargs):
         ado = ado_type(**ado_kwargs)
@@ -74,7 +74,7 @@ class Simulation:
         self._ados.append(ado)
 
     @abstractmethod
-    def _build_graph(self, ados: List[Agent]) -> Dict[str, torch.Tensor]:
+    def _build_graph(self, ados: List[Agent], ego_state: np.ndarray = None) -> Dict[str, torch.Tensor]:
         """The simulation should be defined as differentiable graph. To make it accessible (e.g. for the planner)
         and to save computational effort the graph is pre-built. The exact definition of the graph depends on the
         actual simulation and is therefore defined in the child class."""

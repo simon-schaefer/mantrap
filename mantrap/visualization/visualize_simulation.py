@@ -68,7 +68,7 @@ def plot_scene(
 def _add_agent_representation(pose: np.ndarray, color: np.ndarray, ax: plt.Axes, arrow_length: float = 0.5):
     assert pose.size == 3, "pose must be 3D (x, y, theta)"
 
-    ado_circle = plt.Circle((pose[0], pose[1]), 0.1, color=color, clip_on=True)
+    ado_circle = plt.Circle((pose[0], pose[1]), mantrap.constants.visualization_agent_radius, color=color, clip_on=True)
     ax.add_artist(ado_circle)
 
     rot = np.array([[np.cos(pose[2]), -np.sin(pose[2])], [np.sin(pose[2]), np.cos(pose[2])]])

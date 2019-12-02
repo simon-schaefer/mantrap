@@ -1,6 +1,6 @@
 import numpy as np
 
-from mantrap.agents import DoubleIntegratorDTAgent, IntegratorDTAgent
+from mantrap.agents import IntegratorDTAgent
 import mantrap.simulation
 from mantrap.utility.io import path_from_home_directory
 from mantrap.visualization import plot_scene
@@ -18,8 +18,8 @@ def test_single_ado_prediction():
     sim.add_ado(goal_position=goal_position, position=np.array([-1, -5]), velocity=np.ones(2) * 0.8)
 
     trajectory = sim.predict(t_horizon=100)[0, :, :]
-    assert np.isclose(trajectory[-1, 0], goal_position[0], atol=0.5)
-    assert np.isclose(trajectory[-1, 1], goal_position[1], atol=0.5)
+    assert np.isclose(trajectory[-1][0], goal_position[0], atol=0.5)
+    assert np.isclose(trajectory[-1][1], goal_position[1], atol=0.5)
 
 
 def test_static_ado_pair_prediction():
@@ -43,7 +43,7 @@ def visualize_ados_cross_prediction():
     output_dir = path_from_home_directory("test/graphs/social_sim_ados_cross")
 
     for t in range(100):
-        ado_trajectories = sim.step()
+        ado_trajectories, _ = sim.step()
         plot_scene(sim, ado_trajectories=ado_trajectories, output_dir=output_dir, image_tag=f"{sim.sim_time:.2f}")
 
 
@@ -53,6 +53,29 @@ def visualize_dodging_prediction():
     sim.add_ado(goal_position=np.array([1.5, 0]), position=np.array([-1.5, 0]), velocity=np.array([0.2, 0.4]))
     output_dir = path_from_home_directory("test/graphs/social_sim_dodging")
 
-    for t in range(100):
-        ado_trajectories = sim.step()
+    for t in range(50):
+        ado_trajectories, _ = sim.step()
         plot_scene(sim, ado_trajectories=ado_trajectories, output_dir=output_dir, image_tag=f"{sim.sim_time:.2f}")
+
+
+def visualize_agent_and_ego_prediction():
+    sim = mantrap.simulation.SocialForcesSimulation(
+        ego_type=IntegratorDTAgent,
+        ego_kwargs={"position": np.array([-5, 0]), "velocity": np.array([1, 0])},
+        fluctuations=0.0,
+        x_axis=(-5, 5),
+        y_axis=(-5, 5),
+    )
+    sim.add_ado(goal_position=np.array([0, 0]), position=np.array([0, 0]), velocity=np.array([0, 0]))
+    ego_policy = np.vstack((np.ones(50), np.zeros(50))).T
+    output_dir = path_from_home_directory("test/graphs/social_sim_ego_dodging")
+
+    for t in range(50):
+        ado_trajectories, ego_trajectory = sim.step(ego_policy=ego_policy[t:, :])
+        plot_scene(
+            sim,
+            ego_trajectory=ego_trajectory,
+            ado_trajectories=ado_trajectories,
+            output_dir=output_dir,
+            image_tag=f"{sim.sim_time:.2f}",
+        )
