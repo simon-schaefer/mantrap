@@ -11,7 +11,7 @@ from mantrap.simulation.abstract import Simulation
 def plot_scene(
     sim: Simulation,
     ego_trajectory: np.ndarray = None,
-    t_horizon: int = mantrap.constants.t_horizon_default,
+    ado_trajectories: np.ndarray = None,
     output_dir: str = path_from_home_directory(f"outs/{datetime_name()}"),
     image_tag: str = "0",
 ):
@@ -21,25 +21,25 @@ def plot_scene(
     of orientation.
     :param sim: simulation object to plot (abstract class contains all required methods, so sim has to inherit from it).
     :param ego_trajectory: planned ego trajectory (t_horizon, 5).
-    :param t_horizon: prediction horizon (number of time-steps of length dt).
+    :param ado_trajectories: ado trajectories (num_ados, num_samples, t_horizon, 2).
     :param output_dir: output directory file path.
     :param image_tag: image name (tag for current time-step).
     """
-    fig, ax = plt.subplots(figsize=(7, 7))
+    assert ado_trajectories.shape[0] == sim.num_ados, "number of ados and trajectories do not match"
 
-    # Predict ado trajectories. In case the prediction is deterministic (single trajectory for each ado), reshape
-    # the resulting array, for a unified format.
-    trajectories = sim.predict(t_horizon, ego_trajectory=ego_trajectory)
-    if len(trajectories.shape) == 2:
-        trajectories = np.expand_dims(trajectories, axis=0)
+    # In case the prediction is deterministic (single trajectory for each ado), reshape the resulting array,
+    # for a unified format.
+    if len(ado_trajectories.shape) == 2:
+        ado_trajectories = np.expand_dims(ado_trajectories, axis=0)
 
+    fig, ax = plt.subplots(figsize=mantrap.constants.visualization_fig_size)
     # Plot ados.
     for ado in sim.ados:
         ado_arrow_length = ado.speed / mantrap.constants.sim_speed_max * 0.5
         ax = _add_agent_representation(ado.pose, color=ado.color, ax=ax, arrow_length=ado_arrow_length)
         ax = _add_history(ado.history, color=ado.color, ax=ax)
-        for i in range(trajectories.shape[0]):
-            ax = _add_trajectory(trajectories[i, :, :], color=ado.color, ax=ax)
+        for i in range(ado_trajectories.shape[0]):
+            ax = _add_trajectory(ado_trajectories[i, :, :], color=ado.color, ax=ax)
 
     # Plot ego.
     if sim.ego is not None:

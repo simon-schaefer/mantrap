@@ -57,10 +57,13 @@ class SocialForcesSimulation(Simulation):
             # Evaluate graph.
             for i in range(num_ados):
                 forces[t, i, :] = graph_at_t[f"{ados_sim[i].id}_force"].detach().numpy()
+
+                forces[t, i, :] = forces[t, i, :] + np.random.rand(2) * 0.2
+
                 ados_sim[i].update(forces[t, i, :], self.dt)  # assuming m = 1 kg
 
         # Collect histories of simulated ados (last t_horizon steps are equal to future trajectories).
-        trajectories = np.asarray([ado.history for ado in ados_sim])
+        trajectories = np.asarray([ado.history[-t_horizon:, :] for ado in ados_sim])
         assert trajectories.shape[0] == num_ados, "each ado must be assigned to trajectory"
 
         if not return_policies:
@@ -84,7 +87,7 @@ class SocialForcesSimulation(Simulation):
         num_ados = len(ados)
         tau = 0.5  # [s] relaxation time (assumed to be uniform over all agents).
         v_0 = 2.1  # [m2s-2] repulsive field constant.
-        sigma = 0.3  # [m] repulsive field exponent constant.
+        sigma = 0.1  # [m] repulsive field exponent constant.
 
         graph = {}
 
@@ -93,7 +96,9 @@ class SocialForcesSimulation(Simulation):
             iid = ados[i].id
             graph[f"{iid}_goal"] = torch.tensor(self._ado_goals[i].astype(float))
             graph[f"{iid}_position"] = torch.tensor(ados[i].position.astype(float))
+            graph[f"{iid}_position"].requires_grad = True
             graph[f"{iid}_velocity"] = torch.tensor(ados[i].velocity.astype(float))
+            # graph[f"{iid}_velocity"].requires_grad = True
 
         # Make graph with resulting force as an output.
         for i in range(num_ados):
@@ -113,7 +118,7 @@ class SocialForcesSimulation(Simulation):
 
                 # Relative properties and their norms.
                 relative_distance = torch.sub(graph[f"{iid}_position"], graph[f"{jid}_position"])
-                relative_distance.requires_grad = True
+                relative_distance.retain_grad()  # get gradient without being leaf node
                 relative_velocity = torch.sub(graph[f"{iid}_velocity"], graph[f"{jid}_velocity"])
 
                 norm_relative_distance = torch.norm(relative_distance)
@@ -125,10 +130,10 @@ class SocialForcesSimulation(Simulation):
                 b2 = self.dt * norm_relative_velocity
                 b = 0.5 * torch.sqrt(torch.sub(torch.pow(b1, 2), torch.pow(b2, 2)))
                 v = v_0 * torch.exp(-b / sigma)
-                v.backward()
 
                 # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
                 # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
-                graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], relative_distance.grad)
+                v_grad = torch.autograd.grad(v, relative_distance)[0]
+                graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], v_grad)
 
         return graph

@@ -34,33 +34,25 @@ def test_static_ado_pair_prediction():
     assert np.linalg.norm(trajectories[0, -1, 0:1] - trajectories[1, -1, 0:1]) > 1e-3
 
 
-def visualize_static_ado_pair_prediction():
-    sim = mantrap.simulation.SocialForcesSimulation(x_axis=(-2, 2), y_axis=(-2, 2))
-    sim.add_ado(goal_position=np.array([0, 0]), position=np.array([0.5, 0]), velocity=np.array([-0.5, 0]))
-    sim.add_ado(goal_position=np.array([0, 0]), position=np.array([-0.5, 0]), velocity=np.array([0.5, 0]))
-    output_dir = path_from_home_directory("test/graphs/social_sim_static_ado_pair")
+def visualize_ados_cross_prediction():
+    sim = mantrap.simulation.SocialForcesSimulation()
+    sim.add_ado(goal_position=np.array([5, 5]), position=np.array([-5, -5]), velocity=np.array([1, 1]))
+    sim.add_ado(goal_position=np.array([-5, -5]), position=np.array([5, 5]), velocity=np.array([-1, -1]))
+    sim.add_ado(goal_position=np.array([-5, 5]), position=np.array([5, -5]), velocity=np.array([-1, 1]))
+    sim.add_ado(goal_position=np.array([5, -5]), position=np.array([-5, 5]), velocity=np.array([1, -1]))
+    output_dir = path_from_home_directory("test/graphs/social_sim_ados_cross")
 
-    for t in range(10):
-        sim.step()
-        plot_scene(sim, output_dir=output_dir, image_tag=f"{sim.sim_time:.2f}")
-
-
-def visualize_single_ado_prediction():
-    sim = mantrap.simulation.SocialForcesSimulation(x_axis=(-2, 2), y_axis=(-2, 2))
-    sim.add_ado(goal_position=np.array([1.5, 0]), position=np.array([-1.5, 0]), velocity=np.array([1.5, 1.0]))
-    output_dir = path_from_home_directory("test/graphs/social_sim_single_ado")
-
-    for t in range(10):
-        sim.step()
-        plot_scene(sim, output_dir=output_dir, image_tag=f"{sim.sim_time:.2f}")
-
+    for t in range(100):
+        ado_trajectories = sim.step()
+        plot_scene(sim, ado_trajectories=ado_trajectories, output_dir=output_dir, image_tag=f"{sim.sim_time:.2f}")
+    
 
 def visualize_dodging_prediction():
     sim = mantrap.simulation.SocialForcesSimulation(x_axis=(-2, 2), y_axis=(-2, 2))
-    sim.add_ado(goal_position=np.array([0, -1.5]), position=np.array([0, 0]), velocity=np.array([0, -0.2]))
+    sim.add_ado(goal_position=np.array([0, -1.5]), position=np.array([0, 0]), velocity=np.array([0, -0.1]))
     sim.add_ado(goal_position=np.array([1.5, 0]), position=np.array([-1.5, 0]), velocity=np.array([0.2, 0.4]))
     output_dir = path_from_home_directory("test/graphs/social_sim_dodging")
 
     for t in range(100):
-        sim.step()
-        plot_scene(sim, output_dir=output_dir, image_tag=f"{sim.sim_time:.2f}")
+        ado_trajectories = sim.step()
+        plot_scene(sim, ado_trajectories=ado_trajectories, output_dir=output_dir, image_tag=f"{sim.sim_time:.2f}")

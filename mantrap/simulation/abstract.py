@@ -50,16 +50,19 @@ class Simulation:
         """
         pass
 
-    def step(self, ego_trajectory: np.ndarray = None):
+    def step(self, ego_trajectory: np.ndarray = None) -> np.ndarray:
         """Run simulation step (time-step = dt). Update state and history of ados and ego. Also reset simulation time
         to sim_time_new = sim_time + dt.
         :param ego_trajectory: planned ego trajectory (in case of dependence in behaviour between ado and ego).
         """
         logging.debug(f"Simulation update step: {self.sim_time:.2f} -> {self.sim_time + self.dt:.2f}")
-        _, policies = self.predict(t_horizon=1, ego_trajectory=ego_trajectory, return_policies=True)
+        ado_trajectories, policies = self.predict(t_horizon=mantrap.constants.t_horizon_default,
+                                                  ego_trajectory=ego_trajectory,
+                                                    return_policies=True)
         for i, ado in enumerate(self._ados):
             ado.update(policies[0, i], dt=self.dt)
         self._sim_time = self.sim_time + self.dt
+        return ado_trajectories
 
     def _add_ado(self, ado_type: Agent.__class__ = None, **ado_kwargs):
         ado = ado_type(**ado_kwargs)
@@ -80,6 +83,10 @@ class Simulation:
     @property
     def ados(self) -> List[Agent]:
         return self._ados
+
+    @property
+    def num_ados(self) -> int:
+        return len(self._ados)
 
     @property
     def ego(self) -> Union[Agent, None]:
