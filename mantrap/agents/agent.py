@@ -1,10 +1,11 @@
 from abc import abstractmethod
+import logging
 import random
 import string
 
 import numpy as np
 
-import mantrap.constants
+from mantrap.constants import sim_speed_max, sim_dt_default
 
 
 class Agent:
@@ -24,12 +25,13 @@ class Agent:
             self._history = np.reshape(np.hstack((self.state, 0)), (1, 6))
 
         # Create random agent color (reddish), for visualization only.
-        self._color = np.hstack((1.0, np.random.rand(2)))
+        self._color = np.hstack((1.0, np.random.uniform(0.5, 1.0, size=2)))
         # Random identifier.
         letters = string.ascii_lowercase
         self._id = "".join(random.choice(letters) for i in range(3))
+        logging.debug(f"agent: position={self.position}, velocity={self.velocity}, id={self._id}, color={self._color}")
 
-    def update(self, action: np.ndarray, dt: float = mantrap.constants.sim_dt_default):
+    def update(self, action: np.ndarray, dt: float = sim_dt_default):
         """Update internal state (position, velocity and history) by executing some action for time dt."""
         assert dt > 0.0, "time-step must be larger than 0"
         state_new = self.dynamics(self.state, action, dt=dt)
@@ -37,13 +39,15 @@ class Agent:
         self._velocity = state_new[3:5]
 
         # maximal speed constraint.
-        if self.speed > mantrap.constants.sim_speed_max:
-            self._velocity = self._velocity / self.speed * mantrap.constants.sim_speed_max
+        if self.speed > sim_speed_max:
+            logging.warning(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {sim_speed_max}")
+            assert not np.isinf(self.speed), "speed is infinite, physical break"
+            self._velocity = self._velocity / self.speed * sim_speed_max
 
         # append history with new state.
         self._history = np.vstack((self._history, np.hstack((self.state, self._history[-1, -1] + dt))))
 
-    def unroll_trajectory(self, policy: np.ndarray, dt: float = mantrap.constants.sim_dt_default) -> np.ndarray:
+    def unroll_trajectory(self, policy: np.ndarray, dt: float = sim_dt_default) -> np.ndarray:
         """Build the trajectory from some policy and current state, by iteratively applying the model dynamics.
         Thereby a perfect model i.e. without uncertainty and correct is assumed.
 
@@ -52,6 +56,8 @@ class Agent:
         :return: resulting trajectory (no uncertainty in dynamics assumption !), (N, 4).
         """
         assert dt > 0.0, "time-step must be larger than 0"
+        if len(policy.shape) == 1:  # singe action as policy
+            policy = np.expand_dims(policy, axis=0)
 
         # initial trajectory point is the current state.
         trajectory = np.zeros((policy.shape[0] + 1, 6))
@@ -65,7 +71,7 @@ class Agent:
         return trajectory
 
     @abstractmethod
-    def dynamics(self, state: np.ndarray, action: np.ndarray, dt: float = mantrap.constants.sim_dt_default):
+    def dynamics(self, state: np.ndarray, action: np.ndarray, dt: float = sim_dt_default):
         """Forward integrate the egos motion given some state-action pair and an integration time-step. Since every
         ego agent type has different dynamics (like single-integrator or Dubins Car) this method is implemented
         abstractly.
@@ -94,7 +100,19 @@ class Agent:
 
     @property
     def speed(self) -> float:
-        return np.linalg.norm(self.velocity)
+        return np.linalg.norm(self._velocity)
+
+    ###########################################################################
+    # Dimensions ##############################################################
+    ###########################################################################
+
+    @property
+    def length_state(self) -> int:
+        return 5  # (x, y, theta, vx, vy)
+
+    @property
+    def length_action(self) -> int:
+        return 2  # override if necessary (!)
 
     ###########################################################################
     # History properties ######################################################

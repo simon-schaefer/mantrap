@@ -14,3 +14,29 @@ risk-aware planning methodology with special regards on minimizing the
 interaction between human and robot and taking account the actual multi-modality
 and time-evolving nature of the humans behaviour, based on the Trajectron 
 model (Ivanovic 19).  
+
+
+## Comments
+* optimization over future points
+* tube based on distribution of gradients for probablistic agent
+* homotopy class --> given my base path, more globally optimal ??
+* sphinx documentation 
+
+* idea -> minimal interferring, why ? natural way of walking in crowded areas
+(local minima, "without a lot of considerations"), intrinsically a safe way 
+of interaction and taking the "full" knowledge of the model into account (not 
+just the output)
+* model-based approach 
+* idea -> gradient, why ? notion of direction and magnitude of violation, a lot 
+of behavioral prediction models are graph-based (e.g. neural network) or can be
+formulated as a graph (as social forces)
+ 
+* baseline: least force caused by ego over the full trajectory -> interaction
+minimal (e.g. in comparison with minimizing travel-time, ...)
+* baseline: in the same scene let human in one and robot in another experiment
+take decisions, let humans guess who is who based on trajectories 
+-> "natural" way of interacting with other agents, specifically 
+pedestrians
+
+* GMM as n independent single Gaussians --> integration using Kalman Filter 
+equations with state (x, v) and no input (s. Tim)

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-import mantrap.agents
+from mantrap.agents import IntegratorDTAgent, DoubleIntegratorDTAgent
 
 
 @pytest.mark.parametrize(
@@ -17,7 +17,7 @@ import mantrap.agents
     ],
 )
 def test_initialization(position: np.ndarray, velocity: np.ndarray, history: np.ndarray, history_expected: np.ndarray):
-    agent = mantrap.agents.IntegratorDTAgent(position, velocity, history=history)
+    agent = IntegratorDTAgent(position, velocity, history=history)
     assert np.array_equal(agent.history, history_expected)
 
 
@@ -37,7 +37,7 @@ def test_update_single_integrator(
     position_expected: np.ndarray,
     velocity_expected: np.ndarray,
 ):
-    agent = mantrap.agents.IntegratorDTAgent(position, velocity)
+    agent = IntegratorDTAgent(position, velocity)
     agent.update(velocity_input, dt=dt)
     assert np.array_equal(agent.position, position_expected)
     assert np.array_equal(agent.velocity, velocity_expected)
@@ -59,14 +59,28 @@ def test_update_double_integrator(
     position_expected: np.ndarray,
     velocity_expected: np.ndarray,
 ):
-    agent = mantrap.agents.DoubleIntegratorDTAgent(position, velocity)
+    agent = DoubleIntegratorDTAgent(position, velocity)
     agent.update(velocity_input, dt=dt)
     assert np.array_equal(agent.position, position_expected)
     assert np.array_equal(agent.velocity, velocity_expected)
 
 
 def test_unrolling():
-    ego = mantrap.agents.IntegratorDTAgent(np.zeros(2))
+    ego = IntegratorDTAgent(np.zeros(2))
     policy = np.array([[1, 1], [2, 2], [4, 4]])
     trajectory = ego.unroll_trajectory(policy, dt=1.0)
     assert np.array_equal(trajectory[1:, 0:2], np.cumsum(policy, axis=0))
+
+
+@pytest.mark.parametrize("position, velocity, dt, n", [(np.array([-5, 0]), np.array([1, 0]), 1, 10)])
+def test_ego_trajectory(position: np.ndarray, velocity: np.ndarray, dt: float, n: int):
+    ego = IntegratorDTAgent(position=position, velocity=velocity)
+    policy = np.vstack((np.ones(n) * velocity[0], np.ones(n) * velocity[1])).T
+    ego_trajectory = ego.unroll_trajectory(policy=policy, dt=dt)
+
+    assert np.array_equal(ego_trajectory[:, 0], np.linspace(position[0], position[0] + velocity[0] * n * dt, n + 1))
+    assert np.array_equal(ego_trajectory[:, 1], np.linspace(position[1], position[1] + velocity[1] * n * dt, n + 1))
+    assert np.array_equal(ego_trajectory[:, 2], np.zeros(n + 1))
+    assert np.array_equal(ego_trajectory[:, 3], np.ones(n + 1) * velocity[0])
+    assert np.array_equal(ego_trajectory[:, 4], np.ones(n + 1) * velocity[1])
+    assert np.array_equal(ego_trajectory[:, 5], np.linspace(0, n, n + 1))

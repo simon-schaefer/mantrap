@@ -1,3 +1,4 @@
+import argparse
 import importlib
 import inspect
 import logging
@@ -7,6 +8,10 @@ from mantrap.utility.io import path_from_home_directory
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Test visualizations.")
+    parser.add_argument("--function", type=str, default=None)
+    args = parser.parse_args()
+
     test_directory = path_from_home_directory("test/")
     test_files = [path for path in os.listdir(test_directory) if path.endswith(".py") and path.startswith("test_")]
 
@@ -20,9 +25,12 @@ def main():
                 vis_functions[function_name] = function_tuple[1]
 
     for vis_name, vis_function in vis_functions.items():
-        logging.info(f"Running {vis_name} ...")
-        vis_function()
-        logging.info(f"Finishing up {vis_name}")
+        if args.function is not None and vis_name != args.function:
+            logging.info(f"Skipping {vis_name}")
+        else:
+            logging.info(f"Running {vis_name} ...")
+            vis_function()
+            logging.info(f"Finishing up {vis_name}")
 
 
 if __name__ == "__main__":

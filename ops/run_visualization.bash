@@ -8,7 +8,9 @@ rm -r "${PROJECT_HOME}"/test/graphs
 mkdir "${PROJECT_HOME}"/test/graphs
 python3 "${PROJECT_HOME}"/test/visualize.py
 
-#cd "${PROJECT_HOME}"/test/graphs || return
-#for d in */ ; do
-#  convert -delay 30 "$PROJECT_HOME"/test/graphs/"$d"*.png "$PROJECT_HOME"/test/graphs/"$d"scene.mpg
-#done
+cd "${PROJECT_HOME}"/test/graphs || return
+for d in */ ; do
+  cd "${d}" || return
+  ffmpeg -r 10 -i %04d.png -vcodec mpeg4 -y movie.mp4
+  cd "${PROJECT_HOME}"/test/graphs || return
+done

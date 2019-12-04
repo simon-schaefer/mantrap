@@ -1,68 +1,92 @@
 import os
+import logging
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import mantrap.constants
 from mantrap.utility.io import datetime_name, path_from_home_directory
-from mantrap.simulation.abstract import Simulation
 
 
 def plot_scene(
-    sim: Simulation,
+    ado_trajectories: np.ndarray,
+    ado_colors: List[np.ndarray],
     ego_trajectory: np.ndarray = None,
-    ado_trajectories: np.ndarray = None,
+    preview_horizon: int = mantrap.constants.visualization_preview_horizon,
+    axes: Tuple[Tuple[float, float], Tuple[float, float]] = (
+        mantrap.constants.sim_x_axis_default,
+        mantrap.constants.sim_y_axis_default,
+    ),
     output_dir: str = path_from_home_directory(f"outs/{datetime_name()}"),
-    image_tag: str = "0",
 ):
     """Visualize simulation scene using matplotlib library.
     Thereby the ados as well as the ego in at the current time are plotted while their future trajectories
     and their state histories are indicated. Their orientation is shown using an arrow pointing in their direction
     of orientation.
-    :param sim: simulation object to plot (abstract class contains all required methods, so sim has to inherit from it).
-    :param ego_trajectory: planned ego trajectory (t_horizon, 5).
-    :param ado_trajectories: ado trajectories (num_ados, num_samples, t_horizon, 2).
+    :param ego_trajectory: planned ego trajectory (t_horizon, 6).
+    :param ado_trajectories: ado trajectories (num_ados, num_samples, t_horizon, 6).
+    :param ado_colors: color identifier for each ado (num_ados).
+    :param preview_horizon: trajectory preview time horizon (maximal value).
+    :param axes: position space dimensions [m].
     :param output_dir: output directory file path.
-    :param image_tag: image name (tag for current time-step).
     """
-    assert ado_trajectories.shape[0] == sim.num_ados, "number of ados and trajectories do not match"
+    num_ados = ado_trajectories.shape[0]
+    assert len(ado_colors) == num_ados, "ado colors must be consistent with trajectories"
+    assert len(ado_trajectories.shape) == 4, "ado trajectories must be in shape (num_ados,num_samples,t_horizon,6)"
+    num_modes = ado_trajectories.shape[1]
+    t_horizon = ado_trajectories.shape[2]
+    assert ado_trajectories.shape[3] == 6, "ado trajectories must have 6 state parameters (x, y, theta, vx, vy, t)"
 
-    # In case the prediction is deterministic (single trajectory for each ado), reshape the resulting array,
-    # for a unified format.
-    if len(ado_trajectories.shape) == 2:
-        ado_trajectories = np.expand_dims(ado_trajectories, axis=0)
+    logging.debug(f"Plotting scene with {num_ados} ados having {num_modes} modes for T = {t_horizon}")
 
-    fig, ax = plt.subplots(figsize=mantrap.constants.visualization_fig_size)
-    # Plot ados.
-    for ado in sim.ados:
-        ado_arrow_length = ado.speed / mantrap.constants.sim_speed_max * 0.5
-        ax = _add_agent_representation(ado.pose, color=ado.color, ax=ax, arrow_length=ado_arrow_length)
-        ax = _add_history(ado.history, color=ado.color, ax=ax)
-        for i in range(ado_trajectories.shape[0]):
-            ax = _add_trajectory(ado_trajectories[i, :, :], color=ado.color, ax=ax)
+    if ego_trajectory is not None:
+        assert len(ego_trajectory.shape) == 2, "ego trajectory must be in shape (t_horizon, 6)"
+        assert ego_trajectory.shape[1] == 6, "ego trajectory must have 6 state parameters (x, y, theta, vx, vy, t)"
 
-    # Plot ego.
-    if sim.ego is not None:
-        ego_color = np.array([0, 0, 1.0])
-        ax = _add_agent_representation(sim.ego.pose, color=ego_color, ax=ax)
-        ax = _add_history(sim.ego.history, color=ego_color, ax=ax)
+    for t in range(t_horizon):
+        fig, ax = plt.subplots(figsize=mantrap.constants.visualization_fig_size)
+
+        # Plot ados.
+        ado_preview = min(preview_horizon, t_horizon - t)
+        for ado_i in range(num_ados):
+            ado_pose = ado_trajectories[ado_i, 0, t, 0:3]
+            ado_velocity = ado_trajectories[ado_i, 0, t, 4:6]
+            ado_arrow_length = np.linalg.norm(ado_velocity) / mantrap.constants.sim_speed_max * 0.5
+            ado_color = ado_colors[ado_i]
+            ado_history = ado_trajectories[ado_i, 0, :t, 0:2]
+
+            ax = _add_agent_representation(ado_pose, color=ado_color, ax=ax, arrow_length=ado_arrow_length)
+            ax = _add_history(ado_history, color=ado_color, ax=ax)
+            for mode_i in range(num_modes):
+                ax = _add_trajectory(ado_trajectories[ado_i, mode_i, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
+
+        # Plot ego.
         if ego_trajectory is not None:
-            ax = _add_trajectory(ego_trajectory, color=ego_color, ax=ax)
+            ego_pose = ego_trajectory[t, 0:3]
+            ego_color = np.array([0, 0, 1.0])
+            ego_history = ego_trajectory[:t, 0:2]
+            ego_preview = min(preview_horizon, ego_trajectory.shape[0] - t)
+            ego_planned = ego_trajectory[t : t + ego_preview, 0:2]
 
-    # Plot labels, limits and grid.
-    x_axis, y_axis = sim.axes
-    plt.xlabel("x [m]")
-    plt.xlim(x_axis)
-    plt.ylabel("y [m]")
-    plt.ylim(y_axis)
-    plt.minorticks_on()
-    plt.grid(which="minor", alpha=0.2)
-    plt.grid(which="major", alpha=0.5)
+            ax = _add_agent_representation(ego_pose, color=ego_color, ax=ax)
+            ax = _add_history(ego_history, color=ego_color, ax=ax)
+            ax = _add_trajectory(ego_planned, color=ego_color, ax=ax)
 
-    # Save and close plot.
-    os.makedirs(output_dir, exist_ok=True)
-    plt.savefig(os.path.join(output_dir, f"{image_tag}.png"))
-    plt.close()
+        # Plot labels, limits and grid.
+        x_axis, y_axis = axes
+        plt.xlabel("x [m]")
+        plt.xlim(x_axis)
+        plt.ylabel("y [m]")
+        plt.ylim(y_axis)
+        plt.minorticks_on()
+        plt.grid(which="minor", alpha=0.2)
+        plt.grid(which="major", alpha=0.5)
+
+        # Save and close plot.
+        os.makedirs(output_dir, exist_ok=True)
+        plt.savefig(os.path.join(output_dir, f"{t:04d}.png"))
+        plt.close()
 
 
 def _add_agent_representation(pose: np.ndarray, color: np.ndarray, ax: plt.Axes, arrow_length: float = 0.5):
