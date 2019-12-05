@@ -1,7 +1,6 @@
 import numpy as np
 
-from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation import DistanceFieldSimulation, SocialForcesSimulation
+import mantrap.evaluation.scenarios as scenarios
 from mantrap.solver import TrajOptSolver
 from mantrap.utility.io import path_from_home_directory
 from mantrap.visualization import plot_scene
@@ -11,11 +10,7 @@ from mantrap.visualization import plot_scene
 # Visualization ###########################################################
 ###########################################################################
 def visualize_rrt_df_single_static():
-    sim = SocialForcesSimulation(
-        ego_type=IntegratorDTAgent, ego_kwargs={"position": np.array([-5, 0.1]), "velocity": np.array([1, 0])},
-    )
-    sim.add_ado(position=np.zeros(2), velocity=np.zeros(2), goal_position=np.zeros(2))
-
+    sim = scenarios.sf_ego_static_single_ado()
     solver = TrajOptSolver(sim, goal=np.array([5, 0.1]))
     ego_trajectory, ado_trajectories = solver.solve()
 
@@ -24,11 +19,7 @@ def visualize_rrt_df_single_static():
 
 
 def visualize_rrt_df_single_moving():
-    sim = SocialForcesSimulation(
-        ego_type=IntegratorDTAgent, ego_kwargs={"position": np.array([-5, 0.1]), "velocity": np.array([1, 0])},
-    )
-    sim.add_ado(position=np.zeros(2), velocity=np.array([0, 0.5]), goal_position=np.array([0, 5]))
-
+    sim = scenarios.sf_ego_moving_single_ado()
     solver = TrajOptSolver(sim, goal=np.array([5, 0.1]))
     ego_trajectory, ado_trajectories = solver.solve()
 
@@ -37,12 +28,7 @@ def visualize_rrt_df_single_moving():
 
 
 def visualize_rrt_df_multiple():
-    sim = SocialForcesSimulation(
-        ego_type=IntegratorDTAgent, ego_kwargs={"position": np.array([-5, 0.1]), "velocity": np.array([1, 0])},
-    )
-    sim.add_ado(position=np.array([0, 1]), velocity=np.array([-1, 0]), goal_position=np.ones(2)*(-10))
-    sim.add_ado(position=np.array([1, -1]), velocity=np.array([-1, 0]), goal_position=np.ones(2)*(-10))
-
+    sim = scenarios.sf_ego_moving_two_ados()
     solver = TrajOptSolver(sim, goal=np.array([5, 0.1]))
     ego_trajectory, ado_trajectories = solver.solve()
 
@@ -51,15 +37,7 @@ def visualize_rrt_df_multiple():
 
 
 def visualize_rrt_df_really_multiple():
-    sim = SocialForcesSimulation(
-        ego_type=IntegratorDTAgent, ego_kwargs={"position": np.array([-5, 0.1]), "velocity": np.array([1, 0])},
-    )
-    sim.add_ado(position=np.array([0, 1]), velocity=np.array([-1, 0]), goal_position=np.ones(2)*(-10))
-    sim.add_ado(position=np.array([1, -1]), velocity=np.array([-1, 0]), goal_position=np.ones(2)*(-10))
-    sim.add_ado(position=np.array([5, -5]), velocity=np.array([2, 0.2]), goal_position=np.ones(2) * 10)
-    sim.add_ado(position=np.array([3, 8]), velocity=np.array([-0.2, -0.5]), goal_position=np.array([2, -8]))
-    sim.add_ado(position=np.array([7, -7]), velocity=np.array([-1, 1]), goal_position=np.array([-5, 5]))
-
+    sim = scenarios.sf_ego_moving_many_ados()
     solver = TrajOptSolver(sim, goal=np.array([5, 0.1]))
     ego_trajectory, ado_trajectories = solver.solve()
 

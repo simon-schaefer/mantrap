@@ -46,7 +46,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
         v_0 = 2.1  # [m2s-2] repulsive field constant.
         sigma = 0.1  # [m] repulsive field exponent constant.
 
-        graph = {"forces_sum": torch.zeros(2)}
+        graph = {}
 
         # Add ados to graph as an input - Properties such as goal, position and velocity.
         for i in range(num_ados):
@@ -56,6 +56,12 @@ class SocialForcesSimulation(ForcesBasedSimulation):
             graph[f"{iid}_position"].requires_grad = True
             graph[f"{iid}_velocity"] = torch.tensor(ados[i].velocity.astype(float))
             # graph[f"{iid}_velocity"].requires_grad = True
+
+        # Add ego to graph as an input - Properties such as position and velocity.
+        if ego_state is not None:
+            graph["ego_position"] = torch.tensor(ego_state[0:2].astype(float))
+            graph["ego_position"].requires_grad = True
+            graph["ego_velocity"] = torch.tensor(ego_state[2:4].astype(float))
 
         # Make graph with resulting force as an output.
         for i in range(num_ados):
@@ -67,6 +73,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
             speed = torch.norm(graph[f"{iid}_velocity"])
             graph[f"{iid}_force"] = torch.sub(direction * speed, graph[f"{iid}_velocity"]) * 1 / tau
 
+            # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
             def _repulsive_force(
                 alpha_position: torch.Tensor,
                 beta_position: torch.Tensor,
@@ -109,9 +116,6 @@ class SocialForcesSimulation(ForcesBasedSimulation):
 
             # Interactive force w.r.t. ego - Repulsive potential field.
             if ego_state is not None:
-                graph["ego_position"] = torch.tensor(ego_state[0:2].astype(float))
-                graph["ego_position"].requires_grad = True
-                graph["ego_velocity"] = torch.tensor(ego_state[2:4].astype(float))
                 v_grad = _repulsive_force(
                     graph[f"{iid}_position"], graph["ego_position"], graph[f"{iid}_velocity"], graph["ego_velocity"]
                 )
@@ -119,7 +123,6 @@ class SocialForcesSimulation(ForcesBasedSimulation):
 
             # Summarize (standard) graph elements.
             graph[f"{iid}_force_norm"] = torch.norm(graph[f"{iid}_force"])
-            graph["forces_sum"] = torch.add(graph["forces_sum"], graph[f"{iid}_force"])
 
         # Graph health check.
         assert self.graph_check(graph=graph)

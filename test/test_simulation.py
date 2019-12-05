@@ -1,6 +1,7 @@
 import numpy as np
 
 from mantrap.agents import IntegratorDTAgent
+import mantrap.evaluation.scenarios as scenarios
 from mantrap.simulation import DistanceFieldSimulation, SocialForcesSimulation
 from mantrap.utility.io import path_from_home_directory
 from mantrap.visualization import plot_scene
@@ -127,30 +128,8 @@ def test_sf_static_ado_pair_prediction():
 ###########################################################################
 # Visualization ###########################################################
 ###########################################################################
-def visualize_sf_ados_cross_prediction():
-    sim = SocialForcesSimulation()
-    sim.add_ado(goal_position=np.array([4, 5]), position=np.array([-5, -5]), velocity=np.array([1, 1]))
-    sim.add_ado(goal_position=np.array([-5, -4]), position=np.array([5, 5]), velocity=np.array([-1, -1]))
-    sim.add_ado(goal_position=np.array([-3, 5]), position=np.array([5, -5]), velocity=np.array([-1, 1]))
-    sim.add_ado(goal_position=np.array([5, -2]), position=np.array([-5, 5]), velocity=np.array([1, -1]))
-    output_dir = path_from_home_directory("test/graphs/social_sim_ados_cross")
-
-    num_steps = 100
-    ado_trajectories = np.zeros((sim.num_ados, 1, num_steps, 6))
-    for t in range(num_steps):
-        ado_trajectories[:, :, t, :], _ = sim.step()
-    plot_scene(ado_trajectories, ado_colors=sim.ado_colors, output_dir=output_dir)
-
-
 def visualize_sf_agent_and_ego_prediction():
-    sim = SocialForcesSimulation(
-        ego_type=IntegratorDTAgent,
-        ego_kwargs={"position": np.array([-5, 0]), "velocity": np.array([1, 0])},
-        fluctuations=0.0,
-        x_axis=(-5, 5),
-        y_axis=(-5, 5),
-    )
-    sim.add_ado(goal_position=np.array([0, 0]), position=np.array([0, 0]), velocity=np.array([0, 0]))
+    sim = scenarios.sf_ego_moving_single_ado()
     ego_policy = np.vstack((np.ones(50), np.zeros(50))).T
     output_dir = path_from_home_directory("test/graphs/social_sim_ego_dodging")
 
@@ -158,5 +137,5 @@ def visualize_sf_agent_and_ego_prediction():
     ado_trajectories = np.zeros((sim.num_ados, 1, num_steps, 6))
     ego_trajectory = np.zeros((num_steps, 6))
     for t in range(num_steps):
-        ado_trajectories[:, :, t, :], ego_trajectory[t, :] = sim.step(ego_policy=ego_policy)
+        ado_trajectories[:, :, t, :], ego_trajectory[t, :] = sim.step(ego_policy=ego_policy[t, :])
     plot_scene(ado_trajectories, ado_colors=sim.ado_colors, ego_trajectory=ego_trajectory, output_dir=output_dir)

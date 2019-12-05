@@ -18,11 +18,11 @@ model (Ivanovic 19).
 
 ## Comments
 * optimization over future points
-* tube based on distribution of gradients for probablistic agent
+* tube based on distribution of gradients for probabilistic agent
 * homotopy class --> given my base path, more globally optimal ??
 * sphinx documentation 
 
-* idea -> minimal interferring, why ? natural way of walking in crowded areas
+* idea -> minimal interfering, why ? natural way of walking in crowded areas
 (local minima, "without a lot of considerations"), intrinsically a safe way 
 of interaction and taking the "full" knowledge of the model into account (not 
 just the output)

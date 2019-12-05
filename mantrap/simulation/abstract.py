@@ -104,7 +104,7 @@ class Simulation:
     def graph_check(self, graph: Dict[str, torch.Tensor]) -> bool:
         """Check healthiness of graph by looking for specific keys in the graph that are required."""
         is_okay = True
-        is_okay = is_okay and all([req_key in graph.keys() for req_key in ["forces_sum"]])
+        is_okay = is_okay and all([req_key in graph.keys() for req_key in []])
         is_okay = is_okay and all([f"{ado.id}_force_norm" for ado in self._ados])
         return is_okay
 
