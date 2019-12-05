@@ -7,6 +7,7 @@ import numpy as np
 
 import mantrap.constants
 from mantrap.utility.io import datetime_name, path_from_home_directory
+from mantrap.utility.shaping import check_ego_trajectory, extract_ado_trajectories
 
 
 def plot_scene(
@@ -31,18 +32,11 @@ def plot_scene(
     :param axes: position space dimensions [m].
     :param output_dir: output directory file path.
     """
-    num_ados = ado_trajectories.shape[0]
+    num_ados, num_modes, t_horizon = extract_ado_trajectories(ado_trajectories)
     assert len(ado_colors) == num_ados, "ado colors must be consistent with trajectories"
-    assert len(ado_trajectories.shape) == 4, "ado trajectories must be in shape (num_ados,num_samples,t_horizon,6)"
-    num_modes = ado_trajectories.shape[1]
-    t_horizon = ado_trajectories.shape[2]
-    assert ado_trajectories.shape[3] == 6, "ado trajectories must have 6 state parameters (x, y, theta, vx, vy, t)"
-
-    logging.debug(f"Plotting scene with {num_ados} ados having {num_modes} modes for T = {t_horizon}")
-
     if ego_trajectory is not None:
-        assert len(ego_trajectory.shape) == 2, "ego trajectory must be in shape (t_horizon, 6)"
-        assert ego_trajectory.shape[1] == 6, "ego trajectory must have 6 state parameters (x, y, theta, vx, vy, t)"
+        assert check_ego_trajectory(ego_trajectory=ego_trajectory)
+    logging.debug(f"Plotting scene with {num_ados} ados having {num_modes} modes for T = {t_horizon}")
 
     for t in range(t_horizon):
         fig, ax = plt.subplots(figsize=mantrap.constants.visualization_fig_size)

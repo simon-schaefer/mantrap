@@ -16,18 +16,20 @@ from mantrap.visualization import plot_scene
 # much (possible) "noise" from other overhead.
 ###########################################################################
 def test_initialization():
-    ego_position = np.array([4, 6])
-    sim = DistanceFieldSimulation(IntegratorDTAgent, {"position": ego_position}, dt=1.0)
-    assert np.array_equal(sim.ego.position, ego_position)
+    sim = DistanceFieldSimulation(IntegratorDTAgent, {"position": np.array([4, 6])}, dt=1.0)
+    assert np.array_equal(sim.ego.position, np.array([4, 6]))
     assert sim.num_ados == 0
     assert sim.sim_time == 0.0
+    sim.add_ado(position=np.array([6, 7]), velocity=np.zeros(2))
+    assert np.array_equal(sim.ados[0].position, np.array([6, 7]))
+    assert np.array_equal(sim.ados[0].velocity, np.zeros(2))
 
 
 def test_step():
     ado_position = np.zeros(2)
     ego_position = np.array([-4, 6])
     sim = DistanceFieldSimulation(IntegratorDTAgent, {"position": ego_position}, dt=1.0)
-    sim.add_ado(position=ado_position)
+    sim.add_ado(position=ado_position, velocity=np.zeros(2))
     assert sim.num_ados == 1
 
     ego_policy = np.array([1, 0])
@@ -53,6 +55,18 @@ def test_step():
         )
     ).T
     assert np.array_equal(ego_trajectory, ego_t_exp[1:, :])
+
+
+def test_reset():
+    sim = DistanceFieldSimulation(IntegratorDTAgent, {"position": np.array([1, 5]), "velocity": np.ones(2) * 2}, dt=1.0)
+    sim.add_ado(position=np.array([6, 7]), velocity=np.zeros(2))
+    ego_state_new = np.array([5, 1, 0, 2, 0])
+    ado_state_new = np.reshape(np.array([0, 0, 0, 5, 7]), (1, 5))
+    sim.reset(ego_state=ego_state_new, ado_states=ado_state_new)
+    assert np.array_equal(sim.ego.position, ego_state_new[0:2])
+    assert np.array_equal(sim.ego.velocity, ego_state_new[3:5])
+    assert np.array_equal(sim.ados[0].position, ado_state_new[0, 0:2])
+    assert np.array_equal(sim.ados[0].velocity, ado_state_new[0, 3:5])
 
 
 def test_update():
@@ -89,12 +103,12 @@ def test_df_potential_field():
     for ix, x in enumerate(np.linspace(-2, 2, num_grid_points)):
         for iy, y in enumerate(np.linspace(-2, 2, num_grid_points)):
             graph = sim.build_graph(ego_state=np.array([x, y]))
-            forces_norm_grid[ix, iy] = np.linalg.norm(graph["forces_sum"].detach().numpy())
+            forces_norm_grid[ix, iy] = np.linalg.norm(graph[f"{sim.ados[0].id}_force_norm"].detach().numpy())
 
     # Test full symmetry and maximum in the middle.
     ix_max, iy_max = np.unravel_index(np.argmax(forces_norm_grid), shape=forces_norm_grid.shape)
-    assert ix_max == num_grid_points // 2  # shift by one index due to np.lin-space-operator
-    assert iy_max == num_grid_points // 2  # shift by one index due to np.lin-space-operator
+    assert ix_max == num_grid_points // 2 or ix_max == num_grid_points // 2 - 1  # shift due to np.lin-space
+    assert iy_max == num_grid_points // 2 or iy_max == num_grid_points // 2 - 1  # shift due to np.lin-space
 
     assert np.isclose(np.linalg.norm(forces_norm_grid - np.flip(forces_norm_grid, axis=0)), 0.0)
     assert np.isclose(np.linalg.norm(forces_norm_grid - np.flip(forces_norm_grid, axis=1)), 0.0)

@@ -72,6 +72,13 @@ def test_unrolling():
     assert np.array_equal(trajectory[1:, 0:2], np.cumsum(policy, axis=0))
 
 
+def test_reset():
+    agent = IntegratorDTAgent(np.array([5, 6]))
+    agent.reset(position=np.array([1, 5]), velocity=np.array([6, 7]))
+    assert np.array_equal(agent.position, np.array([1, 5]))
+    assert np.array_equal(agent.velocity, np.array([6, 7]))
+
+
 @pytest.mark.parametrize("position, velocity, dt, n", [(np.array([-5, 0]), np.array([1, 0]), 1, 10)])
 def test_ego_trajectory(position: np.ndarray, velocity: np.ndarray, dt: float, n: int):
     ego = IntegratorDTAgent(position=position, velocity=velocity)

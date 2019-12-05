@@ -46,9 +46,36 @@ class SocialForcesSimulation(ForcesBasedSimulation):
         v_0 = 2.1  # [m2s-2] repulsive field constant.
         sigma = 0.1  # [m] repulsive field exponent constant.
 
-        graph = {}
+        # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
+        def _repulsive_force(
+                alpha_position: torch.Tensor,
+                beta_position: torch.Tensor,
+                alpha_velocity: torch.Tensor,
+                beta_velocity: torch.Tensor,
+        ):
 
-        # Add ados to graph as an input - Properties such as goal, position and velocity.
+            # Relative properties and their norms.
+            relative_distance = torch.sub(alpha_position, beta_position)
+            relative_distance.retain_grad()  # get gradient without being leaf node
+            relative_velocity = torch.sub(alpha_velocity, beta_velocity)
+
+            norm_relative_distance = torch.norm(relative_distance)
+            norm_relative_velocity = torch.norm(relative_velocity)
+            norm_diff_position = torch.sub(relative_distance, relative_velocity * self.dt).norm()
+
+            # Alpha-Beta potential field.
+            b1 = torch.add(norm_relative_distance, norm_diff_position)
+            b2 = self.dt * norm_relative_velocity
+            b = 0.5 * torch.sqrt(torch.sub(torch.pow(b1, 2), torch.pow(b2, 2)))
+            # v = v_0 * torch.exp(-b / sigma)
+            v = v_0 * torch.exp(-b)
+
+            # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
+            # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
+            return torch.autograd.grad(v, relative_distance, create_graph=True)[0]
+
+        # Graph initialization - Add ados and ego to graph (position, velocity and goals).
+        graph = {}
         for i in range(num_ados):
             iid = ados[i].id
             graph[f"{iid}_goal"] = torch.tensor(self._ado_goals[i].astype(float))
@@ -56,8 +83,6 @@ class SocialForcesSimulation(ForcesBasedSimulation):
             graph[f"{iid}_position"].requires_grad = True
             graph[f"{iid}_velocity"] = torch.tensor(ados[i].velocity.astype(float))
             # graph[f"{iid}_velocity"].requires_grad = True
-
-        # Add ego to graph as an input - Properties such as position and velocity.
         if ego_state is not None:
             graph["ego_position"] = torch.tensor(ego_state[0:2].astype(float))
             graph["ego_position"].requires_grad = True
@@ -72,34 +97,6 @@ class SocialForcesSimulation(ForcesBasedSimulation):
             direction = normalize_torch(direction)
             speed = torch.norm(graph[f"{iid}_velocity"])
             graph[f"{iid}_force"] = torch.sub(direction * speed, graph[f"{iid}_velocity"]) * 1 / tau
-
-            # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
-            def _repulsive_force(
-                alpha_position: torch.Tensor,
-                beta_position: torch.Tensor,
-                alpha_velocity: torch.Tensor,
-                beta_velocity: torch.Tensor,
-            ):
-
-                # Relative properties and their norms.
-                relative_distance = torch.sub(alpha_position, beta_position)
-                relative_distance.retain_grad()  # get gradient without being leaf node
-                relative_velocity = torch.sub(alpha_velocity, beta_velocity)
-
-                norm_relative_distance = torch.norm(relative_distance)
-                norm_relative_velocity = torch.norm(relative_velocity)
-                norm_diff_position = torch.sub(relative_distance, relative_velocity * self.dt).norm()
-
-                # Alpha-Beta potential field.
-                b1 = torch.add(norm_relative_distance, norm_diff_position)
-                b2 = self.dt * norm_relative_velocity
-                b = 0.5 * torch.sqrt(torch.sub(torch.pow(b1, 2), torch.pow(b2, 2)))
-                # v = v_0 * torch.exp(-b / sigma)
-                v = v_0 * torch.exp(-b)
-
-                # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
-                # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
-                return torch.autograd.grad(v, relative_distance, create_graph=True)[0]
 
             # Interactive force - Repulsive potential field by every other agent.
             for j in range(num_ados):

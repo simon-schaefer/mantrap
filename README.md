@@ -17,7 +17,11 @@ model (Ivanovic 19).
 
 
 ## Comments
-* optimization over future points
+* optimization over future points 
+    * determine path candidates, perturb them using interaction grad and 
+      pick the path with minimal cost (e.g. interaction force caused by ego, 
+      control cost using acceleration amount) 
+* evaluation interface
 * tube based on distribution of gradients for probabilistic agent
 * homotopy class --> given my base path, more globally optimal ??
 * sphinx documentation 

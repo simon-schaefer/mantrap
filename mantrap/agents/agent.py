@@ -9,6 +9,7 @@ from mantrap.constants import sim_speed_max, sim_dt_default
 
 
 class Agent:
+
     def __init__(self, position: np.ndarray, velocity: np.ndarray = np.zeros(2), history: np.ndarray = None):
         assert position.size == 2, "position must be two-dimensional (x, y)"
         assert velocity.size == 2, "velocity must be two-dimensional (vx, vy)"
@@ -69,6 +70,13 @@ class Agent:
             state_at_t = self.dynamics(state_at_t, action=policy[k, :], dt=dt)
             trajectory[k + 1, :] = np.hstack((state_at_t, (k + 1) * dt))
         return trajectory
+
+    def reset(self, position: np.ndarray, velocity: np.ndarray, history: np.ndarray = None):
+        """Reset the complete state of the agent by resetting its position and velocity. Additionally, the history can
+        be resetted, if given as None then it is re-initialized. As the agent is fully resetted it gets a new id and
+        color assigned to it (!).
+        """
+        self.__init__(position=position, velocity=velocity, history=history)
 
     @abstractmethod
     def dynamics(self, state: np.ndarray, action: np.ndarray, dt: float = sim_dt_default):

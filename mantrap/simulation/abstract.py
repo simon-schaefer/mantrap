@@ -92,6 +92,22 @@ class Simulation:
         # to actually rebuild it).
         self._ados.append(ado)
 
+    def reset(self, ego_state: np.ndarray, ado_states: np.ndarray, ado_histories: np.ndarray = None):
+        """Completely reset the simulation to the given states. Additionally, the ado histories can be resetted,
+        if given as None, they will be re-initialized. The other simulation variables remain unchanged.
+        """
+        assert ego_state.size == 5, "ego state must contain (x, y, theta, vx, vy)"
+        assert ado_states.shape[0] == self.num_ados, "number of ados and ado_states must match"
+        assert ado_states.shape[1] == 5, "ado states must contain (x, y, theta, vx, vy)"
+        if ado_histories is not None:
+            assert ado_histories.shape[0] == self.num_ados, "number of ados and ado_histories must match"
+            assert ado_histories.shape[2] == 6, "ado histories must contain (x, y, theta, vx, vy, t)"
+
+        self._ego.reset(position=ego_state[0:2], velocity=ego_state[3:5], history=None)
+        for i_ado in range(ado_states.shape[0]):
+            i_ado_history = ado_histories[i_ado, :, :] if ado_histories is not None else None
+            self._ados[i_ado].reset(ado_states[i_ado, 0:2], ado_states[i_ado, 3:5], history=i_ado_history)
+
     @abstractmethod
     def build_graph(self, ados: List[Agent] = None, ego_state: np.ndarray = None) -> Dict[str, torch.Tensor]:
         """The simulation should be defined as differentiable graph. To make it accessible (e.g. for the planner)

@@ -35,15 +35,23 @@ class DistanceFieldSimulation(ForcesBasedSimulation):
 
         # Define simulation parameters (as defined in the paper).
         num_ados = len(ados)
-        sigma = 10.0  # [m] repulsive field exponent constant.
+        sigma = 0.1  # [m] repulsive field exponent constant.
 
-        graph = {"forces_sum": torch.zeros(2)}
+        def _repulsive_force(alpha_position: torch.Tensor, beta_position: torch.Tensor):
+            relative_distance = torch.sub(alpha_position, beta_position)
+            norm_relative_distance = torch.max(torch.norm(relative_distance), torch.from_numpy(np.array([1e-10])))
+            direction = torch.div(relative_distance, norm_relative_distance)
+            return torch.exp(-norm_relative_distance / sigma) * direction
 
-        # Add ados to graph as an input - Position only.
+        # Graph initialization - Add ados and ego to graph (position only).
+        graph = {}
         for i in range(num_ados):
             iid = ados[i].id
             graph[f"{iid}_position"] = torch.tensor(ados[i].position.astype(float))
             graph[f"{iid}_position"].requires_grad = True
+        if ego_state is not None:
+            graph["ego_position"] = torch.tensor(ego_state[0:2].astype(float))
+            graph["ego_position"].requires_grad = True
 
         # Make graph with resulting force as an output.
         for i in range(num_ados):
@@ -55,21 +63,16 @@ class DistanceFieldSimulation(ForcesBasedSimulation):
                 jid = ados[j].id
                 if iid == jid:
                     continue
-                relative_position = torch.sub(graph[f"{iid}_position"], graph[f"{jid}_position"])
-                f_repulsive = torch.exp(-relative_position)
+                f_repulsive = _repulsive_force(graph[f"{iid}_position"], graph[f"{jid}_position"])
                 graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], f_repulsive)
 
             # Interactive force w.r.t. ego - Repulsive potential field.
             if ego_state is not None:
-                graph["ego_position"] = torch.tensor(ego_state[0:2].astype(float))
-                graph["ego_position"].requires_grad = True
-                relative_position = torch.sub(graph[f"{iid}_position"], graph["ego_position"])
-                f_repulsive = torch.exp(-relative_position / sigma)
+                f_repulsive = _repulsive_force(graph[f"{iid}_position"], graph["ego_position"])
                 graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], f_repulsive)
 
             # Summarize (standard) graph elements.
             graph[f"{iid}_force_norm"] = torch.norm(graph[f"{iid}_force"])
-            graph["forces_sum"] = torch.add(graph["forces_sum"], graph[f"{iid}_force"])
 
         # Graph health check.
         assert self.graph_check(graph=graph)

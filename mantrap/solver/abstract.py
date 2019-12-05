@@ -17,7 +17,7 @@ class Solver:
         self, t_horizon: int = mantrap.constants.planning_horizon_default
     ) -> Tuple[Union[np.ndarray, None], np.ndarray]:
         """Solve the posed solver i.e. find a feasible trajectory for the ego from its initial to its goal state.
-        :return derived ego trajectory or None (no feasible solution) and according predicted ado trajectories
+        :returns derived ego trajectory or None (no feasible solution) and according predicted ado trajectories
         """
         pass
 
