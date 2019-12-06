@@ -2,26 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="8bfa4cb6-e6a1-4d74-b2ac-b6b3dd289fb3" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/mantrap/evaluation/baselines.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mantrap/evaluation/metrics.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mantrap/agents/agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/agents/agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/constants.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mantrap/evaluation/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/evaluation/scenarios.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/scenarios.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/simulation/abstract.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/abstract.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/solver/abstract.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/solver/abstract.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/solver/trajopt.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/solver/trajopt.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/utility/io.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/utility/io.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/utility/shaping.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/utility/shaping.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/visualization/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/visualization/visualize_simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/visualization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ops/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/ops/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ops/run_visualization.bash" beforeDir="false" afterPath="$PROJECT_DIR$/ops/run_visualization.bash" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_simulation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_solver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/evaluation/visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/visualization.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -82,7 +67,7 @@
       <workItem from="1575173786295" duration="277000" />
       <workItem from="1575248248035" duration="9969000" />
       <workItem from="1575311657556" duration="60558000" />
-      <workItem from="1575568896361" duration="20051000" />
+      <workItem from="1575568896361" duration="24257000" />
     </task>
     <servers />
   </component>

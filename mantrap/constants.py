@@ -10,4 +10,3 @@ sim_social_forces_fluctuations = 0.01
 
 visualization_agent_radius = 0.1
 visualization_preview_horizon = 10
-visualization_fig_size = (6, 6)

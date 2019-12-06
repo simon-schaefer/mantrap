@@ -1,4 +1,3 @@
-import os
 import logging
 from typing import List, Tuple, Union
 
@@ -6,11 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import mantrap.constants
-from mantrap.utility.io import datetime_name, path_from_home_directory
 from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories, extract_ado_trajectories
 
 
 def plot_scene(
+    ax: plt.Axes,
+    t: int,
     ado_trajectories: np.ndarray,
     ado_colors: List[np.ndarray],
     ado_ids: List[str],
@@ -21,12 +21,13 @@ def plot_scene(
         mantrap.constants.sim_x_axis_default,
         mantrap.constants.sim_y_axis_default,
     ),
-    output_dir: str = path_from_home_directory(f"outs/{datetime_name()}"),
 ):
     """Visualize simulation scene using matplotlib library.
     Thereby the ados as well as the ego in at the current time are plotted while their future trajectories
     and their state histories are indicated. Their orientation is shown using an arrow pointing in their direction
     of orientation.
+    :param t: time-step to plot.
+    :param ax: matplotlib axis to draw in.
     :param ego_trajectory: planned ego trajectory (t_horizon, 6).
     :param ado_trajectories: ado trajectories (num_ados, num_samples, t_horizon, 6).
     :param ado_colors: color identifier for each ado (num_ados).
@@ -34,7 +35,6 @@ def plot_scene(
     :param ado_trajectories_wo: ado trajectories without ego interaction (num_ados, num_samples=1, t_horizon, 6).
     :param preview_horizon: trajectory preview time horizon (maximal value).
     :param axes: position space dimensions [m].
-    :param output_dir: output directory file path.
     """
     assert check_ado_trajectories(ado_trajectories=ado_trajectories)
     num_ados, num_modes, t_horizon = extract_ado_trajectories(ado_trajectories)
@@ -47,52 +47,47 @@ def plot_scene(
         assert check_ado_trajectories(ado_trajectories=ado_trajectories_wo, num_modes=1, num_ados=num_ados)
     logging.debug(f"Plotting scene with {num_ados} ados having {num_modes} modes for T = {t_horizon}")
 
-    for t in range(t_horizon):
-        fig, ax = plt.subplots(figsize=mantrap.constants.visualization_fig_size)
+    # Plot ados.
+    ado_preview = min(preview_horizon, t_horizon - t)
+    for ado_i in range(num_ados):
+        ado_pose = ado_trajectories[ado_i, 0, t, 0:3]
+        ado_velocity = ado_trajectories[ado_i, 0, t, 4:6]
+        ado_arrow_length = np.linalg.norm(ado_velocity) / mantrap.constants.sim_speed_max * 0.5
+        ado_color = ado_colors[ado_i]
+        ado_id = ado_ids[ado_i]
+        ado_history = ado_trajectories[ado_i, 0, :t, 0:2]
 
-        # Plot ados.
-        ado_preview = min(preview_horizon, t_horizon - t)
-        for ado_i in range(num_ados):
-            ado_pose = ado_trajectories[ado_i, 0, t, 0:3]
-            ado_velocity = ado_trajectories[ado_i, 0, t, 4:6]
-            ado_arrow_length = np.linalg.norm(ado_velocity) / mantrap.constants.sim_speed_max * 0.5
-            ado_color = ado_colors[ado_i]
-            ado_id = ado_ids[ado_i]
-            ado_history = ado_trajectories[ado_i, 0, :t, 0:2]
+        ax = _add_agent_representation(ado_pose, color=ado_color, name=ado_id, ax=ax, arrow_length=ado_arrow_length)
+        ax = _add_history(ado_history, color=ado_color, ax=ax)
+        for mode_i in range(num_modes):
+            ax = _add_trajectory(ado_trajectories[ado_i, mode_i, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
+        if ado_trajectories_wo is not None:
+            ax = _add_wo_trajectory(ado_trajectories_wo[ado_i, 0, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
 
-            ax = _add_agent_representation(ado_pose, color=ado_color, name=ado_id, ax=ax, arrow_length=ado_arrow_length)
-            ax = _add_history(ado_history, color=ado_color, ax=ax)
-            for mode_i in range(num_modes):
-                ax = _add_trajectory(ado_trajectories[ado_i, mode_i, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
-            if ado_trajectories_wo is not None:
-                ax = _add_wo_trajectory(ado_trajectories_wo[ado_i, 0, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
+    # Plot ego.
+    if ego_trajectory is not None:
+        ego_pose = ego_trajectory[t, 0:3]
+        ego_color = np.array([0, 0, 1.0])
+        ego_history = ego_trajectory[:t, 0:2]
+        ego_preview = min(preview_horizon, ego_trajectory.shape[0] - t)
+        ego_planned = ego_trajectory[t : t + ego_preview, 0:2]
 
-        # Plot ego.
-        if ego_trajectory is not None:
-            ego_pose = ego_trajectory[t, 0:3]
-            ego_color = np.array([0, 0, 1.0])
-            ego_history = ego_trajectory[:t, 0:2]
-            ego_preview = min(preview_horizon, ego_trajectory.shape[0] - t)
-            ego_planned = ego_trajectory[t : t + ego_preview, 0:2]
+        ax = _add_agent_representation(ego_pose, color=ego_color, name="ego", ax=ax)
+        ax = _add_history(ego_history, color=ego_color, ax=ax)
+        ax = _add_trajectory(ego_planned, color=ego_color, ax=ax)
 
-            ax = _add_agent_representation(ego_pose, color=ego_color, name="ego", ax=ax)
-            ax = _add_history(ego_history, color=ego_color, ax=ax)
-            ax = _add_trajectory(ego_planned, color=ego_color, ax=ax)
-
-        # Plot labels, limits and grid.
-        x_axis, y_axis = axes
-        plt.xlabel("x [m]")
-        plt.xlim(x_axis)
-        plt.ylabel("y [m]")
-        plt.ylim(y_axis)
-        plt.minorticks_on()
-        plt.grid(which="minor", alpha=0.1)
-        plt.grid(which="major", alpha=0.3)
-
-        # Save and close plot.
-        os.makedirs(output_dir, exist_ok=True)
-        plt.savefig(os.path.join(output_dir, f"{t:04d}.png"))
-        plt.close()
+    # Plot labels, limits and grid.
+    x_axis, y_axis = axes
+    # ax.set_xlabel("x [m]")
+    ax.set_xlim(xmin=x_axis[0], xmax=x_axis[1])
+    ax.get_xaxis().set_visible(False)
+    # ax.set_ylabel("y [m]")
+    ax.set_ylim(ymin=y_axis[0], ymax=y_axis[1])
+    ax.get_yaxis().set_visible(False)
+    ax.minorticks_on()
+    ax.grid(which="minor", alpha=0.1)
+    ax.grid(which="major", alpha=0.3)
+    return ax
 
 
 def _add_agent_representation(
