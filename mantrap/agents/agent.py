@@ -25,7 +25,7 @@ class Agent:
             self._history = np.reshape(np.hstack((self.state, 0)), (1, 6))
 
         # Create random agent color (reddish), for evaluation only.
-        self._color = np.hstack((1.0, np.random.uniform(0.0, 1.0, size=2)))
+        self._color = np.hstack((1.0, np.random.uniform(0.0, 0.5, size=2)))
         # Random identifier.
         letters = string.ascii_lowercase
         self._id = "".join(random.choice(letters) for i in range(3))

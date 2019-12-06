@@ -43,7 +43,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
         # Define simulation parameters (as defined in the paper).
         num_ados = len(ados)
         tau = 0.5  # [s] relaxation time (assumed to be uniform over all agents).
-        v_0 = 2.1  # [m2s-2] repulsive field constant.
+        v_0 = 10.0  # 2.1  # [m2s-2] repulsive field constant.
         sigma = 0.1  # [m] repulsive field exponent constant.
 
         # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
@@ -67,8 +67,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
             b1 = torch.add(norm_relative_distance, norm_diff_position)
             b2 = self.dt * norm_relative_velocity
             b = 0.5 * torch.sqrt(torch.sub(torch.pow(b1, 2), torch.pow(b2, 2)))
-            # v = v_0 * torch.exp(-b / sigma)
-            v = v_0 * torch.exp(-b)
+            v = v_0 * torch.exp(-b / sigma)
 
             # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
             # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.

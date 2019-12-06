@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from mantrap.constants import planning_horizon_default
-from mantrap.agents import IntegratorDTAgent
+from mantrap.agents import DoubleIntegratorDTAgent, IntegratorDTAgent
 from mantrap.simulation.abstract import Simulation
 from mantrap.solver.abstract import Solver
 
@@ -43,32 +43,38 @@ class TrajOptSolver(Solver):
             # Correct trajectory based on gradient of the sum of forces acting on the ados w.r.t. the ego base
             # trajectory. Based on the updated position, determine the velocity and update it.
             graph = solver_env.build_graph(ego_state=np.hstack((path_base[1, :], np.zeros(3))))
-            # ado_grads = np.zeros((solver_env.num_ados, 2))
-            # for ia, ado in enumerate(solver_env.ados):
-            #     ado_force_norm = graph[f"{ado.id}_force_norm"]
-            #     ado_grads[ia, :] = (
-            #         torch.autograd.grad(ado_force_norm, graph["ego_position"], retain_graph=True)[0].detach().numpy()
-            #     )
-            #     logging.debug(f"solver @ t={t+1} [ado_{ado.id}]: force={ado_force_norm.detach().numpy()}")
-            #     logging.debug(f"solver @ t={t+1} [ado_{ado.id}]: grad={ado_grads[ia, :]}")
-            # interactive_grad = np.mean(ado_grads, axis=0)
-
-            ado_ego_distances = [np.linalg.norm(ado.position - solver_env.ego.position) for ado in solver_env.ados]
-            ado_min_id = solver_env.ado_ids[np.argmin(ado_ego_distances)]
-            ado_min_force_norm = graph[f"{ado_min_id}_force_norm"]
-            interactive_grad = torch.autograd.grad(ado_min_force_norm, graph["ego_position"], retain_graph=True)[0].detach().numpy()
+            ado_grads = np.zeros((solver_env.num_ados, 2))
+            for ia, ado in enumerate(solver_env.ados):
+                ado_force_norm = graph[f"{ado.id}_force_norm"]
+                ado_grads[ia, :] = (
+                    torch.autograd.grad(ado_force_norm, graph["ego_position"], retain_graph=True)[0].detach().numpy()
+                )
+                logging.debug(f"solver @ t={t+1} [ado_{ado.id}]: force={ado_force_norm.detach().numpy()}")
+                logging.debug(f"solver @ t={t+1} [ado_{ado.id}]: grad={ado_grads[ia, :]}")
+            interactive_grad = np.mean(ado_grads, axis=0)
 
             # Update the position based on the force gradient (= acceleration gradient since m = 1kg) w.r.t. to
             # the position. TODO: Physically feasible dx -> dF/dx ??
-            traj_opt[t + 1, 0:2] = path_base[1, :] - 10 * interactive_grad * pow(solver_env.dt, 2)
-            assert solver_env.ego.__class__ == IntegratorDTAgent, "currently only single integrators are supported"
-            ego_velocity = (traj_opt[t + 1, 0:2] - traj_opt[t, 0:2]) / solver_env.dt
-            traj_opt[t + 1, 2] = np.arctan2(ego_velocity[1], ego_velocity[0])
-            traj_opt[t + 1, 3:5] = ego_velocity
+            if solver_env.ego.__class__ == IntegratorDTAgent:
+                position_new = path_base[1, :] - interactive_grad * pow(solver_env.dt, 2)
+                position_old = traj_opt[t, 0:2]
+                ego_action = (position_new - position_old) / solver_env.dt
+            elif solver_env.ego.__class__ == DoubleIntegratorDTAgent:
+                start_end_base = np.vstack(
+                    (
+                        np.linspace(traj_opt[0, 0], self.goal[0], planning_horizon),
+                        np.linspace(traj_opt[0, 1], self.goal[1], planning_horizon),
+                    )
+                ).T
+                tracking_force = start_end_base[t, :] - traj_opt[t, 0:2]
+                ego_action = - interactive_grad * pow(solver_env.dt, 2) + 0.1 * tracking_force
+            else:
+                raise NotImplementedError(f"Ego type {solver_env.ego.__class__} not supported !")
 
             # Forward simulate environment.
-            traj_sim, _ = solver_env.step(ego_policy=ego_velocity)
-            ado_trajectories[:, :, t + 1, :] = traj_sim[:, :, 0, :]
+            ado_traj, ego_state = solver_env.step(ego_policy=ego_action)
+            ado_trajectories[:, :, t + 1, :] = ado_traj[:, :, 0, :]
+            traj_opt[t + 1, :] = ego_state
 
             logging.debug(f"solver @ t={t+1}: interaction_force = {interactive_grad}")
 

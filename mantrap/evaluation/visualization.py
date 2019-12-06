@@ -62,7 +62,7 @@ def plot_scene(
         for mode_i in range(num_modes):
             ax = _add_trajectory(ado_trajectories[ado_i, mode_i, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
         if ado_trajectories_wo is not None:
-            ax = _add_wo_trajectory(ado_trajectories_wo[ado_i, 0, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
+            ax = _add_wo_trajectory(ado_trajectories_wo[ado_i, 0, :t, 0:2], color=ado_color, ax=ax)
 
     # Plot ego.
     if ego_trajectory is not None:
@@ -118,11 +118,11 @@ def _add_trajectory(trajectory: np.ndarray, color: np.ndarray, ax: plt.Axes):
 
 def _add_wo_trajectory(trajectory: np.ndarray, color: np.ndarray, ax: plt.Axes):
     assert len(trajectory.shape) == 2, "trajectory must have shape (N, state_length)"
-    ax.plot(trajectory[:, 0], trajectory[:, 1], color=color, linestyle=":", linewidth=0.6, alpha=0.8)
+    ax.plot(trajectory[:, 0], trajectory[:, 1], color=color, linestyle=":", linewidth=0.6, alpha=1.0)
     return ax
 
 
 def _add_history(history: np.ndarray, color: np.ndarray, ax: plt.Axes):
     assert len(history.shape) == 2, "history must have shape (M, state_length)"
-    ax.plot(history[:, 0], history[:, 1], color=color, linestyle="-.", linewidth=0.6, alpha=0.6)
+    ax.plot(history[:, 0], history[:, 1], color=color, linestyle="-.", linewidth=0.6, alpha=0.8)
     return ax

@@ -32,9 +32,9 @@ def evaluate(
     # Check whether actually the same "thing" has been compared by comparing the ado trajectories without
     # ego interaction (from metrics calculation).
     assert np.isclose(np.linalg.norm(ado_traj_wo - ado_traj_wo_base), 0, atol=0.1), "ado_wo trajectories do not match"
-    logging.info(f"Metrics {tag} - solver:")
+    logging.info(f"Metrics on task {tag} -> solver:")
     print(eval_df)
-    logging.info(f"Metrics {tag} - baseline {baseline.__name__}:")
+    logging.info(f"Metrics on task {tag} -> baseline {baseline.__name__}:")
     print(eval_df_base)
 
     # Visualization.
