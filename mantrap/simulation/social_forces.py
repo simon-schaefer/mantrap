@@ -48,10 +48,10 @@ class SocialForcesSimulation(ForcesBasedSimulation):
 
         # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
         def _repulsive_force(
-                alpha_position: torch.Tensor,
-                beta_position: torch.Tensor,
-                alpha_velocity: torch.Tensor,
-                beta_velocity: torch.Tensor,
+            alpha_position: torch.Tensor,
+            beta_position: torch.Tensor,
+            alpha_velocity: torch.Tensor,
+            beta_velocity: torch.Tensor,
         ):
 
             # Relative properties and their norms.

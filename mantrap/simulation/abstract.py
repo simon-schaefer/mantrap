@@ -8,6 +8,7 @@ import torch
 
 import mantrap.constants
 from mantrap.agents.agent import Agent
+from mantrap.utility.shaping import check_ado_trajectories
 
 
 class Simulation:
@@ -53,7 +54,10 @@ class Simulation:
 
     def step(self, ego_policy: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
         """Run simulation step (time-step = dt). Update state and history of ados and ego. Also reset simulation time
-        to sim_time_new = sim_time + dt.
+        to sim_time_new = sim_time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
+        one time-step at a time, not in general `t_horizon` steps, secondly, step() changes the actual agent states
+        in the simulation while predict() copies all agents and changes the states of these copies (so the actual
+        agent states remain unchanged).
         :param ego_policy: planned ego policy (in case of dependence in behaviour between ado and ego).
         :return ado_states (num_ados, num_modes, 6), ego_state (6) in next time step.
         """
@@ -71,7 +75,7 @@ class Simulation:
         ado_states, policies = self.predict(t_horizon=1, ego_trajectory=ego_trajectory, return_policies=True)
         for i, ado in enumerate(self._ados):
             ado.update(policies[0, i], dt=self.dt)
-            logging.debug(f"simulation @t={self.sim_time} [ado_{ado.id}]: {ado_states[i, :, :]}")
+            logging.debug(f"simulation @t={self.sim_time} [ado_{ado.id}]: {ado_states[i, 0, :, :]}")
 
         # Update ego based on the first action of the input ego policy.
         if ego_policy is not None:
@@ -95,10 +99,15 @@ class Simulation:
     def reset(self, ego_state: np.ndarray, ado_states: np.ndarray, ado_histories: np.ndarray = None):
         """Completely reset the simulation to the given states. Additionally, the ado histories can be resetted,
         if given as None, they will be re-initialized. The other simulation variables remain unchanged.
+        :param ego_state: new ego state containing (x, y, theta, vx, vy), (5).
+        :param ado_states: new state for each ado containing (x, y, theta, vx, vy), (num_ados, 5), number of ados
+                           cannot be changed (!).
+        :param ado_histories: new history for each ado containing (x, y, theta, vx, vy, t), (num_ados, 6).
         """
-        assert ego_state.size == 5, "ego state must contain (x, y, theta, vx, vy)"
+        assert ego_state.size >= 5, "ego state must contain (x, y, theta, vx, vy)"
+        assert len(ado_states.shape) == 2, "ado states must be of shape (num_ados, 5)"
         assert ado_states.shape[0] == self.num_ados, "number of ados and ado_states must match"
-        assert ado_states.shape[1] == 5, "ado states must contain (x, y, theta, vx, vy)"
+        assert ado_states.shape[1] >= 5, "ado states must contain (x, y, theta, vx, vy)"
         if ado_histories is not None:
             assert ado_histories.shape[0] == self.num_ados, "number of ados and ado_histories must match"
             assert ado_histories.shape[2] == 6, "ado histories must contain (x, y, theta, vx, vy, t)"
@@ -143,6 +152,10 @@ class Simulation:
     @property
     def ado_colors(self) -> List[np.ndarray]:
         return [ado.color for ado in self._ados]
+
+    @property
+    def ado_ids(self) -> List[str]:
+        return [ado.id for ado in self._ados]
 
     ###########################################################################
     # Ego properties ##########################################################
@@ -211,7 +224,8 @@ class ForcesBasedSimulation(Simulation):
 
         # Collect histories of simulated ados (last t_horizon steps are equal to future trajectories).
         trajectories = np.asarray([ado.history[-t_horizon:, :] for ado in ados_sim])
-        assert trajectories.shape[0] == num_ados, "each ado must be assigned to trajectory"
+        trajectories = np.expand_dims(trajectories, axis=1)
+        assert check_ado_trajectories(ado_trajectories=trajectories, num_ados=num_ados, num_modes=1)
 
         if not return_policies:
             return trajectories

@@ -22,6 +22,9 @@ model (Ivanovic 19).
       pick the path with minimal cost (e.g. interaction force caused by ego, 
       control cost using acceleration amount) 
 * evaluation interface
+    * probabilistic: likelihood of perturbed trajectory over initial 
+      distribution
+    * deterministic: L2 distance of trajectory points
 * tube based on distribution of gradients for probabilistic agent
 * homotopy class --> given my base path, more globally optimal ??
 * sphinx documentation 

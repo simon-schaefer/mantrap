@@ -9,7 +9,6 @@ from mantrap.constants import sim_speed_max, sim_dt_default
 
 
 class Agent:
-
     def __init__(self, position: np.ndarray, velocity: np.ndarray = np.zeros(2), history: np.ndarray = None):
         assert position.size == 2, "position must be two-dimensional (x, y)"
         assert velocity.size == 2, "velocity must be two-dimensional (vx, vy)"
@@ -25,8 +24,8 @@ class Agent:
         else:
             self._history = np.reshape(np.hstack((self.state, 0)), (1, 6))
 
-        # Create random agent color (reddish), for visualization only.
-        self._color = np.hstack((1.0, np.random.uniform(0.5, 1.0, size=2)))
+        # Create random agent color (reddish), for evaluation only.
+        self._color = np.hstack((1.0, np.random.uniform(0.0, 0.5, size=2)))
         # Random identifier.
         letters = string.ascii_lowercase
         self._id = "".join(random.choice(letters) for i in range(3))

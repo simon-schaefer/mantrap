@@ -4,7 +4,7 @@ from mantrap.agents import IntegratorDTAgent
 import mantrap.evaluation.scenarios as scenarios
 from mantrap.simulation import DistanceFieldSimulation, SocialForcesSimulation
 from mantrap.utility.io import path_from_home_directory
-from mantrap.visualization import plot_scene
+from mantrap.evaluation import plot_scene
 
 
 ###########################################################################
@@ -137,19 +137,3 @@ def test_sf_static_ado_pair_prediction():
     # the same for both of them). Therefore the distance must be larger then zero basically, otherwise the repulsive
     # force would not act (or act attractive instead of repulsive).
     assert np.linalg.norm(trajectories[0, -1, 0:1] - trajectories[1, -1, 0:1]) > 1e-3
-
-
-###########################################################################
-# Visualization ###########################################################
-###########################################################################
-def visualize_sf_agent_and_ego_prediction():
-    sim = scenarios.sf_ego_moving_single_ado()
-    ego_policy = np.vstack((np.ones(50), np.zeros(50))).T
-    output_dir = path_from_home_directory("test/graphs/social_sim_ego_dodging")
-
-    num_steps = 50
-    ado_trajectories = np.zeros((sim.num_ados, 1, num_steps, 6))
-    ego_trajectory = np.zeros((num_steps, 6))
-    for t in range(num_steps):
-        ado_trajectories[:, :, t, :], ego_trajectory[t, :] = sim.step(ego_policy=ego_policy[t, :])
-    plot_scene(ado_trajectories, ado_colors=sim.ado_colors, ego_trajectory=ego_trajectory, output_dir=output_dir)
