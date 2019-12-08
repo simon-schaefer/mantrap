@@ -45,7 +45,7 @@ def plot_scene(
         assert check_ego_trajectory(ego_trajectory=ego_trajectory, t_horizon=t_horizon)
     if ado_trajectories_wo is not None:
         assert check_ado_trajectories(ado_trajectories=ado_trajectories_wo, num_modes=1, num_ados=num_ados)
-    logging.debug(f"Plotting scene with {num_ados} ados having {num_modes} modes for T = {t_horizon}")
+    # logging.debug(f"Plotting scene with {num_ados} ados having {num_modes} modes for T = {t_horizon}")
 
     # Plot ados.
     ado_preview = min(preview_horizon, t_horizon - t)
@@ -78,13 +78,9 @@ def plot_scene(
 
     # Plot labels, limits and grid.
     x_axis, y_axis = axes
-    # ax.set_xlabel("x [m]")
     ax.set_xlim(xmin=x_axis[0], xmax=x_axis[1])
-    ax.get_xaxis().set_visible(False)
-    # ax.set_ylabel("y [m]")
     ax.set_ylim(ymin=y_axis[0], ymax=y_axis[1])
-    ax.get_yaxis().set_visible(False)
-    ax.minorticks_on()
+    ax.tick_params(axis="both", which="major", labelsize=5)
     ax.grid(which="minor", alpha=0.1)
     ax.grid(which="major", alpha=0.3)
     return ax

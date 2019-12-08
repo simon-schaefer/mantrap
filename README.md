@@ -21,6 +21,7 @@ model (Ivanovic 19).
     * determine path candidates, perturb them using interaction grad and 
       pick the path with minimal cost (e.g. interaction force caused by ego, 
       control cost using acceleration amount) 
+    * create graph structure over multiple time-steps by concatenating graphs
 * evaluation interface
     * probabilistic: likelihood of perturbed trajectory over initial 
       distribution
@@ -42,8 +43,7 @@ formulated as a graph (as social forces)
 minimal (e.g. in comparison with minimizing travel-time, ...)
 * baseline: in the same scene let human in one and robot in another experiment
 take decisions, let humans guess who is who based on trajectories 
--> "natural" way of interacting with other agents, specifically 
-pedestrians
+-> "natural" way of interacting with other agents, specifically pedestrians
 
 * GMM as n independent single Gaussians --> integration using Kalman Filter 
 equations with state (x, v) and no input (s. Tim)

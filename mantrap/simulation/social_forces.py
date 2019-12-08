@@ -32,18 +32,26 @@ class SocialForcesSimulation(ForcesBasedSimulation):
         super(SocialForcesSimulation, self)._add_ado(DoubleIntegratorDTAgent, **ado_kwargs)
         self._ado_goals.append(goal_position)
 
-    def build_graph(self, ados: List[Agent] = None, ego_state: np.ndarray = None) -> Dict[str, torch.Tensor]:
+    def build_graph(
+        self,
+        ado_positions: List[torch.Tensor],
+        ado_velocities: List[torch.Tensor],
+        ego_position: torch.Tensor = None,
+        ego_velocity: torch.Tensor = None,
+        is_intermediate: bool = False,
+        **kwargs,
+    ) -> Dict[str, torch.Tensor]:
         """Graph:
         --> Input = position & velocities of ados and ego state
         --> Output = Force acting on every ado"""
-        ados = self._ados if ados is None else ados
-        if ego_state is not None:
-            assert ego_state.size >= 4, "ego state must contain (x, y) - position and (vx, vy) - velocity"
+        assert len(ado_positions) == self.num_ados, "number of ado positions and internal number must match"
+        assert len(ado_velocities) == self.num_ados, "number of ado velocities and internal number must match"
 
         # Define simulation parameters (as defined in the paper).
-        num_ados = len(ados)
+        num_ados = self.num_ados
+        ado_ids = self.ado_ids
         tau = 0.5  # [s] relaxation time (assumed to be uniform over all agents).
-        v_0 = 10.0  # 2.1  # [m2s-2] repulsive field constant.
+        v_0 = 4.0  # 2.1  # [m2s-2] repulsive field constant.
         sigma = 0.1  # [m] repulsive field exponent constant.
 
         # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
@@ -76,20 +84,22 @@ class SocialForcesSimulation(ForcesBasedSimulation):
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = {}
         for i in range(num_ados):
-            iid = ados[i].id
+            iid = ado_ids[i]
             graph[f"{iid}_goal"] = torch.tensor(self._ado_goals[i].astype(float))
-            graph[f"{iid}_position"] = torch.tensor(ados[i].position.astype(float))
-            graph[f"{iid}_position"].requires_grad = True
-            graph[f"{iid}_velocity"] = torch.tensor(ados[i].velocity.astype(float))
-            # graph[f"{iid}_velocity"].requires_grad = True
-        if ego_state is not None:
-            graph["ego_position"] = torch.tensor(ego_state[0:2].astype(float))
-            graph["ego_position"].requires_grad = True
-            graph["ego_velocity"] = torch.tensor(ego_state[2:4].astype(float))
+            graph[f"{iid}_position"] = ado_positions[i]
+            graph[f"{iid}_velocity"] = ado_velocities[i]
+            if not is_intermediate:
+                graph[f"{iid}_position"].requires_grad = True
+                # graph[f"{iid}_velocity"].requires_grad = True
+        if ego_position is not None and ego_velocity is not None:
+            graph["ego_position"] = ego_position
+            graph["ego_velocity"] = ego_velocity
+            if not is_intermediate:
+                graph["ego_position"].requires_grad = True
 
         # Make graph with resulting force as an output.
         for i in range(num_ados):
-            iid = ados[i].id
+            iid = ado_ids[i]
 
             # Destination force - Force pulling the ado to its assigned goal position.
             direction = torch.sub(graph[f"{iid}_goal"], graph[f"{iid}_position"])
@@ -99,7 +109,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
 
             # Interactive force - Repulsive potential field by every other agent.
             for j in range(num_ados):
-                jid = ados[j].id
+                jid = ado_ids[j]
                 if iid == jid:
                     continue
                 v_grad = _repulsive_force(
@@ -111,7 +121,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
                 graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], v_grad)
 
             # Interactive force w.r.t. ego - Repulsive potential field.
-            if ego_state is not None:
+            if ego_position is not None and ego_velocity is not None:
                 v_grad = _repulsive_force(
                     graph[f"{iid}_position"], graph["ego_position"], graph[f"{iid}_velocity"], graph["ego_velocity"]
                 )

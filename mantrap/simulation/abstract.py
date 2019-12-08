@@ -52,6 +52,9 @@ class Simulation:
         """
         pass
 
+    def unroll_ego_trajectory(self, ego_policy: np.ndarray) -> np.ndarray:
+        return self.ego.unroll_trajectory(policy=ego_policy, dt=self.dt)
+
     def step(self, ego_policy: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
         """Run simulation step (time-step = dt). Update state and history of ados and ego. Also reset simulation time
         to sim_time_new = sim_time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
@@ -118,13 +121,44 @@ class Simulation:
             self._ados[i_ado].reset(ado_states[i_ado, 0:2], ado_states[i_ado, 3:5], history=i_ado_history)
 
     @abstractmethod
-    def build_graph(self, ados: List[Agent] = None, ego_state: np.ndarray = None) -> Dict[str, torch.Tensor]:
+    def build_graph(
+        self,
+        ado_positions: List[torch.Tensor],
+        ado_velocities: List[torch.Tensor],
+        ego_position: torch.Tensor = None,
+        ego_velocity: torch.Tensor = None,
+        is_intermediate: bool = False,
+        **kwargs,
+    ) -> Dict[str, torch.Tensor]:
         """The simulation should be defined as differentiable graph. To make it accessible (e.g. for the planner)
         and to save computational effort the graph is pre-built. The exact definition of the graph depends on the
-        actual simulation and is therefore defined in the child class.
-        If the list of ados is set to None the internal ado state is used for building the graph. If the ego_state
-        is None, the interaction between the ego and the environment is ignored."""
+        actual simulation and is therefore defined in the child class. In case the ego state is passed as None,
+        interactions between ados and the ego are not taken into account in the simulation graph.
+        :param ado_positions: position of each ado in the graph as torch float tensor, (2).
+        :param ado_velocities: velocity of each ado in the graph as torch float tensor, (2).
+        :param ego_position: ego position in the graph as torch float tensor, (2).
+        :param ego_velocity: ego velocity in the graph as torch float tensor, (2).
+        :param is_intermediate: if False, the leaf nodes (ado and ego states) require gradients.
+        """
         pass
+
+    def build_graph_from_agents(
+        self, ados: List[Agent] = None, ego_state: np.ndarray = None
+    ) -> Dict[str, torch.Tensor]:
+        """Build graph from agents (list of ados and ego state). If the list of ados is set to None the internal ado
+        state is used for building the graph. If the ego_state is None, the interaction between the ego and the
+        environment is ignored."""
+        ados = self._ados if ados is None else ados
+        if ego_state is not None:
+            assert ego_state.size >= 4, "ego state must contain (x, y) - position and (vx, vy) - velocity"
+
+        ado_positions = [torch.tensor(ado.position.astype(float)) for ado in ados]
+        ado_velocities = [torch.tensor(ado.velocity.astype(float)) for ado in ados]
+
+        ego_position = torch.tensor(ego_state[0:2].astype(float)) if ego_state is not None else None
+        ego_velocity = torch.tensor(ego_state[2:4].astype(float)) if ego_state is not None else None
+
+        return self.build_graph(ado_positions, ado_velocities, ego_position, ego_velocity)
 
     def graph_check(self, graph: Dict[str, torch.Tensor]) -> bool:
         """Check healthiness of graph by looking for specific keys in the graph that are required."""
@@ -215,7 +249,7 @@ class ForcesBasedSimulation(Simulation):
             # same output. However the computational effort of building the graph is negligible (about 1 ms for
             # 2 agents on Mac Pro 2018).
             ego_state = ego_trajectory[t, :] if ego_trajectory is not None else None
-            graph_at_t = self.build_graph(ados_sim, ego_state=ego_state)
+            graph_at_t = self.build_graph_from_agents(ados_sim, ego_state=ego_state)
 
             # Evaluate graph.
             for i in range(num_ados):
@@ -233,5 +267,13 @@ class ForcesBasedSimulation(Simulation):
             return trajectories, forces
 
     @abstractmethod
-    def build_graph(self, ados: List[Agent] = None, ego_state: np.ndarray = None) -> Dict[str, torch.Tensor]:
+    def build_graph(
+        self,
+        ado_positions: List[torch.Tensor],
+        ado_velocities: List[torch.Tensor],
+        ego_position: torch.Tensor = None,
+        ego_velocity: torch.Tensor = None,
+        is_intermediate: bool = False,
+        **kwargs,
+    ) -> Dict[str, torch.Tensor]:
         pass
