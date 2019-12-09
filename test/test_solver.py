@@ -1,13 +1,11 @@
 from pprint import pprint
 import logging
 
-import numpy as np
-
 from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.evaluation.baselines import straight_line
+from mantrap.simulation import DistanceFieldSimulation
 from mantrap.solver import IGradGreedySolver, IGradPredictiveSolver
 from mantrap.evaluation import evaluate, eval_scenarios
-import mantrap.evaluation.scenarios as scenarios
 
 
 ###########################################################################
@@ -23,7 +21,7 @@ def visualize_igrads():
             logging.info(f"Solver: {solver_class.__name__} -> Test scenario: {tag}")
             test_name = f"{solver_class.__name__}_{tag}"
 
-            sim, goal = scenario(ego_type=DoubleIntegratorDTAgent)
+            sim, goal = scenario(sim_type=DistanceFieldSimulation, ego_type=DoubleIntegratorDTAgent)
             solver = solver_class(sim, goal=goal)
             ego_traj, ados_traj = solver.solve()
 

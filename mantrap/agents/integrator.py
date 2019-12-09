@@ -5,8 +5,8 @@ from mantrap.agents.agent import Agent
 
 
 class IntegratorDTAgent(Agent):
-    def __init__(self, position: np.ndarray, velocity: np.ndarray = np.zeros(2), history: np.ndarray = None):
-        super(IntegratorDTAgent, self).__init__(position, velocity, history=history)
+    def __init__(self, position: np.ndarray, velocity: np.ndarray = np.zeros(2), history: np.ndarray = None, **kwargs):
+        super(IntegratorDTAgent, self).__init__(position, velocity, history=history, kwargs=kwargs)
 
     def dynamics(self, state: np.ndarray, action: np.ndarray, dt: float = mantrap.constants.sim_dt_default):
         assert state.size == 5, "state should be two-dimensional (x, y, theta, vx, vy)"

@@ -49,7 +49,7 @@ def evaluate(
         plt.style.use("seaborn")
         for t in range(ego_trajectory.shape[0]):
             fig = plt.figure(constrained_layout=True)
-            gs = plt.GridSpec(4, 2, wspace=0.2, hspace=0.4, figure=fig)
+            gs = plt.GridSpec(3, 2, wspace=0.2, hspace=0.4, figure=fig)
 
             ax1 = fig.add_subplot(gs[0:2, :])
             ax1 = plot_scene(
@@ -86,12 +86,12 @@ def evaluate(
             )
             ax3.set_title(f"baseline: {baseline.__name__}")
 
-            ax4 = fig.add_subplot(gs[3, :])
-            speed_ego = np.sqrt(ego_trajectory[:t, 3] ** 2 + ego_trajectory[:t, 4] ** 2)
-            speed_ego_base = np.sqrt(ego_traj_base[:t, 3] ** 2 + ego_traj_base[:t, 4] ** 2)
-            ax4.plot(ego_trajectory[:t, -1], speed_ego, label="solver")
-            ax4.plot(ego_trajectory[:t, -1], speed_ego_base, label="baseline")
-            ax4.legend()
+            # ax4 = fig.add_subplot(gs[3, :])
+            # speed_ego = np.sqrt(ego_trajectory[:t, 3] ** 2 + ego_trajectory[:t, 4] ** 2)
+            # speed_ego_base = np.sqrt(ego_traj_base[:t, 3] ** 2 + ego_traj_base[:t, 4] ** 2)
+            # ax4.plot(ego_trajectory[:t, -1], speed_ego, label="solver")
+            # ax4.plot(ego_trajectory[:t, -1], speed_ego_base, label="baseline")
+            # ax4.legend()
 
             fig.suptitle(f"task: {tag}")
             plt.savefig(os.path.join(output_dir, f"{t:04d}.png"))
@@ -100,7 +100,7 @@ def evaluate(
     return eval_dict, eval_dict_base, ado_traj_wo, ado_traj_base
 
 
-def eval_scenarios() -> Dict[str, Callable[[Agent.__class__], Tuple[Simulation, np.ndarray]]]:
+def eval_scenarios() -> Dict[str, Callable[[Simulation.__class__, Agent.__class__], Tuple[Simulation, np.ndarray]]]:
     scenario_functions = {}
     functions = [o for o in inspect.getmembers(evaluation_scenarios) if inspect.isfunction(o[1])]
     for function_tuple in functions:

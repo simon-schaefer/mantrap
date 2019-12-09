@@ -9,7 +9,7 @@ from mantrap.constants import sim_speed_max, sim_dt_default
 
 
 class Agent:
-    def __init__(self, position: np.ndarray, velocity: np.ndarray = np.zeros(2), history: np.ndarray = None):
+    def __init__(self, position: np.ndarray, velocity: np.ndarray = np.zeros(2), history: np.ndarray = None, **kwargs):
         assert position.size == 2, "position must be two-dimensional (x, y)"
         assert velocity.size == 2, "velocity must be two-dimensional (vx, vy)"
 

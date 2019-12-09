@@ -46,7 +46,7 @@ class IGradSolver(Solver):
 
 class IGradGreedySolver(IGradSolver):
     def __init__(
-        self, sim: Simulation, goal: np.ndarray, alpha: np.ndarray = np.array([0.5, 0.6]), radius: float = 3.0
+        self, sim: Simulation, goal: np.ndarray, alpha: np.ndarray = np.array([1.0, 0.6]), radius: float = 3.0
     ):
         super(IGradGreedySolver, self).__init__(sim, goal, alpha=alpha)
         self._radius = radius
