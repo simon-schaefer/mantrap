@@ -2,6 +2,16 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="8bfa4cb6-e6a1-4d74-b2ac-b6b3dd289fb3" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/mantrap/solver/igrad.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/evaluation/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/evaluation/metrics.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/metrics.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/simulation/distance_field.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/distance_field.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/solver/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/solver/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/solver/igrad_greedy.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/solver/igrad_predictive.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ops/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/ops/requirements.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test/test_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_solver.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -67,7 +77,8 @@
       <workItem from="1575248248035" duration="9969000" />
       <workItem from="1575311657556" duration="60558000" />
       <workItem from="1575568896361" duration="39848000" />
-      <workItem from="1575841028118" duration="7312000" />
+      <workItem from="1575841028118" duration="14465000" />
+      <workItem from="1575919758071" duration="6512000" />
     </task>
     <servers />
   </component>

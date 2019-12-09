@@ -26,13 +26,13 @@ class DistanceFieldSimulation(ForcesBasedSimulation):
         super(DistanceFieldSimulation, self)._add_ado(DoubleIntegratorDTAgent, **ado_kwargs)
 
     def build_graph(
-            self,
-            ado_positions: List[torch.Tensor],
-            ado_velocities: List[torch.Tensor],
-            ego_position: torch.Tensor = None,
-            ego_velocity: torch.Tensor = None,
-            is_intermediate: bool = False,
-            **kwargs,
+        self,
+        ado_positions: List[torch.Tensor],
+        ado_velocities: List[torch.Tensor],
+        ego_position: torch.Tensor = None,
+        ego_velocity: torch.Tensor = None,
+        is_intermediate: bool = False,
+        **kwargs,
     ) -> Dict[str, torch.Tensor]:
         """Graph:
         --> Input = position of ados and ego state

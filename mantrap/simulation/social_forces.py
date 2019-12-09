@@ -51,7 +51,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
         num_ados = self.num_ados
         ado_ids = self.ado_ids
         tau = 0.5  # [s] relaxation time (assumed to be uniform over all agents).
-        v_0 = 4.0  # 2.1  # [m2s-2] repulsive field constant.
+        v_0 = 2.1  # [m2s-2] repulsive field constant.
         sigma = 0.1  # [m] repulsive field exponent constant.
 
         # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).

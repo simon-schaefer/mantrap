@@ -1,14 +1,14 @@
+from pprint import pprint
 import logging
 import inspect
 import os
 from typing import Callable, Dict, Tuple
 
 import numpy as np
-import pandas as pd
 
 from mantrap.agents.agent import Agent
 from mantrap.constants import planning_horizon_default
-from mantrap.evaluation import scenarios as eval_scenarios
+from mantrap.evaluation import scenarios as evaluation_scenarios
 from mantrap.simulation.abstract import Simulation
 from mantrap.utility.io import path_from_home_directory
 
@@ -24,21 +24,21 @@ def evaluate(
     goal: np.ndarray,
     baseline: Callable[[Simulation, np.ndarray, int], Tuple[np.ndarray, np.ndarray]],
     do_visualization: bool = True,
-) -> Tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]:
+) -> Tuple[Dict, Dict, np.ndarray, np.ndarray]:
 
-    eval_df, ado_traj_wo = metrics(sim, ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectories)
+    eval_dict, ado_traj_wo = metrics(sim, ado_trajectories, ego_trajectory=ego_trajectory, ego_goal=goal)
 
     # Baseline evaluation and plotting.
     ego_traj_base, ado_traj_base = baseline(sim, goal, planning_horizon_default)
-    eval_df_base, ado_traj_wo_base = metrics(sim, ego_trajectory=ego_traj_base, ado_trajectories=ado_traj_base)
+    eval_dict_base, ado_traj_wo_base = metrics(sim, ado_traj_base, ego_trajectory=ego_traj_base, ego_goal=goal)
 
     # Check whether actually the same "thing" has been compared by comparing the ado trajectories without
     # ego interaction (from metrics calculation).
     assert np.isclose(np.linalg.norm(ado_traj_wo - ado_traj_wo_base), 0, atol=0.1), "ado_wo trajectories do not match"
     logging.info(f"Metrics on task {tag} -> solver:")
-    print(eval_df)
+    pprint(eval_dict)
     logging.info(f"Metrics on task {tag} -> baseline {baseline.__name__}:")
-    print(eval_df_base)
+    pprint(eval_dict_base)
 
     # Visualization.
     if do_visualization:
@@ -96,13 +96,13 @@ def evaluate(
             fig.suptitle(f"task: {tag}")
             plt.savefig(os.path.join(output_dir, f"{t:04d}.png"))
             plt.close()
+    print("\n")
+    return eval_dict, eval_dict_base, ado_traj_wo, ado_traj_base
 
-    return eval_df, eval_df_base, ado_traj_wo, ado_traj_base
 
-
-def scenarios() -> Dict[str, Callable[[Agent.__class__], Tuple[Simulation, np.ndarray]]]:
+def eval_scenarios() -> Dict[str, Callable[[Agent.__class__], Tuple[Simulation, np.ndarray]]]:
     scenario_functions = {}
-    functions = [o for o in inspect.getmembers(eval_scenarios) if inspect.isfunction(o[1])]
+    functions = [o for o in inspect.getmembers(evaluation_scenarios) if inspect.isfunction(o[1])]
     for function_tuple in functions:
         function_name, _ = function_tuple
         if function_name.startswith("scenario"):
