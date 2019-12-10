@@ -6,7 +6,7 @@ from typing import Tuple, Union
 import numpy as np
 
 from mantrap.constants import planning_horizon_default
-from mantrap.simulation.abstract import Simulation
+from mantrap.simulation.simulation import Simulation
 
 
 class Solver:
@@ -27,7 +27,7 @@ class Solver:
         for ia, ado in enumerate(solver_env.ados):
             ado_trajectories[ia, :, 0, :] = np.hstack((ado.state, solver_env.sim_time))
 
-        logging.debug(f"Starting trajectory optimization solving for {self._planning_horizon} steps ...")
+        logging.info(f"Starting trajectory optimization solving for {self._planning_horizon} steps ...")
         for k in range(self._planning_horizon - 1):
             ego_action = self._determine_ego_action(env=solver_env, k=k, traj_opt=traj_opt)
 
@@ -36,7 +36,7 @@ class Solver:
             ado_trajectories[:, :, k + 1, :] = ado_traj[:, :, 0, :]
             traj_opt[k + 1, :] = ego_state
 
-        logging.debug(f"Finishing up trajectory optimization solving")
+        logging.info(f"Finishing up trajectory optimization solving")
         return traj_opt, ado_trajectories
 
     @abstractmethod

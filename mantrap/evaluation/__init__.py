@@ -9,7 +9,7 @@ import numpy as np
 from mantrap.agents.agent import Agent
 from mantrap.constants import planning_horizon_default
 from mantrap.evaluation import scenarios as evaluation_scenarios
-from mantrap.simulation.abstract import Simulation
+from mantrap.simulation.simulation import Simulation
 from mantrap.utility.io import path_from_home_directory
 
 from .metrics import metrics
@@ -35,9 +35,9 @@ def evaluate(
     # Check whether actually the same "thing" has been compared by comparing the ado trajectories without
     # ego interaction (from metrics calculation).
     assert np.isclose(np.linalg.norm(ado_traj_wo - ado_traj_wo_base), 0, atol=0.1), "ado_wo trajectories do not match"
-    logging.info(f"Metrics on task {tag} -> solver:")
+    logging.warning(f"Metrics on task {tag} -> solver:")
     pprint(eval_dict)
-    logging.info(f"Metrics on task {tag} -> baseline {baseline.__name__}:")
+    logging.warning(f"Metrics on task {tag} -> baseline {baseline.__name__}:")
     pprint(eval_dict_base)
 
     # Visualization.

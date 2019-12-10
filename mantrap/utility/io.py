@@ -34,9 +34,9 @@ def add_coloring_to_ansi(fn):
         elif level >= 30:
             color = "\x1b[33m"  # yellow
         elif level >= 20:
-            color = "\x1b[32m"  # green
+            color = "\x1b[0m"  # normal
         else:
-            color = "\x1b[38;5;247m"  # normal
+            color = "\x1b[38;5;247m"  # opaque
         args[1].msg = color + args[1].msg + "\x1b[0m"  # normal
         return fn(*args)
 

@@ -29,7 +29,7 @@ class Agent:
         # Random identifier.
         letters = string.ascii_lowercase
         self._id = "".join(random.choice(letters) for i in range(3))
-        logging.debug(f"agent: position={self.position}, velocity={self.velocity}, id={self._id}, color={self._color}")
+        logging.info(f"agent: position={self.position}, velocity={self.velocity}, id={self._id}, color={self._color}")
 
     def update(self, action: np.ndarray, dt: float = sim_dt_default):
         """Update internal state (position, velocity and history) by executing some action for time dt."""
@@ -40,7 +40,7 @@ class Agent:
 
         # maximal speed constraint.
         if self.speed > sim_speed_max:
-            logging.warning(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {sim_speed_max}")
+            logging.error(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {sim_speed_max}")
             assert not np.isinf(self.speed), "speed is infinite, physical break"
             self._velocity = self._velocity / self.speed * sim_speed_max
 

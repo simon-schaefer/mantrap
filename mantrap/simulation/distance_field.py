@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -6,7 +7,7 @@ import torch
 import mantrap.constants
 from mantrap.agents.agent import Agent
 from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.simulation.abstract import ForcesBasedSimulation
+from mantrap.simulation.simulation import ForcesBasedSimulation
 
 
 class DistanceFieldSimulation(ForcesBasedSimulation):
@@ -42,7 +43,7 @@ class DistanceFieldSimulation(ForcesBasedSimulation):
         # Define simulation parameters (as defined in the paper).
         num_ados = self.num_ados
         ado_ids = self.ado_ids
-        sigma = 0.1  # [m] repulsive field exponent constant.
+        sigma = mantrap.constants.sim_distance_field_sigma
 
         def _repulsive_force(alpha_position: torch.Tensor, beta_position: torch.Tensor):
             relative_distance = torch.sub(alpha_position, beta_position)
@@ -73,12 +74,16 @@ class DistanceFieldSimulation(ForcesBasedSimulation):
                 if iid == jid:
                     continue
                 f_repulsive = _repulsive_force(graph[f"{iid}_position"], graph[f"{jid}_position"])
-                graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], f_repulsive)
+                interaction_force = torch.sub(graph[f"{iid}_force"], f_repulsive)
+                graph[f"{iid}_force"] = interaction_force
+                logging.debug(f"simulation [ado_{iid}]: interaction force ado {jid} -> {interaction_force.data}")
 
             # Interactive force w.r.t. ego - Repulsive potential field.
             if ego_position is not None and ego_velocity is not None:
                 f_repulsive = _repulsive_force(graph[f"{iid}_position"], graph["ego_position"])
-                graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], f_repulsive)
+                interaction_force = torch.sub(graph[f"{iid}_force"], f_repulsive)
+                graph[f"{iid}_force"] = interaction_force
+                logging.debug(f"simulation [ado_{iid}]: interaction force ego -> {interaction_force.data}")
 
             # Summarize (standard) graph elements.
             graph[f"{iid}_force_norm"] = torch.norm(graph[f"{iid}_force"])

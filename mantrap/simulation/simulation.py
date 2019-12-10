@@ -78,16 +78,16 @@ class Simulation:
         ado_states, policies = self.predict(t_horizon=1, ego_trajectory=ego_trajectory, return_policies=True)
         for i, ado in enumerate(self._ados):
             ado.update(policies[0, i], dt=self.dt)
-            logging.debug(f"simulation @t={self.sim_time} [ado_{ado.id}]: {ado_states[i, 0, :, :]}")
+            logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, 0, :, :]}")
 
         # Update ego based on the first action of the input ego policy.
         if ego_policy is not None:
             ego_policy = np.expand_dims(ego_policy, axis=0) if len(ego_policy.shape) == 1 else ego_policy
             self._ego.update(ego_policy[0, :], dt=self.dt)
-            logging.debug(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: policy={ego_policy}")
+            logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: policy={ego_policy}")
 
         if self._ego is not None:
-            logging.debug(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: {ego_state}")
+            logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: state={ego_state}")
         return ado_states, ego_state
 
     def _add_ado(self, ado_type: Agent.__class__ = None, **ado_kwargs):

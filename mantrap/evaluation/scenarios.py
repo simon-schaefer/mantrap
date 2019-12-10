@@ -1,13 +1,13 @@
 import numpy as np
 
 from mantrap.agents.agent import Agent
-from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.simulation.abstract import Simulation
+from mantrap.agents import IntegratorDTAgent
+from mantrap.simulation.simulation import Simulation
 from mantrap.simulation import SocialForcesSimulation
 
 
 def scenario_sf_ego_static_single_ado(sim_type: Simulation.__class__ = SocialForcesSimulation.__class__,
-                                      ego_type: Agent.__class__ = DoubleIntegratorDTAgent.__class__):
+                                      ego_type: Agent.__class__ = IntegratorDTAgent.__class__):
     sim = sim_type(
         ego_type=ego_type, ego_kwargs={"position": np.array([-5, 0.1]), "velocity": np.array([1, 0])},
     )
@@ -16,7 +16,7 @@ def scenario_sf_ego_static_single_ado(sim_type: Simulation.__class__ = SocialFor
 
 
 def scenario_sf_ego_moving_single_ado(sim_type: Simulation.__class__ = SocialForcesSimulation.__class__,
-                                      ego_type: Agent.__class__ = DoubleIntegratorDTAgent.__class__):
+                                      ego_type: Agent.__class__ = IntegratorDTAgent.__class__):
     sim = sim_type(
         ego_type=ego_type, ego_kwargs={"position": np.array([-5, 0.1]), "velocity": np.array([1, 0])},
     )
@@ -25,7 +25,7 @@ def scenario_sf_ego_moving_single_ado(sim_type: Simulation.__class__ = SocialFor
 
 
 def scenario_sf_ego_moving_two_ados(sim_type: Simulation.__class__ = SocialForcesSimulation.__class__,
-                                    ego_type: Agent.__class__ = DoubleIntegratorDTAgent.__class__):
+                                    ego_type: Agent.__class__ = IntegratorDTAgent.__class__):
     sim = sim_type(
         ego_type=ego_type, ego_kwargs={"position": np.array([-5, 0.1]), "velocity": np.array([1, 0])},
     )
@@ -35,7 +35,7 @@ def scenario_sf_ego_moving_two_ados(sim_type: Simulation.__class__ = SocialForce
 
 
 def scenario_sf_ego_moving_many_ados(sim_type: Simulation.__class__ = SocialForcesSimulation.__class__,
-                                     ego_type: Agent.__class__ = DoubleIntegratorDTAgent.__class__):
+                                     ego_type: Agent.__class__ = IntegratorDTAgent.__class__):
     sim = sim_type(
         ego_type=ego_type, ego_kwargs={"position": np.array([-5, 0.1]), "velocity": np.array([1, 0])},
     )
@@ -48,7 +48,7 @@ def scenario_sf_ego_moving_many_ados(sim_type: Simulation.__class__ = SocialForc
 
 
 def scenario_sf_ego_moving_along_down(sim_type: Simulation.__class__ = SocialForcesSimulation.__class__,
-                                      ego_type: Agent.__class__ = DoubleIntegratorDTAgent.__class__):
+                                      ego_type: Agent.__class__ = IntegratorDTAgent.__class__):
     sim = sim_type(
         ego_type=ego_type, ego_kwargs={"position": np.array([-5, 1.0]), "velocity": np.array([1, 0])},
     )

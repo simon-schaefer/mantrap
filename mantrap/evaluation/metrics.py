@@ -2,7 +2,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 
-from mantrap.simulation.abstract import Simulation
+from mantrap.simulation.simulation import Simulation
 from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories, extract_ado_trajectories
 
 

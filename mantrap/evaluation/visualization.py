@@ -45,7 +45,6 @@ def plot_scene(
         assert check_ego_trajectory(ego_trajectory=ego_trajectory, t_horizon=t_horizon)
     if ado_trajectories_wo is not None:
         assert check_ado_trajectories(ado_trajectories=ado_trajectories_wo, num_modes=1, num_ados=num_ados)
-    # logging.debug(f"Plotting scene with {num_ados} ados having {num_modes} modes for T = {t_horizon}")
 
     # Plot ados.
     ado_preview = min(preview_horizon, t_horizon - t)

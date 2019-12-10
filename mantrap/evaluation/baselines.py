@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from mantrap.constants import sim_dt_default, planning_horizon_default
-from mantrap.simulation.abstract import Simulation
+from mantrap.simulation.simulation import Simulation
 
 
 def straight_line(

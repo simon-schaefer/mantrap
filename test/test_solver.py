@@ -1,27 +1,27 @@
 from pprint import pprint
 import logging
 
-from mantrap.agents import DoubleIntegratorDTAgent
+from mantrap.agents import DoubleIntegratorDTAgent, IntegratorDTAgent
 from mantrap.evaluation.baselines import straight_line
-from mantrap.simulation import DistanceFieldSimulation
+from mantrap.simulation import SocialForcesSimulation
 from mantrap.solver import IGradGreedySolver, IGradPredictiveSolver
-from mantrap.evaluation import evaluate, eval_scenarios
+from mantrap.evaluation import evaluate, eval_scenarios, scenarios
 
 
 ###########################################################################
 # Visualization ###########################################################
 ###########################################################################
 def visualize_igrads():
-    solvers = [IGradGreedySolver]
+    solvers = [IGradGreedySolver, IGradPredictiveSolver]
     results = {}
     for solver_class in solvers:
         results[solver_class.__name__] = {}
 
         for tag, scenario in eval_scenarios().items():
-            logging.info(f"Solver: {solver_class.__name__} -> Test scenario: {tag}")
+            logging.warning(f"Solver: {solver_class.__name__} -> Test scenario: {tag}")
             test_name = f"{solver_class.__name__}_{tag}"
 
-            sim, goal = scenario(sim_type=DistanceFieldSimulation, ego_type=DoubleIntegratorDTAgent)
+            sim, goal = scenario(sim_type=SocialForcesSimulation, ego_type=IntegratorDTAgent)
             solver = solver_class(sim, goal=goal)
             ego_traj, ados_traj = solver.solve()
 
@@ -29,8 +29,18 @@ def visualize_igrads():
                 test_name, ego_traj, ados_traj, sim, goal, straight_line, do_visualization=True,
             )
 
-    logging.info("Results summary: ")
+    logging.warning("Results summary: ")
     pprint(results)
+
+
+def visualize_igrad_testing():
+    scenario_func = scenarios.scenario_sf_ego_moving_many_ados
+    sim, goal = scenario_func(sim_type=SocialForcesSimulation, ego_type=IntegratorDTAgent)
+    solver = IGradPredictiveSolver(sim, goal=goal)
+    ego_traj, ados_traj = solver.solve()
+
+    test_name = f"{IGradPredictiveSolver.__name__}_{scenario_func.__name__}"
+    evaluate(test_name, ego_traj, ados_traj, sim, goal, straight_line, do_visualization=True)
 
 
 # def visualize_interactive_grad_vector_field():

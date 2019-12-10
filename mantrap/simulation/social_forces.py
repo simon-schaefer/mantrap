@@ -1,13 +1,13 @@
+import logging
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import torch
 
 import mantrap.constants
-from mantrap.utility.linalg import normalize_torch
 from mantrap.agents.agent import Agent
 from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.simulation.abstract import ForcesBasedSimulation
+from mantrap.simulation.simulation import ForcesBasedSimulation
 
 
 class SocialForcesSimulation(ForcesBasedSimulation):
@@ -50,9 +50,9 @@ class SocialForcesSimulation(ForcesBasedSimulation):
         # Define simulation parameters (as defined in the paper).
         num_ados = self.num_ados
         ado_ids = self.ado_ids
-        tau = 0.5  # [s] relaxation time (assumed to be uniform over all agents).
-        v_0 = 2.1  # [m2s-2] repulsive field constant.
-        sigma = 0.1  # [m] repulsive field exponent constant.
+        tau = mantrap.constants.sim_social_forces_tau
+        v_0 = mantrap.constants.sim_social_forces_v_0
+        sigma = mantrap.constants.sim_social_forces_sigma
 
         # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
         def _repulsive_force(
@@ -91,11 +91,13 @@ class SocialForcesSimulation(ForcesBasedSimulation):
             if not is_intermediate:
                 graph[f"{iid}_position"].requires_grad = True
                 # graph[f"{iid}_velocity"].requires_grad = True
+            logging.debug(f"simulation [ado_{iid}]: position={ado_positions[i].data},velocity={ado_velocities[i].data}")
         if ego_position is not None and ego_velocity is not None:
             graph["ego_position"] = ego_position
             graph["ego_velocity"] = ego_velocity
             if not is_intermediate:
                 graph["ego_position"].requires_grad = True
+            logging.debug(f"simulation [ego]: position={ego_position.data},velocity={ego_velocity.data}")
 
         # Make graph with resulting force as an output.
         for i in range(num_ados):
@@ -103,9 +105,15 @@ class SocialForcesSimulation(ForcesBasedSimulation):
 
             # Destination force - Force pulling the ado to its assigned goal position.
             direction = torch.sub(graph[f"{iid}_goal"], graph[f"{iid}_position"])
-            direction = normalize_torch(direction)
-            speed = torch.norm(graph[f"{iid}_velocity"])
-            graph[f"{iid}_force"] = torch.sub(direction * speed, graph[f"{iid}_velocity"]) * 1 / tau
+            goal_distance = torch.norm(direction)
+            if goal_distance.data < mantrap.constants.sim_social_forces_min_goal_distance:
+                destination_force = torch.zeros(2)
+            else:
+                direction = torch.div(direction, goal_distance)
+                speed = torch.norm(graph[f"{iid}_velocity"])
+                destination_force = torch.sub(direction * speed, graph[f"{iid}_velocity"]) * 1 / tau
+            logging.debug(f"simulation [ado_{iid}]: destination force -> {destination_force.data}")
+            graph[f"{iid}_force"] = destination_force
 
             # Interactive force - Repulsive potential field by every other agent.
             for j in range(num_ados):
@@ -119,6 +127,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
                     graph[f"{jid}_velocity"],
                 )
                 graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], v_grad)
+                logging.debug(f"simulation [ado_{iid}]: interaction force ado {jid} -> {v_grad.data}")
 
             # Interactive force w.r.t. ego - Repulsive potential field.
             if ego_position is not None and ego_velocity is not None:
@@ -126,6 +135,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
                     graph[f"{iid}_position"], graph["ego_position"], graph[f"{iid}_velocity"], graph["ego_velocity"]
                 )
                 graph[f"{iid}_force"] = torch.sub(graph[f"{iid}_force"], v_grad)
+                logging.debug(f"simulation [ado_{iid}]: interaction force ego -> {v_grad.data}")
 
             # Summarize (standard) graph elements.
             graph[f"{iid}_force_norm"] = torch.norm(graph[f"{iid}_force"])
