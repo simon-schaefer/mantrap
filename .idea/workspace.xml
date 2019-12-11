@@ -4,20 +4,12 @@
     <list default="true" id="8bfa4cb6-e6a1-4d74-b2ac-b6b3dd289fb3" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mantrap/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/agents/agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/agents/agent.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mantrap/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/constants.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/evaluation/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/evaluation/scenarios.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/scenarios.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/evaluation/visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/evaluation/visualization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/simulation/abstract.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/abstract.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/simulation/distance_field.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/distance_field.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mantrap/simulation/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/simulation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/simulation/social_forces.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/solver/abstract.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/solver/solver.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mantrap/solver/igrad.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/solver/igrad.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mantrap/utility/io.py" beforeDir="false" afterPath="$PROJECT_DIR$/mantrap/utility/io.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test/test_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_solver.py" afterDir="false" />
     </list>
-    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -34,8 +26,14 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="ProjectId" id="1UGxcAq8LUn7WBtziq6gLJKKuYA" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
   <component name="PropertiesComponent">
     <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/mantrap/solver" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
@@ -50,15 +48,15 @@
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunDashboard">
-    <option name="ruleStates">
+  <component name="ServiceViewManager">
+    <option name="viewStates">
       <list>
-        <RuleState>
-          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
-        </RuleState>
-        <RuleState>
-          <option name="name" value="StatusDashboardGroupingRule" />
-        </RuleState>
+        <serviceView>
+          <treeState>
+            <expand />
+            <select />
+          </treeState>
+        </serviceView>
       </list>
     </option>
   </component>
@@ -81,7 +79,12 @@
       <workItem from="1575311657556" duration="60558000" />
       <workItem from="1575568896361" duration="39848000" />
       <workItem from="1575841028118" duration="14465000" />
-      <workItem from="1575919758071" duration="20303000" />
+      <workItem from="1575919758071" duration="22729000" />
+      <workItem from="1576006566675" duration="638000" />
+      <workItem from="1576012597517" duration="4904000" />
+      <workItem from="1576020457782" duration="23000" />
+      <workItem from="1576020493118" duration="1408000" />
+      <workItem from="1576087618955" duration="350000" />
     </task>
     <servers />
   </component>
@@ -100,5 +103,11 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="408" y="185" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1576020470699">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="408" y="185" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/0.0.1440.900/-537.-1440.2560.1440@0.0.1440.900" timestamp="1576020470699" />
   </component>
 </project>

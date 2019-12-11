@@ -18,7 +18,7 @@ class SocialForcesSimulation(ForcesBasedSimulation):
         x_axis: Tuple[float, float] = mantrap.constants.sim_x_axis_default,
         y_axis: Tuple[float, float] = mantrap.constants.sim_y_axis_default,
         dt: float = mantrap.constants.sim_dt_default,
-        fluctuations: float = mantrap.constants.sim_social_forces_fluctuations,
+        fluctuations: float = 0.0,
     ):
         super(SocialForcesSimulation, self).__init__(ego_type, ego_kwargs, x_axis=x_axis, y_axis=y_axis, dt=dt)
         self._ado_goals = []

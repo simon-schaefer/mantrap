@@ -12,10 +12,8 @@ from mantrap.solver.solver import Solver
 
 
 class IGradSolver(Solver):
-    def __init__(self, sim: Simulation, goal: np.ndarray, alpha: np.ndarray):
+    def __init__(self, sim: Simulation, goal: np.ndarray):
         super(IGradSolver, self).__init__(sim, goal=goal)
-        assert alpha.size == 2, "alpha vector must contain scaling parameters for derived action"
-        self._alpha = alpha
 
     def _determine_ego_action(self, env: Simulation, k: int, traj_opt: np.ndarray) -> np.ndarray:
         logging.info(f"solver @ time-step k = {k}")
@@ -56,8 +54,6 @@ class IGradSolver(Solver):
 
 
 class IGradGreedySolver(IGradSolver):
-    def __init__(self, sim: Simulation, goal: np.ndarray, alpha: np.ndarray = np.array([1.0, 0.6])):
-        super(IGradGreedySolver, self).__init__(sim, goal, alpha=alpha)
 
     def compute_interaction_grad(self, env: Simulation, ego_query: np.ndarray):
         graph = env.build_graph_from_agents(ego_state=np.hstack((ego_query, np.zeros(3))))
@@ -78,8 +74,6 @@ class IGradGreedySolver(IGradSolver):
 
 
 class IGradPredictiveSolver(IGradSolver):
-    def __init__(self, sim: Simulation, goal: np.ndarray, alpha: np.ndarray = np.array([1e4, 0.6])):
-        super(IGradPredictiveSolver, self).__init__(sim, goal, alpha=alpha)
 
     def compute_interaction_grad(self, env: Simulation, ego_query: np.ndarray):
         pred_env = deepcopy(env)
@@ -87,12 +81,18 @@ class IGradPredictiveSolver(IGradSolver):
 
         assert pred_env.ego.__class__ == IntegratorDTAgent, "currently only single integrator egos are supported"
         # Build first graph for the next state, in case no forces are applied on the ego.
-        ado_traj, ego_next_state = pred_env.step(ego_policy=pred_env.ego.velocity)
+        # TODO: assumption is that ego stays where it is (v_ego = [0, 0]). for future time-step optimization
+        #       the actual current velocity should be taken into account. However, currently it explodes, probably
+        #       because the gradient of the force of the nth time-step is used, instead of the sum of forces over
+        #       the time up to the nth time-step.
+        ego_policy = np.zeros(2)  # pred_env.ego.velocity
+        ado_traj, ego_next_state = pred_env.step(ego_policy=ego_policy)
         graphs.append(pred_env.build_graph_from_agents(ego_state=ego_next_state))
         # Build the graph iteratively for the whole prediction horizon.
         prediction_horizon = mantrap.constants.igrad_predictive_horizon
         for kp in range(prediction_horizon):
             logging.debug(f"solver: building graph over time - step kp = {kp}")
+
             ado_positions, ado_velocities = [], []
             for ado in pred_env.ados:
                 assert ado.__class__ == DoubleIntegratorDTAgent
@@ -103,8 +103,14 @@ class IGradPredictiveSolver(IGradSolver):
                 ado_pos_next = ado_position + pred_env.dt * ado_velocity + 0.5 * pred_env.dt ** 2 * ado_force
                 ado_positions.append(ado_pos_next)
                 ado_velocities.append(ado_vel_next)
+
+            # The ego movement is, of cause, unknown, since we try to find it here. The best guess we can do is
+            # that the ego does not change its trajectory, by keeping its linear velocity (constant-velocity
+            # movement). Even if it does not perfectly reflect the actual movement of the ego, it probably is close
+            # to the actual trajectory, within the (comparably short) prediction horizon.
             ego_pos = graphs[-1]["ego_position"] + pred_env.dt * graphs[-1]["ego_velocity"]
             ego_vel = graphs[-1]["ego_velocity"]
+
             graph_kp = pred_env.build_graph(ado_positions, ado_velocities, ego_pos, ego_vel, is_intermediate=True)
             graphs.append(graph_kp)
         logging.info("solver: finished building graph")

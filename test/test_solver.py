@@ -26,7 +26,7 @@ def visualize_igrads():
             ego_traj, ados_traj = solver.solve()
 
             results[solver_class.__name__][tag], _, _, _ = evaluate(
-                test_name, ego_traj, ados_traj, sim, goal, straight_line, do_visualization=True,
+                test_name, ego_traj, ados_traj, sim, goal, straight_line, do_visualization=False,
             )
 
     logging.warning("Results summary: ")

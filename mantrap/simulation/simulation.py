@@ -156,7 +156,7 @@ class Simulation:
         ado_velocities = [torch.tensor(ado.velocity.astype(float)) for ado in ados]
 
         ego_position = torch.tensor(ego_state[0:2].astype(float)) if ego_state is not None else None
-        ego_velocity = torch.tensor(ego_state[2:4].astype(float)) if ego_state is not None else None
+        ego_velocity = torch.tensor(ego_state[3:5].astype(float)) if ego_state is not None else None
 
         return self.build_graph(ado_positions, ado_velocities, ego_position, ego_velocity)
 
