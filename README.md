@@ -44,6 +44,7 @@ minimal (e.g. in comparison with minimizing travel-time, ...)
 * baseline: in the same scene let human in one and robot in another experiment
 take decisions, let humans guess who is who based on trajectories 
 -> "natural" way of interacting with other agents, specifically pedestrians
+* baseline: ORCA
 
 * GMM as n independent single Gaussians --> integration using Kalman Filter 
 equations with state (x, v) and no input (s. Tim)
