@@ -12,7 +12,21 @@ build/
 test/cache/
 test/graphs/
 
-# Environments
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Code Environments
 .venv_*/
 .DS_Store
 .idea/
@@ -22,3 +36,6 @@ test/graphs/
 
 # Outputs.
 outs/
+
+# External libraries. 
+external/RVO2/build

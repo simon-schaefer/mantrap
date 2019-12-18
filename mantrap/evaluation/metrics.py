@@ -34,4 +34,5 @@ def metrics(
             "velocity_dev": np.linalg.norm(ado_trajectories[i, 0, :, 3:5] - ado_trajectories_wo[i, 0, :, 3:5], ord=2),
         }
     evaluation_dict["ego"]["final_distance"] = np.linalg.norm(ego_trajectory[-1, 0:2] - ego_goal[0:2])
+    evaluation_dict["ego"]["traj_length"] = ego_trajectory.shape[0]
     return evaluation_dict, ado_trajectories_wo

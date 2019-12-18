@@ -30,6 +30,7 @@ model (Ivanovic 19).
 * homotopy class --> given my base path, more globally optimal ??
 * sphinx documentation 
 
+* idea -> multi-modality ? every mode is an independent (weighted) ado
 * idea -> minimal interfering, why ? natural way of walking in crowded areas
 (local minima, "without a lot of considerations"), intrinsically a safe way 
 of interaction and taking the "full" knowledge of the model into account (not 
@@ -44,7 +45,8 @@ minimal (e.g. in comparison with minimizing travel-time, ...)
 * baseline: in the same scene let human in one and robot in another experiment
 take decisions, let humans guess who is who based on trajectories 
 -> "natural" way of interacting with other agents, specifically pedestrians
-* baseline: ORCA
+* baseline: ORCA (don't share responsibility in eq. (6) but full velocity 
+adaption by ego --> interaction-minimization)
 
 * GMM as n independent single Gaussians --> integration using Kalman Filter 
 equations with state (x, v) and no input (s. Tim)

@@ -2,12 +2,12 @@ from typing import Tuple
 
 import numpy as np
 
-from mantrap.constants import sim_dt_default, planning_horizon_default
+from mantrap.constants import sim_dt_default
 from mantrap.simulation.simulation import Simulation
 
 
 def straight_line(
-    sim: Simulation, goal: np.ndarray, t_horizon: int = planning_horizon_default, dt: float = sim_dt_default
+    sim: Simulation, goal: np.ndarray, t_horizon: int, dt: float = sim_dt_default
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Straight line from initial to target position with constant velocity as ego trajectory.
     :param sim: simulation environment.
