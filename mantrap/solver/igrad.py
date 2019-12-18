@@ -12,12 +12,23 @@ from mantrap.solver.solver import Solver
 
 
 class IGradSolver(Solver):
-    def __init__(self, sim: Simulation, goal: np.ndarray):
-        super(IGradSolver, self).__init__(sim, goal=goal)
+    """The basic idea of the IGrad solver family is to perturb some nominal trajectory from the robot initial to its
+    goal state so that the interaction with the other agents in the scene is minimized. Therefore for every ado in the
+    scene the simulation graph's gradient of the ado's trajectory w.r.t. the ego's next state is determined, in order
+    to "push" the next ego state in an interaction-minimizing direction. The perturbation vector rho_ego(x, t) then
+    is the following:
 
-    def _determine_ego_action(self, env: Simulation, k: int, traj_opt: np.ndarray) -> np.ndarray:
-        logging.info(f"solver @ time-step k = {k}")
-        ego_pos_next = env.ego.position + 1 / (self._planning_horizon - k) * (self.goal - env.ego.position)
+    rho_ego(x, t) = - alpha * sum_ados( grad_x_ego(x_ado(t + n) )
+
+    Currently, just a straight line from initial to goal position is used as a nominal trajectory.
+    """
+
+    def determine_ego_action(self, env: Simulation) -> np.ndarray:
+        # Next ego position should be some distance ahead in goal direction. The distance is thereby dependent on the
+        # remaining distance between the current ego state and the goal state as well as its velocity.
+        goal_distance = np.linalg.norm(self.goal - env.ego.position)
+        goal_direction = self.goal - env.ego.position / goal_distance
+        ego_pos_next = goal_direction * min(np.linalg.norm(env.ego.velocity) * env.dt, goal_distance)
 
         # Correct trajectory based on gradient of the sum of forces acting on the ados w.r.t. the ego base
         # trajectory. Based on the updated position, determine the velocity and update it.
@@ -30,10 +41,10 @@ class IGradSolver(Solver):
             position_new = ego_pos_next - 100 * interaction_grad * pow(env.dt, 2)
             ego_action = (position_new - env.ego.position) / env.dt
         # elif env.ego.__class__ == DoubleIntegratorDTAgent:
-            # ego_base = traj_opt[0, 0:2] + k / self._planning_horizon * (self.goal - traj_opt[0, 0:2])
-            # tracking_force = ego_base - env.ego.position
-            # logging.info(f"solver: tracking force = {tracking_force}")
-            # ego_action = self._alpha.dot(np.array([-interaction_grad, tracking_force]))
+        # ego_base = traj_opt[0, 0:2] + k / self._planning_horizon * (self.goal - traj_opt[0, 0:2])
+        # tracking_force = ego_base - env.ego.position
+        # logging.info(f"solver: tracking force = {tracking_force}")
+        # ego_action = self._alpha.dot(np.array([-interaction_grad, tracking_force]))
         else:
             raise NotImplementedError(f"Ego type {env.ego.__class__} not supported !")
         return ego_action
@@ -54,7 +65,6 @@ class IGradSolver(Solver):
 
 
 class IGradGreedySolver(IGradSolver):
-
     def compute_interaction_grad(self, env: Simulation, ego_query: np.ndarray):
         graph = env.build_graph_from_agents(ego_state=np.hstack((ego_query, np.zeros(3))))
 
@@ -74,7 +84,6 @@ class IGradGreedySolver(IGradSolver):
 
 
 class IGradPredictiveSolver(IGradSolver):
-
     def compute_interaction_grad(self, env: Simulation, ego_query: np.ndarray):
         pred_env = deepcopy(env)
         graphs = []
@@ -113,7 +122,7 @@ class IGradPredictiveSolver(IGradSolver):
 
             graph_kp = pred_env.build_graph(ado_positions, ado_velocities, ego_pos, ego_vel, is_intermediate=True)
             graphs.append(graph_kp)
-        logging.info("solver: finished building graph")
+        logging.debug("solver: finished building graph")
 
         ados_close = self.close_ados(env=env)
         if len(ados_close) == 0:

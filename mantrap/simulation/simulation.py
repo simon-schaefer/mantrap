@@ -42,7 +42,8 @@ class Simulation:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados with each other and between the ados and the ego. The implementation therefore is specific
-        to each child-class.
+        to each child-class. If the ego_trajectory is set to none, the interaction between ego and any ado is not
+        taken into account, instead just between ados.
         Dependent on whether the prediction is deterministic or probabilistic the output can vary between each child-
         class, by setting the prediction_t. However the output should be a vector of predictions, one for each ado.
         :param t_horizon: prediction horizon (number of time-steps of length dt).
@@ -55,7 +56,7 @@ class Simulation:
     def unroll_ego_trajectory(self, ego_policy: np.ndarray) -> np.ndarray:
         return self.ego.unroll_trajectory(policy=ego_policy, dt=self.dt)
 
-    def step(self, ego_policy: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
+    def step(self, ego_policy: np.ndarray = None) -> Tuple[np.ndarray, Union[np.ndarray, None]]:
         """Run simulation step (time-step = dt). Update state and history of ados and ego. Also reset simulation time
         to sim_time_new = sim_time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
         one time-step at a time, not in general `t_horizon` steps, secondly, step() changes the actual agent states
@@ -267,13 +268,5 @@ class ForcesBasedSimulation(Simulation):
             return trajectories, forces
 
     @abstractmethod
-    def build_graph(
-        self,
-        ado_positions: List[torch.Tensor],
-        ado_velocities: List[torch.Tensor],
-        ego_position: torch.Tensor = None,
-        ego_velocity: torch.Tensor = None,
-        is_intermediate: bool = False,
-        **kwargs,
-    ) -> Dict[str, torch.Tensor]:
+    def build_graph(self, **kwargs) -> Dict[str, torch.Tensor]:
         pass

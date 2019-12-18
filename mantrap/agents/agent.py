@@ -5,11 +5,11 @@ import string
 
 import numpy as np
 
-from mantrap.constants import sim_speed_max, sim_dt_default
+from mantrap.constants import agent_speed_max, sim_dt_default
 
 
 class Agent:
-    def __init__(self, position: np.ndarray, velocity: np.ndarray = np.zeros(2), history: np.ndarray = None, **kwargs):
+    def __init__(self, position: np.ndarray, velocity: np.ndarray, history: np.ndarray = None, log: bool = True):
         assert position.size == 2, "position must be two-dimensional (x, y)"
         assert velocity.size == 2, "velocity must be two-dimensional (vx, vy)"
 
@@ -28,8 +28,9 @@ class Agent:
         self._color = np.hstack((1.0, np.random.uniform(0.0, 0.5, size=2)))
         # Random identifier.
         letters = string.ascii_lowercase
-        self._id = "".join(random.choice(letters) for i in range(3))
-        logging.info(f"agent: position={self.position}, velocity={self.velocity}, id={self._id}, color={self._color}")
+        self._id = "".join(random.choice(letters) for _ in range(3))
+        if log:
+            logging.info(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
 
     def update(self, action: np.ndarray, dt: float = sim_dt_default):
         """Update internal state (position, velocity and history) by executing some action for time dt."""
@@ -39,10 +40,10 @@ class Agent:
         self._velocity = state_new[3:5]
 
         # maximal speed constraint.
-        if self.speed > sim_speed_max:
-            logging.error(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {sim_speed_max}")
+        if self.speed > agent_speed_max:
+            logging.error(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {agent_speed_max}")
             assert not np.isinf(self.speed), "speed is infinite, physical break"
-            self._velocity = self._velocity / self.speed * sim_speed_max
+            self._velocity = self._velocity / self.speed * agent_speed_max
 
         # append history with new state.
         self._history = np.vstack((self._history, np.hstack((self.state, self._history[-1, -1] + dt))))

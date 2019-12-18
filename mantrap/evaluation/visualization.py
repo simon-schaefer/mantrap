@@ -46,16 +46,22 @@ def plot_scene(
     if ado_trajectories_wo is not None:
         assert check_ado_trajectories(ado_trajectories=ado_trajectories_wo, num_modes=1, num_ados=num_ados)
 
+    # Clip position related values to the visualized range, in order to prevent agent representation of the graph.
+    ado_trajectories[:, :, :, 0] = np.clip(ado_trajectories[:, :, :, 0], a_min=axes[0][0], a_max=axes[0][1])
+    ado_trajectories[:, :, :, 1] = np.clip(ado_trajectories[:, :, :, 1], a_min=axes[1][0], a_max=axes[1][1])
+
     # Plot ados.
     ado_preview = min(preview_horizon, t_horizon - t)
     for ado_i in range(num_ados):
+        # Get ado information from trajectories (states), colors and ids lists.
         ado_pose = ado_trajectories[ado_i, 0, t, 0:3]
         ado_velocity = ado_trajectories[ado_i, 0, t, 4:6]
-        ado_arrow_length = np.linalg.norm(ado_velocity) / mantrap.constants.sim_speed_max * 0.5
+        ado_arrow_length = np.linalg.norm(ado_velocity) / mantrap.constants.agent_speed_max * 0.5
         ado_color = ado_colors[ado_i]
         ado_id = ado_ids[ado_i]
         ado_history = ado_trajectories[ado_i, 0, :t, 0:2]
 
+        # Drawing.
         ax = _add_agent_representation(ado_pose, color=ado_color, name=ado_id, ax=ax, arrow_length=ado_arrow_length)
         ax = _add_history(ado_history, color=ado_color, ax=ax)
         for mode_i in range(num_modes):

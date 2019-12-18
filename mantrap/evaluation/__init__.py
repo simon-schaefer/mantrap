@@ -7,7 +7,6 @@ from typing import Callable, Dict, Tuple
 import numpy as np
 
 from mantrap.agents.agent import Agent
-from mantrap.constants import planning_horizon_default
 from mantrap.evaluation import scenarios as evaluation_scenarios
 from mantrap.simulation.simulation import Simulation
 from mantrap.utility.io import path_from_home_directory
@@ -26,15 +25,19 @@ def evaluate(
     do_visualization: bool = True,
 ) -> Tuple[Dict, Dict, np.ndarray, np.ndarray]:
 
+    assert len(ado_trajectories.shape) == 4
+    assert ado_trajectories.shape[0] == sim.num_ados
+    assert ado_trajectories.shape[1] == sim.num_ado_modes
+    assert ado_trajectories.shape[2] == ego_trajectory.shape[0]
+
     eval_dict, ado_traj_wo = metrics(sim, ado_trajectories, ego_trajectory=ego_trajectory, ego_goal=goal)
 
     # Baseline evaluation and plotting.
-    ego_traj_base, ado_traj_base = baseline(sim, goal, planning_horizon_default)
+    ego_traj_base, ado_traj_base = baseline(sim, goal, ego_trajectory.shape[0])  # time horizon
     eval_dict_base, ado_traj_wo_base = metrics(sim, ado_traj_base, ego_trajectory=ego_traj_base, ego_goal=goal)
 
     # Check whether actually the same "thing" has been compared by comparing the ado trajectories without
     # ego interaction (from metrics calculation).
-    assert np.isclose(np.linalg.norm(ado_traj_wo - ado_traj_wo_base), 0, atol=0.1), "ado_wo trajectories do not match"
     logging.warning(f"Metrics on task {tag} -> solver:")
     pprint(eval_dict)
     logging.warning(f"Metrics on task {tag} -> baseline {baseline.__name__}:")
