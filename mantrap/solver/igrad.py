@@ -56,10 +56,9 @@ class IGradSolver(Solver):
     @staticmethod
     def close_ados(env: Simulation):
         ados_close = []
-        radius = mantrap.constants.igrad_radius
         for ado in env.ados:
             ego_ado_distance = np.linalg.norm(env.ego.position - ado.position)
-            if ego_ado_distance < radius:
+            if ego_ado_distance < mantrap.constants.igrad_radius:
                 ados_close.append(ado)
         return ados_close
 
@@ -90,10 +89,6 @@ class IGradPredictiveSolver(IGradSolver):
 
         assert pred_env.ego.__class__ == IntegratorDTAgent, "currently only single integrator egos are supported"
         # Build first graph for the next state, in case no forces are applied on the ego.
-        # TODO: assumption is that ego stays where it is (v_ego = [0, 0]). for future time-step optimization
-        #       the actual current velocity should be taken into account. However, currently it explodes, probably
-        #       because the gradient of the force of the nth time-step is used, instead of the sum of forces over
-        #       the time up to the nth time-step.
         ego_policy = np.zeros(2)  # pred_env.ego.velocity
         ado_traj, ego_next_state = pred_env.step(ego_policy=ego_policy)
         graphs.append(pred_env.build_graph_from_agents(ego_state=ego_next_state))
