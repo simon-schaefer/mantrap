@@ -1,10 +1,7 @@
 import numpy as np
 
 from mantrap.agents import IntegratorDTAgent
-import mantrap.evaluation.scenarios as scenarios
 from mantrap.simulation import DistanceFieldSimulation, SocialForcesSimulation
-from mantrap.utility.io import path_from_home_directory
-from mantrap.evaluation import plot_scene
 
 
 ###########################################################################

@@ -5,11 +5,8 @@ import numpy as np
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.evaluation.baselines import straight_line
 from mantrap.simulation.simulation import Simulation
-from mantrap.simulation import SocialForcesSimulation
 from mantrap.solver import ORCASolver
-from mantrap.evaluation import evaluate, scenarios
 
 
 class ORCASimulation(Simulation):
@@ -128,15 +125,15 @@ def test_two_agents():
 
     assert np.isclose(np.linalg.norm(pos - pos_expected), 0.0, atol=0.1)
 
-
-def visualize_orca_testing():
-    scenario_func = scenarios.scenario_sf_ego_moving_many_ados
-    sim, goal = scenario_func(sim_type=SocialForcesSimulation, ego_type=IntegratorDTAgent)
-    solver = ORCASolver(sim, goal=goal)
-    ego_traj, ados_traj = solver.solve()
-
-    test_name = f"{ORCASolver.__name__}_{scenario_func.__name__}"
-    evaluate(test_name, ego_traj, ados_traj, sim, goal, straight_line, do_visualization=True)
+#
+# def visualize_orca_testing():
+#     scenario_func = scenarios.scenario_sf_ego_moving_many_ados
+#     sim, goal = scenario_func(sim_type=SocialForcesSimulation, ego_type=IntegratorDTAgent)
+#     solver = ORCASolver(sim, goal=goal)
+#     ego_traj, ados_traj = solver.solve()
+#
+#     test_name = f"{ORCASolver.__name__}_{scenario_func.__name__}"
+#     evaluate(test_name, ego_traj, ados_traj, sim, goal, do_visualization=True)
 
 
 if __name__ == "__main__":

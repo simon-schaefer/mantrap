@@ -1,11 +1,10 @@
 from pprint import pprint
 import logging
 
-from mantrap.agents import DoubleIntegratorDTAgent, IntegratorDTAgent
-from mantrap.evaluation.baselines import straight_line
+from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import SocialForcesSimulation
 from mantrap.solver import IGradGreedySolver, IGradPredictiveSolver
-from mantrap.evaluation import evaluate, eval_scenarios, scenarios
+from mantrap.evaluation import evaluate, eval_scenarios
 
 
 ###########################################################################
@@ -25,22 +24,22 @@ def visualize_igrads():
             solver = solver_class(sim, goal=goal)
             ego_traj, ados_traj = solver.solve()
 
-            results[solver_class.__name__][tag], _, _, _ = evaluate(
-                test_name, ego_traj, ados_traj, sim, goal, straight_line, do_visualization=False,
+            results[solver_class.__name__][tag], _ = evaluate(
+                test_name, ego_traj, ados_traj, sim, goal, do_visualization=False,
             )
 
     logging.warning("Results summary: ")
     pprint(results)
 
 
-def visualize_igrad_testing():
-    scenario_func = scenarios.scenario_sf_ego_moving_many_ados
-    sim, goal = scenario_func(sim_type=SocialForcesSimulation, ego_type=IntegratorDTAgent)
-    solver = IGradPredictiveSolver(sim, goal=goal)
-    ego_traj, ados_traj = solver.solve()
-
-    test_name = f"{IGradPredictiveSolver.__name__}_{scenario_func.__name__}"
-    evaluate(test_name, ego_traj, ados_traj, sim, goal, straight_line, do_visualization=True)
+# def visualize_igrad_testing():
+#     scenario_func = scenarios.scenario_sf_ego_moving_many_ados
+#     sim, goal = scenario_func(sim_type=SocialForcesSimulation, ego_type=IntegratorDTAgent)
+#     solver = IGradPredictiveSolver(sim, goal=goal)
+#     ego_traj, ados_traj = solver.solve()
+#
+#     test_name = f"{IGradPredictiveSolver.__name__}_{scenario_func.__name__}"
+#     evaluate(test_name, ego_traj, ados_traj, sim, goal, do_visualization=True)
 
 
 # def visualize_interactive_grad_vector_field():

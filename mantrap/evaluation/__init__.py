@@ -10,6 +10,7 @@ from mantrap.agents.agent import Agent
 from mantrap.evaluation import scenarios as evaluation_scenarios
 from mantrap.simulation.simulation import Simulation
 from mantrap.utility.io import path_from_home_directory
+from mantrap.utility.shaping import check_ado_trajectories
 
 from .metrics import metrics
 from .visualization import plot_scene
@@ -21,27 +22,27 @@ def evaluate(
     ado_trajectories: np.ndarray,
     sim: Simulation,
     goal: np.ndarray,
-    baseline: Callable[[Simulation, np.ndarray, int], Tuple[np.ndarray, np.ndarray]],
     do_visualization: bool = True,
-) -> Tuple[Dict, Dict, np.ndarray, np.ndarray]:
+) -> Tuple[Dict, np.ndarray]:
 
-    assert len(ado_trajectories.shape) == 4
-    assert ado_trajectories.shape[0] == sim.num_ados
-    assert ado_trajectories.shape[1] == sim.num_ado_modes
-    assert ado_trajectories.shape[2] == ego_trajectory.shape[0]
+    t_horizon = ego_trajectory.shape[0]
+    assert check_ado_trajectories(ado_trajectories, num_ados=sim.num_ados, num_modes=sim.num_ado_modes)
+    assert ado_trajectories.shape[2] == t_horizon
 
-    eval_dict, ado_traj_wo = metrics(sim, ado_trajectories, ego_trajectory=ego_trajectory, ego_goal=goal)
+    ado_trajectories_wo = sim.predict(t_horizon=t_horizon, ego_trajectory=None)
 
-    # Baseline evaluation and plotting.
-    ego_traj_base, ado_traj_base = baseline(sim, goal, ego_trajectory.shape[0])  # time horizon
-    eval_dict_base, ado_traj_wo_base = metrics(sim, ado_traj_base, ego_trajectory=ego_traj_base, ego_goal=goal)
+    eval_dict, ado_traj_wo = metrics(
+        ado_trajectories,
+        ado_trajs_wo=ado_trajectories_wo,
+        ado_ids=sim.ado_ids,
+        ego_trajectory=ego_trajectory,
+        ego_goal=goal,
+    )
 
     # Check whether actually the same "thing" has been compared by comparing the ado trajectories without
     # ego interaction (from metrics calculation).
     logging.warning(f"Metrics on task {tag} -> solver:")
     pprint(eval_dict)
-    logging.warning(f"Metrics on task {tag} -> baseline {baseline.__name__}:")
-    pprint(eval_dict_base)
 
     # Visualization.
     if do_visualization:
@@ -77,30 +78,16 @@ def evaluate(
             )
             ax2.set_title("no ego agent")
 
-            ax3 = fig.add_subplot(gs[2, 1])
-            ax3 = plot_scene(
-                ax=ax3,
-                t=t,
-                ado_trajectories=ado_traj_base,
-                ado_colors=sim.ado_colors,
-                ado_ids=sim.ado_ids,
-                ego_trajectory=ego_traj_base,
-                ado_trajectories_wo=ado_traj_wo_base,
-            )
-            ax3.set_title(f"baseline: {baseline.__name__}")
-
-            # ax4 = fig.add_subplot(gs[3, :])
-            # speed_ego = np.sqrt(ego_trajectory[:t, 3] ** 2 + ego_trajectory[:t, 4] ** 2)
-            # speed_ego_base = np.sqrt(ego_traj_base[:t, 3] ** 2 + ego_traj_base[:t, 4] ** 2)
-            # ax4.plot(ego_trajectory[:t, -1], speed_ego, label="solver")
-            # ax4.plot(ego_trajectory[:t, -1], speed_ego_base, label="baseline")
-            # ax4.legend()
+            ax4 = fig.add_subplot(gs[2, 1])
+            speed_ego = np.sqrt(ego_trajectory[:t, 3] ** 2 + ego_trajectory[:t, 4] ** 2)
+            ax4.plot(ego_trajectory[:t, -1], speed_ego, label="solver")
+            ax4.legend()
 
             fig.suptitle(f"task: {tag}")
             plt.savefig(os.path.join(output_dir, f"{t:04d}.png"))
             plt.close()
     print("\n")
-    return eval_dict, eval_dict_base, ado_traj_wo, ado_traj_base
+    return eval_dict, ado_traj_wo
 
 
 def eval_scenarios() -> Dict[str, Callable[[Simulation.__class__, Agent.__class__], Tuple[Simulation, np.ndarray]]]:

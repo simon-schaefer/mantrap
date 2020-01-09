@@ -14,7 +14,9 @@ class Solver:
         self._env = sim
         self._goal = goal
 
-    def solve(self, planning_horizon: int = solver_planning_steps, max_steps: int = solver_max_steps) -> Tuple[Union[np.ndarray, None], np.ndarray]:
+    def solve(
+        self, planning_horizon: int = solver_planning_steps, max_steps: int = solver_max_steps
+    ) -> Tuple[Union[np.ndarray, None], np.ndarray]:
         """Solve the posed solver i.e. find a feasible trajectory for the ego from its initial to its goal state.
         :returns derived ego trajectory or None (no feasible solution) and according predicted ado trajectories
         """
@@ -39,8 +41,8 @@ class Solver:
             traj_opt[k + 1, :] = ego_state
 
             if np.linalg.norm(ego_state[:2] - self._goal) < 0.1:
-                traj_opt = traj_opt[:k+2, :]
-                ado_trajectories = ado_trajectories[:, :, :k+2, :]
+                traj_opt = traj_opt[: k + 2, :]
+                ado_trajectories = ado_trajectories[:, :, : k + 2, :]
                 break
 
         logging.info(f"Finishing up trajectory optimization solving")

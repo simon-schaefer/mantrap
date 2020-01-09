@@ -63,17 +63,17 @@ class Simulation:
         in the simulation while predict() copies all agents and changes the states of these copies (so the actual
         agent states remain unchanged).
         :param ego_policy: planned ego policy (in case of dependence in behaviour between ado and ego).
-        :return ado_states (num_ados, num_modes, 6), ego_state (6) in next time step.
+        :return ado_states (num_ados, num_modes, 6), ego_next_state (6) in next time step.
         """
         self._sim_time = self.sim_time + self.dt
 
         # Unroll future ego trajectory, which is surely deterministic and certain due to the deterministic dynamics
         # assumption.
-        ego_trajectory, ego_state = None, None
+        ego_trajectory, ego_next_state = None, None
         if ego_policy is not None:
             ego_trajectory = self._ego.unroll_trajectory(ego_policy, dt=self.dt)
             ego_trajectory[:, -1] = self.sim_time  # correct time
-            ego_state = ego_trajectory[1, :]
+            ego_next_state = ego_trajectory[1, :]
 
         # Update ados by forward simulate them and determining their most likely policies.
         ado_states, policies = self.predict(t_horizon=1, ego_trajectory=ego_trajectory, return_policies=True)
@@ -88,8 +88,8 @@ class Simulation:
             logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: policy={ego_policy}")
 
         if self._ego is not None:
-            logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: state={ego_state}")
-        return ado_states, ego_state
+            logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: state={ego_next_state}")
+        return ado_states, ego_next_state
 
     def _add_ado(self, ado_type: Agent.__class__ = None, **ado_kwargs):
         ado = ado_type(**ado_kwargs)
