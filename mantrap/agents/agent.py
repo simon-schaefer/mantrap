@@ -9,9 +9,19 @@ from mantrap.constants import agent_speed_max, sim_dt_default
 
 
 class Agent:
-    def __init__(self, position: np.ndarray, velocity: np.ndarray, history: np.ndarray = None, log: bool = True):
+    def __init__(
+        self,
+        position: np.ndarray,
+        velocity: np.ndarray,
+        time: float = 0,
+        history: np.ndarray = None,
+        identifier: str = None,
+        log: bool = True,
+        **kwargs,
+    ):
         assert position.size == 2, "position must be two-dimensional (x, y)"
         assert velocity.size == 2, "velocity must be two-dimensional (vx, vy)"
+        assert time >= 0, "time must be larger or equal to zero"
 
         self._position = position
         self._velocity = velocity
@@ -20,15 +30,15 @@ class Agent:
         if history is not None:
             assert history.shape[1] == 6, "history should contain 2D stamped pose & velocity (x, y, theta, vx, vy, t)"
             self._history = history
-            self._history = np.vstack((self._history, np.hstack((self.state, 0))))
+            self._history = np.vstack((self._history, np.hstack((self.state, time))))
         else:
-            self._history = np.reshape(np.hstack((self.state, 0)), (1, 6))
+            self._history = np.reshape(np.hstack((self.state, time)), (1, 6))
 
         # Create random agent color (reddish), for evaluation only.
         self._color = np.hstack((1.0, np.random.uniform(0.0, 0.5, size=2)))
         # Random identifier.
         letters = string.ascii_lowercase
-        self._id = "".join(random.choice(letters) for _ in range(3))
+        self._id = identifier if identifier is not None else "".join(random.choice(letters) for _ in range(3))
         if log:
             logging.info(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
 

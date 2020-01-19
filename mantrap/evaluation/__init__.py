@@ -1,16 +1,13 @@
 from pprint import pprint
 import logging
-import inspect
 import os
-from typing import Callable, Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
-from mantrap.agents.agent import Agent
 from mantrap.evaluation import scenarios as evaluation_scenarios
-from mantrap.simulation.simulation import Simulation
 from mantrap.utility.io import path_from_home_directory
-from mantrap.utility.shaping import check_ado_trajectories
+from mantrap.utility.shaping import check_ado_trajectories, extract_ado_trajectories
 
 from .metrics import metrics
 from .visualization import plot_scene
@@ -20,21 +17,21 @@ def evaluate(
     tag: str,
     ego_trajectory: np.ndarray,
     ado_trajectories: np.ndarray,
-    sim: Simulation,
+    ado_trajectories_wo: np.ndarray,
+    ado_colors: List[np.ndarray],
+    ado_ids: List[str],
     goal: np.ndarray,
     do_visualization: bool = True,
 ) -> Tuple[Dict, np.ndarray]:
 
-    t_horizon = ego_trajectory.shape[0]
-    assert check_ado_trajectories(ado_trajectories, num_ados=sim.num_ados, num_modes=sim.num_ado_modes)
-    assert ado_trajectories.shape[2] == t_horizon
-
-    ado_trajectories_wo = sim.predict(t_horizon=t_horizon, ego_trajectory=None)
+    num_ados, num_modes, t_horizon = extract_ado_trajectories(ado_trajectories)
+    assert check_ado_trajectories(ado_trajectories_wo, num_ados=num_ados, t_horizon=t_horizon)
+    assert ego_trajectory.shape[0] == t_horizon
 
     eval_dict, ado_traj_wo = metrics(
         ado_trajectories,
         ado_trajs_wo=ado_trajectories_wo,
-        ado_ids=sim.ado_ids,
+        ado_ids=ado_ids,
         ego_trajectory=ego_trajectory,
         ego_goal=goal,
     )
@@ -60,8 +57,8 @@ def evaluate(
                 ax=ax1,
                 t=t,
                 ado_trajectories=ado_trajectories,
-                ado_colors=sim.ado_colors,
-                ado_ids=sim.ado_ids,
+                ado_colors=ado_colors,
+                ado_ids=ado_ids,
                 ego_trajectory=ego_trajectory,
                 ado_trajectories_wo=ado_traj_wo,
             )
@@ -71,8 +68,8 @@ def evaluate(
                 ax=ax2,
                 t=t,
                 ado_trajectories=ado_traj_wo,
-                ado_colors=sim.ado_colors,
-                ado_ids=sim.ado_ids,
+                ado_colors=ado_colors,
+                ado_ids=ado_ids,
                 ego_trajectory=None,
                 ado_trajectories_wo=None,
             )
@@ -90,12 +87,13 @@ def evaluate(
     return eval_dict, ado_traj_wo
 
 
-def eval_scenarios() -> Dict[str, Callable[[Simulation.__class__, Agent.__class__], Tuple[Simulation, np.ndarray]]]:
-    scenario_functions = {}
-    functions = [o for o in inspect.getmembers(evaluation_scenarios) if inspect.isfunction(o[1])]
-    for function_tuple in functions:
-        function_name, _ = function_tuple
-        if function_name.startswith("scenario"):
-            tag = function_name.replace("scenario_", "")
-            scenario_functions[tag] = function_tuple[1]
-    return scenario_functions
+# import inspect
+# def eval_scenarios() -> Dict[str, Callable[[Simulation.__class__, Agent.__class__], Tuple[Simulation, np.ndarray]]]:
+#     scenario_functions = {}
+#     functions = [o for o in inspect.getmembers(evaluation_scenarios) if inspect.isfunction(o[1])]
+#     for function_tuple in functions:
+#         function_name, _ = function_tuple
+#         if function_name.startswith("scenario"):
+#             tag = function_name.replace("scenario_", "")
+#             scenario_functions[tag] = function_tuple[1]
+#     return scenario_functions

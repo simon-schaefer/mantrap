@@ -12,7 +12,9 @@ def check_ego_trajectory(ego_trajectory: np.ndarray, t_horizon: int = None) -> b
     return is_correct
 
 
-def check_ado_trajectories(ado_trajectories: np.ndarray, num_ados: int = None, num_modes: int = None) -> bool:
+def check_ado_trajectories(
+    ado_trajectories: np.ndarray, num_ados: int = None, num_modes: int = None, t_horizon: int = None
+) -> bool:
     is_correct = True
     is_correct = is_correct and len(ado_trajectories.shape) == 4  # (num_ados,num_modes,t_horizon,6)
     is_correct = is_correct and ado_trajectories.shape[3] == 6  # (x, y, theta, vx, vy, t)
@@ -20,6 +22,8 @@ def check_ado_trajectories(ado_trajectories: np.ndarray, num_ados: int = None, n
         is_correct = is_correct and ado_trajectories.shape[0] == num_ados
     if num_modes is not None:
         is_correct = is_correct and ado_trajectories.shape[1] == num_modes
+    if t_horizon is not None:
+        is_correct = is_correct and ado_trajectories.shape[2] == t_horizon
     return is_correct
 
 

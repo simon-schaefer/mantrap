@@ -27,7 +27,7 @@ class ORCASimulation(Simulation):
         pass
 
     def add_ado(self, goal_position: Union[np.ndarray, None], **ado_kwargs):
-        super(ORCASimulation, self)._add_ado(IntegratorDTAgent, log=False, **ado_kwargs)
+        super(ORCASimulation, self).add_ado(type=IntegratorDTAgent, log=False, **ado_kwargs)
         self._ado_goals.append(goal_position)
 
     def step(self, ego_policy: np.ndarray = None) -> Tuple[np.ndarray, Union[np.ndarray, None]]:
@@ -124,17 +124,3 @@ def test_two_agents():
         pos[:, k, :] = state_k[:, :2]
 
     assert np.isclose(np.linalg.norm(pos - pos_expected), 0.0, atol=0.1)
-
-#
-# def visualize_orca_testing():
-#     scenario_func = scenarios.scenario_sf_ego_moving_many_ados
-#     sim, goal = scenario_func(sim_type=SocialForcesSimulation, ego_type=IntegratorDTAgent)
-#     solver = ORCASolver(sim, goal=goal)
-#     ego_traj, ados_traj = solver.solve()
-#
-#     test_name = f"{ORCASolver.__name__}_{scenario_func.__name__}"
-#     evaluate(test_name, ego_traj, ados_traj, sim, goal, do_visualization=True)
-
-
-if __name__ == "__main__":
-    test_two_agents()

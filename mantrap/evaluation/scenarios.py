@@ -4,7 +4,6 @@ from mantrap.agents.agent import Agent
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation.simulation import Simulation
 from mantrap.simulation import SocialForcesSimulation
-from mantrap.utility.datasets import load_eth
 
 
 # def scenario_eth(
@@ -15,7 +14,6 @@ from mantrap.utility.datasets import load_eth
 #     sim = sim_type(ego_type=ego_type, ego_kwargs={"position": np.array([-5, 2.0]), "velocity": np.array([1, 0])},)
 #
 #     return sim, np.array([5, 0.1])
-
 
 
 # def scenario_sf_ego_static_single_ado(

@@ -1,2 +1,1 @@
 from .social_forces import SocialForcesSimulation
-from .distance_field import DistanceFieldSimulation
