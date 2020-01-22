@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from copy import deepcopy
+import copy
 import logging
 from typing import Tuple, Union
 
@@ -20,13 +20,14 @@ class Solver:
         """Solve the posed solver i.e. find a feasible trajectory for the ego from its initial to its goal state.
         :returns derived ego trajectory or None (no feasible solution) and according predicted ado trajectories
         """
-        solver_env = deepcopy(self._env)
+        solver_env = copy.deepcopy(self._env)
         traj_opt = np.zeros((max_steps, 6))
-        traj_opt[0, :] = np.hstack((solver_env.ego.state, solver_env.sim_time))
-
         ado_trajectories = np.zeros((solver_env.num_ados, solver_env.num_ado_modes, max_steps, 6))
-        for ia, ado in enumerate(solver_env.ados):
-            ado_trajectories[ia, :, 0, :] = np.hstack((ado.state, solver_env.sim_time))
+
+        # Initialize trajectories with current state and simulation time.
+        traj_opt[0, :] = np.hstack((solver_env.ego.state, solver_env.sim_time))
+        for i, ado in enumerate(solver_env.ados):
+            ado_trajectories[i, :, 0, :] = np.hstack((ado.state, solver_env.sim_time))
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {planning_horizon} steps ...")
         for k in range(max_steps - 1):
@@ -40,6 +41,8 @@ class Solver:
             ado_trajectories[:, :, k + 1, :] = ado_traj[:, :, 0, :]
             traj_opt[k + 1, :] = ego_state
 
+            # If the goal state has been reached, break the optimization loop (and shorten trajectories to
+            # contain only states up to now (i.e. k + 2 optimization steps instead of max_steps).
             if np.linalg.norm(ego_state[:2] - self._goal) < 0.1:
                 traj_opt = traj_opt[: k + 2, :]
                 ado_trajectories = ado_trajectories[:, :, : k + 2, :]

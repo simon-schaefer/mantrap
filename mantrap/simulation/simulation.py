@@ -30,9 +30,7 @@ class Simulation:
         self._sim_time = 0
 
     @abstractmethod
-    def predict(
-        self, t_horizon: int, ego_trajectory: np.ndarray = None, return_policies: bool = False,
-    ) -> np.ndarray:
+    def predict(self, t_horizon: int, ego_trajectory: np.ndarray = None, verbose: bool = False, ) -> np.ndarray:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados with each other and between the ados and the ego. The implementation therefore is specific
@@ -42,7 +40,7 @@ class Simulation:
         class, by setting the prediction_t. However the output should be a vector of predictions, one for each ado.
         :param t_horizon: prediction horizon (number of time-steps of length dt).
         :param ego_trajectory: planned ego trajectory (in case of dependence in behaviour between ado and ego).
-        :param return_policies: return the actual system inputs (at every time to get trajectory).
+        :param verbose: return the actual system inputs (at every time -> trajectory) and probabilities of each mode.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
         pass
@@ -69,11 +67,15 @@ class Simulation:
             self._ego.update(ego_policy[0, :], dt=self.dt)
             logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: policy={ego_policy}")
 
-        # # Update ados by forward simulate them and determining their most likely policies.
-        ado_states, policies = self.predict(t_horizon=1, ego_trajectory=ego_trajectory, return_policies=True)
+        # Update ados by forward simulate them and determining their most likely policies. Therefore predict the
+        # ado states at the next time step as well as the probabilities (weights) of them occurring. Then sample one
+        # mode (given these weights) and update the ados as that sampled mode.
+        ado_states, policies, weights = self.predict(t_horizon=1, ego_trajectory=ego_trajectory, verbose=True)
+        weights = weights / np.sum(weights, axis=1)[:, np.newaxis]
         for i, ado in enumerate(self._ados):
-            ado.update(policies[0, i], dt=self.dt)
-            logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, 0, :, :]}")
+            sampled_mode = np.random.choice(range(self.num_ado_modes), p=weights[i, :])
+            ado.update(policies[i, sampled_mode, 0, :], dt=self.dt)
+            logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, :, :, :]}")
 
         if self._ego is not None:
             logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: state={ego_next_state}")
@@ -82,33 +84,12 @@ class Simulation:
     def add_ado(self, **ado_kwargs):
         assert "type" in ado_kwargs.keys() and type(ado_kwargs["type"]) == Agent.__class__, "ado type required"
         ado = ado_kwargs["type"](**ado_kwargs)
-        assert self._x_axis[0] <= ado.position[0] <= self._x_axis[1], "ado x position must be in scene"
-        assert self._y_axis[0] <= ado.position[1] <= self._y_axis[1], "ado y position must be in scene"
 
         # Append ado to internal list of ados and rebuilt the graph (could be also extended but small computational
         # to actually rebuild it).
+        assert self._x_axis[0] <= ado.position[0] <= self._x_axis[1], "ado x position must be in scene"
+        assert self._y_axis[0] <= ado.position[1] <= self._y_axis[1], "ado y position must be in scene"
         self._ados.append(ado)
-
-    def reset(self, ego_state: np.ndarray, ado_states: np.ndarray, ado_histories: np.ndarray = None):
-        """Completely reset the simulation to the given states. Additionally, the ado histories can be resetted,
-        if given as None, they will be re-initialized. The other simulation variables remain unchanged.
-        :param ego_state: new ego state containing (x, y, theta, vx, vy), (5).
-        :param ado_states: new state for each ado containing (x, y, theta, vx, vy), (num_ados, 5), number of ados
-                           cannot be changed (!).
-        :param ado_histories: new history for each ado containing (x, y, theta, vx, vy, t), (num_ados, 6).
-        """
-        assert ego_state.size >= 5, "ego state must contain (x, y, theta, vx, vy)"
-        assert len(ado_states.shape) == 2, "ado states must be of shape (num_ados, 5)"
-        assert ado_states.shape[0] == self.num_ados, "number of ados and ado_states must match"
-        assert ado_states.shape[1] >= 5, "ado states must contain (x, y, theta, vx, vy)"
-        if ado_histories is not None:
-            assert ado_histories.shape[0] == self.num_ados, "number of ados and ado_histories must match"
-            assert ado_histories.shape[2] == 6, "ado histories must contain (x, y, theta, vx, vy, t)"
-
-        self._ego.reset(position=ego_state[0:2], velocity=ego_state[3:5], history=None)
-        for i in range(ado_states.shape[0]):
-            ado_i_history = ado_histories[i, :, :] if ado_histories is not None else None
-            self._ados[i].reset(ado_states[i, 0:2], ado_states[i, 3:5], history=ado_i_history)
 
     ###########################################################################
     # Ado properties ##########################################################

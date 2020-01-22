@@ -5,7 +5,6 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from mantrap.evaluation import scenarios as evaluation_scenarios
 from mantrap.utility.io import path_from_home_directory
 from mantrap.utility.shaping import check_ado_trajectories, extract_ado_trajectories
 
@@ -85,15 +84,3 @@ def evaluate(
             plt.close()
     print("\n")
     return eval_dict, ado_traj_wo
-
-
-# import inspect
-# def eval_scenarios() -> Dict[str, Callable[[Simulation.__class__, Agent.__class__], Tuple[Simulation, np.ndarray]]]:
-#     scenario_functions = {}
-#     functions = [o for o in inspect.getmembers(evaluation_scenarios) if inspect.isfunction(o[1])]
-#     for function_tuple in functions:
-#         function_name, _ = function_tuple
-#         if function_name.startswith("scenario"):
-#             tag = function_name.replace("scenario_", "")
-#             scenario_functions[tag] = function_tuple[1]
-#     return scenario_functions

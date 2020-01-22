@@ -1,3 +1,6 @@
+#######################################
+# agent parameters ###############
+#######################################
 agent_speed_max = 4  # maximal agent velocity in [m/s].
 
 #######################################
@@ -7,9 +10,11 @@ sim_dt_default = 0.2
 sim_x_axis_default = (-10, 10)
 sim_y_axis_default = (-10, 10)
 
-sim_social_forces_tau = 0.5  # [s] relaxation time (assumed to be uniform over all agents).
-sim_social_forces_v_0 = 2.1  # [m2s-2] repulsive field constant.
-sim_social_forces_sigma = 1.0  # [m] repulsive field exponent constant.
+sim_social_forces_default_params = {
+    "tau": 0.5,  # [s] relaxation time (assumed to be uniform over all agents).
+    "v0": 2.1,  # [m2s-2] repulsive field constant.
+    "sigma": 1.0,  # [m] repulsive field exponent constant.
+}
 sim_social_forces_min_goal_distance = 0.1  # [m] minimal distance to goal to have non-zero goal traction force.
 sim_social_forces_max_interaction_distance = 2.0  # [m] maximal distance between agents for interaction force.
 

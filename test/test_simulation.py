@@ -1,27 +1,40 @@
 import copy
-import time
 
 import numpy as np
+import pytest
 
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation.simulation import Simulation
-from mantrap.utility.shaping import check_ado_trajectories
+from mantrap.utility.shaping import check_ado_trajectories, check_policies, check_weights
 
 
-class ZeroSimulation(Simulation):
-    def predict(self, t_horizon: int, ego_trajectory: np.ndarray = None, return_policies: bool = False) -> np.ndarray:
-        policies = np.zeros((t_horizon, self.num_ados, 2))
+class ZeroModalSimulation(Simulation):
+    def __init__(self, num_modes: int = 1, **kwargs):
+        super(ZeroModalSimulation, self).__init__(**kwargs)
+        self._num_modes = num_modes
+
+    def predict(self, t_horizon: int, ego_trajectory: np.ndarray = None, verbose: bool = False) -> np.ndarray:
+        policies = np.zeros((self.num_ados, self.num_ado_modes, t_horizon, 2))
         ados_sim = copy.deepcopy(self._ados)
         for t in range(t_horizon):
             for i in range(self.num_ados):
-                ados_sim[i].update(policies[t, i, :], dt=self.dt)
+                for m in range(self.num_ado_modes):
+                    ados_sim[i].update(policies[i, m, t, :], dt=self.dt)
         trajectories = np.expand_dims(np.asarray([ado.history[-t_horizon:, :] for ado in ados_sim]), axis=1)
+        weights = np.ones((self.num_ados, self.num_ado_modes))
+
+        assert check_policies(policies, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon)
+        assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
         assert check_ado_trajectories(trajectories, t_horizon=t_horizon, num_ados=self.num_ados, num_modes=1)
-        return trajectories if not return_policies else (trajectories, policies)
+        return trajectories if not verbose else (trajectories, policies, weights)
+
+    @property
+    def num_ado_modes(self) -> int:
+        return self._num_modes
 
 
 def test_initialization():
-    sim = ZeroSimulation(IntegratorDTAgent, {"position": np.array([4, 6])}, dt=1.0)
+    sim = ZeroModalSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": np.array([4, 6])}, dt=1.0)
     assert np.array_equal(sim.ego.position, np.array([4, 6]))
     assert sim.num_ados == 0
     assert sim.sim_time == 0.0
@@ -33,7 +46,7 @@ def test_initialization():
 def test_step():
     ado_position = np.zeros(2)
     ego_position = np.array([-4, 6])
-    sim = ZeroSimulation(IntegratorDTAgent, {"position": ego_position}, dt=1.0)
+    sim = ZeroModalSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_position}, dt=1.0)
     sim.add_ado(type=IntegratorDTAgent, position=ado_position, velocity=np.zeros(2))
     assert sim.num_ados == 1
 
@@ -62,21 +75,11 @@ def test_step():
     assert np.array_equal(ego_trajectory, ego_t_exp[1:, :])
 
 
-def test_reset():
-    sim = ZeroSimulation(IntegratorDTAgent, {"position": np.array([1, 5]), "velocity": np.ones(2) * 2}, dt=1.0)
-    sim.add_ado(type=IntegratorDTAgent, position=np.array([6, 7]), velocity=np.zeros(2))
-    ego_state_new = np.array([5, 1, 0, 2, 0])
-    ado_state_new = np.reshape(np.array([0, 0, 0, 5, 7]), (1, 5))
-    sim.reset(ego_state=ego_state_new, ado_states=ado_state_new)
-    assert np.array_equal(sim.ego.position, ego_state_new[0:2])
-    assert np.array_equal(sim.ego.velocity, ego_state_new[3:5])
-    assert np.array_equal(sim.ados[0].position, ado_state_new[0, 0:2])
-    assert np.array_equal(sim.ados[0].velocity, ado_state_new[0, 3:5])
-
-
-def test_update():
-    sim = ZeroSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": np.zeros(2)}, dt=1)
+@pytest.mark.parametrize("modes", [1, 4])
+def test_update(modes: int):
+    sim = ZeroModalSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": np.zeros(2)}, dt=1, num_modes=modes)
     sim.add_ado(type=IntegratorDTAgent, position=np.zeros(2), velocity=np.zeros(2))
+    sim.add_ado(type=IntegratorDTAgent, position=np.ones(2), velocity=np.ones(2))
     num_steps = 10
     sim_times = np.zeros(num_steps)
     ego_positions = np.zeros((num_steps, 2))

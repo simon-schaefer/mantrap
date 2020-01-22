@@ -6,6 +6,7 @@ import string
 import numpy as np
 
 from mantrap.constants import agent_speed_max, sim_dt_default
+from mantrap.utility.shaping import check_state
 
 
 class Agent:
@@ -35,7 +36,7 @@ class Agent:
             self._history = np.reshape(np.hstack((self.state, time)), (1, 6))
 
         # Create random agent color (reddish), for evaluation only.
-        self._color = np.hstack((1.0, np.random.uniform(0.0, 0.5, size=2)))
+        self._color = np.random.uniform(0.0, 0.8, size=3)
         # Random identifier.
         letters = string.ascii_lowercase
         self._id = identifier if identifier is not None else "".join(random.choice(letters) for _ in range(3))
@@ -81,12 +82,17 @@ class Agent:
             trajectory[k + 1, :] = np.hstack((state_at_t, (k + 1) * dt))
         return trajectory
 
-    def reset(self, position: np.ndarray, velocity: np.ndarray, history: np.ndarray = None):
-        """Reset the complete state of the agent by resetting its position and velocity. Additionally, the history can
-        be resetted, if given as None then it is re-initialized. As the agent is fully resetted it gets a new id and
-        color assigned to it (!).
+    def reset(self, state: np.ndarray, history: np.ndarray = None):
+        """Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent's
+        history to the new state (i.e. append it to the already existing history) if history is given as None or set
+        it to some given trajectory.
         """
-        self.__init__(position=position, velocity=velocity, history=history)
+        assert check_state(state, enforce_temporal=True), "state has to be at least 5-dimensional"
+        if history is None:
+            history = np.vstack((self._history, state))
+        self._position = state[0:2]
+        self._velocity = state[3:5]
+        self._history = history
 
     @abstractmethod
     def dynamics(self, state: np.ndarray, action: np.ndarray, dt: float = sim_dt_default):

@@ -1,4 +1,4 @@
-import logging
+import os
 from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -6,6 +6,34 @@ import numpy as np
 
 import mantrap.constants
 from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories, extract_ado_trajectories
+
+
+def picture_opus(
+    file_path: str,
+    ado_trajectories: np.ndarray,
+    ado_colors: List[np.ndarray],
+    ado_ids: List[str],
+    ego_trajectory: np.ndarray = None,
+    ado_trajectories_wo: np.ndarray = None,
+    preview_horizon: int = mantrap.constants.visualization_preview_horizon,
+    axes: Tuple[Tuple[float, float], Tuple[float, float]] = (
+        mantrap.constants.sim_x_axis_default,
+        mantrap.constants.sim_y_axis_default,
+    ),
+):
+    _, _, t_horizon = extract_ado_trajectories(ado_trajectories)
+    for t in range(t_horizon):
+        fig, ax = plt.subplots()
+        plot_scene(
+            ax, t, ado_trajectories, ado_colors, ado_ids, ego_trajectory, ado_trajectories_wo, preview_horizon, axes
+        )
+        plt.savefig(os.path.join(file_path, f"{t:04d}.png"))
+        plt.close()
+
+
+############################################################################
+# Atomic plotting functions  ###############################################
+############################################################################
 
 
 def plot_scene(
@@ -36,7 +64,7 @@ def plot_scene(
     :param preview_horizon: trajectory preview time horizon (maximal value).
     :param axes: position space dimensions [m].
     """
-    assert check_ado_trajectories(ado_trajectories=ado_trajectories)
+    assert check_ado_trajectories(ado_trajectories)
     num_ados, num_modes, t_horizon = extract_ado_trajectories(ado_trajectories)
     assert len(ado_colors) == num_ados, "ado colors must be consistent with trajectories"
     ado_ids = [None] * num_ados if ado_ids is None else ado_ids
@@ -44,7 +72,7 @@ def plot_scene(
     if ego_trajectory is not None:
         assert check_ego_trajectory(ego_trajectory=ego_trajectory, t_horizon=t_horizon)
     if ado_trajectories_wo is not None:
-        assert check_ado_trajectories(ado_trajectories=ado_trajectories_wo, num_modes=1, num_ados=num_ados)
+        assert check_ado_trajectories(ado_trajectories_wo, num_modes=1, num_ados=num_ados, t_horizon=t_horizon)
 
     # Clip position related values to the visualized range, in order to prevent agent representation of the graph.
     ado_trajectories[:, :, :, 0] = np.clip(ado_trajectories[:, :, :, 0], a_min=axes[0][0], a_max=axes[0][1])
@@ -53,18 +81,13 @@ def plot_scene(
     # Plot ados.
     ado_preview = min(preview_horizon, t_horizon - t)
     for ado_i in range(num_ados):
-        # Get ado information from trajectories (states), colors and ids lists.
-        ado_pose = ado_trajectories[ado_i, 0, t, 0:3]
-        ado_velocity = ado_trajectories[ado_i, 0, t, 4:6]
-        ado_arrow_length = np.linalg.norm(ado_velocity) / mantrap.constants.agent_speed_max * 0.5
         ado_color = ado_colors[ado_i]
-        ado_id = ado_ids[ado_i]
-        ado_history = ado_trajectories[ado_i, 0, :t, 0:2]
 
         # Drawing.
-        ax = _add_agent_representation(ado_pose, color=ado_color, name=ado_id, ax=ax, arrow_length=ado_arrow_length)
-        ax = _add_history(ado_history, color=ado_color, ax=ax)
+        ax = _add_history(ado_trajectories[ado_i, 0, :t, 0:2], color=ado_color, ax=ax)
         for mode_i in range(num_modes):
+            ado_id = ado_ids[ado_i] + "_" + str(mode_i)
+            ax = _add_agent_representation(ado_trajectories[ado_i, mode_i, t, :], color=ado_color, name=ado_id, ax=ax)
             ax = _add_trajectory(ado_trajectories[ado_i, mode_i, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
         if ado_trajectories_wo is not None:
             ax = _add_wo_trajectory(ado_trajectories_wo[ado_i, 0, :t, 0:2], color=ado_color, ax=ax)
@@ -91,23 +114,23 @@ def plot_scene(
     return ax
 
 
-def _add_agent_representation(
-    pose: np.ndarray, color: np.ndarray, name: Union[str, None], ax: plt.Axes, arrow_length: float = 0.5
-):
-    assert pose.size == 3, "pose must be 3D (x, y, theta)"
+def _add_agent_representation(state: np.ndarray, color: np.ndarray, name: Union[str, None], ax: plt.Axes):
+    assert state.size == 5 or state.size == 6, "state must be of size 5 or 6 (x, y, theta, vx, vy, t)"
+    arrow_length = np.linalg.norm(state[3:5]) / mantrap.constants.agent_speed_max * 0.5
 
-    ado_circle = plt.Circle((pose[0], pose[1]), mantrap.constants.visualization_agent_radius, color=color, clip_on=True)
+    # Add circle for agent itself.
+    ado_circle = plt.Circle(state[0:2], mantrap.constants.visualization_agent_radius, color=color, clip_on=True)
     ax.add_artist(ado_circle)
 
     # Add agent id description.
     if id is not None:
-        ax.text(pose[0], pose[1], name, fontsize=8)
+        ax.text(state[0], state[1], name, fontsize=8)
 
     # Add arrow for orientation and speed.
-    rot = np.array([[np.cos(pose[2]), -np.sin(pose[2])], [np.sin(pose[2]), np.cos(pose[2])]])
+    rot = np.array([[np.cos(state[2]), -np.sin(state[2])], [np.sin(state[2]), np.cos(state[2])]])
     darrow = rot.dot(np.array([1, 0])) * arrow_length
     head_width = max(0.02, arrow_length / 10)
-    plt.arrow(pose[0], pose[1], darrow[0], darrow[1], head_width=head_width, head_length=0.1, fc="k", ec="k")
+    plt.arrow(state[0], state[1], darrow[0], darrow[1], head_width=head_width, head_length=0.1, fc="k", ec="k")
     return ax
 
 
