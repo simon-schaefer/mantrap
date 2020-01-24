@@ -1,4 +1,6 @@
+Cython
 matplotlib
 numpy
 pytest
+scipy
 torch

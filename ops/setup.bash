@@ -26,3 +26,14 @@ rm "${PROJECT_HOME}"/setup.py
 
 cd "${PROJECT_HOME}" || return
 echo $'\nSuccessfully set up project !'
+
+#######################################
+# External package setup ##############
+#######################################
+
+### IPOPT
+# 1. Install Ipopt following https://github.com/coin-or/Ipopt
+# 2. Install Cython `pip3 install Cython`
+# 3. Set PKG_CONFIG_PATH environment variable to IPOPT build directory
+# export PKG_CONFIG_PATH="/Users/sele/Projects/mantrap/external/Ipopt/build/Ipopt/master:/Users/sele/Projects/mantrap/external/Ipopt/build/ThirdParty/Mumps/2.0:/Users/sele/Projects/mantrap/external/Ipopt/build/ThirdParty/Metis/2.0"
+# 4. Install cyipopt following https://pypi.org/project/ipopt/

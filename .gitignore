@@ -39,4 +39,5 @@ outs/
 
 # External libraries and datasets.
 external/RVO2/build
-datasets/
+external/Ipopt/
+external/cyipopt/build
