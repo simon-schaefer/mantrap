@@ -184,3 +184,7 @@ class GraphBasedSimulation(Simulation):
             graph["ego_velocity"].requires_grad = True
 
         return graph
+
+    @abstractmethod
+    def build_connected_graph(self, ego_positions: torch.Tensor) -> List[Dict[str, torch.Tensor]]:
+        raise NotImplementedError

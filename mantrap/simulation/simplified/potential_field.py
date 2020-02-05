@@ -35,6 +35,6 @@ class PotentialFieldStaticSimulation(SocialForcesSimulation):
                 graph[f"{ghost.gid}_force"] = torch.add(graph[f"{ghost.gid}_force"], potential_force)
 
             # Summarize (standard) graph elements.
-            graph[f"{ghost.gid}_force_norm"] = torch.norm(graph[f"{ghost.gid}_force"])
+            graph[f"{ghost.gid}_output"] = torch.norm(graph[f"{ghost.gid}_force"])
 
         return graph

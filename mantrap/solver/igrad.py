@@ -1,20 +1,17 @@
 from collections import defaultdict
-import copy
 import logging
 import os
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import ipopt
 import numpy as np
 import torch
 
-from mantrap.agents import IntegratorDTAgent, DoubleIntegratorDTAgent
 from mantrap.constants import agent_speed_max
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver.solver import Solver
 from mantrap.utility.io import path_from_home_directory
 from mantrap.utility.shaping import check_trajectory_primitives
-from mantrap.utility.utility import build_trajectory_from_positions
 
 
 class IGradSolver(Solver):
@@ -137,14 +134,14 @@ class IGradSolver(Solver):
         ado_states = self._env.predict(self.T, ego_trajectory=x2).detach().numpy()
         diff = ado_states[:, :, :, 0:2] - self._ado_states_wo_np[:, :, :, 0:2]
         norm = np.linalg.norm(diff, axis=3)
-        graphs = self.build_connected_graph(self._env, ego_positions=x2)
+        graphs = self._env.build_connected_graph(ego_positions=x2)
 
         ego_positions = [graphs[k]["ego_position"] for k in range(self.T)]
         partial_grads = torch.zeros((self.T, self.T, self.M, 2))
         for k in range(self.T):
             for m in range(self.M):
-                ado_force_norm = graphs[k][f"{self._env.ado_ghosts[m].gid}_force_norm"]
-                grads_tuple = torch.autograd.grad(ado_force_norm, inputs=ego_positions[:k + 1], retain_graph=True)
+                ado_output = graphs[k][f"{self._env.ado_ghosts[m].gid}_output"]
+                grads_tuple = torch.autograd.grad(ado_output, inputs=ego_positions[:k + 1], retain_graph=True)
                 partial_grads[:, :k + 1, m, :] = torch.stack(grads_tuple)
 
         partial_grads_np = partial_grads.detach().numpy()
@@ -281,43 +278,6 @@ class IGradSolver(Solver):
     @property
     def M(self) -> int:
         return self._env.num_ados
-
-    ###########################################################################
-    # Helper functions ########################################################
-    ###########################################################################
-
-    @staticmethod
-    def build_connected_graph(env: GraphBasedSimulation, ego_positions: torch.Tensor) -> List[Dict[str, torch.Tensor]]:
-        """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
-        the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
-        using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
-        graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.
-
-        For building the graph the graphs for each single time-step is built independently while being connected
-        using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
-        terms of computational effort and space, however end-to-end-differentiable.
-        """
-        assert env.ego.__class__ == IntegratorDTAgent, "currently only single integrator egos are supported"
-        assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in env.ado_ghosts])
-
-        t_horizon = ego_positions.shape[0]
-        pred_env = copy.deepcopy(env)
-
-        # Build first graph for the next state, in case no forces are applied on the ego.
-        graphs = [pred_env.build_graph(ego_state=pred_env.ego.state)]
-        ego_states = build_trajectory_from_positions(ego_positions, dt=env.dt, t_start=env.sim_time)
-
-        # Build the graph iteratively for the whole prediction horizon.
-        for k in range(1, t_horizon):
-            for ig, ghost in enumerate(pred_env.ado_ghosts):
-                pred_env.ado_ghosts[ig].agent.update(graphs[-1][f"{ghost.gid}_force"], dt=pred_env.dt)
-
-            # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are used
-            # for the ego motion, as guesses for the final trajectory i.e. starting points for the optimization.
-            graph_k = pred_env.build_graph(ego_states[k, :], is_intermediate=True)
-            graphs.append(graph_k)
-
-        return graphs
 
     ###########################################################################
     # Visualization ###########################################################

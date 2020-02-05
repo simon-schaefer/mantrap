@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple, Union
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.agents import DoubleIntegratorDTAgent
+from mantrap.agents import IntegratorDTAgent, DoubleIntegratorDTAgent
 from mantrap.constants import (
     sim_x_axis_default,
     sim_y_axis_default,
@@ -220,11 +220,49 @@ class SocialForcesSimulation(GraphBasedSimulation):
                 graph[f"{ghost.gid}_force"] = torch.sub(graph[f"{ghost.gid}_force"], v_grad)
 
             # Summarize (standard) graph elements.
-            graph[f"{ghost.gid}_force_norm"] = torch.norm(graph[f"{ghost.gid}_force"])
+            graph[f"{ghost.gid}_output"] = torch.norm(graph[f"{ghost.gid}_force"])
 
         # Check healthiness of graph by looking for specific keys in the graph that are required.
-        assert all([f"{ghost.gid}_force_norm" for ghost in self._ado_ghosts])
+        assert all([f"{ghost.gid}_output" for ghost in self._ado_ghosts])
         return graph
+
+    ###########################################################################
+    # Simulation Graph over time-horizon ######################################
+    ###########################################################################
+
+    def build_connected_graph(self, ego_positions: torch.Tensor) -> List[Dict[str, torch.Tensor]]:
+        """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
+        the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
+        using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
+        graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.
+
+        For building the graph the graphs for each single time-step is built independently while being connected
+        using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
+        terms of computational effort and space, however end-to-end-differentiable.
+        """
+        assert self.ego.__class__ == IntegratorDTAgent, "currently only single integrator egos are supported"
+        assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in self._ado_ghosts])
+
+        t_horizon = ego_positions.shape[0]
+        ado_ghosts_copy = copy.deepcopy(self._ado_ghosts)
+
+        # Build first graph for the next state, in case no forces are applied on the ego.
+        graphs = [self.build_graph(ego_state=self.ego.state)]
+        ego_states = build_trajectory_from_positions(ego_positions, dt=self.dt, t_start=self.sim_time)
+
+        # Build the graph iteratively for the whole prediction horizon.
+        for k in range(1, t_horizon):
+            for ig, ghost in enumerate(self._ado_ghosts):
+                self._ado_ghosts[ig].agent.update(graphs[-1][f"{ghost.gid}_force"], dt=self.dt)
+
+            # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are used
+            # for the ego motion, as guesses for the final trajectory i.e. starting points for the optimization.
+            graph_k = self.build_graph(ego_states[k, :], is_intermediate=True)
+            graphs.append(graph_k)
+
+        # Reset ado ghosts to previous states.
+        self._ado_ghosts = ado_ghosts_copy
+        return graphs
 
     ###########################################################################
     # Ado properties ##########################################################
