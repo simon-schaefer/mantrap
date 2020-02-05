@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from mantrap.utility.io import path_from_home_directory
-from mantrap.utility.shaping import check_ado_trajectories, extract_ado_trajectories
+from mantrap.utility.shaping import check_trajectories, extract_ado_trajectories
 
 from .metrics import metrics
 from .visualization import plot_scene
@@ -24,7 +24,7 @@ def evaluate(
 ) -> Tuple[Dict, np.ndarray]:
 
     num_ados, num_modes, t_horizon = extract_ado_trajectories(ado_trajectories)
-    assert check_ado_trajectories(ado_trajectories_wo, num_ados=num_ados, t_horizon=t_horizon)
+    assert check_trajectories(ado_trajectories_wo, ados=num_ados, t_horizon=t_horizon)
     assert ego_trajectory.shape[0] == t_horizon
 
     eval_dict, ado_traj_wo = metrics(

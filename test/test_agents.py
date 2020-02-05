@@ -1,93 +1,104 @@
-import numpy as np
 import pytest
+import torch
 
 from mantrap.agents import IntegratorDTAgent, DoubleIntegratorDTAgent
 
 
 @pytest.mark.parametrize(
-    "position, velocity, history, history_expected",
+    "pos, vel, history, history_expected",
     [
-        (np.zeros(2), np.zeros(2), None, np.zeros((1, 6))),
+        (torch.zeros(2), torch.zeros(2), None, torch.zeros((1, 6))),
         (
-            np.ones(2),
-            np.zeros(2),
-            np.reshape(np.array([5, 6, 0, 0, 0, -1]), (1, 6)),
-            np.array([[5, 6, 0, 0, 0, -1], [1, 1, 0, 0, 0, 0]]),
+            torch.ones(2),
+            torch.zeros(2),
+            torch.tensor([5, 6, 0, 0, 0, -1]).view(1, 6),
+            torch.tensor([[5, 6, 0, 0, 0, -1], [1, 1, 0, 0, 0, 0]]),
         ),
     ],
 )
-def test_initialization(position: np.ndarray, velocity: np.ndarray, history: np.ndarray, history_expected: np.ndarray):
-    agent = IntegratorDTAgent(position, velocity, history=history)
-    assert np.array_equal(agent.history, history_expected)
+def test_initialization(pos: torch.Tensor, vel: torch.Tensor, history: torch.Tensor, history_expected: torch.Tensor):
+    agent = IntegratorDTAgent(position=pos, velocity=vel, history=history)
+    assert torch.all(torch.eq(agent.history, history_expected))
 
 
 @pytest.mark.parametrize(
     "position, velocity, velocity_input, dt, position_expected, velocity_expected",
     [
-        (np.array([1, 0]), np.zeros(2), np.zeros(2), 1.0, np.array([1, 0]), np.zeros(2)),
-        (np.array([1, 0]), np.array([2, 3]), np.zeros(2), 1.0, np.array([1, 0]), np.array([0, 0])),
-        (np.array([1, 0]), np.zeros(2), np.array([2, 3]), 1.0, np.array([3, 3]), np.array([2, 3])),
+        (torch.tensor([1, 0]), torch.zeros(2), torch.zeros(2), 1.0, torch.tensor([1, 0]), torch.zeros(2)),
+        (torch.tensor([1, 0]), torch.tensor([2, 3]), torch.zeros(2), 1.0, torch.tensor([1, 0]), torch.tensor([0, 0])),
+        (torch.tensor([1, 0]), torch.zeros(2), torch.tensor([2, 3]), 1.0, torch.tensor([3, 3]), torch.tensor([2, 3])),
     ],
 )
 def test_update_single_integrator(
-    position: np.ndarray,
-    velocity: np.ndarray,
-    velocity_input: np.ndarray,
+    position: torch.Tensor,
+    velocity: torch.Tensor,
+    velocity_input: torch.Tensor,
     dt: float,
-    position_expected: np.ndarray,
-    velocity_expected: np.ndarray,
+    position_expected: torch.Tensor,
+    velocity_expected: torch.Tensor,
 ):
     agent = IntegratorDTAgent(position, velocity)
     agent.update(velocity_input, dt=dt)
-    assert np.array_equal(agent.position, position_expected)
-    assert np.array_equal(agent.velocity, velocity_expected)
+    assert torch.all(torch.eq(agent.position, position_expected))
+    assert torch.all(torch.eq(agent.velocity, velocity_expected))
 
 
 @pytest.mark.parametrize(
     "position, velocity, velocity_input, dt, position_expected, velocity_expected",
     [
-        (np.array([1, 0]), np.zeros(2), np.zeros(2), 1.0, np.array([1, 0]), np.zeros(2)),
-        (np.array([1, 0]), np.array([2, 3]), np.zeros(2), 1.0, np.array([3, 3]), np.array([2, 3])),
-        (np.array([1, 0]), np.zeros(2), np.array([2, 3]), 1.0, np.array([2, 1.5]), np.array([2, 3])),
+        (torch.tensor([1, 0]), torch.zeros(2), torch.zeros(2), 1.0, torch.tensor([1, 0]), torch.zeros(2)),
+        (torch.tensor([1, 0]), torch.tensor([2, 3]), torch.zeros(2), 1.0, torch.tensor([3, 3]), torch.tensor([2, 3])),
+        (torch.tensor([1, 0]), torch.zeros(2), torch.tensor([2, 3]), 1.0, torch.tensor([2, 1.5]), torch.tensor([2, 3])),
     ],
 )
 def test_update_double_integrator(
-    position: np.ndarray,
-    velocity: np.ndarray,
-    velocity_input: np.ndarray,
+    position: torch.Tensor,
+    velocity: torch.Tensor,
+    velocity_input: torch.Tensor,
     dt: float,
-    position_expected: np.ndarray,
-    velocity_expected: np.ndarray,
+    position_expected: torch.Tensor,
+    velocity_expected: torch.Tensor,
 ):
     agent = DoubleIntegratorDTAgent(position, velocity)
     agent.update(velocity_input, dt=dt)
-    assert np.array_equal(agent.position, position_expected)
-    assert np.array_equal(agent.velocity, velocity_expected)
+    assert torch.all(torch.eq(agent.position, position_expected))
+    assert torch.all(torch.eq(agent.velocity, velocity_expected))
 
 
 def test_unrolling():
-    ego = IntegratorDTAgent(np.zeros(2))
-    policy = np.array([[1, 1], [2, 2], [4, 4]])
+    ego = IntegratorDTAgent(torch.zeros(2))
+    policy = torch.tensor([[1, 1], [2, 2], [4, 4]])
     trajectory = ego.unroll_trajectory(policy, dt=1.0)
-    assert np.array_equal(trajectory[1:, 0:2], np.cumsum(policy, axis=0))
+    assert torch.all(torch.eq(trajectory[1:, 0:2], torch.cumsum(policy, dim=0)))
 
 
 def test_reset():
-    agent = IntegratorDTAgent(np.array([5, 6]))
-    agent.reset(state=np.array([1, 5, 0.2, 4, 2, 1.0]), history=None)
-    assert np.array_equal(agent.position, np.array([1, 5]))
-    assert np.array_equal(agent.velocity, np.array([4, 2]))
+    agent = IntegratorDTAgent(torch.tensor([5, 6]))
+    agent.reset(state=torch.tensor([1, 5, 0.2, 4, 2, 1.0]), history=None)
+    assert torch.all(torch.eq(agent.position, torch.tensor([1, 5])))
+    assert torch.all(torch.eq(agent.velocity, torch.tensor([4, 2])))
 
 
-@pytest.mark.parametrize("position, velocity, dt, n", [(np.array([-5, 0]), np.array([1, 0]), 1, 10)])
-def test_ego_trajectory(position: np.ndarray, velocity: np.ndarray, dt: float, n: int):
+@pytest.mark.parametrize("position, velocity, dt, n", [(torch.tensor([-5, 0]), torch.tensor([1, 0]), 1, 10)])
+def test_ego_trajectory(position: torch.Tensor, velocity: torch.Tensor, dt: float, n: int):
     ego = IntegratorDTAgent(position=position, velocity=velocity)
-    policy = np.vstack((np.ones(n) * velocity[0], np.ones(n) * velocity[1])).T
+    policy = torch.stack((torch.ones(n) * velocity[0], torch.ones(n) * velocity[1])).T
     ego_trajectory = ego.unroll_trajectory(policy=policy, dt=dt)
 
-    assert np.array_equal(ego_trajectory[:, 0], np.linspace(position[0], position[0] + velocity[0] * n * dt, n + 1))
-    assert np.array_equal(ego_trajectory[:, 1], np.linspace(position[1], position[1] + velocity[1] * n * dt, n + 1))
-    assert np.array_equal(ego_trajectory[:, 2], np.zeros(n + 1))
-    assert np.array_equal(ego_trajectory[:, 3], np.ones(n + 1) * velocity[0])
-    assert np.array_equal(ego_trajectory[:, 4], np.ones(n + 1) * velocity[1])
-    assert np.array_equal(ego_trajectory[:, 5], np.linspace(0, n, n + 1))
+    ego_trajectory_x_exp = torch.linspace(position[0].item(), position[0].item() + velocity[0].item() * n * dt, n + 1)
+    ego_trajectory_y_exp = torch.linspace(position[1].item(), position[1].item() + velocity[1].item() * n * dt, n + 1)
+    assert torch.all(torch.eq(ego_trajectory[:, 0], ego_trajectory_x_exp))
+    assert torch.all(torch.eq(ego_trajectory[:, 1], ego_trajectory_y_exp))
+    assert torch.all(torch.eq(ego_trajectory[:, 2], torch.zeros(n + 1)))
+    assert torch.all(torch.eq(ego_trajectory[:, 3], torch.ones(n + 1) * velocity[0]))
+    assert torch.all(torch.eq(ego_trajectory[:, 4], torch.ones(n + 1) * velocity[1]))
+    assert torch.all(torch.eq(ego_trajectory[:, 5], torch.linspace(0, n, n + 1)))
+
+
+def test_history():
+    agent = IntegratorDTAgent(position=torch.tensor([-1, 4]), velocity=torch.ones(2))
+    for _ in range(4):
+        agent.update(action=torch.ones(2))
+    assert len(agent.history.shape) == 2
+    assert agent.history.shape[0] == 5
+    assert agent.history.shape[1] == 6

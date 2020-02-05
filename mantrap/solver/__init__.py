@@ -1,2 +1,2 @@
-from .igrad import IGradGreedySolver, IGradPredictiveSolver
-from .orcasolver import ORCASolver
+from .igrad import IGradSolver
+from .orca import ORCASolver

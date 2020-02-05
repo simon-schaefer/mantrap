@@ -1,37 +1,15 @@
-from datetime import datetime
+import logging
 import os
-
-
-def get_home_directory() -> str:
-    """Get directory path of home directory i.e. the top-level of the project.
-    :return home directory path as string.
-    """
-    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-
-
-def path_from_home_directory(filepath: str) -> str:
-    """Get path starting from home directory, i.e. get home directory and combine with given path.
-    If the path does not exist, create it using os library.
-
-    :param filepath: filepath starting from home directory.
-    :return given path as absolute filepath.
-    """
-    path = os.path.join(get_home_directory(), filepath)
-    os.makedirs(path, exist_ok=True)
-    return path
-
-
-def datetime_name() -> str:
-    """Return formatted string encoding the date and time."""
-    return datetime.now().strftime("%d_%m_%Y @ %H_%M%_S")
 
 
 def add_coloring_to_ansi(fn):
     """Coloring ANSI text according to description to code in
     https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output.
     """
-
-    def new(*args):
+    def colored_string(*args):
+        if type(args[1]) == logging.LogRecord:  # IPOPT weird callbacks output
+            if type(args[1].msg) == bytes:
+                return
         level = args[1].levelno
         if level >= 40:
             color = "\x1b[31m"  # red
@@ -43,5 +21,23 @@ def add_coloring_to_ansi(fn):
             color = "\x1b[38;5;247m"  # opaque
         args[1].msg = color + args[1].msg + "\x1b[0m"  # normal
         return fn(*args)
+    return colored_string
 
-    return new
+
+def path_from_home_directory(filepath: str, make_dir: bool = True) -> str:
+    """Get path starting from home directory, i.e. get home directory and combine with given path.
+    If the path does not exist, create it using os library.
+
+    :param filepath: filepath starting from home directory.
+    :param make_dir: create directory at output path (default = True).
+    :return given path as absolute filepath.
+    """
+    home_directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+    path = os.path.join(home_directory, filepath)
+    if make_dir:
+        os.makedirs(path, exist_ok=True)
+    return path
+
+
+def pytest_is_running() -> bool:
+    return "PYTEST_CURRENT_TEST" in os.environ

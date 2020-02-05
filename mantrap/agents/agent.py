@@ -4,46 +4,45 @@ import random
 import string
 
 import numpy as np
+import torch
 
 from mantrap.constants import agent_speed_max, sim_dt_default
 from mantrap.utility.shaping import check_state
+from mantrap.utility.utility import expand_state_vector
 
 
 class Agent:
     def __init__(
         self,
-        position: np.ndarray,
-        velocity: np.ndarray,
+        position: torch.Tensor,
+        velocity: torch.Tensor,
         time: float = 0,
-        history: np.ndarray = None,
+        history: torch.Tensor = None,
         identifier: str = None,
-        log: bool = True,
         **kwargs,
     ):
-        assert position.size == 2, "position must be two-dimensional (x, y)"
-        assert velocity.size == 2, "velocity must be two-dimensional (vx, vy)"
+        assert position.size() == torch.Size([2]), "position must be two-dimensional (x, y)"
+        assert velocity.size() == torch.Size([2]), "velocity must be two-dimensional (vx, vy)"
         assert time >= 0, "time must be larger or equal to zero"
 
-        self._position = position
-        self._velocity = velocity
+        self._position = position.float()
+        self._velocity = velocity.float()
 
         # Initialize (and/or append) history vector.
         if history is not None:
             assert history.shape[1] == 6, "history should contain 2D stamped pose & velocity (x, y, theta, vx, vy, t)"
-            self._history = history
-            self._history = np.vstack((self._history, np.hstack((self.state, time))))
+            self._history = torch.stack((history.float(), expand_state_vector(self.state, time).unsqueeze(0)), dim=1)
         else:
-            self._history = np.reshape(np.hstack((self.state, time)), (1, 6))
+            self._history = expand_state_vector(self.state, time=time).view(1, 6)
 
         # Create random agent color (reddish), for evaluation only.
-        self._color = np.random.uniform(0.0, 0.8, size=3)
+        self._color = np.random.uniform(0.0, 0.8, size=3).tolist()
         # Random identifier.
         letters = string.ascii_lowercase
         self._id = identifier if identifier is not None else "".join(random.choice(letters) for _ in range(3))
-        if log:
-            logging.info(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
+        logging.debug(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
 
-    def update(self, action: np.ndarray, dt: float = sim_dt_default):
+    def update(self, action: torch.Tensor, dt: float = sim_dt_default):
         """Update internal state (position, velocity and history) by executing some action for time dt."""
         assert dt > 0.0, "time-step must be larger than 0"
         state_new = self.dynamics(self.state, action, dt=dt)
@@ -53,13 +52,14 @@ class Agent:
         # maximal speed constraint.
         if self.speed > agent_speed_max:
             logging.error(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {agent_speed_max}")
-            assert not np.isinf(self.speed), "speed is infinite, physical break"
+            assert not torch.isinf(self.speed), "speed is infinite, physical break"
             self._velocity = self._velocity / self.speed * agent_speed_max
 
         # append history with new state.
-        self._history = np.vstack((self._history, np.hstack((self.state, self._history[-1, -1] + dt))))
+        state_new = expand_state_vector(self.state, time=self._history[-1, -1].item() + dt).unsqueeze(0)
+        self._history = torch.cat((self._history, state_new), dim=0)
 
-    def unroll_trajectory(self, policy: np.ndarray, dt: float = sim_dt_default) -> np.ndarray:
+    def unroll_trajectory(self, policy: torch.Tensor, dt: float = sim_dt_default) -> torch.Tensor:
         """Build the trajectory from some policy and current state, by iteratively applying the model dynamics.
         Thereby a perfect model i.e. without uncertainty and correct is assumed.
 
@@ -69,33 +69,33 @@ class Agent:
         """
         assert dt > 0.0, "time-step must be larger than 0"
         if len(policy.shape) == 1:  # singe action as policy
-            policy = np.expand_dims(policy, axis=0)
+            policy = policy.unsqueeze(dim=-1)
 
         # initial trajectory point is the current state.
-        trajectory = np.zeros((policy.shape[0] + 1, 6))
-        trajectory[0, :] = np.hstack((self.state, 0))
+        trajectory = torch.zeros((policy.shape[0] + 1, 6))
+        trajectory[0, :] = expand_state_vector(self.state, time=0)
 
         # every next state follows from robot's dynamics recursion, basically assuming no model uncertainty.
-        state_at_t = self.state.copy()
+        state_at_t = self.state.clone()
         for k in range(policy.shape[0]):
             state_at_t = self.dynamics(state_at_t, action=policy[k, :], dt=dt)
-            trajectory[k + 1, :] = np.hstack((state_at_t, (k + 1) * dt))
+            trajectory[k + 1, :] = torch.cat((state_at_t, torch.ones(1) * (k + 1) * dt))
         return trajectory
 
-    def reset(self, state: np.ndarray, history: np.ndarray = None):
+    def reset(self, state: torch.Tensor, history: torch.Tensor = None):
         """Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent's
         history to the new state (i.e. append it to the already existing history) if history is given as None or set
         it to some given trajectory.
         """
         assert check_state(state, enforce_temporal=True), "state has to be at least 5-dimensional"
         if history is None:
-            history = np.vstack((self._history, state))
+            history = self._history = torch.cat((self._history, state.unsqueeze(0)), dim=0)
         self._position = state[0:2]
         self._velocity = state[3:5]
         self._history = history
 
     @abstractmethod
-    def dynamics(self, state: np.ndarray, action: np.ndarray, dt: float = sim_dt_default):
+    def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float = sim_dt_default) -> torch.Tensor:
         """Forward integrate the egos motion given some state-action pair and an integration time-step. Since every
         ego agent type has different dynamics (like single-integrator or Dubins Car) this method is implemented
         abstractly.
@@ -107,24 +107,25 @@ class Agent:
     ###########################################################################
 
     @property
-    def state(self) -> np.ndarray:
-        return np.hstack((self.pose, self.velocity))
+    def state(self) -> torch.Tensor:
+        return torch.cat((self.pose, self.velocity))
 
     @property
-    def position(self) -> np.ndarray:
+    def position(self) -> torch.Tensor:
         return self._position
 
     @property
-    def pose(self) -> np.ndarray:
-        return np.array([self._position[0], self._position[1], np.arctan2(self._velocity[1], self._velocity[0])])
+    def pose(self) -> torch.Tensor:
+        theta = torch.atan2(self._velocity[1].float(), self._velocity[0].float())
+        return torch.tensor([self._position[0], self._position[1], theta])
 
     @property
-    def velocity(self) -> np.ndarray:
+    def velocity(self) -> torch.Tensor:
         return self._velocity
 
     @property
     def speed(self) -> float:
-        return np.linalg.norm(self._velocity)
+        return torch.norm(self._velocity)
 
     ###########################################################################
     # Dimensions ##############################################################
@@ -143,7 +144,7 @@ class Agent:
     ###########################################################################
 
     @property
-    def history(self) -> np.ndarray:
+    def history(self) -> torch.Tensor:
         return self._history
 
     ###########################################################################
@@ -151,7 +152,7 @@ class Agent:
     ###########################################################################
 
     @property
-    def color(self) -> np.ndarray:
+    def color(self) -> torch.Tensor:
         return self._color
 
     @property

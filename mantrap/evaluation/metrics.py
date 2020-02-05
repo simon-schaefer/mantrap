@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories, extract_ado_trajectories
+from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, extract_ado_trajectories
 
 
 def metrics(
@@ -25,8 +25,8 @@ def metrics(
     """
     num_ados = ado_trajs.shape[0]
 
-    assert check_ado_trajectories(ado_trajectories=ado_trajs, num_ados=num_ados, num_modes=1)
-    assert check_ado_trajectories(ado_trajectories=ado_trajs_wo, num_ados=num_ados, num_modes=1)
+    assert check_trajectories(ado_trajectories=ado_trajs, ados=num_ados, modes=1)
+    assert check_trajectories(ado_trajectories=ado_trajs_wo, ados=num_ados, modes=1)
     num_ados, num_modes, t_horizon = extract_ado_trajectories(ado_trajs)
     assert check_ego_trajectory(ego_trajectory=ego_trajectory, t_horizon=t_horizon)
 
