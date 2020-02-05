@@ -88,9 +88,8 @@ def test_build_graph_over_horizon():
     ego_primitive = torch.ones((prediction_horizon, 2)) * sim.ego.position  # does not matter here anyway
     graphs = sim.build_connected_graph(ego_positions=ego_primitive)
 
-    assert len(graphs) == prediction_horizon
-    assert all(["ego_position" in graph.keys() for graph in graphs])
-    assert all(["ego_velocity" in graph.keys() for graph in graphs])
+    assert all([f"ego_{k}_position" in graphs.keys() for k in range(prediction_horizon)])
+    assert all([f"ego_{k}_velocity" in graphs.keys() for k in range(prediction_horizon)])
 
 
 @pytest.mark.parametrize("position, goal", [(torch.tensor([-5, 0]), torch.tensor([5, 0]))])
@@ -99,8 +98,8 @@ def test_ego_graph_updates(position: torch.Tensor, goal: torch.Tensor):
     primitives = straight_line_primitive(prediction_horizon=11, start_pos=position, end_pos=goal)
 
     graphs = sim.build_connected_graph(ego_positions=primitives)
-    for i, graph in enumerate(graphs):
-        assert torch.all(torch.eq(primitives[i, :], graph["ego_position"]))
+    for k in range(primitives.shape[0]):
+        assert torch.all(torch.eq(primitives[k, :], graphs[f"ego_{k}_position"]))
 
 
 ###########################################################################

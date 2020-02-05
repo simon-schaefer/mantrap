@@ -136,11 +136,11 @@ class IGradSolver(Solver):
         norm = np.linalg.norm(diff, axis=3)
         graphs = self._env.build_connected_graph(ego_positions=x2)
 
-        ego_positions = [graphs[k]["ego_position"] for k in range(self.T)]
+        ego_positions = [graphs[f"ego_{k}_position"] for k in range(self.T)]
         partial_grads = torch.zeros((self.T, self.T, self.M, 2))
         for k in range(self.T):
             for m in range(self.M):
-                ado_output = graphs[k][f"{self._env.ado_ghosts[m].gid}_output"]
+                ado_output = graphs[f"{self._env.ado_ghosts[m].gid}_{k}_output"]
                 grads_tuple = torch.autograd.grad(ado_output, inputs=ego_positions[:k + 1], retain_graph=True)
                 partial_grads[:, :k + 1, m, :] = torch.stack(grads_tuple)
 

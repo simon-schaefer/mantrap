@@ -23,9 +23,9 @@ def test_simplified_sf_simulation(pos_1: torch.Tensor,  pos_2: torch.Tensor):
     for i, sim in enumerate([sim_1, sim_2]):
         sim.add_ado(position=torch.zeros(2))
         graph = sim.build_graph(ego_state=sim.ego.state)
-        forces[i, :] = graph[f"{sim.ado_ghosts[0].gid}_force"]
-        ado_force_norm = graph[f"{sim.ado_ghosts[0].gid}_output"]
-        gradients[i, :] = torch.autograd.grad(ado_force_norm, graph["ego_position"], retain_graph=True)[0].detach()
+        forces[i, :] = graph[f"{sim.ado_ghosts[0].gid}_0_force"]
+        ado_force_norm = graph[f"{sim.ado_ghosts[0].gid}_0_output"]
+        gradients[i, :] = torch.autograd.grad(ado_force_norm, graph["ego_0_position"], retain_graph=True)[0].detach()
 
     # The force is distance based, so more distant agents should affect a smaller force.
     assert torch.norm(forces[0, :]) > torch.norm(forces[1, :])
