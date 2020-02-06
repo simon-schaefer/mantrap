@@ -314,8 +314,9 @@ class IGradSolver(Solver):
             vis_keys = ["obj_value", "inf_pr", "d_norm"]
             grid = plt.GridSpec(len(vis_keys) + 1, len(vis_keys), wspace=0.4, hspace=0.3)
 
+            # Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as
+            # the resulting ado trajectories based on some simulation.
             ax = fig.add_subplot(grid[:len(vis_keys), :])
-            # Plot current and base solution (ego trajectory) in the scene.
             ax.plot(x2_np[:, 0], x2_np[:, 1], label="ego_current")
             ax.plot(x2_base_np[:, 0], x2_base_np[:, 1], label="ego_base")
             # Plot current and base resulting simulated ado trajectories in the scene.
@@ -323,15 +324,12 @@ class IGradSolver(Solver):
                 for g in range(self._env.num_ado_modes):
                     ax.plot(ado_traj_np[m, g, :, 0], ado_traj_np[m, g, :, 1], "--", label=f"ado_current_{m}")
                     ax.plot(ado_traj_base_np[m, g, :, 0], ado_traj_base_np[m, g, :, 1], "--", label=f"ado_base_{m}")
-            # Plot gradients as arrows in the scene.
-            # for t in range(self.T):
-            #     grad2 = np.reshape(self._optimization_log["grad"][k], (self.T, 2))
-            #     plt.arrow(x2_previous_np[t, 0], x2_previous_np[t, 1], grad2[t, 0], grad2[t, 1])
             ax.set_xlim(self.env.axes[0])
             ax.set_ylim(self.env.axes[1])
             plt.grid()
             plt.legend()
 
+            # Plot several parameter describing the optimization process.
             for i, key in enumerate(vis_keys):
                 ax = fig.add_subplot(grid[len(vis_keys), i])
                 vis_data = np.log(np.asarray(self._optimization_log[key][:k]) + 1e-8)
