@@ -7,6 +7,7 @@ def add_coloring_to_ansi(fn):
     """Coloring ANSI text according to description to code in
     https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output.
     """
+
     def colored_string(*args):
         if type(args[1]) == logging.LogRecord:  # IPOPT weird callbacks output
             if type(args[1].msg) == bytes:
@@ -22,6 +23,7 @@ def add_coloring_to_ansi(fn):
             color = "\x1b[38;5;247m"  # opaque
         args[1].msg = color + args[1].msg + "\x1b[0m"  # normal
         return fn(*args)
+
     return colored_string
 
 

@@ -48,9 +48,9 @@ def square_primitives(agent: Agent, goal: torch.Tensor, dt: float, num_points: i
     return primitives
 
 
-def straight_line_primitive(prediction_horizon: int, start_pos: torch.Tensor, end_pos: torch.Tensor):
-    primitive = torch.zeros((prediction_horizon, 2))
-    primitive[:, 0] = torch.linspace(start_pos[0].item(), end_pos[0].item(), prediction_horizon)
-    primitive[:, 1] = torch.linspace(start_pos[1].item(), end_pos[1].item(), prediction_horizon)
-    assert check_trajectory_primitives(primitive, t_horizon=prediction_horizon)
+def straight_line_primitive(horizon: int, start_pos: torch.Tensor, end_pos: torch.Tensor):
+    primitive = torch.zeros((horizon, 2))
+    primitive[:, 0] = torch.linspace(start_pos[0].item(), end_pos[0].item(), horizon)
+    primitive[:, 1] = torch.linspace(start_pos[1].item(), end_pos[1].item(), horizon)
+    assert check_trajectory_primitives(primitive, t_horizon=horizon)
     return primitive

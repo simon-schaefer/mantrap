@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation.simplified.potential_field import PotentialFieldStaticSimulation
+from mantrap.simulation import PotentialFieldStaticSimulation
 from mantrap.utility.io import path_from_home_directory
 
 
@@ -11,10 +11,10 @@ from mantrap.utility.io import path_from_home_directory
     [
         (torch.tensor([1, 1]), torch.tensor([2, 2])),
         (torch.tensor([2, 0]), torch.tensor([4, 0])),
-        (torch.tensor([0, 2]), torch.tensor([0, 4]))
-    ]
+        (torch.tensor([0, 2]), torch.tensor([0, 4])),
+    ],
 )
-def test_simplified_sf_simulation(pos_1: torch.Tensor,  pos_2: torch.Tensor):
+def test_simplified_sf_simulation(pos_1: torch.Tensor, pos_2: torch.Tensor):
     sim_1 = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": pos_1})
     sim_2 = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": pos_2})
 
@@ -39,8 +39,9 @@ def test_simplified_sf_simulation(pos_1: torch.Tensor,  pos_2: torch.Tensor):
 
 
 ###########################################################################
-# Visualizations #########################################################
+# Visualizations ##########################################################
 ###########################################################################
+
 
 def visualize_simplified_simulation():
     sim = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 2])}, dt=0.2)
@@ -53,6 +54,7 @@ def visualize_simplified_simulation():
         ado_states[:, :, t, :], ego_states[t, :] = sim.step(ego_policy=torch.tensor([1, 0]))
 
     from mantrap.evaluation.visualization import picture_opus
+
     picture_opus(
         file_path=path_from_home_directory("test/graphs/simplified_simulation"),
         ado_trajectories=ado_states,

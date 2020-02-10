@@ -23,10 +23,11 @@ sim_distance_field_sigma = 0.1  # [m] repulsive field exponent constant.
 #######################################
 # solver parameters ###################
 #######################################
-solver_planning_steps = 30  # planning ahead that many steps.
-solver_horizon = 10  # number of future time-steps to be taken into account
+solver_horizon = 5  # number of future time-steps to be taken into account
 
 igrad_radius = 5.0  # [m] maximal distance for ados to be taken into account
+igrad_max_solver_steps = 100  # maximal number of IPOPT solver iterations.
+igrad_max_solver_cpu_time = 1.0  # [s] maximal IPOPT solver CPU time.
 
 orca_agent_radius = 1.0  # ado collision radius [m].
 orca_agent_safe_dt = 10.0  # safe time for agent [s].

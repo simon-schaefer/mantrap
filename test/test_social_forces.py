@@ -11,7 +11,7 @@ from mantrap.simulation import SocialForcesSimulation
 from mantrap.utility.io import path_from_home_directory
 from mantrap.utility.primitives import straight_line_primitive
 from mantrap.utility.shaping import check_trajectories
-from mantrap.utility.stats import Distribution, DirecDelta
+from mantrap.utility.maths import Distribution, DirecDelta
 
 
 @pytest.mark.parametrize("goal_position", [torch.tensor([2, 2]), torch.tensor([0, -2])])
@@ -95,7 +95,7 @@ def test_build_graph_over_horizon():
 @pytest.mark.parametrize("position, goal", [(torch.tensor([-5, 0]), torch.tensor([5, 0]))])
 def test_ego_graph_updates(position: torch.Tensor, goal: torch.Tensor):
     sim = SocialForcesSimulation(IntegratorDTAgent, {"position": position, "velocity": torch.zeros(2)})
-    primitives = straight_line_primitive(prediction_horizon=11, start_pos=position, end_pos=goal)
+    primitives = straight_line_primitive(horizon=11, start_pos=position, end_pos=goal)
 
     graphs = sim.build_connected_graph(ego_positions=primitives)
     for k in range(primitives.shape[0]):
@@ -117,6 +117,7 @@ def visualize_social_forces_multimodal():
     ado_trajectories = sim.predict(t_horizon=20)
 
     from mantrap.evaluation.visualization import picture_opus
+
     output_dir = path_from_home_directory(os.path.join("test", "graphs", "social_forces_multimodal"))
     picture_opus(output_dir, ado_trajectories, ado_colors=sim.ado_colors, ado_ids=sim.ado_ids)
 

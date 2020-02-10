@@ -1,1 +1,2 @@
 from .social_forces import SocialForcesSimulation
+from .simplified.potential_field import PotentialFieldStaticSimulation

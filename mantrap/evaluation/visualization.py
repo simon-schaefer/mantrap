@@ -1,5 +1,5 @@
 import os
-from typing import Dict,  List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import torch

@@ -4,7 +4,7 @@ from typing import Tuple
 
 import torch
 
-from mantrap.constants import solver_planning_steps
+from mantrap.constants import solver_horizon
 from mantrap.simulation.simulation import Simulation
 from mantrap.utility.utility import expand_state_vector
 
@@ -16,7 +16,7 @@ class Solver:
         # Dictionary of solver parameters.
         self._solver_params = solver_params
         if "planning_horizon" not in self._solver_params.keys():
-            self._solver_params["planning_horizon"] = solver_planning_steps
+            self._solver_params["planning_horizon"] = solver_horizon
         if "verbose" not in self._solver_params.keys():
             self._solver_params["verbose"] = False
 

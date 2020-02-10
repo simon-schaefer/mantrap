@@ -15,7 +15,7 @@ from mantrap.constants import (
     sim_social_forces_max_interaction_distance,
 )
 from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, check_policies, check_weights
-from mantrap.utility.stats import Distribution, DirecDelta
+from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.utility import build_trajectory_from_positions
 from mantrap.simulation.simulation import GraphBasedSimulation
 
