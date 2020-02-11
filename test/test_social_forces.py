@@ -1,4 +1,3 @@
-import os
 import time
 from typing import List
 
@@ -8,7 +7,7 @@ import torch
 from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import sim_social_forces_default_params
 from mantrap.simulation import SocialForcesSimulation
-from mantrap.utility.io import path_from_home_directory
+from mantrap.utility.io import build_output_path
 from mantrap.utility.primitives import straight_line_primitive
 from mantrap.utility.shaping import check_trajectories
 from mantrap.utility.maths import Distribution, DirecDelta
@@ -105,23 +104,6 @@ def test_ego_graph_updates(position: torch.Tensor, goal: torch.Tensor):
 ###########################################################################
 # Visualizations ##########################################################
 ###########################################################################
-
-
-def visualize_social_forces_multimodal():
-    sim = SocialForcesSimulation(dt=0.5)
-    v0s = [DirecDelta(0.1), DirecDelta(1.5)]
-
-    velocity = torch.tensor([1, 0])
-    sim.add_ado(goal=torch.tensor([5, 0]), position=torch.tensor([-5, 1]), velocity=velocity, num_modes=2, v0s=v0s)
-    sim.add_ado(goal=torch.tensor([-5, 0]), position=torch.tensor([5, 0]), velocity=velocity * -1, num_modes=2, v0s=v0s)
-    ado_trajectories = sim.predict(t_horizon=20)
-
-    from mantrap.evaluation.visualization import picture_opus
-
-    output_dir = path_from_home_directory(os.path.join("test", "graphs", "social_forces_multimodal"))
-    picture_opus(output_dir, ado_trajectories, ado_colors=sim.ado_colors, ado_ids=sim.ado_ids)
-
-
 def visualize_igrad_social_forces_computation_time():
     computational_times = {}
     t_horizons = range(1, 16, 2)
@@ -148,5 +130,5 @@ def visualize_igrad_social_forces_computation_time():
     plt.xlabel("Prediction horizon [steps]")
     plt.ylabel("Runtime [s]")
     plt.legend()
-    plt.savefig(path_from_home_directory("test/graphs/igrad_social_forces_runtime.png", make_dir=False))
+    plt.savefig(build_output_path("test/graphs/igrad_social_forces_runtime.png", make_dir=False))
     plt.close()

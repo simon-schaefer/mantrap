@@ -7,10 +7,11 @@ from mantrap.utility.primitives import square_primitives
 
 
 @pytest.mark.parametrize("num_points", [5, 10])
-def test_ego_primitives(num_points: int):
+def test_square_primitives(num_points: int):
     position, velocity, goal = torch.tensor([-5, 0]), torch.tensor([1, 0]), torch.tensor([2, 0])
     agent = IntegratorDTAgent(position=position, velocity=velocity)
-    primitives = square_primitives(agent=agent, goal=goal, dt=1.0, num_points=num_points)
+    primitives = square_primitives(start=agent.position, end=goal, dt=1.0, num_points=num_points)
+    print(primitives.shape)
 
     assert primitives.shape[1] == num_points
     for m in range(primitives.shape[0]):

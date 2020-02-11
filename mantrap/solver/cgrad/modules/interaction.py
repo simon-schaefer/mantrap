@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from mantrap.simulation.simulation import GraphBasedSimulation
-from mantrap.solver.modules.module import Module
+from mantrap.solver.cgrad.modules.module import Module
 from mantrap.utility.maths import Derivative2
 
 

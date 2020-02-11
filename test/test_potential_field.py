@@ -3,7 +3,7 @@ import torch
 
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldStaticSimulation
-from mantrap.utility.io import path_from_home_directory
+from mantrap.utility.io import build_output_path
 
 
 @pytest.mark.parametrize(
@@ -36,29 +36,3 @@ def test_simplified_sf_simulation(pos_1: torch.Tensor, pos_2: torch.Tensor):
         for k in [0, 1]:
             if pos[k] == 0:
                 assert forces[i, k] == gradients[i, k] == 0.0
-
-
-###########################################################################
-# Visualizations ##########################################################
-###########################################################################
-
-
-def visualize_simplified_simulation():
-    sim = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 2])}, dt=0.2)
-    sim.add_ado(position=torch.zeros(2))
-
-    t_horizon = 100
-    ado_states = torch.zeros((sim.num_ados, sim.num_ado_modes, t_horizon, 6))
-    ego_states = torch.zeros((t_horizon, 6))
-    for t in range(t_horizon):
-        ado_states[:, :, t, :], ego_states[t, :] = sim.step(ego_policy=torch.tensor([1, 0]))
-
-    from mantrap.evaluation.visualization import picture_opus
-
-    picture_opus(
-        file_path=path_from_home_directory("test/graphs/simplified_simulation"),
-        ado_trajectories=ado_states,
-        ado_colors=sim.ado_colors,
-        ado_ids=sim.ado_ids,
-        ego_trajectory=ego_states,
-    )

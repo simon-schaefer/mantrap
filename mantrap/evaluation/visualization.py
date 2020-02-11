@@ -1,175 +1,97 @@
 import os
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 
-import mantrap.constants
-from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, extract_ado_trajectories, check_state
+from mantrap.simulation.simulation import Simulation
+from mantrap.utility.maths import Derivative2
+from mantrap.utility.utility import build_trajectory_from_positions
 
 
-def picture_opus(
-    file_path: str,
-    ado_trajectories: torch.Tensor,
-    ado_colors: List[List[float]],
-    ado_ids: List[str],
-    ego_trajectory: torch.Tensor = None,
-    ado_trajectories_wo: torch.Tensor = None,
-    t_preview: int = mantrap.constants.visualization_preview_horizon,
-    axes: Tuple[Tuple[float, float], Tuple[float, float]] = (
-        mantrap.constants.sim_x_axis_default,
-        mantrap.constants.sim_y_axis_default,
-    ),
-):
-    _, _, t_horizon = extract_ado_trajectories(ado_trajectories)
-    for t in range(t_horizon):
-        fig, ax = plt.subplots()
-        plot_scene(ax, t, ado_trajectories, ado_colors, ado_ids, ego_trajectory, ado_trajectories_wo, t_preview, axes)
-        plt.savefig(os.path.join(file_path, f"{t:04d}.png"))
+def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, dir_path: str):
+    assert "iter_count" in optimization_log.keys(), "iteration count must be provided in optimization dict"
+    assert "x" in optimization_log.keys(), "trajectory data x must be provided in optimization dict"
+
+    vis_keys = ["obj", "inf", "grad"]
+    horizon = optimization_log["x"].shape[0]
+
+    # For comparison in the visualization predict the behaviour of every agent in the scene for the base
+    # trajectory, i.e. x0 the initial value trajectory.
+    x2_base_np = np.reshape(optimization_log["x"][0], (horizon, 2))
+    x2_base = torch.from_numpy(x2_base_np)
+    ego_traj_base = build_trajectory_from_positions(x2_base, dt=env.dt, t_start=env.sim_time)
+    ego_traj_base_np = ego_traj_base.detach().numpy()
+    ado_traj_base_np = env.predict(horizon, ego_trajectory=torch.from_numpy(x2_base_np)).detach().numpy()
+
+    for k in range(1, optimization_log["iter_count"][-1]):
+        time_axis = np.linspace(env.sim_time, env.sim_time + horizon * env.dt, num=horizon)
+
+        x2_np = np.reshape(optimization_log["x"][k], (horizon, 2))
+        x2 = torch.from_numpy(x2_np)
+        ego_traj = build_trajectory_from_positions(x2, dt=env.dt, t_start=env.sim_time)
+        ado_traj_np = env.predict(horizon, ego_trajectory=ego_traj).detach().numpy()
+
+        fig = plt.figure(figsize=(15, 15), constrained_layout=True)
+        plt.title(f"iGrad optimization - IPOPT step {k} - Horizon {horizon}")
+        plt.axis("off")
+        grid = plt.GridSpec(len(vis_keys) + 3, len(vis_keys), wspace=0.4, hspace=0.3)
+
+        # Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as
+        # the resulting ado trajectories based on some simulation.
+        ax = fig.add_subplot(grid[: len(vis_keys), :])
+        ax.plot(x2_np[:, 0], x2_np[:, 1], label="ego_current")
+        ax.plot(x2_base_np[:, 0], x2_base_np[:, 1], label="ego_base")
+        # Plot current and base resulting simulated ado trajectories in the scene.
+        for m in range(env.num_ados):
+            ado_id, ado_color = env.ados[m].id, env.ados[m].color
+            ado_pos, ado_pos_base = ado_traj_np[m, 0, :, 0:2], ado_traj_base_np[m, 0, :, 0:2]
+            ax.plot(ado_pos[:, 0], ado_pos[:, 1], "--", color=ado_color, label=f"{ado_id}_current")
+            ax.plot(ado_pos_base[:, 0], ado_pos_base[:, 1], "--", color=ado_color, label=f"{ado_id}_base")
+        ax.set_xlim(env.axes[0])
+        ax.set_ylim(env.axes[1])
+        plt.grid()
+        plt.legend()
+
+        # Plot agent velocities for resulting solution vs base-line ego trajectory for current optimization step.
+        ax = fig.add_subplot(grid[-3, :])
+        ado_velocity_norm = np.linalg.norm(ado_traj_np[:, :, :, 3:5], axis=3)
+        ado_velocity_base_norm = np.linalg.norm(ado_traj_base_np[:, :, :, 3:5], axis=3)
+        for m in range(env.num_ados):
+            ado_id, ado_color = env.ados[m].id, env.ados[m].color
+            ax.plot(time_axis, ado_velocity_norm[m, 0, :], color=ado_color, label=f"{ado_id}_current")
+            ax.plot(time_axis, ado_velocity_base_norm[m, 0, :], "--", color=ado_color, label=f"{ado_id}_base")
+        ax.plot(time_axis, np.linalg.norm(ego_traj[:, 3:5], axis=1), label="ego_current")
+        ax.plot(time_axis, np.linalg.norm(ego_traj_base_np[:, 3:5], axis=1), "--", label="ego_base")
+        ax.set_title("velocities")
+        plt.grid()
+        plt.legend()
+
+        # Plot agent accelerations for resulting solution vs base-line ego trajectory for current optimization step.
+        ax = fig.add_subplot(grid[-2, :])
+        dd = Derivative2(horizon=horizon, dt=env.dt)
+        ado_acceleration_norm = np.linalg.norm(dd.compute(ado_traj_np[:, :, :, 0:2]), axis=3)
+        ado_base_acceleration_norm = np.linalg.norm(dd.compute(ado_traj_base_np[:, :, :, 0:2]), axis=3)
+        for m in range(env.num_ados):
+            ado_id, ado_color = env.ados[m].id, env.ados[m].color
+            ax.plot(time_axis, ado_acceleration_norm[m, 0, :], color=ado_color, label=f"{ado_id}_current")
+            ax.plot(time_axis, ado_base_acceleration_norm[m, 0, :], "--", color=ado_color, label=f"{ado_id}_base")
+        ax.set_title("accelerations")
+        plt.grid()
+        plt.legend()
+
+        # Plot several parameter describing the optimization process, such as objective value, gradient and
+        # the constraints (primal) infeasibility.
+        for i, vis_key in enumerate(vis_keys):
+            ax = fig.add_subplot(grid[-1, i])
+            for name, data in optimization_log.items():
+                if vis_key not in name:
+                    continue
+                ax.plot(optimization_log["iter_count"][:k], np.log(np.asarray(data[:k]) + 1e-8), label=name)
+            ax.set_title(f"log_{vis_key}")
+            plt.legend()
+            plt.grid()
+
+        plt.savefig(os.path.join(dir_path, f"{k}.png"), dpi=60)
         plt.close()
-
-
-def picture_trajectories(
-    file_path: str,
-    trajectories: List[torch.Tensor],
-    tags: List[str],
-    axes: Tuple[Tuple[float, float], Tuple[float, float]] = (
-        mantrap.constants.sim_x_axis_default,
-        mantrap.constants.sim_y_axis_default,
-    ),
-):
-    """Picture n 2D trajectories in same plot with size determined by the axes. Describe them using given tags."""
-    assert len(trajectories) == len(tags), "un-matching number of trajectories and tags"
-    fig, ax = plt.subplots()
-    for trajectory, tag in zip(trajectories, tags):
-        plt.plot(trajectory[:, 0], trajectory[:, 1], label=tag)
-    _add_axis_and_grid(axes, ax=ax)
-    plt.legend()
-    plt.savefig(file_path)
-    plt.close()
-
-
-############################################################################
-# Atomic plotting functions  ###############################################
-############################################################################
-
-
-def plot_scene(
-    ax: plt.Axes,
-    t: int,
-    ado_trajectories: torch.Tensor,
-    ado_colors: List[List[float]],
-    ado_ids: List[str],
-    ego_trajectory: torch.Tensor = None,
-    ado_trajectories_wo: torch.Tensor = None,
-    preview_horizon: int = mantrap.constants.visualization_preview_horizon,
-    axes: Tuple[Tuple[float, float], Tuple[float, float]] = (
-        mantrap.constants.sim_x_axis_default,
-        mantrap.constants.sim_y_axis_default,
-    ),
-):
-    """Visualize simulation scene using matplotlib library.
-    Thereby the ados as well as the ego in at the current time are plotted while their future trajectories
-    and their state histories are indicated. Their orientation is shown using an arrow pointing in their direction
-    of orientation.
-    :param t: time-step to plot.
-    :param ax: matplotlib axis to draw in.
-    :param ego_trajectory: planned ego trajectory (t_horizon, 6).
-    :param ado_trajectories: ado trajectories (num_ados, num_samples, t_horizon, 6).
-    :param ado_colors: color identifier for each ado (num_ados).
-    :param ado_ids: string identifier for each ado (num_ados).
-    :param ado_trajectories_wo: ado trajectories without ego interaction (num_ados, num_samples=1, t_horizon, 6).
-    :param preview_horizon: trajectory preview time horizon (maximal value).
-    :param axes: position space dimensions [m].
-    """
-    assert check_trajectories(ado_trajectories)
-    num_ados, num_modes, t_horizon = extract_ado_trajectories(ado_trajectories)
-    assert len(ado_colors) == num_ados, "ado colors must be consistent with trajectories"
-    ado_ids = [None] * num_ados if ado_ids is None else ado_ids
-    assert len(ado_ids) == num_ados, "ado ids must be consistent with trajectories"
-    if ego_trajectory is not None:
-        assert check_ego_trajectory(ego_trajectory=ego_trajectory, t_horizon=t_horizon)
-    if ado_trajectories_wo is not None:
-        assert check_trajectories(ado_trajectories_wo, modes=1, ados=num_ados, t_horizon=t_horizon)
-
-    # Clip position related values to the visualized range, in order to prevent agent representation of the graph.
-    ado_trajectories[:, :, :, 0] = torch.clamp(ado_trajectories[:, :, :, 0], min=axes[0][0], max=axes[0][1])
-    ado_trajectories[:, :, :, 1] = torch.clamp(ado_trajectories[:, :, :, 1], min=axes[1][0], max=axes[1][1])
-
-    # Plot ados.
-    ado_preview = min(preview_horizon, t_horizon - t)
-    for ado_i in range(num_ados):
-        ado_color = ado_colors[ado_i]
-
-        # Drawing.
-        ax = _add_history(ado_trajectories[ado_i, 0, :t, 0:2], color=ado_color, ax=ax)
-        for mode_i in range(num_modes):
-            ado_id = ado_ids[ado_i] + "_" + str(mode_i)
-            ax = _add_agent_representation(ado_trajectories[ado_i, mode_i, t, :], color=ado_color, name=ado_id, ax=ax)
-            ax = _add_trajectory(ado_trajectories[ado_i, mode_i, t : t + ado_preview, 0:2], color=ado_color, ax=ax)
-        if ado_trajectories_wo is not None:
-            ax = _add_wo_trajectory(ado_trajectories_wo[ado_i, 0, :t, 0:2], color=ado_color, ax=ax)
-
-    # Plot ego.
-    if ego_trajectory is not None:
-        ego_state = ego_trajectory[t, :]
-        ego_color = [0, 0, 1.0]
-        ego_history = ego_trajectory[:t, 0:2]
-        ego_preview = min(preview_horizon, ego_trajectory.shape[0] - t)
-        ego_planned = ego_trajectory[t : t + ego_preview, 0:2]
-
-        ax = _add_agent_representation(ego_state, color=ego_color, name="ego", ax=ax)
-        ax = _add_history(ego_history, color=ego_color, ax=ax)
-        ax = _add_trajectory(ego_planned, color=ego_color, ax=ax)
-
-    # Plot labels, limits and grid.
-    ax = _add_axis_and_grid(axes, ax=ax)
-    return ax
-
-
-def _add_agent_representation(state: torch.Tensor, color: List[float], name: Union[str, None], ax: plt.Axes):
-    assert check_state(state), "state must be of size 5 or 6 (x, y, theta, vx, vy, t)"
-    arrow_length = torch.norm(state[3:5]) / mantrap.constants.agent_speed_max * 0.5
-
-    # Add circle for agent itself.
-    ado_circle = plt.Circle(tuple(state[0:2]), mantrap.constants.visualization_agent_radius, color=color, clip_on=True)
-    ax.add_artist(ado_circle)
-
-    # Add agent id description.
-    if id is not None:
-        ax.text(state[0], state[1], name, fontsize=8)
-
-    # Add arrow for orientation and speed.
-    rot = torch.tensor([[torch.cos(state[2]), -torch.sin(state[2])], [torch.sin(state[2]), torch.cos(state[2])]])
-    darrow = rot.matmul(torch.tensor([1.0, 0.0])) * arrow_length
-    head_width = max(0.02, arrow_length / 10)
-    plt.arrow(state[0], state[1], darrow[0], darrow[1], head_width=head_width, head_length=0.1, fc="k", ec="k")
-    return ax
-
-
-def _add_trajectory(trajectory: torch.Tensor, color: List[float], ax: plt.Axes):
-    assert len(trajectory.shape) == 2, "trajectory must have shape (N, state_length)"
-    ax.plot(trajectory[:, 0], trajectory[:, 1], color=color, linestyle="-", linewidth=0.6, alpha=1.0)
-    return ax
-
-
-def _add_wo_trajectory(trajectory: torch.Tensor, color: List[float], ax: plt.Axes):
-    assert len(trajectory.shape) == 2, "trajectory must have shape (N, state_length)"
-    ax.plot(trajectory[:, 0], trajectory[:, 1], color=color, linestyle=":", linewidth=0.6, alpha=1.0)
-    return ax
-
-
-def _add_history(history: torch.Tensor, color: List[float], ax: plt.Axes):
-    assert len(history.shape) == 2, "history must have shape (M, state_length)"
-    ax.plot(history[:, 0], history[:, 1], color=color, linestyle="-.", linewidth=0.6, alpha=0.8)
-    return ax
-
-
-def _add_axis_and_grid(axes: Tuple[Tuple[float, float], Tuple[float, float]], ax: plt.Axes):
-    x_axis, y_axis = axes
-    ax.set_xlim(xmin=x_axis[0], xmax=x_axis[1])
-    ax.set_ylim(ymin=y_axis[0], ymax=y_axis[1])
-    ax.tick_params(axis="both", which="major", labelsize=5)
-    ax.grid(which="minor", alpha=0.1)
-    ax.grid(which="major", alpha=0.3)
-    return ax

@@ -18,6 +18,7 @@ class Distribution:
 
 class DirecDelta(Distribution):
     """Direc Delta distribution peaking at one specific point x, while have zero probability otherwise."""
+
     def __init__(self, x: float):
         super(DirecDelta, self).__init__(x)
 
@@ -28,6 +29,7 @@ class DirecDelta(Distribution):
 
 class Gaussian(Distribution):
     """1D Gaussian distribution with mean mu and standard deviation sigma."""
+
     def __init__(self, mean: float, sigma: float):
         super(Gaussian, self).__init__(mean)
         self.sigma = sigma
@@ -49,6 +51,7 @@ class Derivative2:
     For computational efficiency this expression, summed up over the full horizon (e.g. the full time-horizon
     [1, T - 1]), can be regarded as single matrix operation b = Ax with A = diag([1, -2, 1]).
     """
+
     def __init__(self, horizon: int, dt: float, num_axes: int = 2):
         assert num_axes >= 2, "minimal number of axes of differentiable matrix is 2"
         self._num_axes = num_axes
@@ -56,9 +59,9 @@ class Derivative2:
         self._diff_mat = np.zeros((horizon, horizon))
         for k in range(1, horizon - 1):
             self._diff_mat[k, k - 1] = 1
-            self._diff_mat[k, k] = - 2
+            self._diff_mat[k, k] = -2
             self._diff_mat[k, k + 1] = 1
-        self._diff_mat *= 1 / dt**2
+        self._diff_mat *= 1 / dt ** 2
         self._diff_mat = np.expand_dims(self._diff_mat, axis=tuple(i for i in range(num_axes - 2)))
 
     def compute(self, x: np.ndarray) -> np.ndarray:

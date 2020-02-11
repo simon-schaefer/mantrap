@@ -1,33 +1,9 @@
-import logging
 import glob
+import logging
 import os
 
 
-def add_coloring_to_ansi(fn):
-    """Coloring ANSI text according to description to code in
-    https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output.
-    """
-
-    def colored_string(*args):
-        if type(args[1]) == logging.LogRecord:  # IPOPT weird callbacks output
-            if type(args[1].msg) == bytes:
-                return
-        level = args[1].levelno
-        if level >= 40:
-            color = "\x1b[31m"  # red
-        elif level >= 30:
-            color = "\x1b[33m"  # yellow
-        elif level >= 20:
-            color = "\x1b[0m"  # normal
-        else:
-            color = "\x1b[38;5;247m"  # opaque
-        args[1].msg = color + args[1].msg + "\x1b[0m"  # normal
-        return fn(*args)
-
-    return colored_string
-
-
-def path_from_home_directory(filepath: str, make_dir: bool = True, free: bool = False) -> str:
+def build_output_path(filepath: str, make_dir: bool = True, free: bool = False) -> str:
     """Get path starting from home directory, i.e. get home directory and combine with given path.
     If the path does not exist, create it using os library.
 
@@ -49,3 +25,12 @@ def path_from_home_directory(filepath: str, make_dir: bool = True, free: bool = 
 
 def pytest_is_running() -> bool:
     return "PYTEST_CURRENT_TEST" in os.environ
+
+
+def remove_bytes_from_logging(fn):
+    """Remove weird IPOPT callbacks logging output (byte strings) from log."""
+    def remove_bytes(*args):
+        if type(args[1]) == logging.LogRecord and type(args[1].msg) == bytes:  #
+            return
+        return fn(*args)
+    return remove_bytes

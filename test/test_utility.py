@@ -13,6 +13,7 @@ from mantrap.utility.utility import build_trajectory_from_positions
 # Utility Testing #########################################################
 ###########################################################################
 
+
 def test_build_trajectory_from_positions():
     positions = straight_line_primitive(horizon=11, start_pos=torch.zeros(2), end_pos=torch.ones(2) * 10)
     trajectory = build_trajectory_from_positions(positions, dt=1.0, t_start=0.0)
@@ -25,12 +26,13 @@ def test_build_trajectory_from_positions():
 # Maths Testing ###########################################################
 ###########################################################################
 
+
 @pytest.mark.parametrize("horizon", [7, 10])
 def test_derivative_2(horizon: int):
     diff = Derivative2(horizon=horizon, dt=1.0)
 
     for k in range(1, horizon - 1):
-        assert np.array_equal(diff._diff_mat[k, k - 1: k + 2], np.array([1, -2, 1]))
+        assert np.array_equal(diff._diff_mat[k, k - 1 : k + 2], np.array([1, -2, 1]))
 
     # Constant velocity -> zero acceleration (first and last point are skipped (!)).
     x = straight_line_primitive(horizon, torch.zeros(2), torch.tensor([horizon - 1, 0])).detach().numpy()
@@ -43,7 +45,7 @@ def test_derivative_2(horizon: int):
     x[t_step - 2, 0] = x[t_step + 2, 0] = 2
     a = diff.compute(x)
 
-    assert np.all(a[:t_step - 3, 0] == 0) and np.all(a[t_step + 4:, 0] == 0)  # impact of acceleration
+    assert np.all(a[: t_step - 3, 0] == 0) and np.all(a[t_step + 4 :, 0] == 0)  # impact of acceleration
     assert np.all(a[:, 1] == 0)  # no acceleration in y-direction
     assert a[t_step, 0] < 0 and a[t_step + 1, 0] > 0 and a[t_step - 1, 0] > 0  # peaks
 
