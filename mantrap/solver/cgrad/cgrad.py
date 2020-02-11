@@ -1,20 +1,17 @@
-from collections import defaultdict, deque
 import logging
 from typing import List, Tuple, Union
 
-import ipopt
 import numpy as np
 import torch
 
-from mantrap.constants import agent_speed_max, igrad_max_solver_steps, igrad_max_solver_cpu_time
+from mantrap.constants import agent_speed_max
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver.cgrad.modules import solver_module_dict
-from mantrap.solver.solver import Solver
-from mantrap.utility.io import build_output_path
+from mantrap.solver.solver import IPOPTSolver
 from mantrap.utility.shaping import check_trajectory_primitives
 
 
-class CGradSolver(Solver):
+class CGradSolver(IPOPTSolver):
     def __init__(
         self, sim: GraphBasedSimulation, goal: torch.Tensor, modules: List[Tuple[str, float]] = None, **solver_params
     ):
@@ -22,60 +19,11 @@ class CGradSolver(Solver):
 
         # The objective function (and its gradient) are packed into modules, for a more compact representation,
         # the ease of switching between different objective functions and to simplify logging and visualization.
-        modules = [("goal", 0.2), ("interaction", 0.8)] if modules is None else modules
+        modules = [("goal", 1.0), ("interaction", 1.0)] if modules is None else modules
         assert all([name in solver_module_dict.keys() for name, _ in modules]), "invalid solver module detected"
         assert all([0.0 <= weight for _, weight in modules]), "invalid solver module weight detected"
         module_args = {"horizon": self.T, "env": self._env, "goal": self.goal}
         self._modules = {m: solver_module_dict[m](weight=w, **module_args) for m, w in modules}
-
-        # Logging variables. Using default-dict(deque) whenever a new entry is created, it does not have to be checked
-        # whether the related key is already existing, since if it is not existing, it is created with a queue as
-        # starting value, to which the new entry is appended. With an appending complexity O(1) instead of O(N) the
-        # deque is way more efficient than the list type for storing simple floating point numbers in a sequence.
-        self._optimization_log = defaultdict(deque) if self.is_verbose else None
-        self._x_latest = None  # iteration() function does not input x (!)
-
-    def _determine_ego_action(self, env: GraphBasedSimulation) -> torch.Tensor:
-        raise NotImplementedError
-
-    def _solve_optimization(
-        self,
-        x0: torch.Tensor,
-        max_iter: int = igrad_max_solver_steps,
-        max_cpu_time: float = igrad_max_solver_cpu_time,
-        approx_jacobian: bool = False,
-        approx_hessian: bool = True,
-        check_derivative: bool = False,
-    ):
-        """Solve optimization problem by finding constraint bounds, constructing ipopt optimization problem and
-        solve it using the parameters defined in the function header."""
-        assert check_trajectory_primitives(x0, t_horizon=self.T), "x0 should be ego trajectory"
-
-        # Formulate optimization problem as in standardized IPOPT format.
-        x_init, x0_flat = x0[0, :].detach().numpy(), x0.flatten().numpy()
-        lb, ub, cl, cu = self.constraint_bounds(x_init=x_init)
-
-        nlp = ipopt.problem(n=2 * self.T, m=len(cl), problem_obj=self, lb=lb, ub=ub, cl=cl, cu=cu)
-        nlp.addOption("max_iter", max_iter)
-        nlp.addOption("max_cpu_time", max_cpu_time)
-        if approx_jacobian:
-            nlp.addOption("jacobian_approximation", "finite-difference-values")
-        if approx_hessian:
-            nlp.addOption("hessian_approximation", "limited-memory")
-        nlp.addOption("print_level", 5)  # the larger the value, the more print output.
-        if self.is_verbose or check_derivative:
-            nlp.addOption("print_timing_statistics", "yes")
-            nlp.addOption("derivative_test", "first-order")
-            nlp.addOption("derivative_test_tol", 1e-4)
-
-        # Solve optimization problem for "optimal" ego trajectory `x_optimized`.
-        x_optimized, info = nlp.solve(x0_flat)
-        x_optimized = np.reshape(x_optimized, (self.T, 2))
-
-        # Plot optimization progress.
-        self.log_and_clean_up()
-
-        return torch.from_numpy(x_optimized)
 
     ###########################################################################
     # Optimization formulation ################################################
@@ -175,12 +123,6 @@ class CGradSolver(Solver):
             self._x_latest = x.copy()  # logging most current optimization values
         return jacobian
 
-    # wrong hessian should just affect rate of convergence, not convergence in general
-    # (given it is semi-positive definite which is the case for the identity matrix)
-    # hessian = np.eye(3*self.O)
-    def hessian(self, x, lagrange=None, obj_factor=None) -> np.ndarray:
-        raise NotImplementedError
-
     def intermediate(self, alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args):
         if self.is_verbose:
             self._optimization_log["iter_count"].append(iter_count)
@@ -191,49 +133,20 @@ class CGradSolver(Solver):
             for module in self._modules.values():
                 module.logging()
 
-    @property
-    def T(self) -> int:
-        return self.planning_horizon
-
-    @property
-    def M(self) -> int:
-        return self._env.num_ados
+    ###########################################################################
+    # Utility #################################################################
+    ###########################################################################
 
     @property
     def num_modules(self) -> int:
         return len(self._modules.keys())
 
-    ###########################################################################
-    # Visualization ###########################################################
-    ###########################################################################
-
     def log_and_clean_up(self):
-        """Clean up optimization logs and reset optimization parameters.
-        IPOPT determines the CPU time including the intermediate function, therefore if we would plot at every step,
-        we would loose valuable optimization time. Therefore the optimization progress is plotted all at once at the
-        end of the optimization process."""
-
-        # Plotting only makes sense if you see some progress in the optimization, i.e. compare and figure out what
-        # the current optimization step has changed.
-        if not self.is_verbose or len(self._optimization_log["iter_count"]) < 2:
-            return
-
-        self._optimization_log = {key: list(values) for key, values in self._optimization_log.items()}
-
-        # Find path to output directory, create it or delete every file inside.
-        output_directory_path = build_output_path("test/graphs/igrad_optimization", make_dir=True, free=True)
-
         # Transfer module logs to main logging dictionary and clean up modules.
         for module_name, module in self._modules.items():
             obj_log, grad_log = module.logs
             self._optimization_log[f"obj_{module_name}"] = obj_log
             self._optimization_log[f"grad_{module_name}"] = grad_log
             module.clean_up()
-
-        # Visualization.
-        from mantrap.evaluation.visualization import visualize_optimization
-        visualize_optimization(self._optimization_log, env=self._env, dir_path=output_directory_path)
-
-        # Reset optimization logging parameters for next optimization.
-        self._optimization_log = defaultdict(deque) if self.is_verbose else None
-        self._x_latest = None
+        # Do logging and visualization of base class with updated optimization log.
+        super(CGradSolver, self).log_and_clean_up()
