@@ -51,6 +51,8 @@ class Derivative2:
     """
     def __init__(self, horizon: int, dt: float, num_axes: int = 2):
         assert num_axes >= 2, "minimal number of axes of differentiable matrix is 2"
+        self._num_axes = num_axes
+
         self._diff_mat = np.zeros((horizon, horizon))
         for k in range(1, horizon - 1):
             self._diff_mat[k, k - 1] = 1
@@ -58,7 +60,6 @@ class Derivative2:
             self._diff_mat[k, k + 1] = 1
         self._diff_mat *= 1 / dt**2
         self._diff_mat = np.expand_dims(self._diff_mat, axis=tuple(i for i in range(num_axes - 2)))
-        self._num_axes = num_axes
 
     def compute(self, x: np.ndarray) -> np.ndarray:
         return np.matmul(self._diff_mat, x)

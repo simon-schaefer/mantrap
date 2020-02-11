@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 import pytest
@@ -7,51 +7,10 @@ import torch
 
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldStaticSimulation, SocialForcesSimulation
-from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver import IGradSolver
+from mantrap.solver.modules import solver_module_dict
 from mantrap.utility.io import pytest_is_running
 from mantrap.utility.primitives import square_primitives, straight_line_primitive
-from mantrap.utility.shaping import check_trajectory_primitives
-
-
-class PartialIGradSolver(IGradSolver):
-    def __init__(self, sim: GraphBasedSimulation, goal: torch.Tensor, objective: str, **solver_params):
-        solver_params["verbose"] = not pytest_is_running()
-        super(PartialIGradSolver, self).__init__(sim=sim, goal=goal, planning_horizon=5, **solver_params)
-
-        # Get objective and gradient function by name of objective.
-        self._obj_function = getattr(IGradSolver, f"_objective_{objective}")
-        self._grad_function = getattr(IGradSolver, f"_gradient_{objective}")
-
-    def objective(self, x: np.ndarray) -> float:
-        assert self._env.num_ado_modes == 1, "currently only uni-modal agents are supported"
-        x2 = torch.from_numpy(x).view(-1, 2)
-        assert check_trajectory_primitives(x2, t_horizon=self.T), "x should be ego trajectory"
-
-        objective = self._obj_function(self, x2)
-
-        if self.is_verbose:
-            self._x_latest = x.copy()
-        return float(objective)
-
-    def gradient(self, x: np.ndarray) -> np.ndarray:
-        assert self._env.num_ado_modes == 1, "currently only uni-modal agents are supported"
-        x2 = torch.from_numpy(x).view(-1, 2)
-        assert check_trajectory_primitives(x2, t_horizon=self.T), "x should be ego trajectory"
-
-        gradient = self._grad_function(self, x2)
-
-        if self.is_verbose:
-            self._x_latest = x.copy()  # logging most current optimization values
-            self._grad_latest = gradient.copy()
-        return gradient
-
-    def constraint_bounds(self, x_init: np.ndarray) -> Tuple[List[float], List[float], List[float], List[float]]:
-        lb, ub, cl, cu = super(PartialIGradSolver, self).constraint_bounds(x_init)
-        # Optimization variable bounds.
-        lb = [-np.inf] * 2 * self.T
-        ub = [np.inf] * 2 * self.T
-        return lb, ub, cl, cu
 
 
 ###########################################################################
@@ -74,9 +33,10 @@ def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos:
     # Test objective function by comparing a solution trajectory x which is far away and close to the other agents
     # in the scene. Then the close agent is a lot more affected by the ego in the first scenario.
     x = straight_line_primitive(solver.T, sim.ego.position, solver.goal)
-    obj_1 = solver._objective_interaction(x)
+    interaction_module = solver_module_dict["interaction"](horizon=solver.T, env=sim)
+    obj_1 = interaction_module.objective(x)
     x_2 = torch.ones((solver.T, 2)) * 80.0
-    obj_2 = solver._objective_interaction(x_2)
+    obj_2 = interaction_module.objective(x_2)
     assert obj_1 >= obj_2
     assert np.isclose(obj_2, 0.0)
 
@@ -101,10 +61,10 @@ def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos:
         ("interaction", torch.tensor([-5, 0]), torch.tensor([5, 0]), torch.tensor([0, 0.001])),
         ("goal", torch.tensor([2, 2]), torch.tensor([-2, -2]), torch.tensor([0, 1])),
     ])
-def test_partial_convergence(objective: str, ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
+def test_module_convergence(objective: str, ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
     sim = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.5)
     sim.add_ado(position=ado_pos)
-    solver = PartialIGradSolver(sim, goal=goal, objective=objective)
+    solver = IGradSolver(sim, goal=goal, objective=objective, modules=[(objective, 1.0)], verbose=True)
 
     # Initial trajectory and solver calling.
     x0 = square_primitives(agent=sim.ego, goal=solver.goal, dt=sim.dt)[0, :, :]
@@ -125,7 +85,7 @@ def test_partial_convergence(objective: str, ego_pos: torch.Tensor, goal: torch.
         (torch.tensor([2, 2]), torch.tensor([-2, -2]), torch.tensor([0, 1])),
     ])
 def test_convergence(ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
-    sim = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.5)
+    sim = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.2)
     sim.add_ado(position=ado_pos)
     solver = IGradSolver(sim, goal=goal, verbose=not pytest_is_running())
 
@@ -143,7 +103,7 @@ def test_convergence(ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.T
 def test_gradient_computation_speed():
     sim = SocialForcesSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0])}, dt=0.5)
     sim.add_ado(position=torch.tensor([0, 0.001]), goal=torch.tensor([0, -4.0]), num_modes=1)
-    solver = PartialIGradSolver(sim, goal=torch.ones(2), objective="interaction")
+    solver = IGradSolver(sim, goal=torch.ones(2), modules=[("interaction", 1.0)])
 
     # Determine gradient and measure computation time.
     x0 = square_primitives(agent=sim.ego, goal=solver.goal, dt=sim.dt)[0, :, :].flatten().detach().numpy()
@@ -153,7 +113,3 @@ def test_gradient_computation_speed():
         solver.gradient(x0)
         comp_times.append(time.time() - start_time)
     assert np.mean(comp_times) < 0.07  # faster than 15 Hz (!)
-
-
-if __name__ == '__main__':
-    test_convergence(torch.tensor([-5, 0]), torch.tensor([5, 0]), torch.tensor([0, 0.001]))

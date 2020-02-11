@@ -22,6 +22,8 @@ def expand_state_vector(state_5: torch.Tensor, time: float) -> torch.Tensor:
 
 
 def build_trajectory_from_positions(positions: torch.Tensor, dt: float, t_start: float = 0.0) -> torch.Tensor:
+    """Derive (position, orientation, velocity)-trajectory information from position data only, assuming single
+    integrator dynamics, i.e. v_i = (x_i+1 - x_i) / dt. """
     assert len(positions.shape) == 2, "primitives shape should be (t_horizon, 2)"
     assert positions.shape[1] == 2, "primitives shape should be (t_horizon, 2)"
 
