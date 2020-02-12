@@ -15,11 +15,11 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
     assert "x" in optimization_log.keys(), "trajectory data x must be provided in optimization dict"
 
     vis_keys = ["obj", "inf", "grad"]
-    horizon = optimization_log["x"].shape[0]
+    horizon = optimization_log["x"][0].shape[0]
 
     # For comparison in the visualization predict the behaviour of every agent in the scene for the base
     # trajectory, i.e. x0 the initial value trajectory.
-    x2_base_np = np.reshape(optimization_log["x"][0], (horizon, 2))
+    x2_base_np = optimization_log["x"][0]
     x2_base = torch.from_numpy(x2_base_np)
     ego_traj_base = build_trajectory_from_positions(x2_base, dt=env.dt, t_start=env.sim_time)
     ego_traj_base_np = ego_traj_base.detach().numpy()
@@ -28,7 +28,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
     for k in range(1, optimization_log["iter_count"][-1]):
         time_axis = np.linspace(env.sim_time, env.sim_time + horizon * env.dt, num=horizon)
 
-        x2_np = np.reshape(optimization_log["x"][k], (horizon, 2))
+        x2_np = optimization_log["x"][k]
         x2 = torch.from_numpy(x2_np)
         ego_traj = build_trajectory_from_positions(x2, dt=env.dt, t_start=env.sim_time)
         ado_traj_np = env.predict(horizon, ego_trajectory=ego_traj).detach().numpy()

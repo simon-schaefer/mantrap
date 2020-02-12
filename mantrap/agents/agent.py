@@ -108,20 +108,20 @@ class Agent:
 
     @property
     def state(self) -> torch.Tensor:
-        return torch.cat((self.pose, self.velocity))
+        return torch.cat((self.pose, self.velocity)).float()
 
     @property
     def position(self) -> torch.Tensor:
-        return self._position
+        return self._position.float()
 
     @property
     def pose(self) -> torch.Tensor:
         theta = torch.atan2(self._velocity[1].float(), self._velocity[0].float())
-        return torch.tensor([self._position[0], self._position[1], theta])
+        return torch.tensor([self._position[0], self._position[1], theta]).float()
 
     @property
     def velocity(self) -> torch.Tensor:
-        return self._velocity
+        return self._velocity.float()
 
     @property
     def speed(self) -> float:

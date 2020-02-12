@@ -1,4 +1,4 @@
-# MANTRAP
+# mantrap
 Minimal interferring Interactive Risk-aware Planning for multimodal and time-evolving obstacle behaviour
 
 ## Description

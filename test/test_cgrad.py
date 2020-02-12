@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 import numpy as np
 import pytest
@@ -14,14 +14,13 @@ from mantrap.utility.primitives import square_primitives, straight_line_primitiv
 
 
 class UnconstrainedCGradSolver(CGradSolver):
-    def constraint_bounds(
-        self, x_init: np.ndarray
-    ) -> Tuple[List[Union[None, float]], List[Union[None, float]], List[Union[None, float]], List[Union[None, float]]]:
+    def constraint_bounds(self, x_init: torch.Tensor) -> Tuple[List, List, List, List]:
         lb, ub, cl, cu = super(UnconstrainedCGradSolver, self).constraint_bounds(x_init)
+        x_start = x_init[0, :].detach().numpy()
 
         # Weaken dynamics (velocity) constraint by putting a very large velocity (in order to not have to change
         # the Jacobi matrix and other constraint related functions).
-        cu = [10.0] * (self.T - 1) + [x_init[0], x_init[1]]
+        cu = [10.0] * (self.T - 1) + [x_start[0], x_start[1]]
 
         return lb, ub, cl, cu
 
@@ -129,3 +128,7 @@ def test_gradient_computation_speed():
         solver.gradient(x0)
         comp_times.append(time.time() - start_time)
     assert np.mean(comp_times) < 0.07  # faster than 15 Hz (!)
+
+
+if __name__ == '__main__':
+    test_module_convergence("interaction", torch.tensor([-5, 0]), torch.tensor([5, 0]), torch.tensor([0, 0.001]))

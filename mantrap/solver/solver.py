@@ -1,16 +1,15 @@
 from abc import abstractmethod
 from collections import defaultdict, deque
 import logging
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 import ipopt
 import numpy as np
 import torch
 
 from mantrap.constants import solver_horizon, ipopt_max_solver_steps, ipopt_max_solver_cpu_time
-from mantrap.simulation.simulation import GraphBasedSimulation, Simulation
+from mantrap.simulation.simulation import Simulation
 from mantrap.utility.io import build_output_path
-from mantrap.utility.shaping import check_trajectory_primitives
 from mantrap.utility.utility import expand_state_vector
 
 
@@ -18,7 +17,7 @@ class Solver:
 
     def __init__(self, sim: Simulation, goal: torch.Tensor, **solver_params):
         self._env = sim
-        self._goal = goal
+        self._goal = goal.float()
 
         # Dictionary of solver parameters.
         self._solver_params = solver_params
@@ -96,7 +95,7 @@ class Solver:
 
 class IPOPTSolver(Solver):
 
-    def __init__(self, sim: GraphBasedSimulation, goal: torch.Tensor, **solver_params):
+    def __init__(self, sim: Simulation, goal: torch.Tensor, **solver_params):
         super(IPOPTSolver, self).__init__(sim, goal, **solver_params)
 
         # Logging variables. Using default-dict(deque) whenever a new entry is created, it does not have to be checked
@@ -117,13 +116,11 @@ class IPOPTSolver(Solver):
     ):
         """Solve optimization problem by finding constraint bounds, constructing ipopt optimization problem and
         solve it using the parameters defined in the function header."""
-        assert check_trajectory_primitives(x0, t_horizon=self.T), "x0 should be ego trajectory"
+        lb, ub, cl, cu = self.constraint_bounds(x_init=x0)
 
         # Formulate optimization problem as in standardized IPOPT format.
-        x_init, x0_flat = x0[0, :].detach().numpy(), x0.flatten().numpy()
-        lb, ub, cl, cu = self.constraint_bounds(x_init=x_init)
-
-        nlp = ipopt.problem(n=2 * self.T, m=len(cl), problem_obj=self, lb=lb, ub=ub, cl=cl, cu=cu)
+        x0_flat = x0.flatten().numpy().tolist()
+        nlp = ipopt.problem(n=len(x0_flat), m=len(cl), problem_obj=self, lb=lb, ub=ub, cl=cl, cu=cu)
         nlp.addOption("max_iter", max_iter)
         nlp.addOption("max_cpu_time", max_cpu_time)
         if approx_jacobian:
@@ -138,21 +135,22 @@ class IPOPTSolver(Solver):
 
         # Solve optimization problem for "optimal" ego trajectory `x_optimized`.
         x_optimized, info = nlp.solve(x0_flat)
-        x_optimized = np.reshape(x_optimized, (self.T, 2))
+        x_optimized = self.x_to_ego_trajectory(x_optimized)
 
         # Plot optimization progress.
         self.log_and_clean_up()
 
-        return torch.from_numpy(x_optimized)
+        return x_optimized
 
     ###########################################################################
     # Optimization formulation ################################################
     # IPOPT requires to use numpy arrays for computation, therefore switch ####
     # everything from torch to numpy here #####################################
     ###########################################################################
+
     @abstractmethod
     def objective(self, x: np.ndarray) -> float:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def gradient(self, x: np.ndarray) -> np.ndarray:
@@ -163,9 +161,7 @@ class IPOPTSolver(Solver):
         raise NotImplementedError
 
     @abstractmethod
-    def constraint_bounds(
-        self, x_init: np.ndarray
-    ) -> Tuple[List[Union[None, float]], List[Union[None, float]], List[Union[None, float]], List[Union[None, float]]]:
+    def constraint_bounds(self, x_init: torch.Tensor) -> Tuple[List, List, List, List]:
         raise NotImplementedError
 
     @abstractmethod
@@ -178,13 +174,21 @@ class IPOPTSolver(Solver):
     def hessian(self, x, lagrange=None, obj_factor=None) -> np.ndarray:
         raise NotImplementedError
 
-    @abstractmethod
     def intermediate(self, alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args):
-        raise NotImplementedError
+        if self.is_verbose:
+            self._optimization_log["iter_count"].append(iter_count)
+            self._optimization_log["obj_overall"].append(obj_value)
+            self._optimization_log["inf_primal"].append(inf_pr)
+            self._optimization_log["grad_lagrange"].append(d_norm)
+            self._optimization_log["x"].append(self._x_latest)
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
+
+    @abstractmethod
+    def x_to_ego_trajectory(self, x: np.ndarray) -> torch.Tensor:
+        raise NotImplementedError
 
     @property
     def T(self) -> int:

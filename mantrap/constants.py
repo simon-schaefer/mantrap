@@ -18,8 +18,6 @@ sim_social_forces_default_params = {
 sim_social_forces_min_goal_distance = 0.1  # [m] minimal distance to goal to have non-zero goal traction force.
 sim_social_forces_max_interaction_distance = 2.0  # [m] maximal distance between agents for interaction force.
 
-sim_distance_field_sigma = 0.1  # [m] repulsive field exponent constant.
-
 #######################################
 # solver parameters ###################
 #######################################

@@ -1,7 +1,10 @@
+from .acc_interact import InteractionAccelerationModule
 from .goal import GoalModule
-from .interaction import InteractionModule
+from .pos_interact import InteractionPositionModule
 
 solver_module_dict = {
+    "acc_interaction": InteractionAccelerationModule,
     "goal": GoalModule,
-    "interaction": InteractionModule,
+    "pos_interaction": InteractionPositionModule,
+    "interaction": InteractionPositionModule,  # default for interaction
 }
