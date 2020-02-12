@@ -17,10 +17,10 @@ class PotentialFieldStaticSimulation(SocialForcesSimulation):
         goal = ado_kwargs["position"]  # enforce static agent - no incentive to move
         super(PotentialFieldStaticSimulation, self).add_ado(goal, num_modes=1, velocity=velocity, **ado_kwargs)
 
-    def build_graph(self, ego_state: torch.Tensor, is_intermediate: bool = False, **kwargs) -> Dict[str, torch.Tensor]:
+    def build_graph(self, ego_state: torch.Tensor, **graph_kwargs) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
-        graph = super(SocialForcesSimulation, self).build_graph(ego_state, is_intermediate, **kwargs)
-        k = kwargs["k"] if "k" in kwargs.keys() else 0
+        graph = super(SocialForcesSimulation, self).build_graph(ego_state, **graph_kwargs)
+        k = graph_kwargs["k"] if "k" in graph_kwargs.keys() else 0
         for ghost in self.ado_ghosts:
             graph[f"{ghost.gid}_{k}_goal"] = ghost.goal
 

@@ -38,7 +38,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
         self._ado_ghosts = []
 
     def predict(
-        self, t_horizon: int, ego_trajectory: torch.Tensor = None, verbose: bool = False,
+        self, t_horizon: int, ego_trajectory: torch.Tensor = None, verbose: bool = False, **graph_kwargs
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """For predicting the ado states in future time-steps up to t* = t_horizon given some ego trajectory
         subsequently build a graph representation of the current scene in order to predict all states in the next scene,
@@ -67,7 +67,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
             # same output. However the computational effort of building the graph is negligible (about 1 ms for
             # 2 agents on Mac Pro 2018).
             ego_state = ego_trajectory[k, :] if ego_trajectory is not None else None
-            graph_at_k = self.build_graph(ego_state=ego_state, k=k)
+            graph_at_k = self.build_graph(ego_state=ego_state, k=k, **graph_kwargs)
 
             # Evaluate graph.
             for i in range(self.num_ado_ghosts):
@@ -149,7 +149,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
     # Simulation Graph ########################################################
     ###########################################################################
 
-    def build_graph(self, ego_state: torch.Tensor, is_intermediate: bool = False, **kwargs) -> Dict[str, torch.Tensor]:
+    def build_graph(self, ego_state: torch.Tensor, **graph_kwargs) -> Dict[str, torch.Tensor]:
 
         # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
         def _repulsive_force(
@@ -181,8 +181,8 @@ class SocialForcesSimulation(GraphBasedSimulation):
             return torch.autograd.grad(v, relative_distance, create_graph=True)[0]
 
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
-        graph = super(SocialForcesSimulation, self).build_graph(ego_state, is_intermediate, **kwargs)
-        k = kwargs["k"] if "k" in kwargs.keys() else 0
+        graph = super(SocialForcesSimulation, self).build_graph(ego_state, **graph_kwargs)
+        k = graph_kwargs["k"] if "k" in graph_kwargs.keys() else 0
         for ghost in self.ado_ghosts:
             graph[f"{ghost.gid}_{k}_goal"] = ghost.goal
 
@@ -231,7 +231,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
     # Simulation Graph over time-horizon ######################################
     ###########################################################################
 
-    def build_connected_graph(self, ego_positions: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def build_connected_graph(self, ego_positions: torch.Tensor, **graph_kwargs) -> Dict[str, torch.Tensor]:
         """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
         the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
         using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
@@ -243,12 +243,13 @@ class SocialForcesSimulation(GraphBasedSimulation):
         """
         assert self.ego.__class__ == IntegratorDTAgent, "currently only single integrator egos are supported"
         assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in self._ado_ghosts])
+        assert type(ego_positions) == torch.Tensor, "invalid ego positions tensor"
 
         t_horizon = ego_positions.shape[0]
         ado_ghosts_copy = copy.deepcopy(self._ado_ghosts)
 
         # Build first graph for the next state, in case no forces are applied on the ego.
-        graphs = self.build_graph(ego_state=self.ego.state, k=0)
+        graphs = self.build_graph(ego_state=self.ego.state, k=0, **graph_kwargs)
         ego_states = build_trajectory_from_positions(ego_positions, dt=self.dt, t_start=self.sim_time)
 
         # Build the graph iteratively for the whole prediction horizon.
@@ -258,7 +259,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
 
             # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are used
             # for the ego motion, as guesses for the final trajectory i.e. starting points for the optimization.
-            graph_k = self.build_graph(ego_states[k, :], is_intermediate=True, k=k)
+            graph_k = self.build_graph(ego_states[k, :], k=k, **graph_kwargs)
             graphs.update(graph_k)
 
         # Reset ado ghosts to previous states.

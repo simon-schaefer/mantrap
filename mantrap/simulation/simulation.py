@@ -166,26 +166,33 @@ class Simulation:
 
 
 class GraphBasedSimulation(Simulation):
+
     @abstractmethod
-    def build_graph(self, ego_state: torch.Tensor, is_intermediate: bool = False, **kwargs) -> Dict[str, torch.Tensor]:
+    def predict(
+        self, t_horizon: int, ego_trajectory: torch.Tensor = None, verbose: bool = False, **graph_kwargs
+    ) -> torch.Tensor:
+        raise NotImplementedError
+
+    @abstractmethod
+    def build_graph(self, ego_state: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         k = kwargs["k"] if "k" in kwargs.keys() else 0
+        ego_grad = kwargs["ego_grad"] if "ego_grad" in kwargs.keys() else True
         graph = {}
 
         for ghost in self.ado_ghosts:
             graph[f"{ghost.gid}_{k}_position"] = ghost.agent.position
             graph[f"{ghost.gid}_{k}_velocity"] = ghost.agent.velocity
-            if not is_intermediate and graph[f"{ghost.gid}_{k}_position"].requires_grad is not True:
-                graph[f"{ghost.gid}_{k}_position"].requires_grad = True
-                graph[f"{ghost.gid}_{k}_velocity"].requires_grad = True
 
         if ego_state is not None:
             graph[f"ego_{k}_position"] = ego_state[0:2]
             graph[f"ego_{k}_velocity"] = ego_state[3:5]
-            graph[f"ego_{k}_position"].requires_grad = True
-            graph[f"ego_{k}_velocity"].requires_grad = True
+
+            if ego_grad:
+                graph[f"ego_{k}_position"].requires_grad = True
+                graph[f"ego_{k}_velocity"].requires_grad = True
 
         return graph
 
     @abstractmethod
-    def build_connected_graph(self, ego_positions: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def build_connected_graph(self, ego_positions: torch.Tensor, **graph_kwargs) -> Dict[str, torch.Tensor]:
         raise NotImplementedError

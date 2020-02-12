@@ -32,7 +32,7 @@ def build_trajectory_from_positions(positions: torch.Tensor, dt: float, t_start:
 
     trajectory[:, 0:2] = positions.float()
     trajectory[1:, 3:5] = trajectory[1:, 0:2] - trajectory[:-1, 0:2]
-    trajectory[:, 2] = torch.atan2(trajectory[:, 4], trajectory[:, 3])
+    # trajectory[:, 2] = torch.atan2(trajectory[:, 4], trajectory[:, 3])
     trajectory[:, 5] = torch.linspace(t_start, t_start + t_horizon * dt, steps=t_horizon)
 
     assert check_ego_trajectory(trajectory, t_horizon=t_horizon)

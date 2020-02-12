@@ -1,6 +1,7 @@
 from abc import abstractmethod
 
 import numpy as np
+import torch
 
 
 ###########################################################################
@@ -66,3 +67,27 @@ class Derivative2:
 
     def compute(self, x: np.ndarray) -> np.ndarray:
         return np.matmul(self._diff_mat, x)
+
+
+###########################################################################
+# Interpolation ###########################################################
+###########################################################################
+def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100) -> torch.Tensor:
+    """Lagrange interpolation using Vandermonde Approach. Vandermonde finds the Lagrange parameters by solving
+    a matrix equation X a = Y with known control point matrices (X,Y) and parameter vector a, therefore is fully
+    differentiable. Also Lagrange interpolation guarantees to pass every control point, but performs poorly in
+    extrapolation (which is however not required for trajectory fitting, since the trajectory starts and ends at
+    defined control points.
+
+    Source: http://www.maths.lth.se/na/courses/FMN050/media/material/lec8_9.pdf"""
+    assert len(control_points.shape) == 2, "control points should be in shape (num_points, 2)"
+    assert control_points.shape[1] == 2, "2D interpolation requires 2D input"
+    n = control_points.shape[0]
+
+    x = torch.stack((control_points[:, 0] ** 2, control_points[:, 0], torch.ones(n)), dim=1)
+    y = control_points[:, 1]
+    a = torch.inverse(x).matmul(y)
+
+    x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)
+    y_up = torch.stack((x_up ** 2, x_up, torch.ones(num_samples))).T.matmul(a)
+    return torch.stack((x_up, y_up), dim=1).float()
