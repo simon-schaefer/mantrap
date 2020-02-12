@@ -7,12 +7,12 @@ from mantrap.agents import IntegratorDTAgent, DoubleIntegratorDTAgent
 @pytest.mark.parametrize(
     "pos, vel, history, history_expected",
     [
-        (torch.zeros(2), torch.zeros(2), None, torch.zeros((1, 6))),
+        (torch.zeros(2), torch.zeros(2), None, torch.zeros((1, 5))),
         (
             torch.ones(2),
             torch.zeros(2),
-            torch.tensor([5, 6, 0, 0, 0, -1]).view(1, 6),
-            torch.tensor([[5, 6, 0, 0, 0, -1], [1, 1, 0, 0, 0, 0]]),
+            torch.tensor([5, 6, 0, 0, -1]).view(1, 5),
+            torch.tensor([[5, 6, 0, 0, -1], [1, 1, 0, 0, 0]]),
         ),
     ],
 )
@@ -74,7 +74,7 @@ def test_unrolling():
 
 def test_reset():
     agent = IntegratorDTAgent(torch.tensor([5, 6]))
-    agent.reset(state=torch.tensor([1, 5, 0.2, 4, 2, 1.0]), history=None)
+    agent.reset(state=torch.tensor([1, 5, 4, 2, 1.0]), history=None)
     assert torch.all(torch.eq(agent.position, torch.tensor([1, 5])))
     assert torch.all(torch.eq(agent.velocity, torch.tensor([4, 2])))
 
@@ -89,10 +89,9 @@ def test_ego_trajectory(position: torch.Tensor, velocity: torch.Tensor, dt: floa
     ego_trajectory_y_exp = torch.linspace(position[1].item(), position[1].item() + velocity[1].item() * n * dt, n + 1)
     assert torch.all(torch.eq(ego_trajectory[:, 0], ego_trajectory_x_exp))
     assert torch.all(torch.eq(ego_trajectory[:, 1], ego_trajectory_y_exp))
-    assert torch.all(torch.eq(ego_trajectory[:, 2], torch.zeros(n + 1)))
-    assert torch.all(torch.eq(ego_trajectory[:, 3], torch.ones(n + 1) * velocity[0]))
-    assert torch.all(torch.eq(ego_trajectory[:, 4], torch.ones(n + 1) * velocity[1]))
-    assert torch.all(torch.eq(ego_trajectory[:, 5], torch.linspace(0, n, n + 1)))
+    assert torch.all(torch.eq(ego_trajectory[:, 2], torch.ones(n + 1) * velocity[0]))
+    assert torch.all(torch.eq(ego_trajectory[:, 3], torch.ones(n + 1) * velocity[1]))
+    assert torch.all(torch.eq(ego_trajectory[:, 4], torch.linspace(0, n, n + 1)))
 
 
 def test_history():
@@ -101,4 +100,4 @@ def test_history():
         agent.update(action=torch.ones(2))
     assert len(agent.history.shape) == 2
     assert agent.history.shape[0] == 5
-    assert agent.history.shape[1] == 6
+    assert agent.history.shape[1] == 5

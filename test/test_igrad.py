@@ -68,7 +68,7 @@ def test_multiple_agent_scenario():
     sim.add_ado(position=torch.tensor([3, -8]), velocity=torch.tensor([2.5, 1.5]))
     solver = IGradSolver(sim, goal=torch.tensor([8, 0]), verbose=not pytest_is_running(), planning_horizon=20)
 
-    x = solver._solve_optimization(x0=torch.tensor([0.1, -1.5]), approx_jacobian=False, approx_hessian=True)
+    x = solver._solve_optimization(x0=torch.tensor([0.1, -0.01]), approx_jacobian=False, approx_hessian=True)
     print(x)
 
 

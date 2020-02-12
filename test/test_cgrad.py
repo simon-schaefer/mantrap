@@ -128,7 +128,3 @@ def test_gradient_computation_speed():
         solver.gradient(x0)
         comp_times.append(time.time() - start_time)
     assert np.mean(comp_times) < 0.07  # faster than 15 Hz (!)
-
-
-if __name__ == '__main__':
-    test_module_convergence("interaction", torch.tensor([-5, 0]), torch.tensor([5, 0]), torch.tensor([0, 0.001]))

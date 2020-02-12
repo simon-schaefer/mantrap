@@ -8,6 +8,7 @@ import torch
 from mantrap.constants import agent_speed_max
 from mantrap.simulation.simulation import Simulation
 from mantrap.utility.maths import Derivative2
+from mantrap.utility.shaping import check_state
 from mantrap.utility.utility import build_trajectory_from_positions
 
 
@@ -26,7 +27,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
     # ego_traj_base_np = ego_traj_base.detach().numpy()
     # ado_traj_base_np = env.predict(horizon, ego_trajectory=torch.from_numpy(x2_base_np)).detach().numpy()
 
-    for k in range(1, optimization_log["iter_count"][-1]):
+    for k in range(optimization_log["iter_count"][-1]):
         time_axis = np.linspace(env.sim_time, env.sim_time + horizon * env.dt, num=horizon)
 
         x2_np = optimization_log["x"][k]
@@ -43,7 +44,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
         # the resulting ado trajectories based on some simulation.
         ax = fig.add_subplot(grid[: len(vis_keys), :])
         ax.plot(x2_np[:, 0], x2_np[:, 1], "-", color=env.ego.color, label="ego_current")
-        _add_agent_representation(env.ego.state.detach().numpy(), env.ego.color, "ego", ax=ax)
+        _add_agent_representation(env.ego.state, env.ego.color, "ego", ax=ax)
         # ax.plot(x2_base_np[:, 0], x2_base_np[:, 1], "o", color=env.ego.color, label="ego_base")
         # Plot current and base resulting simulated ado trajectories in the scene.
         for m in range(env.num_ados):
@@ -52,7 +53,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
             # ado_pos_base = ado_traj_base_np[m, 0, :, 0:2]
             ax.plot(ado_pos[:, 0], ado_pos[:, 1], "--", color=ado_color, label=f"{ado_id}_current")
             # ax.plot(ado_pos_base[:, 0], ado_pos_base[:, 1], "o", color=ado_color, label=f"{ado_id}_base")
-            _add_agent_representation(env.ados[m].state.detach().numpy(), ado_color, ado_id, ax=ax)
+            _add_agent_representation(env.ados[m].state, ado_color, ado_id, ax=ax)
         ax.set_xlim(env.axes[0])
         ax.set_ylim(env.axes[1])
         plt.grid()
@@ -60,10 +61,10 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
 
         # Plot agent velocities for resulting solution vs base-line ego trajectory for current optimization step.
         ax = fig.add_subplot(grid[-3, :])
-        ado_velocity_norm = np.linalg.norm(ado_traj_np[:, :, :, 3:5], axis=3)
-        # ado_velocity_base_norm = np.linalg.norm(ado_traj_base_np[:, :, :, 3:5], axis=3)
-        ego_velocity_norm = np.linalg.norm(ego_traj[:, 3:5], axis=1)
-        # ego_velocity_base_norm = np.linalg.norm(ego_traj_base_np[:, 3:5], axis=1)
+        ado_velocity_norm = np.linalg.norm(ado_traj_np[:, :, :, 2:4], axis=3)
+        # ado_velocity_base_norm = np.linalg.norm(ado_traj_base_np[:, :, :, 2:4], axis=3)
+        ego_velocity_norm = np.linalg.norm(ego_traj[:, 2:4], axis=1)
+        # ego_velocity_base_norm = np.linalg.norm(ego_traj_base_np[:, 2:4], axis=1)
         for m in range(env.num_ados):
             ado_id, ado_color = env.ados[m].id, env.ados[m].color
             ax.plot(time_axis, ado_velocity_norm[m, 0, :], color=ado_color, label=f"{ado_id}_current")
@@ -105,11 +106,12 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
         plt.close()
 
 
-def _add_agent_representation(state: np.ndarray, color: np.ndarray, name: Union[str, None], ax: plt.Axes):
-    assert state.size == 5 or state.size == 6, "state must be of size 5 or 6 (x, y, theta, vx, vy, t)"
-    arrow_length = np.linalg.norm(state[3:5]) / agent_speed_max * 0.5
+def _add_agent_representation(state: torch.Tensor, color: np.ndarray, name: Union[str, None], ax: plt.Axes):
+    assert check_state(state, enforce_temporal=False), "state vector is invalid"
+    arrow_length = np.linalg.norm(state[2:4]) / agent_speed_max * 0.5
 
     # Add circle for agent itself.
+    state = state.detach().numpy()
     ado_circle = plt.Circle(state[0:2], 0.2, color=color, clip_on=True)
     ax.add_artist(ado_circle)
 

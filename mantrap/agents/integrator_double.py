@@ -16,7 +16,6 @@ class DoubleIntegratorDTAgent(Agent):
         assert check_state(state, enforce_temporal=False), "state should be two-dimensional (x, y, theta, vx, vy)"
         assert action.size() == torch.Size([2]), "action must be two-dimensional (vx, vy)"
 
-        velocity_new = state[3:5] + action * dt
-        theta_new = torch.tensor([torch.atan2(velocity_new[1], velocity_new[0])])
-        position_new = state[0:2] + state[3:5] * dt + 0.5 * action * dt ** 2
-        return build_state_vector(position_new, theta_new, velocity_new)
+        velocity_new = (state[2:4] + action * dt).double()
+        position_new = (state[0:2] + state[2:4] * dt + 0.5 * action * dt ** 2).double()
+        return build_state_vector(position_new, velocity_new)

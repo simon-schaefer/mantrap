@@ -24,7 +24,7 @@ class IGradSolver(IPOPTSolver):
         x2 = self.x_to_ego_trajectory(x)
         graphs = self._env.build_connected_graph(ego_positions=x2, ego_grad=False)
 
-        objective = 0.0
+        objective = torch.zeros(1)
         for k in range(self.T):
             for m in range(self._env.num_ado_ghosts):
                 ado_position = graphs[f"{self._env.ado_ghosts[m].gid}_{k}_position"]
@@ -34,7 +34,7 @@ class IGradSolver(IPOPTSolver):
         logging.debug(f"Objective function = {objective}")
         if self.is_verbose:
             self._x_latest = x2.detach().numpy().copy()  # logging most current optimization values
-        return float(objective)
+        return float(objective.item())
 
     def gradient(self, x: np.ndarray) -> np.ndarray:
         x2, x_tensor = self.x_to_ego_trajectory(x, return_x_tensor=True)
@@ -80,7 +80,7 @@ class IGradSolver(IPOPTSolver):
 
     def x_to_ego_trajectory(self, x: np.ndarray, return_x_tensor: bool = False) -> torch.Tensor:
         assert self._env.num_ado_modes <= 1, "currently only uni-modal agents are supported"
-        mid = torch.tensor(x.astype(np.float64), requires_grad=True).float()
-        points = torch.stack((self._env.ego.position, mid, self._goal)).float()
+        mid = torch.tensor(x.astype(np.float64), requires_grad=True).double()
+        points = torch.stack((self._env.ego.position, mid, self._goal))
         interpolated = lagrange_interpolation(control_points=points, num_samples=self.T)
         return interpolated if not return_x_tensor else (interpolated, mid)

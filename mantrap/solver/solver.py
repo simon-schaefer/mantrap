@@ -17,7 +17,7 @@ class Solver:
 
     def __init__(self, sim: Simulation, goal: torch.Tensor, **solver_params):
         self._env = sim
-        self._goal = goal.float()
+        self._goal = goal.double()
 
         # Dictionary of solver parameters.
         self._solver_params = solver_params

@@ -57,13 +57,13 @@ def test_step():
 
     ego_policy = torch.tensor([1, 0])
     num_steps = 100
-    ado_trajectory = torch.zeros((sim.num_ados, 1, num_steps, 6))
-    ego_trajectory = torch.zeros((num_steps, 6))
+    ado_trajectory = torch.zeros((sim.num_ados, 1, num_steps, 5))
+    ego_trajectory = torch.zeros((num_steps, 5))
     for t in range(num_steps):
         ado_t, ego_t = sim.step(ego_policy=ego_policy)
-        assert ado_t.numel() == 6
-        assert ado_t.shape == (1, 1, 1, 6)
-        assert ego_t.numel() == 6
+        assert ado_t.numel() == 5
+        assert ado_t.shape == (1, 1, 1, 5)
+        assert ego_t.numel() == 5
         ado_trajectory[:, :, t, :] = ado_t
         ego_trajectory[t, :] = ego_t
 
@@ -77,7 +77,6 @@ def test_step():
         (
             ego_trajectory_x_exp,
             ego_trajectory_y_exp,
-            torch.zeros(num_steps + 1),
             torch.ones(num_steps + 1) * ego_policy[0],
             torch.ones(num_steps + 1) * ego_policy[1],
             torch.linspace(0, num_steps * sim.dt, num_steps + 1),

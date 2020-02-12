@@ -47,7 +47,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
         for different ado modes, simulate them as "ghost" agents independently.
 
         :param t_horizon: prediction horizon (number of time-steps of length dt).
-        :param ego_trajectory: ego agent trajectory the prediction is conditioned on, (t_horizon, [2, 6]).
+        :param ego_trajectory: ego agent trajectory the prediction is conditioned on, (t_horizon, [2, 5]).
         :param verbose: return the actual system inputs (at every time -> trajectory) and probabilities of each mode.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
@@ -77,7 +77,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
 
         # Collect histories of simulated ados (last t_horizon steps are equal to future trajectories).
         # Additionally, extract probability distribution over modes, which basically is the initial distribution.
-        trajectories = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 6))
+        trajectories = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 5))
         weights = torch.zeros((self.num_ados, self.num_ado_modes))
         for i, ghost in enumerate(self._ado_ghosts):
             i_ado, i_mode = self.ghost_to_ado_index(i)
@@ -181,7 +181,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
             return torch.autograd.grad(v, relative_distance, create_graph=True)[0]
 
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
-        graph = super(SocialForcesSimulation, self).build_graph(ego_state, **graph_kwargs)
+        graph = super(SocialForcesSimulation, self).build_graph(ego_state, ado_grad=True, **graph_kwargs)
         k = graph_kwargs["k"] if "k" in graph_kwargs.keys() else 0
         for ghost in self.ado_ghosts:
             graph[f"{ghost.gid}_{k}_goal"] = ghost.goal

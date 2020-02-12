@@ -13,14 +13,14 @@ from mantrap.utility.shaping import check_trajectories
 from mantrap.utility.maths import Distribution, DirecDelta
 
 
-@pytest.mark.parametrize("goal_position", [torch.tensor([2, 2]), torch.tensor([0, -2])])
+@pytest.mark.parametrize("goal_position", [torch.tensor([2.0, 2.0]), torch.tensor([0.0, -2.0])])
 def test_single_ado_prediction(goal_position: torch.Tensor):
     sim = SocialForcesSimulation()
     sim.add_ado(goal=goal_position, position=torch.tensor([-1, -5]), velocity=torch.ones(2) * 0.8, num_modes=1)
 
     trajectory = torch.squeeze(sim.predict(t_horizon=100))
-    assert torch.isclose(trajectory[-1][0], goal_position[0].float(), atol=0.5)
-    assert torch.isclose(trajectory[-1][1], goal_position[1].float(), atol=0.5)
+    assert torch.isclose(trajectory[-1][0], goal_position[0], atol=0.5)
+    assert torch.isclose(trajectory[-1][1], goal_position[1], atol=0.5)
 
 
 def test_static_ado_pair_prediction():

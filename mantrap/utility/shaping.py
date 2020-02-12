@@ -5,9 +5,9 @@ import torch
 
 def check_state(state: torch.Tensor, enforce_temporal: bool = False) -> bool:
     if enforce_temporal:
-        is_correct = state.size() == torch.Size([6])
+        is_correct = state.size() == torch.Size([5])
     else:
-        is_correct = state.size() == torch.Size([5]) or state.size() == torch.Size([6])
+        is_correct = state.size() == torch.Size([4]) or state.size() == torch.Size([5])
     return is_correct
 
 
@@ -51,7 +51,7 @@ def check_trajectory_primitives(primitives: torch.Tensor, num_primitives: int = 
 def check_ego_trajectory(ego_trajectory: torch.Tensor, t_horizon: int = None) -> bool:
     is_correct = True
     is_correct = is_correct and len(ego_trajectory.shape) == 2  # (t_horizon, 6)
-    is_correct = is_correct and ego_trajectory.shape[1] == 6  # (x, y, theta, vx, vy, t)
+    is_correct = is_correct and ego_trajectory.shape[1] == 5  # (x, y, vx, vy, t)
     if t_horizon is not None:
         is_correct = is_correct and ego_trajectory.shape[0] == t_horizon
     return is_correct
@@ -59,8 +59,8 @@ def check_ego_trajectory(ego_trajectory: torch.Tensor, t_horizon: int = None) ->
 
 def check_trajectories(trajectories: torch.Tensor, ados: int = None, modes: int = None, t_horizon: int = None) -> bool:
     is_correct = True
-    is_correct = is_correct and len(trajectories.shape) == 4  # (num_ados,num_modes,t_horizon,6)
-    is_correct = is_correct and trajectories.shape[3] == 6  # (x, y, theta, vx, vy, t)
+    is_correct = is_correct and len(trajectories.shape) == 4  # (num_ados,num_modes,t_horizon, 5)
+    is_correct = is_correct and trajectories.shape[3] == 5  # (x, y, vx, vy, t)
     if ados is not None:
         is_correct = is_correct and trajectories.shape[0] == ados
     if modes is not None:

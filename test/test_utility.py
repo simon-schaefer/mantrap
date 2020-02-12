@@ -4,8 +4,10 @@ import numpy as np
 import pytest
 import torch
 
+from mantrap.agents import IntegratorDTAgent
+from mantrap.constants import agent_speed_max
 from mantrap.utility.maths import Derivative2, lagrange_interpolation
-from mantrap.utility.primitives import straight_line_primitive
+from mantrap.utility.primitives import square_primitives, straight_line_primitive
 from mantrap.utility.utility import build_trajectory_from_positions
 
 
@@ -17,7 +19,7 @@ def test_build_trajectory_from_positions():
     trajectory = build_trajectory_from_positions(positions, dt=1.0, t_start=0.0)
 
     assert torch.all(torch.eq(trajectory[:, 0:2], positions))
-    assert torch.all(torch.eq(trajectory[1:, 3:5], torch.ones(10, 2)))
+    assert torch.all(torch.eq(trajectory[1:, 2:4], torch.ones(10, 2)))
 
 
 ###########################################################################
@@ -77,10 +79,10 @@ def test_lagrange_interpolation():
 
     Source: http://www.maths.lth.se/na/courses/FMN050/media/material/lec8_9.pdf"""
 
-    start = torch.tensor([0, 0]).float()
-    mid = torch.tensor([5.0, 5.0], requires_grad=True).float()
-    end = torch.tensor([10, 0]).float()
-    points = torch.stack((start, mid, end)).float()
+    start = torch.tensor([0.0, 0.0])
+    mid = torch.tensor([5.0, 5.0], requires_grad=True)
+    end = torch.tensor([10.0, 0.0])
+    points = torch.stack((start, mid, end))
 
     points_up = lagrange_interpolation(control_points=points, num_samples=100)
 
@@ -88,7 +90,8 @@ def test_lagrange_interpolation():
     assert len(points_up.shape) == 2 and points_up.shape[1] == 2 and points_up.shape[0] == 100
     for n in range(100):
         assert start[0] <= points_up[n, 0] <= end[0]
-        assert min(start[1], mid[1], end[1]) <= points_up[n, 1] <= max(start[1], mid[1], end[1])
+        assert min(start[1], mid[1], end[1]) <= points_up[n, 1] + 0.0001
+        assert points_up[n, 1] - 0.0001 <= max(start[1], mid[1], end[1])
 
     # Test derivatives of up-sampled trajectory.
     for n in range(1, 100):  # first point has no gradient since (0, 0) control point
@@ -96,3 +99,31 @@ def test_lagrange_interpolation():
         assert torch.all(torch.eq(dx, torch.zeros(2)))  # created by linspace operation
         dy = torch.autograd.grad(points_up[n, 1], mid, retain_graph=True)[0]
         assert not torch.all(torch.eq(dy, torch.zeros(2)))  # created by interpolation
+
+
+###########################################################################
+# Primitives ##############################################################
+###########################################################################
+
+@pytest.mark.parametrize("num_points", [5, 10])
+def test_square_primitives(num_points: int):
+    position, velocity, goal = torch.tensor([-5, 0]), torch.tensor([1, 0]), torch.tensor([2, 0])
+    agent = IntegratorDTAgent(position=position, velocity=velocity)
+    primitives = square_primitives(start=agent.position, end=goal, dt=1.0, num_points=num_points)
+    print(primitives.shape)
+
+    assert primitives.shape[1] == num_points
+    for m in range(primitives.shape[0]):
+        for i in range(1, num_points - 1):
+            distance = torch.norm(primitives[m, i, :] - primitives[m, i - 1, :])
+            distance_next = torch.norm(primitives[m, i + 1, :] - primitives[m, i, :])
+            if torch.isclose(distance_next, torch.zeros(1), atol=0.1):
+                continue
+            assert torch.isclose(distance, torch.tensor([agent_speed_max]).double(), atol=0.5)  # dt = 1.0
+
+    # The center primitive should be a straight line, therefore the one with largest x-expansion, since we are moving
+    # straight in x-direction. Similarly the first primitive should have the largest expansion in y direction, the
+    # last one the smallest.
+    assert all([primitives[1, -1, 0] >= primitives[i, -1, 0] for i in range(primitives.shape[0])])
+    assert all([primitives[0, -1, 1] >= primitives[i, -1, 1] for i in range(primitives.shape[0])])
+    assert all([primitives[-1, -1, 1] <= primitives[i, -1, 1] for i in range(primitives.shape[0])])

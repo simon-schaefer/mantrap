@@ -25,15 +25,16 @@ class Agent:
         assert velocity.size() == torch.Size([2]), "velocity must be two-dimensional (vx, vy)"
         assert time >= 0, "time must be larger or equal to zero"
 
-        self._position = position.float()
-        self._velocity = velocity.float()
+        self._position = position.double()
+        self._velocity = velocity.double()
 
         # Initialize (and/or append) history vector.
         if history is not None:
-            assert history.shape[1] == 6, "history should contain 2D stamped pose & velocity (x, y, theta, vx, vy, t)"
-            self._history = torch.stack((history.float(), expand_state_vector(self.state, time).unsqueeze(0)), dim=1)
+            assert history.shape[1] == 5, "history should contain 2D stamped position & velocity (x, y, vx, vy, t)"
+            history = history.double()
+            self._history = torch.stack((history, expand_state_vector(self.state, time).unsqueeze(0)), dim=1)
         else:
-            self._history = expand_state_vector(self.state, time=time).view(1, 6)
+            self._history = expand_state_vector(self.state, time=time).view(1, 5).double()
 
         # Create random agent color (reddish), for evaluation only.
         self._color = np.random.uniform(0.0, 0.8, size=3).tolist()
@@ -47,7 +48,7 @@ class Agent:
         assert dt > 0.0, "time-step must be larger than 0"
         state_new = self.dynamics(self.state, action, dt=dt)
         self._position = state_new[0:2]
-        self._velocity = state_new[3:5]
+        self._velocity = state_new[2:4]
 
         # maximal speed constraint.
         if self.speed > agent_speed_max:
@@ -72,7 +73,7 @@ class Agent:
             policy = policy.unsqueeze(dim=-1)
 
         # initial trajectory point is the current state.
-        trajectory = torch.zeros((policy.shape[0] + 1, 6))
+        trajectory = torch.zeros((policy.shape[0] + 1, 5))
         trajectory[0, :] = expand_state_vector(self.state, time=0)
 
         # every next state follows from robot's dynamics recursion, basically assuming no model uncertainty.
@@ -91,7 +92,7 @@ class Agent:
         if history is None:
             history = self._history = torch.cat((self._history, state.unsqueeze(0)), dim=0)
         self._position = state[0:2]
-        self._velocity = state[3:5]
+        self._velocity = state[2:4]
         self._history = history
 
     @abstractmethod
@@ -108,20 +109,15 @@ class Agent:
 
     @property
     def state(self) -> torch.Tensor:
-        return torch.cat((self.pose, self.velocity)).float()
+        return torch.cat((self.position, self.velocity))
 
     @property
     def position(self) -> torch.Tensor:
-        return self._position.float()
-
-    @property
-    def pose(self) -> torch.Tensor:
-        theta = torch.atan2(self._velocity[1].float(), self._velocity[0].float())
-        return torch.tensor([self._position[0], self._position[1], theta]).float()
+        return self._position
 
     @property
     def velocity(self) -> torch.Tensor:
-        return self._velocity.float()
+        return self._velocity
 
     @property
     def speed(self) -> float:

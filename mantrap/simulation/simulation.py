@@ -59,7 +59,7 @@ class Simulation:
         agent states remain unchanged).
 
         :param ego_policy: planned ego policy (in case of dependence in behaviour between ado and ego).
-        :return ado_states (num_ados, num_modes, 6), ego_next_state (6) in next time step.
+        :return ado_states (num_ados, num_modes, 5), ego_next_state (5) in next time step.
         """
         self._sim_time = self._sim_time + self.dt
 
@@ -176,16 +176,20 @@ class GraphBasedSimulation(Simulation):
     @abstractmethod
     def build_graph(self, ego_state: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         k = kwargs["k"] if "k" in kwargs.keys() else 0
+        ado_grad = kwargs["ado_grad"] if "ado_grad" in kwargs.keys() else False
         ego_grad = kwargs["ego_grad"] if "ego_grad" in kwargs.keys() else True
         graph = {}
 
         for ghost in self.ado_ghosts:
             graph[f"{ghost.gid}_{k}_position"] = ghost.agent.position
             graph[f"{ghost.gid}_{k}_velocity"] = ghost.agent.velocity
+            if ado_grad and graph[f"{ghost.gid}_{k}_position"].requires_grad is not True:
+                graph[f"{ghost.gid}_{k}_position"].requires_grad = True
+                graph[f"{ghost.gid}_{k}_velocity"].requires_grad = True
 
         if ego_state is not None:
             graph[f"ego_{k}_position"] = ego_state[0:2]
-            graph[f"ego_{k}_velocity"] = ego_state[3:5]
+            graph[f"ego_{k}_velocity"] = ego_state[2:4]
 
             if ego_grad:
                 graph[f"ego_{k}_position"].requires_grad = True

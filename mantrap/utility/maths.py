@@ -90,6 +90,6 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100)
 
     x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)
     y_up = torch.stack((x_up ** 2, x_up, torch.ones(num_samples))).T.matmul(a)
-    return torch.stack((x_up, y_up), dim=1).float()
+    return torch.stack((x_up, y_up), dim=1)
 
 
