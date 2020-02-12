@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation import PotentialFieldStaticSimulation, SocialForcesSimulation
+from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
 from mantrap.solver import CGradSolver
 from mantrap.solver.cgrad.modules import solver_module_dict
 from mantrap.utility.io import pytest_is_running
@@ -37,7 +37,7 @@ class UnconstrainedCGradSolver(CGradSolver):
     ],
 )
 def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos: List[torch.Tensor], horizon: int):
-    sim = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": ego_pos, "velocity": ego_velocity})
+    sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": ego_pos, "velocity": ego_velocity})
     for ado_position in ado_pos:
         sim.add_ado(position=ado_position)
     solver = CGradSolver(sim, goal=torch.zeros(2), planning_horizon=horizon)
@@ -76,7 +76,7 @@ def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos:
     ],
 )
 def test_module_convergence(objective: str, ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
-    sim = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.5)
+    sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.5)
     sim.add_ado(position=ado_pos)
     solver = UnconstrainedCGradSolver(sim, goal=goal, objective=objective, modules=[(objective, 1.0)])
 
@@ -100,7 +100,7 @@ def test_module_convergence(objective: str, ego_pos: torch.Tensor, goal: torch.T
     ],
 )
 def test_convergence(ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
-    sim = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.2)
+    sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.2)
     sim.add_ado(position=ado_pos)
     solver = CGradSolver(sim, goal=goal, verbose=not pytest_is_running())
 

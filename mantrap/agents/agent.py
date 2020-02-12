@@ -152,7 +152,7 @@ class Agent:
     ###########################################################################
 
     @property
-    def color(self) -> torch.Tensor:
+    def color(self) -> np.ndarray:
         return self._color
 
     @property

@@ -37,7 +37,6 @@ class IGradSolver(IPOPTSolver):
         return float(objective)
 
     def gradient(self, x: np.ndarray) -> np.ndarray:
-        torch.autograd.set_detect_anomaly(True)
         x2, x_tensor = self.x_to_ego_trajectory(x, return_x_tensor=True)
         graphs = self._env.build_connected_graph(ego_positions=x2, ego_grad=False)
 
@@ -80,7 +79,7 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
 
     def x_to_ego_trajectory(self, x: np.ndarray, return_x_tensor: bool = False) -> torch.Tensor:
-        assert self._env.num_ado_modes == 1, "currently only uni-modal agents are supported"
+        assert self._env.num_ado_modes <= 1, "currently only uni-modal agents are supported"
         mid = torch.tensor(x.astype(np.float64), requires_grad=True).float()
         points = torch.stack((self._env.ego.position, mid, self._goal)).float()
         interpolated = lagrange_interpolation(control_points=points, num_samples=self.T)

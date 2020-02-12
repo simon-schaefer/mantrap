@@ -2,8 +2,7 @@ import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation import PotentialFieldStaticSimulation
-from mantrap.utility.io import build_output_path
+from mantrap.simulation import PotentialFieldSimulation
 
 
 @pytest.mark.parametrize(
@@ -15,8 +14,8 @@ from mantrap.utility.io import build_output_path
     ],
 )
 def test_simplified_sf_simulation(pos_1: torch.Tensor, pos_2: torch.Tensor):
-    sim_1 = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": pos_1})
-    sim_2 = PotentialFieldStaticSimulation(IntegratorDTAgent, {"position": pos_2})
+    sim_1 = PotentialFieldSimulation(IntegratorDTAgent, {"position": pos_1})
+    sim_2 = PotentialFieldSimulation(IntegratorDTAgent, {"position": pos_2})
 
     forces = torch.zeros((2, 2))
     gradients = torch.zeros((2, 2))
