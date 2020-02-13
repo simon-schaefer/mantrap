@@ -11,12 +11,12 @@ from mantrap.solver.solver import IPOPTSolver
 from mantrap.utility.shaping import check_trajectory_primitives
 
 
-class CGradSolver(IPOPTSolver):
+class SGradSolver(IPOPTSolver):
 
     def __init__(
         self, sim: GraphBasedSimulation, goal: torch.Tensor, modules: List[Tuple[str, float]] = None, **solver_params
     ):
-        super(CGradSolver, self).__init__(sim, goal, **solver_params)
+        super(SGradSolver, self).__init__(sim, goal, **solver_params)
 
         # The objective function (and its gradient) are packed into modules, for a more compact representation,
         # the ease of switching between different objective functions and to simplify logging and visualization.
@@ -130,7 +130,7 @@ class CGradSolver(IPOPTSolver):
         return jacobian
 
     def intermediate(self, alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args):
-        super(CGradSolver, self).intermediate(alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args)
+        super(SGradSolver, self).intermediate(alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args)
         if self.is_verbose:
             for module in self._modules.values():
                 module.logging()
@@ -156,4 +156,4 @@ class CGradSolver(IPOPTSolver):
             self._optimization_log[f"grad_{module_name}"] = grad_log
             module.clean_up()
         # Do logging and visualization of base class with updated optimization log.
-        super(CGradSolver, self).log_and_clean_up()
+        super(SGradSolver, self).log_and_clean_up()
