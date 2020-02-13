@@ -1,6 +1,5 @@
 import time
 
-import numpy as np
 import pytest
 import torch
 
@@ -101,10 +100,21 @@ def test_lagrange_interpolation():
         assert not torch.all(torch.eq(dy, torch.zeros(2)))  # created by interpolation
 
 
+def test_lagrange_singularity():
+    start = torch.tensor([0.0, 0.0])
+    mid = torch.tensor([0.0, 5.0], requires_grad=True)
+    end = torch.tensor([10.0, 0.0])
+    points = torch.stack((start, mid, end))
+
+    points_up = lagrange_interpolation(control_points=points, num_samples=10)
+    for n in range(1, 10):
+        torch.autograd.grad(points_up[n, 0], mid, retain_graph=True)
+        torch.autograd.grad(points_up[n, 1], mid, retain_graph=True)
+
+
 ###########################################################################
 # Primitives ##############################################################
 ###########################################################################
-
 @pytest.mark.parametrize("num_points", [5, 10])
 def test_square_primitives(num_points: int):
     position, velocity, goal = torch.tensor([-5, 0]), torch.tensor([1, 0]), torch.tensor([2, 0])

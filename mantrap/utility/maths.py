@@ -73,6 +73,7 @@ class Derivative2:
     def compute_single(self, x: torch.Tensor, x_prev: torch.Tensor, x_next: torch.Tensor) -> torch.Tensor:
         return (x_prev - 2 * x + x_next) / self._dt**2
 
+
 ###########################################################################
 # Interpolation ###########################################################
 ###########################################################################
@@ -90,6 +91,11 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100)
 
     x = torch.stack((control_points[:, 0] ** 2, control_points[:, 0], torch.ones(n)), dim=1)
     y = control_points[:, 1]
+
+    # If x is singular (i.e. det(x) = 0) the matrix is not invertible, permeate some points slightly to be able to
+    # perform an interpolation. However the result of the interpolation won't be very stable (!).
+    if x.det() < 1e-6:
+        x = x + torch.rand(x.size())
     a = torch.inverse(x).matmul(y)
 
     x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)
