@@ -99,7 +99,7 @@ def test_module_convergence(objective: str, ego_pos: torch.Tensor, goal: torch.T
         (torch.tensor([2, 2]), torch.tensor([-2, -2]), torch.tensor([0, 1])),
     ],
 )
-def test_convergence(ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
+def test_single_static_agent(ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
     sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.2)
     sim.add_ado(position=ado_pos)
     solver = CGradSolver(sim, goal=goal, verbose=not pytest_is_running())
@@ -115,10 +115,28 @@ def test_convergence(ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.T
     assert x_opt_obj <= x0_obj  # minimization problem (!)
 
 
+def test_multiple_agent_scenario():
+    sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-2, 0])})
+    sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
+    sim.add_ado(position=torch.tensor([3, 2]), velocity=torch.tensor([0.1, -1.5]))
+    sim.add_ado(position=torch.tensor([3, -8]), velocity=torch.tensor([2.5, 1.5]))
+
+    optimization_modules = [("goal", 4.0), ("interaction", 1.0)]
+    solver = CGradSolver(sim, goal=torch.tensor([8, 0]), modules=optimization_modules, verbose=not pytest_is_running())
+
+    x0 = square_primitives(start=sim.ego.position, end=solver.goal, dt=sim.dt)[0, :, :]
+    x_optimized = solver._solve_optimization(x0=x0, approx_jacobian=False, approx_hessian=True)
+
+    # Objective evaluation.
+    x0_obj = solver.objective(x0.flatten().detach().numpy())
+    x_opt_obj = solver.objective(x_optimized.flatten().detach().numpy())
+    assert x_opt_obj <= x0_obj  # minimization problem (!)
+
+
 def test_gradient_computation_speed():
     sim = SocialForcesSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0])}, dt=0.5)
     sim.add_ado(position=torch.tensor([0, 0.001]), goal=torch.tensor([0, -4.0]), num_modes=1)
-    solver = CGradSolver(sim, goal=torch.ones(2), modules=[("interaction", 1.0)])
+    solver = CGradSolver(sim, goal=torch.ones(2))
 
     # Determine gradient and measure computation time.
     x0 = square_primitives(start=sim.ego.position, end=solver.goal, dt=sim.dt)[0, :, :].flatten().detach().numpy()

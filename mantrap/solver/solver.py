@@ -26,6 +26,8 @@ class Solver:
         if "verbose" not in self._solver_params.keys():
             self._solver_params["verbose"] = False
 
+        assert self._solver_params["planning_horizon"] > 2, "planning horizon must be larger 2"
+
     def solve(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal simulation with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
@@ -216,7 +218,8 @@ class IPOPTSolver(Solver):
 
         # Visualization. Find path to output directory, create it or delete every file inside.
         from mantrap.evaluation.visualization import visualize_optimization
-        output_directory_path = build_output_path("test/graphs/igrad_optimization", make_dir=True, free=True)
+        name_tag = self.__class__.__name__
+        output_directory_path = build_output_path(f"test/graphs/{name_tag}_optimization", make_dir=True, free=True)
         visualize_optimization(self._optimization_log, env=self._env, dir_path=output_directory_path)
 
         # Reset optimization logging parameters for next optimization.
