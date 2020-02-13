@@ -8,7 +8,7 @@ import torch
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
 from mantrap.solver import CGradSolver
-from mantrap.solver.cgrad.modules import solver_module_dict
+from mantrap.solver.modules import solver_module_dict
 from mantrap.utility.io import pytest_is_running
 from mantrap.utility.primitives import square_primitives, straight_line_primitive
 
@@ -51,7 +51,6 @@ def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos:
     x_2 = torch.ones((solver.T, 2)) * 80.0
     obj_2 = interaction_module.objective(x_2)
     assert obj_1 >= obj_2
-    assert np.isclose(obj_2, 0.0)
 
     # Test output shapes.
     x0 = x.flatten().numpy()
@@ -72,6 +71,8 @@ def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos:
     "objective, ego_pos, goal, ado_pos",
     [
         ("interaction", torch.tensor([-5, 0]), torch.tensor([5, 0]), torch.tensor([0, 0.001])),
+        ("acc_interaction", torch.tensor([-5, 0]), torch.tensor([5, 0]), torch.tensor([0, 0.001])),
+        ("pos_interaction", torch.tensor([-5, 0]), torch.tensor([5, 0]), torch.tensor([0, 0.001])),
         ("goal", torch.tensor([2, 2]), torch.tensor([-2, -2]), torch.tensor([0, 1])),
     ],
 )

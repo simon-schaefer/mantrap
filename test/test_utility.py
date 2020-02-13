@@ -30,26 +30,26 @@ def test_derivative_2(horizon: int):
     diff = Derivative2(horizon=horizon, dt=1.0)
 
     for k in range(1, horizon - 1):
-        assert np.array_equal(diff._diff_mat[k, k - 1: k + 2], np.array([1, -2, 1]))
+        assert torch.all(torch.eq(diff._diff_mat[k, k - 1: k + 2], torch.tensor([1, -2, 1])))
 
     # Constant velocity -> zero acceleration (first and last point are skipped (!)).
-    x = straight_line_primitive(horizon, torch.zeros(2), torch.tensor([horizon - 1, 0])).detach().numpy()
-    assert np.array_equal(diff.compute(x), np.zeros((horizon, 2)))
+    x = straight_line_primitive(horizon, torch.zeros(2), torch.tensor([horizon - 1, 0]))
+    assert torch.all(torch.eq(diff.compute(x), torch.zeros((horizon, 2))))
 
     t_step = int(horizon / 2)
-    x = np.zeros((horizon, 2))
+    x = torch.zeros((horizon, 2))
     x[t_step, 0] = 10
     x[t_step - 1, 0] = x[t_step + 1, 0] = 5
     x[t_step - 2, 0] = x[t_step + 2, 0] = 2
     a = diff.compute(x)
 
-    assert np.all(a[: t_step - 3, 0] == 0) and np.all(a[t_step + 4:, 0] == 0)  # impact of acceleration
-    assert np.all(a[:, 1] == 0)  # no acceleration in y-direction
+    assert torch.all(a[: t_step - 3, 0] == 0) and torch.all(a[t_step + 4:, 0] == 0)  # impact of acceleration
+    assert torch.all(a[:, 1] == 0)  # no acceleration in y-direction
     assert a[t_step, 0] < 0 and a[t_step + 1, 0] > 0 and a[t_step - 1, 0] > 0  # peaks
 
 
 def test_derivative_2_conserve_shape():
-    x = np.zeros((1, 1, 10, 6))
+    x = torch.zeros((1, 1, 10, 6))
     diff = Derivative2(horizon=10, dt=1.0, num_axes=4)
     x_ddt = diff.compute(x)
 
@@ -57,7 +57,7 @@ def test_derivative_2_conserve_shape():
 
 
 def test_derivative_2_runtime():
-    x = np.random.rand(5, 1, 10, 6)
+    x = torch.rand(5, 1, 10, 6)
     diff = Derivative2(horizon=10, dt=1.0, num_axes=4)
 
     start_time = time.time()

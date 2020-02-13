@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from mantrap.solver.cgrad.modules.module import Module
+from mantrap.solver.modules.module import Module
 
 
 class GoalModule(Module):

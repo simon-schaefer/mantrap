@@ -129,7 +129,9 @@ class IPOPTSolver(Solver):
             nlp.addOption("jacobian_approximation", "finite-difference-values")
         if approx_hessian:
             nlp.addOption("hessian_approximation", "limited-memory")
-        nlp.addOption("print_level", 5)  # the larger the value, the more print output.
+
+        print_level = 5 if self.is_verbose or check_derivative else 0  # the larger the value, the more print output.
+        nlp.addOption("print_level", print_level)
         if self.is_verbose or check_derivative:
             nlp.addOption("print_timing_statistics", "yes")
             nlp.addOption("derivative_test", "first-order")

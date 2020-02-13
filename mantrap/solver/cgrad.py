@@ -6,7 +6,7 @@ import torch
 
 from mantrap.constants import agent_speed_max
 from mantrap.simulation.simulation import GraphBasedSimulation
-from mantrap.solver.cgrad.modules import solver_module_dict
+from mantrap.solver.modules import solver_module_dict
 from mantrap.solver.solver import IPOPTSolver
 from mantrap.utility.shaping import check_trajectory_primitives
 

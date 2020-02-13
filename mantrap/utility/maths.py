@@ -56,18 +56,22 @@ class Derivative2:
     def __init__(self, horizon: int, dt: float, num_axes: int = 2):
         assert num_axes >= 2, "minimal number of axes of differentiable matrix is 2"
         self._num_axes = num_axes
+        self._dt = dt
 
-        self._diff_mat = np.zeros((horizon, horizon))
+        self._diff_mat = torch.zeros((horizon, horizon))
         for k in range(1, horizon - 1):
             self._diff_mat[k, k - 1] = 1
             self._diff_mat[k, k] = -2
             self._diff_mat[k, k + 1] = 1
         self._diff_mat *= 1 / dt ** 2
-        self._diff_mat = np.expand_dims(self._diff_mat, axis=tuple(i for i in range(num_axes - 2)))
+        for _ in range(num_axes - 2):
+            self._diff_mat = self._diff_mat.unsqueeze(0)
 
-    def compute(self, x: np.ndarray) -> np.ndarray:
-        return np.matmul(self._diff_mat, x)
+    def compute(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.matmul(self._diff_mat, x)
 
+    def compute_single(self, x: torch.Tensor, x_prev: torch.Tensor, x_next: torch.Tensor) -> torch.Tensor:
+        return (x_prev - 2 * x + x_next) / self._dt**2
 
 ###########################################################################
 # Interpolation ###########################################################
@@ -91,5 +95,3 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100)
     x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)
     y_up = torch.stack((x_up ** 2, x_up, torch.ones(num_samples))).T.matmul(a)
     return torch.stack((x_up, y_up), dim=1)
-
-

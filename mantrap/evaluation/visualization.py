@@ -33,7 +33,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
         x2_np = optimization_log["x"][k]
         x2 = torch.from_numpy(x2_np)
         ego_traj = build_trajectory_from_positions(x2, dt=env.dt, t_start=env.sim_time)
-        ado_traj_np = env.predict(horizon, ego_trajectory=ego_traj).detach().numpy()
+        ado_traj = env.predict(horizon, ego_trajectory=ego_traj)
 
         fig = plt.figure(figsize=(15, 15), constrained_layout=True)
         plt.title(f"iGrad optimization - IPOPT step {k} - Horizon {horizon}")
@@ -49,7 +49,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
         # Plot current and base resulting simulated ado trajectories in the scene.
         for m in range(env.num_ados):
             ado_id, ado_color = env.ados[m].id, env.ados[m].color
-            ado_pos = ado_traj_np[m, 0, :, 0:2]
+            ado_pos = ado_traj[m, 0, :, 0:2]
             # ado_pos_base = ado_traj_base_np[m, 0, :, 0:2]
             ax.plot(ado_pos[:, 0], ado_pos[:, 1], "--", color=ado_color, label=f"{ado_id}_current")
             # ax.plot(ado_pos_base[:, 0], ado_pos_base[:, 1], "o", color=ado_color, label=f"{ado_id}_base")
@@ -61,7 +61,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
 
         # Plot agent velocities for resulting solution vs base-line ego trajectory for current optimization step.
         ax = fig.add_subplot(grid[-3, :])
-        ado_velocity_norm = np.linalg.norm(ado_traj_np[:, :, :, 2:4], axis=3)
+        ado_velocity_norm = np.linalg.norm(ado_traj[:, :, :, 2:4], axis=3)
         # ado_velocity_base_norm = np.linalg.norm(ado_traj_base_np[:, :, :, 2:4], axis=3)
         ego_velocity_norm = np.linalg.norm(ego_traj[:, 2:4], axis=1)
         # ego_velocity_base_norm = np.linalg.norm(ego_traj_base_np[:, 2:4], axis=1)
@@ -79,7 +79,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
         # Plot agent accelerations for resulting solution vs base-line ego trajectory for current optimization step.
         ax = fig.add_subplot(grid[-2, :])
         dd = Derivative2(horizon=horizon, dt=env.dt)
-        ado_acceleration_norm = np.linalg.norm(dd.compute(ado_traj_np[:, :, :, 0:2]), axis=3)
+        ado_acceleration_norm = np.linalg.norm(dd.compute(ado_traj[:, :, :, 0:2]), axis=3)
         # ado_base_acceleration_norm = np.linalg.norm(dd.compute(ado_traj_base_np[:, :, :, 0:2]), axis=3)
         for m in range(env.num_ados):
             ado_id, ado_color = env.ados[m].id, env.ados[m].color

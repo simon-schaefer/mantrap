@@ -5,6 +5,7 @@ import numpy as np
 import torch
 
 from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.solver.modules import InteractionPositionModule
 from mantrap.solver.solver import IPOPTSolver
 from mantrap.utility.maths import lagrange_interpolation
 
@@ -15,39 +16,24 @@ class IGradSolver(IPOPTSolver):
         super(IGradSolver, self).__init__(sim, goal, **solver_params)
 
         # For objective function evaluation store the ado trajectories without interaction.
-        self._ado_states_wo = self._env.predict(self.T, ego_trajectory=None)
+        self._module = InteractionPositionModule(self._env, horizon=self.T)
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
     ###########################################################################
     def objective(self, x: np.ndarray) -> float:
         x2 = self.x_to_ego_trajectory(x)
-        graphs = self._env.build_connected_graph(ego_positions=x2, ego_grad=False)
-
-        objective = torch.zeros(1)
-        for k in range(self.T):
-            for m in range(self._env.num_ado_ghosts):
-                ado_position = graphs[f"{self._env.ado_ghosts[m].gid}_{k}_position"]
-                ado_position_wo = self._ado_states_wo[m, 0, k, 0:2]
-                objective += torch.norm(ado_position - ado_position_wo)
+        objective = self._module.objective(x2)
 
         logging.debug(f"Objective function = {objective}")
         if self.is_verbose:
             self._x_latest = x2.detach().numpy().copy()  # logging most current optimization values
-        return float(objective.item())
+        return objective
 
     def gradient(self, x: np.ndarray) -> np.ndarray:
         x2, x_tensor = self.x_to_ego_trajectory(x, return_x_tensor=True)
-        graphs = self._env.build_connected_graph(ego_positions=x2, ego_grad=False)
 
-        objective = torch.zeros(1)
-        for k in range(self.T):
-            for m in range(self._env.num_ado_ghosts):
-                ado_position = graphs[f"{self._env.ado_ghosts[m].gid}_{k}_position"]
-                ado_position_wo = self._ado_states_wo[m, 0, k, 0:2]
-                objective += torch.norm(ado_position - ado_position_wo)
-
-        gradient = torch.autograd.grad(objective, x_tensor)[0].detach().numpy()
+        gradient = self._module.gradient(x2, grad_wrt=x_tensor)
 
         logging.debug(f"Gradient function = {gradient}")
         if self.is_verbose:
