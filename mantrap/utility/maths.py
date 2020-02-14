@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import logging
 
 import numpy as np
 import torch
@@ -77,7 +78,7 @@ class Derivative2:
 ###########################################################################
 # Interpolation ###########################################################
 ###########################################################################
-def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100) -> torch.Tensor:
+def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100, deg: int = 2) -> torch.Tensor:
     """Lagrange interpolation using Vandermonde Approach. Vandermonde finds the Lagrange parameters by solving
     a matrix equation X a = Y with known control point matrices (X,Y) and parameter vector a, therefore is fully
     differentiable. Also Lagrange interpolation guarantees to pass every control point, but performs poorly in
@@ -89,15 +90,14 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100)
     assert control_points.shape[1] == 2, "2D interpolation requires 2D input"
     n = control_points.shape[0]
 
-    x = torch.stack((control_points[:, 0] ** 2, control_points[:, 0], torch.ones(n)), dim=1)
+    x = torch.stack([control_points[:, 0] ** n for n in range(deg)], dim=1)
     y = control_points[:, 1]
 
-    # If x is singular (i.e. det(x) = 0) the matrix is not invertible, permeate some points slightly to be able to
-    # perform an interpolation. However the result of the interpolation won't be very stable (!).
-    if x.det() < 1e-6:
-        x = x + torch.rand(x.size())
+    # If x is singular (i.e. det(x) = 0) the matrix is not invertible, give an error, since permeating some points
+    # slightly to be able to perform an interpolation, leads to misinformed gradients. The result of the interpolation
+    # won't be very stable (!).
     a = torch.inverse(x).matmul(y)
 
     x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)
-    y_up = torch.stack((x_up ** 2, x_up, torch.ones(num_samples))).T.matmul(a)
+    y_up = torch.stack([x_up ** n for n in range(deg)]).T.matmul(a)
     return torch.stack((x_up, y_up), dim=1)

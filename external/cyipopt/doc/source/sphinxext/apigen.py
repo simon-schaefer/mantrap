@@ -1,16 +1,16 @@
 """Attempt to generate templates for module reference with Sphinx
 
-XXX - we exclude extension modules
+XXX - we exclude extension objectives
 
-To include extension modules, first identify them as valid in the
+To include extension objectives, first identify them as valid in the
 ``_uri2path`` method, then handle them in the ``_parse_module`` script.
 
 We get functions and classes by parsing the text of .py files.
-Alternatively we could import the modules for discovery, and we'd have
-to do that for extension modules.  This would involve changing the
+Alternatively we could import the objectives for discovery, and we'd have
+to do that for extension objectives.  This would involve changing the
 ``_parse_module`` method to work via import and introspection, and
 might involve changing ``discover_modules`` (which determines which
-files are modules, and therefore which module URIs will be passed to
+files are objectives, and therefore which module URIs will be passed to
 ``_parse_module``).
 
 NOTE: this is a modified version of a script originally shipped with the
@@ -53,7 +53,7 @@ class ApiDocWriter(object):
             regexps.  If is None, gives default. Default is:
             ['\.tests$']
         module_skip_patterns : None or sequence
-            Sequence of strings giving URIs of modules to be excluded
+            Sequence of strings giving URIs of objectives to be excluded
             Operates on the module name including preceding URI path,
             back to the first dot after *package_name*.  For example
             ``sphinx.util.console`` results in the string to search of
@@ -219,7 +219,7 @@ class ApiDocWriter(object):
         ad += (chap_title+'\n'+ self.rst_section_levels[1] * len(chap_title)
                + '\n\n')
 
-        # Set the chapter title to read 'module' for all modules except for the
+        # Set the chapter title to read 'module' for all objectives except for the
         # main packages
         if '.' in uri:
             title = 'Module: :mod:`' + uri_short + '`'
@@ -343,7 +343,7 @@ class ApiDocWriter(object):
                     modules.append(package_uri)
                 else:
                     dirnames.remove(dirname)
-            # Check filenames for modules
+            # Check filenames for objectives
             for filename in filenames:
                 module_name = filename[:-3]
                 module_uri = '.'.join((root_uri, module_name))
@@ -383,11 +383,11 @@ class ApiDocWriter(object):
 
         Notes
         -----
-        Sets self.written_modules to list of written modules
+        Sets self.written_modules to list of written objectives
         """
         if not os.path.exists(outdir):
             os.mkdir(outdir)
-        # compose list of modules
+        # compose list of objectives
         modules = self.discover_modules()
         self.write_modules_api(modules,outdir)
         
@@ -410,7 +410,7 @@ class ApiDocWriter(object):
             leave path as it is.
         """
         if self.written_modules is None:
-            raise ValueError('No modules written')
+            raise ValueError('No objectives written')
         # Get full filename path
         path = os.path.join(outdir, froot+self.rst_extension)
         # Path written into index is relative to rootpath

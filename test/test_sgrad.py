@@ -8,8 +8,8 @@ import torch
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
 from mantrap.solver import SGradSolver
-from mantrap.solver.modules import solver_module_dict
-from mantrap.utility.io import pytest_is_running
+from mantrap.solver.objectives import OBJECTIVES
+from mantrap.utility.io import no_pytest
 from mantrap.utility.primitives import square_primitives, straight_line_primitive
 
 
@@ -46,7 +46,7 @@ def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos:
     # Test objective function by comparing a solution trajectory x which is far away and close to the other agents
     # in the scene. Then the close agent is a lot more affected by the ego in the first scenario.
     x = straight_line_primitive(solver.T, sim.ego.position, solver.goal)
-    interaction_module = solver_module_dict["interaction"](horizon=solver.T, env=sim)
+    interaction_module = OBJECTIVES["interaction"](horizon=solver.T, env=sim)
     obj_1 = interaction_module.objective(x)
     x_2 = torch.ones((solver.T, 2)) * 80.0
     obj_2 = interaction_module.objective(x_2)
@@ -54,16 +54,15 @@ def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos:
 
     # Test output shapes.
     x0 = x.flatten().numpy()
+    constraints = solver.constraints(x0)
     gradient = solver.gradient(x0)
     jacobian = solver.jacobian(x0)
-    # hessian = solver.hessian(x0)
+    assert constraints.size == (solver.T - 1) + 2
     assert gradient.size == 2 * solver.T
     assert jacobian.size == (solver.T - 1 + 2) * 2 * solver.T
-    # assert hessian.shape[0] == hessian.shape[1] == 3 * solver.O
-    # assert np.all(np.linalg.eigvals(hessian) >= 0)  # positive semi-definite
 
     # Test derivatives using derivative-checker from IPOPT framework, format = "mine ~ estimated (difference)".
-    if not pytest_is_running():
+    if no_pytest():
         solver._solve_optimization(x, approx_jacobian=False, approx_hessian=True, check_derivative=True)
 
 
@@ -79,7 +78,7 @@ def test_formulation(ego_pos: torch.Tensor, ego_velocity: torch.Tensor, ado_pos:
 def test_module_convergence(objective: str, ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
     sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.5)
     sim.add_ado(position=ado_pos)
-    solver = UnconstrainedSGradSolver(sim, goal=goal, objective=objective, modules=[(objective, 1.0)])
+    solver = UnconstrainedSGradSolver(sim, goal=goal, objectives=[(objective, 1.0)])
 
     # Initial trajectory and solver calling.
     x0 = square_primitives(start=sim.ego.position, end=solver.goal, dt=sim.dt)[2, :, :]
@@ -103,7 +102,7 @@ def test_module_convergence(objective: str, ego_pos: torch.Tensor, goal: torch.T
 def test_single_static_agent(ego_pos: torch.Tensor, goal: torch.Tensor, ado_pos: torch.Tensor):
     sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": ego_pos}, dt=0.2)
     sim.add_ado(position=ado_pos)
-    solver = SGradSolver(sim, goal=goal, verbose=not pytest_is_running())
+    solver = SGradSolver(sim, goal=goal, verbose=no_pytest())
 
     # Initial trajectory and solver calling.
     x0 = square_primitives(start=sim.ego.position, end=solver.goal, dt=sim.dt)[0, :, :]
@@ -122,8 +121,8 @@ def test_multiple_agent_scenario():
     sim.add_ado(position=torch.tensor([3, 2]), velocity=torch.tensor([0.1, -1.5]))
     sim.add_ado(position=torch.tensor([3, -8]), velocity=torch.tensor([2.5, 1.5]))
 
-    optimization_modules = [("goal", 4.0), ("interaction", 1.0)]
-    solver = SGradSolver(sim, goal=torch.tensor([8, 0]), modules=optimization_modules, verbose=not pytest_is_running())
+    objective_modules = [("goal", 4.0), ("interaction", 1.0)]
+    solver = SGradSolver(sim, goal=torch.tensor([8, 0]), objectives=objective_modules, verbose=no_pytest())
 
     x0 = square_primitives(start=sim.ego.position, end=solver.goal, dt=sim.dt)[0, :, :]
     x_optimized = solver._solve_optimization(x0=x0, approx_jacobian=False, approx_hessian=True)

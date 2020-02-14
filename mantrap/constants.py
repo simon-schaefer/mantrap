@@ -1,12 +1,12 @@
 #######################################
 # agent parameters ###############
 #######################################
-agent_speed_max = 5  # maximal agent velocity in [m/s].
+agent_speed_max = 10  # maximal agent velocity in [m/s].
 
 #######################################
 # simulation parameters ###############
 #######################################
-sim_dt_default = 0.2
+sim_dt_default = 0.5
 sim_x_axis_default = (-10, 10)
 sim_y_axis_default = (-10, 10)
 

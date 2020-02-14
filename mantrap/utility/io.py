@@ -23,8 +23,8 @@ def build_output_path(filepath: str, make_dir: bool = True, free: bool = False) 
     return path
 
 
-def pytest_is_running() -> bool:
-    return "PYTEST_CURRENT_TEST" in os.environ
+def no_pytest() -> bool:
+    return "PYTEST_CURRENT_TEST" not in os.environ
 
 
 def remove_bytes_from_logging(fn):

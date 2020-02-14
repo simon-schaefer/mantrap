@@ -6,10 +6,8 @@ from typing import List, Tuple
 import numpy as np
 import torch
 
-from mantrap.simulation.simulation import GraphBasedSimulation
 
-
-class Module:
+class ObjectiveModule:
 
     def __init__(self, horizon: int, weight: float = 1.0, **module_kwargs):
         self.weight = weight
@@ -26,31 +24,28 @@ class Module:
     # Optimization Formulation ################################################
     ###########################################################################
 
-    @abstractmethod
     def objective(self, x2: torch.Tensor) -> float:
-        pass
+        obj_value = self._compute(x2)
+        return self._return_objective(float(obj_value.item()))
+
+    def gradient(self, x2: torch.Tensor, grad_wrt: torch.Tensor = None) -> np.ndarray:
+        grad_wrt = x2 if grad_wrt is None else grad_wrt
+        if not grad_wrt.requires_grad:
+            grad_wrt.requires_grad = True
+
+        objective = self._compute(x2)
+        gradient = torch.autograd.grad(objective, grad_wrt)[0].flatten().detach().numpy()
+        return self._return_gradient(gradient)
 
     @abstractmethod
-    def gradient(self, x2: torch.Tensor) -> np.ndarray:
+    def _compute(self, x2: torch.Tensor) -> torch.Tensor:
         pass
-
-    def _build_partial_gradients(self, x2: torch.Tensor, env: GraphBasedSimulation) -> np.ndarray:
-        graphs = env.build_connected_graph(ego_positions=x2)
-        ego_positions = [graphs[f"ego_{k}_position"] for k in range(self.T)]
-        partial_grads = torch.zeros((self.T, self.T, env.num_ados, 2))
-        for k in range(self.T):
-            for m in range(env.num_ados):
-                ado_output = graphs[f"{env.ado_ghosts[m].gid}_{k}_output"]
-                grads_tuple = torch.autograd.grad(ado_output, inputs=ego_positions[:k + 1], retain_graph=True)
-                partial_grads[:, :k + 1, m, :] = torch.stack(grads_tuple)
-        return partial_grads.detach().numpy()
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
 
     def _return_objective(self, obj_value: float) -> float:
-        logging.debug(f"Module {self.__str__()} with objective value {obj_value}")
         self._obj_current = self.weight * obj_value
         logging.debug(f"Module {self.__str__()} with objective value {self._obj_current}")
         return self._obj_current

@@ -55,17 +55,6 @@ def test_derivative_2_conserve_shape():
     assert x.shape == x_ddt.shape
 
 
-def test_derivative_2_runtime():
-    x = torch.rand(5, 1, 10, 6)
-    diff = Derivative2(horizon=10, dt=1.0, num_axes=4)
-
-    start_time = time.time()
-    diff.compute(x)
-    run_time = time.time() - start_time
-
-    assert run_time < 1e-3  # > 1000 Hz
-
-
 ###########################################################################
 # Interpolation Testing ###################################################
 ###########################################################################
@@ -83,7 +72,7 @@ def test_lagrange_interpolation():
     end = torch.tensor([10.0, 0.0])
     points = torch.stack((start, mid, end))
 
-    points_up = lagrange_interpolation(control_points=points, num_samples=100)
+    points_up = lagrange_interpolation(control_points=points, num_samples=100, deg=3)
 
     # Test trajectory shape and it itself.
     assert len(points_up.shape) == 2 and points_up.shape[1] == 2 and points_up.shape[0] == 100
@@ -95,11 +84,12 @@ def test_lagrange_interpolation():
     # Test derivatives of up-sampled trajectory.
     for n in range(1, 100):  # first point has no gradient since (0, 0) control point
         dx = torch.autograd.grad(points_up[n, 0], mid, retain_graph=True)[0]
-        assert torch.all(torch.eq(dx, torch.zeros(2)))  # created by linspace operation
+        assert torch.all(torch.eq(dx, torch.zeros(2)))  # created by lin-space operation
         dy = torch.autograd.grad(points_up[n, 1], mid, retain_graph=True)[0]
         assert not torch.all(torch.eq(dy, torch.zeros(2)))  # created by interpolation
 
 
+@pytest.mark.xfail(raises=RuntimeError)
 def test_lagrange_singularity():
     start = torch.tensor([0.0, 0.0])
     mid = torch.tensor([0.0, 5.0], requires_grad=True)
@@ -117,10 +107,9 @@ def test_lagrange_singularity():
 ###########################################################################
 @pytest.mark.parametrize("num_points", [5, 10])
 def test_square_primitives(num_points: int):
-    position, velocity, goal = torch.tensor([-5, 0]), torch.tensor([1, 0]), torch.tensor([2, 0])
+    position, velocity, goal = torch.tensor([-5, 0]), torch.tensor([1, 0]), torch.tensor([20, 0])
     agent = IntegratorDTAgent(position=position, velocity=velocity)
     primitives = square_primitives(start=agent.position, end=goal, dt=1.0, num_points=num_points)
-    print(primitives.shape)
 
     assert primitives.shape[1] == num_points
     for m in range(primitives.shape[0]):
@@ -129,7 +118,8 @@ def test_square_primitives(num_points: int):
             distance_next = torch.norm(primitives[m, i + 1, :] - primitives[m, i, :])
             if torch.isclose(distance_next, torch.zeros(1), atol=0.1):
                 continue
-            assert torch.isclose(distance, torch.tensor([agent_speed_max]).double(), atol=0.5)  # dt = 1.0
+            tolerance = agent_speed_max / 10
+            assert torch.isclose(distance, torch.tensor([agent_speed_max]).double(), atol=tolerance)  # dt = 1.0
 
     # The center primitive should be a straight line, therefore the one with largest x-expansion, since we are moving
     # straight in x-direction. Similarly the first primitive should have the largest expansion in y direction, the

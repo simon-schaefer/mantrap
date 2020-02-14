@@ -6,7 +6,7 @@ highlighted tracebacks.
 """
 
 #-----------------------------------------------------------------------------
-# Needed modules
+# Needed objectives
 
 # Standard library
 import re

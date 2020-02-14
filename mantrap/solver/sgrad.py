@@ -1,30 +1,14 @@
-import logging
 from typing import List, Tuple
 
 import numpy as np
 import torch
 
 from mantrap.constants import agent_speed_max
-from mantrap.simulation.simulation import GraphBasedSimulation
-from mantrap.solver.modules import solver_module_dict
-from mantrap.solver.solver import IPOPTSolver
+from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.shaping import check_trajectory_primitives
 
 
 class SGradSolver(IPOPTSolver):
-
-    def __init__(
-        self, sim: GraphBasedSimulation, goal: torch.Tensor, modules: List[Tuple[str, float]] = None, **solver_params
-    ):
-        super(SGradSolver, self).__init__(sim, goal, **solver_params)
-
-        # The objective function (and its gradient) are packed into modules, for a more compact representation,
-        # the ease of switching between different objective functions and to simplify logging and visualization.
-        modules = [("goal", 1.0), ("interaction", 1.0)] if modules is None else modules
-        assert all([name in solver_module_dict.keys() for name, _ in modules]), "invalid solver module detected"
-        assert all([0.0 <= weight for _, weight in modules]), "invalid solver module weight detected"
-        module_args = {"horizon": self.T, "env": self._env, "goal": self.goal}
-        self._modules = {m: solver_module_dict[m](weight=w, **module_args) for m, w in modules}
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
@@ -45,24 +29,9 @@ class SGradSolver(IPOPTSolver):
     using the Central Difference Expression (with error of order dt^2) we can extract the acceleration from the 
     positions assuming smoothness: d^2/dt^2 x_i = \frac{ x_{i + 1} - 2 x_i + x_{i - 1}}{ dt^2 }.
     """
-
-    def objective(self, x: np.ndarray) -> float:
-        x2 = self.x_to_ego_trajectory(x)
-        objective = np.sum([m.objective(x2) for m in self._modules.values()])
-
-        logging.debug(f"Objective function = {objective}")
-        if self.is_verbose:
-            self._x_latest = x2.detach().numpy().copy()  # logging most current optimization values
-        return float(objective)
-
-    def gradient(self, x: np.ndarray) -> np.ndarray:
-        x2 = self.x_to_ego_trajectory(x)
-        gradient = np.sum([m.gradient(x2) for m in self._modules.values()], axis=0)
-
-        logging.debug(f"Gradient function = {gradient}")
-        if self.is_verbose:
-            self._x_latest = x2.detach().numpy().copy()  # logging most current optimization values
-        return gradient
+    @staticmethod
+    def objective_defaults() -> List[Tuple[str, float]]:
+        return [("goal", 1.0), ("interaction", 1.0)]
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################
@@ -81,18 +50,6 @@ class SGradSolver(IPOPTSolver):
 
     sum_{t = 1}^T || x_{ego}^t - x_{ego}^{t - 1} || < gamma * T
     """
-
-    def constraints(self, x: np.ndarray) -> np.ndarray:
-        x2 = np.reshape(x, (self.T, 2))
-        inter_path_distance = np.linalg.norm(x2[1:, :] - x2[:-1, :], axis=1)
-        initial_position = x2[0, :]
-
-        constraints = np.hstack((inter_path_distance, initial_position))
-        logging.debug(f"Constraints vector = {constraints}")
-        if self.is_verbose:
-            self._x_latest = x.copy()  # logging most current optimization values
-        return constraints
-
     def constraint_bounds(self, x_init: torch.Tensor) -> Tuple[List, List, List, List]:
         assert check_trajectory_primitives(x_init, t_horizon=self.T), "invalid initial trajectory"
         x_start = x_init[0, :].detach().numpy()
@@ -107,53 +64,15 @@ class SGradSolver(IPOPTSolver):
 
         return lb, ub, cl, cu
 
-    def jacobian(self, x: np.ndarray) -> np.ndarray:
-        jacobian = np.zeros((2 + (self.T - 1)) * 2 * self.T)  # (2 + self.T - 1) constraints, derivative each wrt to x_i
-        x2 = np.reshape(x, (self.T, 2))
-        diff = x2[1:] - x2[:-1]
-        norm = np.linalg.norm(diff, axis=1) + 1e-6  # prevent zero division
-
-        # inter-point distance constraint jacobian - x and y coordinate.
-        for i in range(self.T - 1):
-            jacobian[i * 2 * self.T + 2 * i] = -1 / norm[i] * diff[i, 0]
-            jacobian[i * 2 * self.T + 2 * i + 1] = -1 / norm[i] * diff[i, 1]
-            jacobian[i * 2 * self.T + 2 * (i + 1)] = 1 / norm[i] * diff[i, 0]
-            jacobian[i * 2 * self.T + 2 * (i + 1) + 1] = 1 / norm[i] * diff[i, 1]
-
-        # initial position constraint jacobian.
-        jacobian[(self.T - 1) * 2 * self.T] = 1
-        jacobian[self.T * 2 * self.T + 1] = 1
-
-        logging.debug(f"Constraint jacobian function computed")
-        if self.is_verbose:
-            self._x_latest = x2.copy()  # logging most current optimization values
-        return jacobian
-
-    def intermediate(self, alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args):
-        super(SGradSolver, self).intermediate(alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args)
-        if self.is_verbose:
-            for module in self._modules.values():
-                module.logging()
+    @staticmethod
+    def constraints_modules() -> List[str]:
+        return ["path_length", "initial_point"]
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
-
-    def x_to_ego_trajectory(self, x: np.ndarray) -> torch.Tensor:
+    def x_to_ego_trajectory(self, x: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         assert self._env.num_ado_modes == 1, "currently only uni-modal agents are supported"
         x2 = torch.from_numpy(x).view(self.T, 2)
         assert check_trajectory_primitives(x2, t_horizon=self.T), f"x should be ego trajectory with length {self.T}"
-        return x2
-
-    def log_and_clean_up(self):
-        if not self.is_verbose:
-            return
-
-        # Transfer module logs to main logging dictionary and clean up modules.
-        for module_name, module in self._modules.items():
-            obj_log, grad_log = module.logs
-            self._optimization_log[f"obj_{module_name}"] = obj_log
-            self._optimization_log[f"grad_{module_name}"] = grad_log
-            module.clean_up()
-        # Do logging and visualization of base class with updated optimization log.
-        super(SGradSolver, self).log_and_clean_up()
+        return x2 if not return_leaf else (x2, x2)
