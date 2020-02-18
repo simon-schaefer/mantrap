@@ -74,25 +74,25 @@ class RunTimeAnalysis:
 # Functions ###############################################################
 ###########################################################################
 def measure_igrad_objective(horizon: int, **kwargs):
-    solver = IGradSolver(**kwargs, verbose=False, planning_horizon=horizon)
+    solver = IGradSolver(**kwargs, verbose=False, T=horizon)
     x0 = np.random.uniform(-10, 10, size=2)
     solver.objective(x=x0)
 
 
 def measure_cgrad_objective(horizon: int, **kwargs):
-    solver = SGradSolver(**kwargs, verbose=False, planning_horizon=horizon)
+    solver = SGradSolver(**kwargs, verbose=False, T=horizon)
     x0 = straight_line_primitive(horizon, start_pos=kwargs["sim"].ego.position, end_pos=solver.goal).detach().numpy()
     solver.objective(x=x0)
 
 
 def measure_igrad_gradient(horizon: int, **kwargs):
-    solver = IGradSolver(**kwargs, verbose=False, planning_horizon=horizon)
+    solver = IGradSolver(**kwargs, verbose=False, T=horizon)
     x0 = np.random.uniform(-10, 10, size=2)
     solver.gradient(x=x0)
 
 
 def measure_cgrad_gradient(horizon: int, **kwargs):
-    solver = SGradSolver(**kwargs, verbose=False, planning_horizon=horizon)
+    solver = SGradSolver(**kwargs, verbose=False, T=horizon)
     x0 = straight_line_primitive(horizon, start_pos=kwargs["sim"].ego.position, end_pos=solver.goal).detach().numpy()
     solver.gradient(x=x0)
 

@@ -13,10 +13,14 @@ class PotentialFieldSimulation(SocialForcesSimulation):
     simply comes down the the distance of every position of the ados in time to their initial (static) position. """
 
     def add_ado(self, **ado_kwargs):
-        if "velocity" not in ado_kwargs:
-            ado_kwargs["velocity"] = torch.zeros(2)  # default = static agent
-        goal = ado_kwargs["position"]  # enforce static agent - no incentive to move
-        super(PotentialFieldSimulation, self).add_ado(goal, num_modes=1, **ado_kwargs)
+        # enforce static agent - no incentive to move (overwriting goal input !)
+        ado_kwargs["goal"] = ado_kwargs["position"]
+        ado_kwargs["velocity"] = torch.zeros(2) if "velocity" not in ado_kwargs else ado_kwargs["velocity"]
+        # enforce uni-modality of agent (simulation)
+        ado_kwargs["num_modes"] = 1 if "num_modes" not in ado_kwargs.keys() else ado_kwargs["num_modes"]
+        assert ado_kwargs["num_modes"] == 1, "simulation merely supports uni-modal ados"
+
+        super(PotentialFieldSimulation, self).add_ado(**ado_kwargs)
 
     def build_graph(self, ego_state: torch.Tensor, **graph_kwargs) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).

@@ -20,6 +20,15 @@ class IGradSolver(IPOPTSolver):
             self._solver_params["num_control_points"] = 2
 
     ###########################################################################
+    # Initialization ##########################################################
+    ###########################################################################
+    def x0_default(self) -> torch.Tensor:
+        steps = self.num_control_points + 2
+        x0 = torch.stack((torch.linspace(self.env.ego.position[0].item(), self.goal[0].item(), steps=steps),
+                          torch.linspace(self.env.ego.position[1].item(), self.goal[1].item(), steps=steps)), dim=1)
+        return x0[1:-1, :]  # skip start and end point
+
+    ###########################################################################
     # Optimization formulation - Objective ####################################
     ###########################################################################
     @staticmethod

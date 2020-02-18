@@ -17,12 +17,12 @@ class Solver:
 
         # Dictionary of solver parameters.
         self._solver_params = solver_params
-        if "planning_horizon" not in self._solver_params.keys():
-            self._solver_params["planning_horizon"] = solver_horizon
+        if "T" not in self._solver_params.keys():
+            self._solver_params["T"] = solver_horizon
         if "verbose" not in self._solver_params.keys():
             self._solver_params["verbose"] = False
 
-        assert self._solver_params["planning_horizon"] > 2, "planning horizon must be larger 2"
+        assert self._solver_params["T"] > 2, "planning horizon must be larger 2 time-steps"
 
     def solve(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal simulation with the current scene as initial condition.
@@ -33,7 +33,7 @@ class Solver:
         :return: derived ego trajectory [T, 6].
         :return: ado trajectories [num_ados, modes, T, 6] conditioned on the derived ego trajectory.
         """
-        horizon = self._solver_params["planning_horizon"]
+        horizon = self._solver_params["T"]
         traj_opt = torch.zeros((horizon, 6))
         ado_trajectories = torch.zeros((self._env.num_ados, self._env.num_ado_modes, horizon, 6))
 
@@ -78,13 +78,17 @@ class Solver:
     def env(self) -> Simulation:
         return self._env
 
+    @env.setter
+    def env(self, env: Simulation):
+        self._env = env
+
     @property
     def goal(self) -> torch.Tensor:
         return self._goal
 
     @property
-    def planning_horizon(self) -> int:
-        return self._solver_params["planning_horizon"]
+    def T(self) -> int:
+        return self._solver_params["T"]
 
     @property
     def is_verbose(self) -> bool:

@@ -16,3 +16,12 @@ class GoalModule(ObjectiveModule):
     def _compute(self, x2: torch.Tensor) -> torch.Tensor:
         goal_distances = torch.norm(x2 - self._goal, dim=1)
         return goal_distances.dot(self._distribution)
+
+    @property
+    def importance_distribution(self) -> torch.Tensor:
+        return self._distribution
+
+    @importance_distribution.setter
+    def importance_distribution(self, x: torch.Tensor):
+        assert x.numel() == self.T, "distribution has invalid length"
+        self._distribution = x

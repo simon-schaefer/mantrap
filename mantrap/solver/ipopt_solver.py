@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from collections import defaultdict, deque
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import ipopt
 import numpy as np
@@ -82,6 +82,13 @@ class IPOPTSolver(Solver):
         return x_optimized
 
     ###########################################################################
+    # Initialization ##########################################################
+    ###########################################################################
+    @abstractmethod
+    def x0_default(self) -> torch.Tensor:
+        raise NotImplementedError
+
+    ###########################################################################
     # Optimization formulation - Objective ####################################
     # IPOPT requires to use numpy arrays for computation, therefore switch ####
     # everything from torch to numpy here #####################################
@@ -160,10 +167,6 @@ class IPOPTSolver(Solver):
         assert all([name in CONSTRAINTS.keys() for name in modules]), "invalid constraint module detected"
         return {m: CONSTRAINTS[m]() for m in modules}
 
-    @property
-    def T(self) -> int:
-        return self.planning_horizon
-
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
@@ -178,6 +181,11 @@ class IPOPTSolver(Solver):
                 module.logging()
             for module in self._constraint_modules.values():
                 module.logging()
+
+    def constraints_fulfilled(self) -> Union[bool, None]:
+        if self._optimization_log is None:
+            return None
+        return self._optimization_log["inf_primal"][-1] < 1e-6
 
     def log_and_clean_up(self):
         """Clean up optimization logs and reset optimization parameters.
