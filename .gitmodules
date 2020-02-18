@@ -1,0 +1,11 @@
+[submodule "Trajectron"]
+	path = external/Trajectron-plus-plus
+	url = https://github.com/StanfordASL/Trajectron-plus-plus
+
+[submodule "ORCA"]
+	path = external/RVO2
+	url = https://github.com/snape/RVO2
+
+[submodule "IPOPT"]
+    path = external/IPOPT
+    url = https://github.com/coin-or/Ipopt

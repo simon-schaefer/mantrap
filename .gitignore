@@ -6,7 +6,6 @@ __pycache__/
 *.egg-info/
 build/
 
-
 # Unit test / coverage reports
 .pytest_cache/
 test/cache/
@@ -33,11 +32,3 @@ test/graphs/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-
-# Outputs.
-outs/
-
-# External libraries and datasets.
-external/RVO2/build
-external/Ipopt/
-external/cyipopt/build
