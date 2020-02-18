@@ -1,11 +1,11 @@
-[submodule "Trajectron"]
-	path = external/Trajectron-plus-plus
-	url = https://github.com/StanfordASL/Trajectron-plus-plus
 
-[submodule "ORCA"]
-	path = external/RVO2
+[submodule "external/ORCA"]
+	path = external/ORCA
 	url = https://github.com/snape/RVO2
-
-[submodule "IPOPT"]
-    path = external/IPOPT
-    url = https://github.com/coin-or/Ipopt
+[submodule "external/IPOPT"]
+	path = external/IPOPT
+	url = https://github.com/coin-or/Ipopt
+[submodule "external/TrajectronETH"]
+	path = external/TrajectronETH
+	url = https://github.com/StanfordASL/Trajectron-plus-plus.git
+        branch = ETH_UCY_dataset
