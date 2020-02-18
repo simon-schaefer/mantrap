@@ -84,20 +84,25 @@ class TestIPOPTSolvers:
             assert any([np.isclose(np.linalg.norm(xk - xi), 0, atol=2.0) for xk in x_opt])
 
     @staticmethod
-    def test_gradient_computation_speed(solver_class: IPOPTSolver.__class__, test_kwargs):
+    def test_computation_speed(solver_class: IPOPTSolver.__class__, test_kwargs):
         sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0])})
         sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(sim, goal=torch.tensor([5, 0]), **test_kwargs)
         x = solver.x0_default().detach().numpy()
 
-        # Determine gradient and measure computation time.
-        comp_times = []
+        # Determine objective/gradient and measure computation time.
+        comp_times_objective = []
+        comp_times_gradient = []
 
         for _ in range(10):
             start_time = time.time()
             solver.gradient(x)
-            comp_times.append(time.time() - start_time)
-        assert np.mean(comp_times) < 0.07  # faster than 15 Hz (!)
+            comp_times_gradient.append(time.time() - start_time)
+            start_time = time.time()
+            solver.objective(x)
+            comp_times_objective.append(time.time() - start_time)
+        assert np.mean(comp_times_objective) < 0.04  # faster than 25 Hz (!)
+        assert np.mean(comp_times_gradient) < 0.07  # faster than 15 Hz (!)
 
     @staticmethod
     def check_output_trajectory(x: torch.Tensor, sim: GraphBasedSimulation, solver: IPOPTSolver):

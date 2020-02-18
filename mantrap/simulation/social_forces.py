@@ -137,14 +137,6 @@ class SocialForcesSimulation(GraphBasedSimulation):
             gid = ado.id + "_" + str(i)
             self._ado_ghosts.append(self.Ghost(ado, goal=goal, v0=v0, sigma=sigma, tau=tau, weight=weights[i], gid=gid))
 
-    def ghost_to_ado_index(self, ghost_index: int) -> Tuple[int, int]:
-        """Ghost of the same "parent" agent are appended to the internal storage of ghosts together, therefore it can
-        be backtracked which ghost index belongs to which agent and mode by simple integer division (assuming the same
-        number of modes of every ado).
-        :return ado index, mode index
-        """
-        return int(ghost_index / self.num_ado_modes), int(ghost_index % self.num_ado_modes)
-
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
@@ -241,6 +233,8 @@ class SocialForcesSimulation(GraphBasedSimulation):
         using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
         terms of computational effort and space, however end-to-end-differentiable.
         """
+        super(SocialForcesSimulation, self).build_connected_graph(ego_positions, **graph_kwargs)
+
         assert self.ego.__class__ == IntegratorDTAgent, "currently only single integrator egos are supported"
         assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in self._ado_ghosts])
         assert type(ego_positions) == torch.Tensor, "invalid ego positions tensor"

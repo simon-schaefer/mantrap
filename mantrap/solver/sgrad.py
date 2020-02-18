@@ -79,7 +79,6 @@ class SGradSolver(IPOPTSolver):
     # Utility #################################################################
     ###########################################################################
     def x_to_ego_trajectory(self, x: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        assert self._env.num_ado_modes <= 1, "currently only uni-modal agents are supported"
         x2 = torch.from_numpy(x).view(self.T, 2)
         assert check_trajectory_primitives(x2, t_horizon=self.T), f"x should be ego trajectory with length {self.T}"
         return x2 if not return_leaf else (x2, x2)

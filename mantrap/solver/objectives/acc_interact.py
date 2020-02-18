@@ -24,7 +24,8 @@ class InteractionAccelerationModule(ObjectiveModule):
                     graphs[f"{self._env.ado_ghosts[m].gid}_{k}_position"],
                     graphs[f"{self._env.ado_ghosts[m].gid}_{k}_position"],
                 )
-                ado_acceleration_wo = self._ado_accelerations_wo[m, 0, k, :]
-                objective += torch.norm(ado_acceleration - ado_acceleration_wo)
+                m_ado, m_mode = self._env.ghost_to_ado_index(m)
+                ado_acceleration_wo = self._ado_accelerations_wo[m_ado, m_mode, k, :]
+                objective += torch.norm(ado_acceleration - ado_acceleration_wo) * self._env.ado_ghosts[m].weight
 
         return objective

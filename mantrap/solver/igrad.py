@@ -57,8 +57,6 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
 
     def x_to_ego_trajectory(self, x: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        assert self._env.num_ado_modes <= 1, "currently only uni-modal agents are supported"
-
         mid = torch.tensor(x.astype(np.float64), requires_grad=True).view(self.num_control_points, 2).double()
         start_point = self._env.ego.position.unsqueeze(0)
         end_point = self._goal.unsqueeze(0)

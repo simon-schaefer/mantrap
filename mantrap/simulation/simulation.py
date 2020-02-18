@@ -140,6 +140,14 @@ class Simulation:
     def num_ado_ghosts(self) -> int:
         return self.num_ados
 
+    def ghost_to_ado_index(self, ghost_index: int) -> Tuple[int, int]:
+        """Ghost of the same "parent" agent are appended to the internal storage of ghosts together, therefore it can
+        be backtracked which ghost index belongs to which agent and mode by simple integer division (assuming the same
+        number of modes of every ado).
+        :return ado index, mode index
+        """
+        return int(ghost_index / self.num_ado_modes), int(ghost_index % self.num_ado_modes)
+
     ###########################################################################
     # Ego properties ##########################################################
     ###########################################################################
@@ -199,4 +207,5 @@ class GraphBasedSimulation(Simulation):
 
     @abstractmethod
     def build_connected_graph(self, ego_positions: torch.Tensor, **graph_kwargs) -> Dict[str, torch.Tensor]:
-        raise NotImplementedError
+        if ego_positions is not None:
+            assert self.ego is not None, "ego must be defined to get a path allocated"
