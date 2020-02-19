@@ -9,3 +9,41 @@ behaviour of humans, applied hardly tractable methods lacking safety guarantees 
 feasible. Therefore the goal of this work to develop a risk-aware planning methodology with special regards on 
 minimizing the interaction between human and robot and taking account the actual multi-modality and time-evolving nature
 of the humans behaviour, based on the Trajectron model (Ivanovic 19).  
+
+## Installation
+For installation clone the repository including it's submodules: 
+
+```
+git clone --recurse-submodules --remote-submodules https://github.com/simon-schaefer/mantrap.git
+```
+
+Next create a virtual environment for Python 3 and install all package requirements by running 
+
+```
+source ops/setup.bash
+```
+
+Afterwards install the NLP-solver [IPOPT](https://coin-or.github.io/Ipopt/) and it's python wrapper which is called 
+[cyipopt](https://pypi.org/project/ipopt/):
+
+```
+# Install Ipopt NLP solver. 
+cd external/Ipopt
+chmod u+x coinbrew
+brew install bash  # update bash version (>= 4.0)
+
+./coinbrew install.sh fetch Ipopt
+./coinbrew build Ipopt --prefix=build --test
+./coinbrew install.sh install Ipopt
+
+# Set PKG_CONFIG_PATH environment variable to IPOPT build directory
+export PKG_CONFIG_PATH="path/to/mantrap/external/IPOPT/build/Ipopt/master"
+export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/external/IPOPT/build/ThirdParty/Mumps/2.0"
+export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/external/IPOPT/build/ThirdParty/Metis/2.0"
+
+# Install cyipopt following https://pypi.org/project/ipopt/
+# Download binary files from https://pypi.org/project/ipopt/#files
+# Then install by running 
+cd external/cyipopt
+python setup.py install
+```

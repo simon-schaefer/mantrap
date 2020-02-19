@@ -32,3 +32,8 @@ test/graphs/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# External libraries.
+external/cyipopt
+external/Ipopt/
+!external/Ipopt/coinbrew
