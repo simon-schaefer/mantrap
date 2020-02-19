@@ -35,5 +35,6 @@ test/graphs/
 
 # External libraries.
 external/cyipopt
-external/Ipopt/
-!external/Ipopt/coinbrew
+external/Ipopt/build
+external/Ipopt/Ipopt
+external/Ipopt/ThirdParty

@@ -27,14 +27,15 @@ Afterwards install the NLP-solver [IPOPT](https://coin-or.github.io/Ipopt/) and 
 [cyipopt](https://pypi.org/project/ipopt/):
 
 ```
+# Download 
 # Install Ipopt NLP solver. 
 cd external/Ipopt
 chmod u+x coinbrew
 brew install bash  # update bash version (>= 4.0)
 
-./coinbrew install.sh fetch Ipopt
-./coinbrew build Ipopt --prefix=build --test
-./coinbrew install.sh install Ipopt
+./coinbrew fetch Ipopt
+./coinbrew build Ipopt --prefix=/to/build/dir --test
+./coinbrew install Ipopt
 
 # Set PKG_CONFIG_PATH environment variable to IPOPT build directory
 export PKG_CONFIG_PATH="path/to/mantrap/external/IPOPT/build/Ipopt/master"
