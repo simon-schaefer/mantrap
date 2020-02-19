@@ -14,7 +14,7 @@ from mantrap.solver.constraints import CONSTRAINTS
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.solver.objectives import OBJECTIVES
 from mantrap.solver.solver import Solver
-from mantrap.utility.io import build_output_path
+from mantrap.utility.io import build_os_path
 
 
 class IPOPTSolver(Solver):
@@ -215,7 +215,7 @@ class IPOPTSolver(Solver):
         # Visualization. Find path to output directory, create it or delete every file inside.
         from mantrap.evaluation.visualization import visualize_optimization
         name_tag = self.__class__.__name__
-        output_directory_path = build_output_path(f"test/graphs/{name_tag}_optimization", make_dir=True, free=True)
+        output_directory_path = build_os_path(f"test/graphs/{name_tag}_optimization", make_dir=True, free=True)
         visualize_optimization(self._optimization_log, env=self._env, dir_path=output_directory_path)
 
         # Reset optimization logging parameters for next optimization.

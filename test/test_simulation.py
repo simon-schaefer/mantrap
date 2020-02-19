@@ -9,7 +9,7 @@ from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import sim_social_forces_default_params
 from mantrap.simulation.simulation import Simulation
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
-from mantrap.utility.io import build_output_path
+from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.primitives import straight_line_primitive
 from mantrap.utility.shaping import check_trajectories, check_policies, check_weights
@@ -265,5 +265,5 @@ def visualize_igrad_social_forces_computation_time():
     plt.xlabel("Prediction horizon [steps]")
     plt.ylabel("Runtime [s]")
     plt.legend()
-    plt.savefig(build_output_path("test/graphs/igrad_social_forces_runtime.png", make_dir=False))
+    plt.savefig(build_os_path("test/graphs/igrad_social_forces_runtime.png", make_dir=False))
     plt.close()

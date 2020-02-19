@@ -4,7 +4,7 @@ import inspect
 import logging
 import os
 
-from mantrap.utility.io import build_output_path
+from mantrap.utility.io import build_os_path
 
 
 def main():
@@ -12,7 +12,7 @@ def main():
     parser.add_argument("--function", type=str, default=None)
     args = parser.parse_args()
 
-    test_directory = build_output_path("test/")
+    test_directory = build_os_path("test/", make_dir=True)
     test_files = [path for path in os.listdir(test_directory) if path.endswith(".py") and path.startswith("test_")]
 
     vis_functions = {}

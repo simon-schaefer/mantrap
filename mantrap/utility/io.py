@@ -3,7 +3,7 @@ import logging
 import os
 
 
-def build_output_path(filepath: str, make_dir: bool = True, free: bool = False) -> str:
+def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> str:
     """Get path starting from home directory, i.e. get home directory and combine with given path.
     If the path does not exist, create it using os library.
 

@@ -11,7 +11,7 @@ from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import agent_speed_max
 from mantrap.simulation import PotentialFieldSimulation
 from mantrap.solver import SGradSolver, IGradSolver
-from mantrap.utility.io import build_output_path
+from mantrap.utility.io import build_os_path
 from mantrap.utility.primitives import straight_line_primitive
 
 
@@ -66,7 +66,7 @@ class RunTimeAnalysis:
             plt.grid()
             ax.set_ylabel("RunTime [s]")
 
-        plt.savefig(build_output_path("test/graphs/runtime_analysis.png", make_dir=False))
+        plt.savefig(build_os_path("test/graphs/runtime_analysis.png", make_dir=False))
         plt.close()
 
 
