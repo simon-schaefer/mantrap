@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import torch
 
 
@@ -33,7 +31,7 @@ def check_weights(weights: torch.Tensor, num_ados: int = None, num_modes: int = 
     return is_correct
 
 
-def check_trajectory_primitives(primitives: torch.Tensor, num_primitives: int = None, t_horizon: int = None) -> bool:
+def check_path(primitives: torch.Tensor, num_primitives: int = None, t_horizon: int = None) -> bool:
     is_correct = True
     if num_primitives is not None:
         is_correct = is_correct and len(primitives.shape) == 3  # (num_primitives, t_horizon, 2)
@@ -48,19 +46,21 @@ def check_trajectory_primitives(primitives: torch.Tensor, num_primitives: int = 
     return is_correct
 
 
-def check_ego_trajectory(ego_trajectory: torch.Tensor, t_horizon: int = None) -> bool:
+def check_ego_trajectory(ego_trajectory: torch.Tensor, t_horizon: int = None, pos_only: bool = False,) -> bool:
     is_correct = True
-    is_correct = is_correct and len(ego_trajectory.shape) == 2  # (t_horizon, 6)
-    is_correct = is_correct and ego_trajectory.shape[1] == 5  # (x, y, vx, vy, t)
+    is_correct = is_correct and len(ego_trajectory.shape) == 2  # (t_horizon, 5)
+    is_correct = is_correct and ego_trajectory.shape[1] >= 5 if not pos_only else 2  # (x, y, vx, vy, t)
     if t_horizon is not None:
         is_correct = is_correct and ego_trajectory.shape[0] == t_horizon
     return is_correct
 
 
-def check_trajectories(trajectories: torch.Tensor, ados: int = None, modes: int = None, t_horizon: int = None) -> bool:
+def check_trajectories(
+    trajectories: torch.Tensor, ados: int = None, modes: int = None, t_horizon: int = None, pos_only: bool = False,
+) -> bool:
     is_correct = True
     is_correct = is_correct and len(trajectories.shape) == 4  # (num_ados,num_modes,t_horizon, 5)
-    is_correct = is_correct and trajectories.shape[3] == 5  # (x, y, vx, vy, t)
+    is_correct = is_correct and trajectories.shape[3] >= 5 if not pos_only else 2  # (x, y, vx, vy, t)
     if ados is not None:
         is_correct = is_correct and trajectories.shape[0] == ados
     if modes is not None:
@@ -68,10 +68,3 @@ def check_trajectories(trajectories: torch.Tensor, ados: int = None, modes: int 
     if t_horizon is not None:
         is_correct = is_correct and trajectories.shape[2] == t_horizon
     return is_correct
-
-
-def extract_ado_trajectories(ado_trajectories: torch.Tensor) -> Tuple[int, int, int]:
-    num_ados = ado_trajectories.shape[0]
-    num_modes = ado_trajectories.shape[1]
-    t_horizon = ado_trajectories.shape[2]
-    return num_ados, num_modes, t_horizon

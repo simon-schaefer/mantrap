@@ -3,27 +3,25 @@ import scipy.interpolate
 import torch
 
 from mantrap.constants import agent_speed_max, solver_horizon
-from mantrap.utility.shaping import check_trajectory_primitives
+from mantrap.utility.shaping import check_path
 
 
-def square_primitives(
-    start: torch.Tensor, end: torch.Tensor, dt: float, num_points: int = solver_horizon
-) -> torch.Tensor:
+def square_primitives(start: torch.Tensor, end: torch.Tensor, dt: float, steps: int = solver_horizon) -> torch.Tensor:
     """As the trajectory is optimized over several time-steps we have to set some base ego trajectory in order to
      estimate the reactive behaviour of all other agents. Therefore in the following some trajectory primitives
      between the current state of the ego and its goal state are defined, such as a first order (straight line from
      current to goal position) or higher order fits."""
-    primitives = torch.ones((3, num_points, 2)) * end.detach().numpy()
+    primitives = torch.ones((3, steps, 2)) * end.detach().numpy()
 
     distance = torch.norm(start - end).item()
     for i, normal_distance in enumerate([-distance / 2, 0, distance / 2]):
-        primitives[i, :, :] = midpoint_primitive(start, end, normal_distance, agent_speed_max * dt, num_points)
+        primitives[i, :, :] = midpoint_spline(start, end, normal_distance, agent_speed_max * dt, steps)
 
-    assert check_trajectory_primitives(primitives, t_horizon=num_points, num_primitives=3)
+    assert check_path(primitives, t_horizon=steps, num_primitives=3)
     return primitives
 
 
-def midpoint_primitive(
+def midpoint_spline(
     start_pos: torch.Tensor,
     end_pos: torch.Tensor,
     midpoint_distance: float,
@@ -63,13 +61,13 @@ def midpoint_primitive(
     primitive = path[inter_indices[:num_points].astype(int), :]
 
     primitive = torch.from_numpy(primitive)
-    assert check_trajectory_primitives(primitive, t_horizon=num_points)
+    assert check_path(primitive, t_horizon=num_points)
     return primitive
 
 
-def straight_line_primitive(horizon: int, start_pos: torch.Tensor, end_pos: torch.Tensor):
-    primitive = torch.zeros((horizon, 2))
-    primitive[:, 0] = torch.linspace(start_pos[0].item(), end_pos[0].item(), horizon)
-    primitive[:, 1] = torch.linspace(start_pos[1].item(), end_pos[1].item(), horizon)
-    assert check_trajectory_primitives(primitive, t_horizon=horizon)
+def straight_line(start_pos: torch.Tensor, end_pos: torch.Tensor, steps: int):
+    primitive = torch.zeros((steps, 2))
+    primitive[:, 0] = torch.linspace(start_pos[0].item(), end_pos[0].item(), steps)
+    primitive[:, 1] = torch.linspace(start_pos[1].item(), end_pos[1].item(), steps)
+    assert check_path(primitive, t_horizon=steps)
     return primitive

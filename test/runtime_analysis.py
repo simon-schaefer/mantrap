@@ -12,7 +12,7 @@ from mantrap.constants import agent_speed_max
 from mantrap.simulation import PotentialFieldSimulation
 from mantrap.solver import SGradSolver, IGradSolver
 from mantrap.utility.io import build_os_path
-from mantrap.utility.primitives import straight_line_primitive
+from mantrap.utility.primitives import straight_line
 
 
 class RunTimeAnalysis:
@@ -81,7 +81,7 @@ def measure_igrad_objective(horizon: int, **kwargs):
 
 def measure_cgrad_objective(horizon: int, **kwargs):
     solver = SGradSolver(**kwargs, verbose=False, T=horizon)
-    x0 = straight_line_primitive(horizon, start_pos=kwargs["sim"].ego.position, end_pos=solver.goal).detach().numpy()
+    x0 = straight_line(start_pos=kwargs["sim"].ego.position, end_pos=solver.goal, steps=horizon).detach().numpy()
     solver.objective(x=x0)
 
 
@@ -93,7 +93,7 @@ def measure_igrad_gradient(horizon: int, **kwargs):
 
 def measure_cgrad_gradient(horizon: int, **kwargs):
     solver = SGradSolver(**kwargs, verbose=False, T=horizon)
-    x0 = straight_line_primitive(horizon, start_pos=kwargs["sim"].ego.position, end_pos=solver.goal).detach().numpy()
+    x0 = straight_line(start_pos=kwargs["sim"].ego.position, end_pos=solver.goal, steps=horizon).detach().numpy()
     solver.gradient(x=x0)
 
 

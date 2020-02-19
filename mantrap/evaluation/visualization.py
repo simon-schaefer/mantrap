@@ -9,7 +9,7 @@ from mantrap.constants import agent_speed_max
 from mantrap.simulation.simulation import Simulation
 from mantrap.utility.maths import Derivative2
 from mantrap.utility.shaping import check_state
-from mantrap.utility.utility import build_trajectory_from_positions
+from mantrap.utility.utility import build_trajectory_from_path
 
 
 def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, dir_path: str):
@@ -32,7 +32,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, di
 
         x2_np = optimization_log["x"][k]
         x2 = torch.from_numpy(x2_np)
-        ego_traj = build_trajectory_from_positions(x2, dt=env.dt, t_start=env.sim_time)
+        ego_traj = build_trajectory_from_path(x2, dt=env.dt, t_start=env.sim_time)
         ado_traj = env.predict(horizon, ego_trajectory=ego_traj)
 
         fig = plt.figure(figsize=(15, 15), constrained_layout=True)

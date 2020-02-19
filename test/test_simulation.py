@@ -11,7 +11,7 @@ from mantrap.simulation.simulation import Simulation
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
 from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import Distribution, DirecDelta
-from mantrap.utility.primitives import straight_line_primitive
+from mantrap.utility.primitives import straight_line
 from mantrap.utility.shaping import check_trajectories, check_policies, check_weights
 
 
@@ -194,7 +194,7 @@ def test_build_graph_over_horizon():
 @pytest.mark.parametrize("position, goal", [(torch.tensor([-5, 0]), torch.tensor([5, 0]))])
 def test_ego_graph_updates(position: torch.Tensor, goal: torch.Tensor):
     sim = SocialForcesSimulation(IntegratorDTAgent, {"position": position, "velocity": torch.zeros(2)})
-    primitives = straight_line_primitive(horizon=11, start_pos=position, end_pos=goal)
+    primitives = straight_line(start_pos=position, end_pos=goal, steps=11)
 
     graphs = sim.build_connected_graph(ego_positions=primitives)
     for k in range(primitives.shape[0]):

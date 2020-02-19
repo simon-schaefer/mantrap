@@ -6,16 +6,16 @@ import torch
 from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import agent_speed_max
 from mantrap.utility.maths import Derivative2, lagrange_interpolation
-from mantrap.utility.primitives import square_primitives, straight_line_primitive
-from mantrap.utility.utility import build_trajectory_from_positions
+from mantrap.utility.primitives import square_primitives, straight_line
+from mantrap.utility.utility import build_trajectory_from_path
 
 
 ###########################################################################
 # Utility Testing #########################################################
 ###########################################################################
 def test_build_trajectory_from_positions():
-    positions = straight_line_primitive(horizon=11, start_pos=torch.zeros(2), end_pos=torch.ones(2) * 10)
-    trajectory = build_trajectory_from_positions(positions, dt=1.0, t_start=0.0)
+    positions = straight_line(start_pos=torch.zeros(2), end_pos=torch.ones(2) * 10, steps=11)
+    trajectory = build_trajectory_from_path(positions, dt=1.0, t_start=0.0)
 
     assert torch.all(torch.eq(trajectory[:, 0:2], positions))
     assert torch.all(torch.eq(trajectory[1:, 2:4], torch.ones(10, 2)))
@@ -32,7 +32,7 @@ def test_derivative_2(horizon: int):
         assert torch.all(torch.eq(diff._diff_mat[k, k - 1: k + 2], torch.tensor([1, -2, 1])))
 
     # Constant velocity -> zero acceleration (first and last point are skipped (!)).
-    x = straight_line_primitive(horizon, torch.zeros(2), torch.tensor([horizon - 1, 0]))
+    x = straight_line(torch.zeros(2), torch.tensor([horizon - 1, 0]), horizon)
     assert torch.all(torch.eq(diff.compute(x), torch.zeros((horizon, 2))))
 
     t_step = int(horizon / 2)
@@ -109,7 +109,7 @@ def test_lagrange_singularity():
 def test_square_primitives(num_points: int):
     position, velocity, goal = torch.tensor([-5, 0]), torch.tensor([1, 0]), torch.tensor([20, 0])
     agent = IntegratorDTAgent(position=position, velocity=velocity)
-    primitives = square_primitives(start=agent.position, end=goal, dt=1.0, num_points=num_points)
+    primitives = square_primitives(start=agent.position, end=goal, dt=1.0, steps=num_points)
 
     assert primitives.shape[1] == num_points
     for m in range(primitives.shape[0]):

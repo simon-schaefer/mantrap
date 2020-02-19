@@ -5,8 +5,8 @@ import torch
 
 from mantrap.constants import agent_speed_max
 from mantrap.solver.ipopt_solver import IPOPTSolver
-from mantrap.utility.primitives import straight_line_primitive
-from mantrap.utility.shaping import check_trajectory_primitives
+from mantrap.utility.primitives import straight_line
+from mantrap.utility.shaping import check_path
 
 
 class SGradSolver(IPOPTSolver):
@@ -15,7 +15,7 @@ class SGradSolver(IPOPTSolver):
     # Initialization ##########################################################
     ###########################################################################
     def x0_default(self) -> torch.Tensor:
-        return straight_line_primitive(start_pos=self.env.ego.position, end_pos=self.goal, horizon=self.T)
+        return straight_line(start_pos=self.env.ego.position, end_pos=self.goal, steps=self.T)
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
@@ -58,7 +58,7 @@ class SGradSolver(IPOPTSolver):
     sum_{t = 1}^T || x_{ego}^t - x_{ego}^{t - 1} || < gamma * T
     """
     def constraint_bounds(self, x_init: torch.Tensor) -> Tuple[List, List, List, List]:
-        assert check_trajectory_primitives(x_init, t_horizon=self.T), "invalid initial trajectory"
+        assert check_path(x_init, t_horizon=self.T), "invalid initial trajectory"
         x_start = x_init[0, :].detach().numpy()
 
         # External constraint bounds (inter-point distance and initial point equality).
@@ -80,5 +80,5 @@ class SGradSolver(IPOPTSolver):
     ###########################################################################
     def x_to_ego_trajectory(self, x: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         x2 = torch.from_numpy(x).view(self.T, 2)
-        assert check_trajectory_primitives(x2, t_horizon=self.T), f"x should be ego trajectory with length {self.T}"
+        assert check_path(x2, t_horizon=self.T), f"x should be ego trajectory with length {self.T}"
         return x2 if not return_leaf else (x2, x2)

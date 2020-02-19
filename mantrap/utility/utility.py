@@ -21,7 +21,7 @@ def expand_state_vector(state_4: torch.Tensor, time: float) -> torch.Tensor:
     return state
 
 
-def build_trajectory_from_positions(positions: torch.Tensor, dt: float, t_start: float = 0.0) -> torch.Tensor:
+def build_trajectory_from_path(positions: torch.Tensor, dt: float, t_start: float = 0.0) -> torch.Tensor:
     """Derive (position, orientation, velocity)-trajectory information from position data only, assuming single
     integrator dynamics, i.e. v_i = (x_i+1 - x_i) / dt. """
     assert len(positions.shape) == 2, "primitives shape should be (t_horizon, 2)"
@@ -32,6 +32,7 @@ def build_trajectory_from_positions(positions: torch.Tensor, dt: float, t_start:
 
     trajectory[:, 0:2] = positions
     trajectory[1:, 2:4] = trajectory[1:, 0:2] - trajectory[:-1, 0:2]
+    trajectory[0, 2:4] = trajectory[1, 2:4]  # otherwise first velocity always will be zero (!)
     trajectory[:, 4] = torch.linspace(t_start, t_start + t_horizon * dt, steps=t_horizon)
 
     assert check_ego_trajectory(trajectory, t_horizon=t_horizon)

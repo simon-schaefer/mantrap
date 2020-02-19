@@ -16,7 +16,7 @@ from mantrap.constants import (
 )
 from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, check_policies, check_weights
 from mantrap.utility.maths import Distribution, DirecDelta
-from mantrap.utility.utility import build_trajectory_from_positions
+from mantrap.utility.utility import build_trajectory_from_path
 from mantrap.simulation.simulation import GraphBasedSimulation
 
 
@@ -53,7 +53,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
         """
         if ego_trajectory is not None:
             if ego_trajectory.shape[1] == 2:
-                ego_trajectory = build_trajectory_from_positions(ego_trajectory, dt=self.dt, t_start=self.sim_time)
+                ego_trajectory = build_trajectory_from_path(ego_trajectory, dt=self.dt, t_start=self.sim_time)
             assert check_ego_trajectory(ego_trajectory, t_horizon=t_horizon), "ego trajectory invalid"
 
         forces = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 2))
@@ -244,7 +244,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
 
         # Build first graph for the next state, in case no forces are applied on the ego.
         graphs = self.build_graph(ego_state=self.ego.state, k=0, **graph_kwargs)
-        ego_states = build_trajectory_from_positions(ego_positions, dt=self.dt, t_start=self.sim_time)
+        ego_states = build_trajectory_from_path(ego_positions, dt=self.dt, t_start=self.sim_time)
 
         # Build the graph iteratively for the whole prediction horizon.
         for k in range(1, t_horizon):
