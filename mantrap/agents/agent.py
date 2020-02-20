@@ -112,6 +112,10 @@ class Agent:
         return torch.cat((self.position, self.velocity))
 
     @property
+    def state_with_time(self) -> torch.Tensor:
+        return torch.cat((self.position, self.velocity, torch.ones(1) * self._history[-1, -1]))
+
+    @property
     def position(self) -> torch.Tensor:
         return self._position
 

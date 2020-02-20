@@ -46,10 +46,17 @@ def check_path(primitives: torch.Tensor, num_primitives: int = None, t_horizon: 
     return is_correct
 
 
-def check_ego_trajectory(ego_trajectory: torch.Tensor, t_horizon: int = None, pos_only: bool = False,) -> bool:
+def check_ego_trajectory(
+    ego_trajectory: torch.Tensor, t_horizon: int = None, pos_only: bool = False, pos_and_vel_only: bool = False
+) -> bool:
     is_correct = True
     is_correct = is_correct and len(ego_trajectory.shape) == 2  # (t_horizon, 5)
-    is_correct = is_correct and ego_trajectory.shape[1] >= 5 if not pos_only else 2  # (x, y, vx, vy, t)
+    if pos_only:
+        is_correct = is_correct and ego_trajectory.shape[1] >= 2  # (x, y, vx, vy)
+    elif pos_and_vel_only:
+        is_correct = is_correct and ego_trajectory.shape[1] >= 4  # (x, y, vx, vy)
+    else:
+        is_correct = is_correct and ego_trajectory.shape[1] == 5  # (x, y, vx, vy, t)
     if t_horizon is not None:
         is_correct = is_correct and ego_trajectory.shape[0] == t_horizon
     return is_correct

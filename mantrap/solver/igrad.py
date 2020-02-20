@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from mantrap.constants import agent_speed_max
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.simulation.graph_based import GraphBasedSimulation
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.maths import lagrange_interpolation
 

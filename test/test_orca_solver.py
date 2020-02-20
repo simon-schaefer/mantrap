@@ -44,7 +44,7 @@ class ORCASimulation(Simulation):
 
             ado_solver = ORCASolver(ado_env, goal=self._ado_goals[ia])
             policies[ia, :] = ado_solver._determine_ego_action(
-                ado_env, speed_max=self.sim_speed_max, agent_radius=self.orca_rad, safe_dt=self.orca_dt
+                speed_max=self.sim_speed_max, agent_radius=self.orca_rad, safe_dt=self.orca_dt
             )
 
         for i, ado in enumerate(self._ados):

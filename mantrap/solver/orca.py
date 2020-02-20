@@ -33,20 +33,19 @@ class ORCASolver(Solver):
 
     def _determine_ego_action(
         self,
-        env: Simulation,
         agent_radius: float = orca_agent_radius,
         safe_dt: float = orca_agent_safe_dt,
         speed_max: float = agent_speed_max,
     ) -> Union[torch.Tensor, None]:
-        assert env.ego.__class__ == IntegratorDTAgent, "orca assumes robot to be holonomic and to have velocity input"
+        assert self._env.ego.__class__ == IntegratorDTAgent, "orca assumes ego to be holonomic and to single integrator"
 
         # Find line constraints.
-        constraints = self._line_constraints(env, agent_radius=agent_radius, agent_safe_dt=safe_dt)
-        logging.info(f"ORCA constraints for ego [{env.ego.id}]: {constraints}")
+        constraints = self._line_constraints(self._env, agent_radius=agent_radius, agent_safe_dt=safe_dt)
+        logging.info(f"ORCA constraints for ego [{self._env.ego.id}]: {constraints}")
 
         # Find new velocity based on line constraints. Preferred velocity would be the going from the current position
         # to the goal with maximal speed.
-        velocity_preferred = self.goal - env.ego.position
+        velocity_preferred = self.goal - self._env.ego.position
         velocity_preferred = velocity_preferred / torch.norm(velocity_preferred) * speed_max
 
         i_fail, velocity_new = self._linear_solver_2d(constraints, speed_max=speed_max, velocity_opt=velocity_preferred)

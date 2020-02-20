@@ -7,8 +7,9 @@ import ipopt
 import numpy as np
 import torch
 
+from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import ipopt_max_solver_steps, ipopt_max_solver_cpu_time
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.simulation.graph_based import GraphBasedSimulation
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 from mantrap.solver.constraints import CONSTRAINTS
 from mantrap.solver.objectives.objective_module import ObjectiveModule
@@ -42,17 +43,19 @@ class IPOPTSolver(Solver):
         self._optimization_log = defaultdict(deque) if self.is_verbose else None
         self._x_latest = None  # iteration() function does not input x (!)
 
-    def _solve_optimization(
+    def solve_single_optimization(
         self,
-        x0: torch.Tensor,
+        x0: torch.Tensor = None,
         max_iter: int = ipopt_max_solver_steps,
         max_cpu_time: float = ipopt_max_solver_cpu_time,
         approx_jacobian: bool = False,
         approx_hessian: bool = True,
         check_derivative: bool = False,
+        iteration_tag: str = ""
     ):
         """Solve optimization problem by finding constraint bounds, constructing ipopt optimization problem and
         solve it using the parameters defined in the function header."""
+        x0 = x0 if x0 is not None else self.x0_default()
         lb, ub, cl, cu = self.constraint_bounds(x_init=x0)
 
         # Formulate optimization problem as in standardized IPOPT format.
@@ -77,9 +80,16 @@ class IPOPTSolver(Solver):
         x_optimized = self.x_to_ego_trajectory(x_optimized)
 
         # Plot optimization progress.
-        self.log_and_clean_up()
+        self.log_and_clean_up(tag=iteration_tag)
 
         return x_optimized
+
+    def _determine_ego_action(self, **solver_kwargs) -> torch.Tensor:
+        assert self._env.ego.__class__ == IntegratorDTAgent
+        logging.info("solver starting ipopt optimization procedure")
+        x_opt = self.solve_single_optimization(**solver_kwargs)
+        ego_action = x_opt[2, 0:2] - x_opt[1, 0:2]
+        return ego_action
 
     ###########################################################################
     # Initialization ##########################################################
@@ -187,7 +197,7 @@ class IPOPTSolver(Solver):
             return None
         return self._optimization_log["inf_primal"][-1] < 1e-6
 
-    def log_and_clean_up(self):
+    def log_and_clean_up(self, tag: str = ""):
         """Clean up optimization logs and reset optimization parameters.
         IPOPT determines the CPU time including the intermediate function, therefore if we would plot at every step,
         we would loose valuable optimization time. Therefore the optimization progress is plotted all at once at the
@@ -214,9 +224,9 @@ class IPOPTSolver(Solver):
 
         # Visualization. Find path to output directory, create it or delete every file inside.
         from mantrap.evaluation.visualization import visualize_optimization
-        name_tag = self.__class__.__name__
-        output_directory_path = build_os_path(f"test/graphs/{name_tag}_optimization", make_dir=True, free=True)
-        visualize_optimization(self._optimization_log, env=self._env, dir_path=output_directory_path)
+        name_tag = self.__class__.__name__.lower() + tag
+        output_directory_path = build_os_path(f"test/graphs/{name_tag}_optimization", make_dir=False, free=False)
+        visualize_optimization(self._optimization_log, env=self._env, file_path=output_directory_path)
 
         # Reset optimization logging parameters for next optimization.
         self._optimization_log = defaultdict(deque) if self.is_verbose else None

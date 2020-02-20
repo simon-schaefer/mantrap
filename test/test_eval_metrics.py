@@ -47,4 +47,4 @@ def test_ego_effort():
     ego_trajectory = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
     ego_trajectory = build_trajectory_from_path(ego_trajectory, dt=1.0)
     effort = metric_ego_effort(ego_trajectory=ego_trajectory)
-    assert np.isclose(effort, 0.0, atol=1e-3)
+    assert np.isclose(effort, 1.0, atol=1e-3)  # the last step is always a breaking step, in this case = 1 m/(s*s)

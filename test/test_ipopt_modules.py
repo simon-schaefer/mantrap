@@ -1,3 +1,6 @@
+import time
+
+import numpy as np
 import pytest
 import torch
 
@@ -29,7 +32,7 @@ class TestObjectiveInteraction:
         x2 = straight_line(sim.ego.position, torch.tensor([5, 0.1]), 10)
 
         module = module_class(horizon=10, env=sim)
-        print(module.objective(x2))
+        assert module.objective(x2) is not None
 
     @staticmethod
     def test_output(module_class: ObjectiveModule.__class__):
@@ -40,6 +43,28 @@ class TestObjectiveInteraction:
         module = module_class(horizon=10, env=sim)
         assert type(module.objective(x2)) == float
         assert module.gradient(x2).size == x2.numel()  # without setting `grad_wrt`, size should match x2
+
+    @staticmethod
+    def test_runtime(module_class: ObjectiveModule.__class__):
+        for sim_class in [PotentialFieldSimulation, SocialForcesSimulation]:
+            sim = sim_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+            sim.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=1)
+            sim.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=1)
+            x2 = straight_line(sim.ego.position, torch.tensor([5, 0.1]), 10)
+
+            module = module_class(horizon=10, env=sim)
+            objective_run_times, gradient_run_times = list(), list()
+            for i in range(10):
+                start_time = time.time()
+                module.objective(x2)
+                objective_run_times.append(time.time() - start_time)
+
+                start_time = time.time()
+                module.gradient(x2)
+                gradient_run_times.append(time.time() - start_time)
+
+            assert np.mean(objective_run_times) < 0.03  # 33 Hz
+            assert np.mean(gradient_run_times) < 0.05  # 20 Hz
 
 
 def test_objective_goal_distribution():

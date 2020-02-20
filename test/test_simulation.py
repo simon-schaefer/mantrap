@@ -1,6 +1,6 @@
 import copy
 import time
-from typing import List
+from typing import List, Tuple, Union
 
 import pytest
 import torch
@@ -20,9 +20,14 @@ class ZeroSimulation(Simulation):
         super(ZeroSimulation, self).__init__(**kwargs)
         self._num_modes = num_modes
 
-    def predict(self, t_horizon: int, ego_trajectory: torch.Tensor = None, verbose: bool = False) -> torch.Tensor:
+    def predict(
+        self, graph_input: Union[int, torch.Tensor], returns: bool = False, **graph_kwargs
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+        t_horizon = graph_input if type(graph_input) == int else graph_input.shape[0]
+
         policies = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 2))
         ados_sim = copy.deepcopy(self._ados)
+
         for t in range(t_horizon):
             for i in range(self.num_ados):
                 for m in range(self.num_ado_modes):
@@ -33,7 +38,7 @@ class ZeroSimulation(Simulation):
         assert check_policies(policies, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon)
         assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
         assert check_trajectories(trajectories, t_horizon=t_horizon, ados=self.num_ados, modes=1)
-        return trajectories if not verbose else (trajectories, policies, weights)
+        return trajectories if not returns else (trajectories, policies, weights)
 
     @property
     def num_ado_modes(self) -> int:
@@ -118,7 +123,7 @@ def test_single_ado_prediction(goal_position: torch.Tensor):
     sim = SocialForcesSimulation()
     sim.add_ado(goal=goal_position, position=torch.tensor([-1, -5]), velocity=torch.ones(2) * 0.8, num_modes=1)
 
-    trajectory = torch.squeeze(sim.predict(t_horizon=100))
+    trajectory = torch.squeeze(sim.predict(graph_input=100))
     assert torch.isclose(trajectory[-1][0], goal_position[0], atol=0.5)
     assert torch.isclose(trajectory[-1][1], goal_position[1], atol=0.5)
 
@@ -128,7 +133,7 @@ def test_static_ado_pair_prediction():
     sim.add_ado(goal=torch.zeros(2), position=torch.tensor([-1, 0]), velocity=torch.tensor([0.1, 0]), num_modes=1)
     sim.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), velocity=torch.tensor([-0.1, 0]), num_modes=1)
 
-    trajectories = sim.predict(t_horizon=100)
+    trajectories = sim.predict(graph_input=100)
     # Due to the repulsive of the agents between each other, they cannot both go to their goal position (which is
     # the same for both of them). Therefore the distance must be larger then zero basically, otherwise the repulsive
     # force would not act (or act attractive instead of repulsive).
@@ -163,7 +168,7 @@ def test_prediction_trajectories_shape(num_modes: int, t_horizon: int, v0s: List
     sim.add_ado(goal=torch.ones(2), position=torch.tensor([-1, 0]), num_modes=num_modes, v0s=v0s)
     sim.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), num_modes=num_modes, v0s=v0s)
 
-    ado_trajectories = sim.predict(t_horizon=t_horizon)
+    ado_trajectories = sim.predict(graph_input=t_horizon)
     assert check_trajectories(ado_trajectories, t_horizon=t_horizon, modes=num_modes, ados=2)
 
 
@@ -172,7 +177,7 @@ def test_prediction_one_agent_only(num_modes: int, t_horizon: int, v0s: List[Dis
     sim = SocialForcesSimulation()
     sim.add_ado(goal=torch.ones(2), position=torch.ones(2), velocity=torch.tensor([1, 0]), num_modes=num_modes, v0s=v0s)
 
-    ado_trajectories = sim.predict(t_horizon=t_horizon)
+    ado_trajectories = sim.predict(graph_input=t_horizon)
     assert check_trajectories(ado_trajectories, t_horizon=t_horizon, modes=num_modes, ados=1)
     assert torch.all(torch.eq(ado_trajectories[:, 0, :, :], ado_trajectories[:, 1, :, :]))
 
@@ -185,7 +190,7 @@ def test_build_graph_over_horizon():
 
     prediction_horizon = 10
     ego_primitive = torch.ones((prediction_horizon, 2)) * sim.ego.position  # does not matter here anyway
-    graphs = sim.build_connected_graph(ego_positions=ego_primitive)
+    graphs = sim.build_connected_graph(graph_input=ego_primitive)
 
     assert all([f"ego_{k}_position" in graphs.keys() for k in range(prediction_horizon)])
     assert all([f"ego_{k}_velocity" in graphs.keys() for k in range(prediction_horizon)])
@@ -196,7 +201,7 @@ def test_ego_graph_updates(position: torch.Tensor, goal: torch.Tensor):
     sim = SocialForcesSimulation(IntegratorDTAgent, {"position": position, "velocity": torch.zeros(2)})
     primitives = straight_line(start_pos=position, end_pos=goal, steps=11)
 
-    graphs = sim.build_connected_graph(ego_positions=primitives)
+    graphs = sim.build_connected_graph(graph_input=primitives)
     for k in range(primitives.shape[0]):
         assert torch.all(torch.eq(primitives[k, :], graphs[f"ego_{k}_position"]))
 
@@ -221,8 +226,8 @@ def test_simplified_sf_simulation(pos_1: torch.Tensor, pos_2: torch.Tensor):
     for i, sim in enumerate([sim_1, sim_2]):
         sim.add_ado(position=torch.zeros(2))
         graph = sim.build_graph(ego_state=sim.ego.state)
-        forces[i, :] = graph[f"{sim.ado_ghosts[0].gid}_0_force"]
-        ado_force_norm = graph[f"{sim.ado_ghosts[0].gid}_0_output"]
+        forces[i, :] = graph[f"{sim.ado_ghosts[0].id}_0_force"]
+        ado_force_norm = graph[f"{sim.ado_ghosts[0].id}_0_output"]
         gradients[i, :] = torch.autograd.grad(ado_force_norm, graph["ego_0_position"], retain_graph=True)[0].detach()
 
     # The force is distance based, so more distant agents should affect a smaller force.
@@ -253,7 +258,7 @@ def visualize_igrad_social_forces_computation_time():
 
             ego_primitive = torch.ones((t_horizon, 2)) * sim.ego.position  # does not matter here anyway
             start_time = time.time()
-            sim.build_connected_graph(ego_positions=ego_primitive)
+            sim.build_connected_graph(graph_input=ego_primitive)
             computational_times[num_ados].append(time.time() - start_time)
 
     import matplotlib.pyplot as plt

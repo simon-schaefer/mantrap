@@ -102,7 +102,7 @@ def measure_sim_prediction(horizon: int, **kwargs):
 
 
 def measure_sim_connected_graph(horizon: int, **kwargs):
-    kwargs["sim"].build_connected_graph(torch.ones((horizon, 2)))
+    kwargs["sim"].build_connected_graph(graph_input=torch.ones((horizon, 2)))
 
 
 if __name__ == '__main__':

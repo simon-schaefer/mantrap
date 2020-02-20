@@ -24,7 +24,7 @@ class Solver:
 
         assert self._solver_params["T"] > 2, "planning horizon must be larger 2 time-steps"
 
-    def solve(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def solve(self, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal simulation with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
@@ -34,8 +34,8 @@ class Solver:
         :return: ado trajectories [num_ados, modes, T, 6] conditioned on the derived ego trajectory.
         """
         horizon = self._solver_params["T"]
-        traj_opt = torch.zeros((horizon, 6))
-        ado_trajectories = torch.zeros((self._env.num_ados, self._env.num_ado_modes, horizon, 6))
+        traj_opt = torch.zeros((horizon, 5))
+        ado_trajectories = torch.zeros((self._env.num_ados, self._env.num_ado_modes, horizon, 5))
 
         # Initialize trajectories with current state and simulation time.
         traj_opt[0, :] = expand_state_vector(self._env.ego.state, self._env.sim_time)
@@ -45,27 +45,27 @@ class Solver:
         logging.info(f"Starting trajectory optimization solving for planning horizon {horizon} steps ...")
         for k in range(horizon - 1):
             logging.info(f"solver @ time-step k = {k}")
-            ego_action = self._determine_ego_action(env=self._env)
+            ego_action = self._determine_ego_action(iteration_tag=str(k), **solver_kwargs)
             assert ego_action is not None, "solver failed to find a valid solution for next ego action"
             logging.info(f"solver @k={k}: ego action = {ego_action}")
 
             # Forward simulate environment.
             ado_traj, ego_state = self._env.step(ego_policy=ego_action)
-            ado_trajectories[:, :, k + 1, :] = ado_traj[:, :, 0, :]
-            traj_opt[k + 1, :] = ego_state
+            ado_trajectories[:, :, k + 1, :] = ado_traj[:, :, 0, :].detach()
+            traj_opt[k + 1, :] = ego_state.detach()
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 2 optimization steps instead of max_steps).
             if torch.norm(ego_state[:2] - self._goal) < 0.1:
-                traj_opt = traj_opt[: k + 2, :]
-                ado_trajectories = ado_trajectories[:, :, : k + 2, :]
+                traj_opt = traj_opt[: k + 2, :].detach()
+                ado_trajectories = ado_trajectories[:, :, : k + 2, :].detach()
                 break
 
         logging.info(f"Finishing up trajectory optimization solving")
         return traj_opt, ado_trajectories
 
     @abstractmethod
-    def _determine_ego_action(self, env: Simulation) -> torch.Tensor:
+    def _determine_ego_action(self, **solver_kwargs) -> torch.Tensor:
         """Determine the next ego action for some time-step k given the previous trajectory traj_opt[:k, :] and
         the simulation environment providing access to all current and previous states. """
         pass

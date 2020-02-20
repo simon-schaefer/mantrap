@@ -31,8 +31,7 @@ def build_trajectory_from_path(positions: torch.Tensor, dt: float, t_start: floa
     trajectory = torch.zeros((t_horizon, 5))
 
     trajectory[:, 0:2] = positions
-    trajectory[1:, 2:4] = trajectory[1:, 0:2] - trajectory[:-1, 0:2]
-    trajectory[0, 2:4] = trajectory[1, 2:4]  # otherwise first velocity always will be zero (!)
+    trajectory[:-1, 2:4] = trajectory[1:, 0:2] - trajectory[0:-1, 0:2]
     trajectory[:, 4] = torch.linspace(t_start, t_start + t_horizon * dt, steps=t_horizon)
 
     assert check_ego_trajectory(trajectory, t_horizon=t_horizon)

@@ -1,5 +1,3 @@
-import time
-
 import pytest
 import torch
 
@@ -18,7 +16,7 @@ def test_build_trajectory_from_positions():
     trajectory = build_trajectory_from_path(positions, dt=1.0, t_start=0.0)
 
     assert torch.all(torch.eq(trajectory[:, 0:2], positions))
-    assert torch.all(torch.eq(trajectory[1:, 2:4], torch.ones(10, 2)))
+    assert torch.all(torch.eq(trajectory[:-1, 2:4], torch.ones(10, 2)))
 
 
 ###########################################################################

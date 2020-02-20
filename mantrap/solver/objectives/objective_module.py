@@ -36,7 +36,7 @@ class ObjectiveModule:
             grad_wrt.requires_grad = True
 
         objective = self._compute(x2)
-        gradient = torch.autograd.grad(objective, grad_wrt)[0].flatten().detach().numpy()
+        gradient = torch.autograd.grad(objective, grad_wrt, retain_graph=True)[0].flatten().detach().numpy()
         return self._return_gradient(gradient)
 
     @abstractmethod

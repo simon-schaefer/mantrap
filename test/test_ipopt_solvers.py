@@ -6,7 +6,7 @@ import torch
 
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldSimulation
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.simulation.graph_based import GraphBasedSimulation
 from mantrap.solver import IGradSolver, SGradSolver
 from mantrap.solver.ipopt_solver import IPOPTSolver
 
@@ -50,7 +50,7 @@ class TestIPOPTSolvers:
         # Test derivatives using derivative-checker from IPOPT framework, format = "mine ~ estimated (difference)".
         if solver.is_verbose:
             x0 = torch.from_numpy(x)
-            solver._solve_optimization(x0, approx_jacobian=False, approx_hessian=True, check_derivative=True)
+            solver.solve_single_optimization(x0, approx_jacobian=False, approx_hessian=True, check_derivative=True)
 
     @staticmethod
     def test_single_agent_scenario(solver_class: IPOPTSolver.__class__, test_kwargs):
@@ -58,7 +58,7 @@ class TestIPOPTSolvers:
         sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(sim, goal=torch.tensor([8, 0]), **test_kwargs)
 
-        x_opt = solver._solve_optimization(x0=solver.x0_default(), approx_jacobian=False, approx_hessian=True)
+        x_opt = solver.solve_single_optimization(x0=solver.x0_default(), approx_jacobian=False, approx_hessian=True)
         TestIPOPTSolvers.check_output_trajectory(x_opt, sim=sim, solver=solver)
 
     @staticmethod
@@ -69,7 +69,7 @@ class TestIPOPTSolvers:
         sim.add_ado(position=torch.tensor([3, -8]), velocity=torch.tensor([2.5, 1.5]))
         solver = solver_class(sim, goal=torch.tensor([8, 0]), **test_kwargs)
 
-        x_opt = solver._solve_optimization(x0=solver.x0_default(), approx_jacobian=False, approx_hessian=True)
+        x_opt = solver.solve_single_optimization(x0=solver.x0_default(), approx_jacobian=False, approx_hessian=True)
         TestIPOPTSolvers.check_output_trajectory(x_opt, sim=sim, solver=solver)
 
     @staticmethod

@@ -22,25 +22,25 @@ class PotentialFieldSimulation(SocialForcesSimulation):
 
         super(PotentialFieldSimulation, self).add_ado(**ado_kwargs)
 
-    def build_graph(self, ego_state: torch.Tensor, **graph_kwargs) -> Dict[str, torch.Tensor]:
+    def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = super(SocialForcesSimulation, self).build_graph(ego_state, **graph_kwargs)
         k = graph_kwargs["k"] if "k" in graph_kwargs.keys() else 0
         for ghost in self.ado_ghosts:
-            graph[f"{ghost.gid}_{k}_goal"] = ghost.goal
+            graph[f"{ghost.id}_{k}_goal"] = ghost.goal
 
         # Make graph with resulting force as an output.
         for ghost in self.ado_ghosts:
-            gpos, gvel = graph[f"{ghost.gid}_{k}_position"], graph[f"{ghost.gid}_{k}_velocity"]
-            graph[f"{ghost.gid}_{k}_force"] = torch.zeros(2)
+            gpos, gvel = graph[f"{ghost.id}_{k}_position"], graph[f"{ghost.id}_{k}_velocity"]
+            graph[f"{ghost.id}_{k}_force"] = torch.zeros(2)
 
             if ego_state is not None:
                 ego_pos = graph[f"ego_{k}_position"]
                 delta = gpos - ego_pos
                 potential_force = torch.sign(delta) * torch.exp(- torch.abs(delta))
-                graph[f"{ghost.gid}_{k}_force"] = torch.add(graph[f"{ghost.gid}_{k}_force"], potential_force)
+                graph[f"{ghost.id}_{k}_force"] = torch.add(graph[f"{ghost.id}_{k}_force"], potential_force)
 
             # Summarize (standard) graph elements.
-            graph[f"{ghost.gid}_{k}_output"] = torch.norm(graph[f"{ghost.gid}_{k}_force"])
+            graph[f"{ghost.id}_{k}_output"] = torch.norm(graph[f"{ghost.id}_{k}_force"])
 
         return graph
