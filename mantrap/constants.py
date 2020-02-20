@@ -10,9 +10,9 @@ sim_dt_default = 0.25
 sim_x_axis_default = (-10, 10)
 sim_y_axis_default = (-10, 10)
 
-sim_social_forces_default_params = {
+sim_social_forces_defaults = {
     "tau": 0.4,  # [s] relaxation time (assumed to be uniform over all agents).
-    "v0": 2.1,  # [m2s-2] repulsive field constant.
+    "v0": 4.0,  # [m2s-2] repulsive field constant.
     "sigma": 1.0,  # [m] repulsive field exponent constant.
 }
 sim_social_forces_min_goal_distance = 0.1  # [m] minimal distance to goal to have non-zero goal traction force.

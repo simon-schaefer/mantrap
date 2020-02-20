@@ -35,19 +35,26 @@ class Simulation:
         self._sim_time = 0
 
     @abstractmethod
-    def predict(
-        self, graph_input: Union[int, torch.Tensor], returns: bool = False, **graph_kwargs
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+    def predict(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados with each other and between the ados and the ego. The implementation therefore is specific
-        to each child-class. If the ego_trajectory is set to none, the interaction between ego and any ado is not
-        taken into account, instead just between ados.
-        Dependent on whether the prediction is deterministic or probabilistic the output can vary between each child-
-        class, by setting the prediction_t. However the output should be a vector of predictions, one for each ado.
+        to each child-class.
 
-        :param graph_input: either ego trajectory or t_horizon.
-        :param returns: return the actual system inputs (at every time -> trajectory) and probabilities of each mode.
+        :param ego_trajectory: ego trajectory for prediction horizon (pred_horizon, 5).
+        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
+        """
+        pass
+
+    @abstractmethod
+    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        """Predict the environments future for the given time horizon (discrete time).
+        The internal prediction model is dependent on the exact implementation of the internal interaction model
+        between the ados while ignoring the ego.
+
+        :param t_horizon: prediction horizon, number of discrete time-steps.
+        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
         pass
@@ -68,22 +75,25 @@ class Simulation:
         # assumption. Update ego based on the first action of the input ego policy.
         ego_policy = ego_policy.unsqueeze(dim=0) if len(ego_policy.shape) == 1 else ego_policy
         self._ego.update(ego_policy[0, :], dt=self.dt)
-        logging.info(f"simulation @t={self.sim_time} [ego]: policy={ego_policy}")
+        logging.info(f"simulation @t={self.sim_time} [ego]: policy={ego_policy.tolist()}")
 
         # Predict the next step in the environment by forward simulation.
-        ado_states, policies, weights = self.predict(graph_input=self.ego.history[-2:, :], returns=True)
-        ado_states = ado_states[:, :, -1, :].unsqueeze(dim=2)
+        _, policies, weights = self.predict(ego_trajectory=self.ego.history[-2:, :], return_more=True)
 
         # Update ados by forward simulate them and determining their most likely policies. Therefore predict the
         # ado states at the next time step as well as the probabilities (weights) of them occurring. Then sample one
         # mode (given these weights) and update the ados as that sampled mode.
+        # The base state should be the same between all modes, therefore update all mode states according to the
+        # one sampled mode policy.
         weights = weights / torch.sum(weights, dim=1)[:, np.newaxis]
+        ado_states = torch.zeros((self.num_ados, self.num_ado_modes, 1, 5))
         for i, ado in enumerate(self._ados):
             sampled_mode = np.random.choice(range(self.num_ado_modes), p=weights[i, :])
             ado.update(policies[i, sampled_mode, 0, :], dt=self.dt)
-            logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, :]}")
+            ado_states[i, :, :, :] = ado.state_with_time
+            logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, :].tolist()}")
 
-        logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: state={self.ego.state}")
+        logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
         return ado_states.detach(), self.ego.state_with_time.detach()  # otherwise no scene independence (!)
 
     def add_ado(self, **ado_kwargs):

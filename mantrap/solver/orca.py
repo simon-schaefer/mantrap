@@ -36,7 +36,7 @@ class ORCASolver(Solver):
         agent_radius: float = orca_agent_radius,
         safe_dt: float = orca_agent_safe_dt,
         speed_max: float = agent_speed_max,
-    ) -> Union[torch.Tensor, None]:
+    ) -> Tuple[Union[torch.Tensor, None], torch.Tensor]:
         assert self._env.ego.__class__ == IntegratorDTAgent, "orca assumes ego to be holonomic and to single integrator"
 
         # Find line constraints.
@@ -52,7 +52,7 @@ class ORCASolver(Solver):
         if i_fail < len(constraints):
             velocity_new = self._linear_solver_3d(constraints, i_fail, speed_max=speed_max, velocity_new=velocity_new)
 
-        return velocity_new
+        return velocity_new, self._env.ego.position + velocity_new * self._env.dt
 
     def _linear_solver_2d(
         self,

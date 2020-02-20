@@ -40,7 +40,7 @@ class IPOPTSolver(Solver):
         # whether the related key is already existing, since if it is not existing, it is created with a queue as
         # starting value, to which the new entry is appended. With an appending complexity O(1) instead of O(N) the
         # deque is way more efficient than the list type for storing simple floating point numbers in a sequence.
-        self._optimization_log = defaultdict(deque) if self.is_verbose else None
+        self._optimization_log = defaultdict(deque)
         self._x_latest = None  # iteration() function does not input x (!)
 
     def solve_single_optimization(
@@ -84,12 +84,12 @@ class IPOPTSolver(Solver):
 
         return x_optimized
 
-    def _determine_ego_action(self, **solver_kwargs) -> torch.Tensor:
+    def _determine_ego_action(self, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         assert self._env.ego.__class__ == IntegratorDTAgent
         logging.info("solver starting ipopt optimization procedure")
         x_opt = self.solve_single_optimization(**solver_kwargs)
-        ego_action = x_opt[2, 0:2] - x_opt[1, 0:2]
-        return ego_action
+        ego_action = (x_opt[1, 0:2] - x_opt[0, 0:2]) / self.env.dt
+        return ego_action, x_opt
 
     ###########################################################################
     # Initialization ##########################################################
@@ -181,19 +181,18 @@ class IPOPTSolver(Solver):
     # Visualization ###########################################################
     ###########################################################################
     def intermediate(self, alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args):
-        if self.is_verbose:
-            self._optimization_log["iter_count"].append(iter_count)
-            self._optimization_log["obj_overall"].append(obj_value)
-            self._optimization_log["inf_primal"].append(inf_pr)
-            self._optimization_log["grad_lagrange"].append(d_norm)
-            self._optimization_log["x"].append(self._x_latest)
-            for module in self._objective_modules.values():
-                module.logging()
-            for module in self._constraint_modules.values():
-                module.logging()
+        self._optimization_log["iter_count"].append(iter_count)
+        self._optimization_log["obj_overall"].append(obj_value)
+        self._optimization_log["inf_primal"].append(inf_pr)
+        self._optimization_log["grad_lagrange"].append(d_norm)
+        self._optimization_log["x"].append(self._x_latest)
+        for module in self._objective_modules.values():
+            module.logging()
+        for module in self._constraint_modules.values():
+            module.logging()
 
     def constraints_fulfilled(self) -> Union[bool, None]:
-        if self._optimization_log is None:
+        if len(self._optimization_log) == 0:
             return None
         return self._optimization_log["inf_primal"][-1] < 1e-6
 
@@ -202,12 +201,6 @@ class IPOPTSolver(Solver):
         IPOPT determines the CPU time including the intermediate function, therefore if we would plot at every step,
         we would loose valuable optimization time. Therefore the optimization progress is plotted all at once at the
         end of the optimization process."""
-
-        # Plotting only makes sense if you see some progress in the optimization, i.e. compare and figure out what
-        # the current optimization step has changed.
-        if not self.is_verbose or len(self._optimization_log["iter_count"]) < 2:
-            return
-
         self._optimization_log = {k: list(data) for k, data in self._optimization_log.items() if not type(data) == list}
 
         # Transfer objective modules logs to main logging dictionary and clean up objectives.
@@ -222,12 +215,22 @@ class IPOPTSolver(Solver):
             self._optimization_log[f"inf_{module_name}"] = module.logs
             module.clean_up()
 
-        # Visualization. Find path to output directory, create it or delete every file inside.
-        from mantrap.evaluation.visualization import visualize_optimization
-        name_tag = self.__class__.__name__.lower() + tag
-        output_directory_path = build_os_path(f"test/graphs/{name_tag}_optimization", make_dir=False, free=False)
-        visualize_optimization(self._optimization_log, env=self._env, file_path=output_directory_path)
+        # Logging.
+        num_optimization_steps = self._optimization_log["iter_count"][-1]
+        obj_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "obj" in name}
+        inf_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "inf" in name}
+        logging.info(f"solver ipopt optimization finished after {num_optimization_steps} steps")
+        logging.info(f"solver ipopt optimization: {obj_dict}")
+        logging.info(f"solver ipopt optimization: {inf_dict}")
+
+        # Plotting only makes sense if you see some progress in the optimization, i.e. compare and figure out what
+        # the current optimization step has changed.
+        if self.is_verbose and len(self._optimization_log["iter_count"]) < 2:
+            from mantrap.evaluation.visualization import visualize_optimization
+            name_tag = self.__class__.__name__.lower() + tag
+            output_directory_path = build_os_path(f"test/graphs/{name_tag}_optimization", make_dir=False, free=False)
+            visualize_optimization(self._optimization_log, env=self._env, file_path=output_directory_path)
 
         # Reset optimization logging parameters for next optimization.
-        self._optimization_log = defaultdict(deque) if self.is_verbose else None
+        self._optimization_log = defaultdict(deque)
         self._x_latest = None

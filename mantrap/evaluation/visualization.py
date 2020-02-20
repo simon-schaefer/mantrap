@@ -12,20 +12,39 @@ from mantrap.utility.shaping import check_state
 from mantrap.utility.utility import build_trajectory_from_path
 
 
+def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env: Simulation, file_path: str):
+    fig, ax = plt.subplots(figsize=(15, 15), constrained_layout=True)
+
+    def update(k):
+        ego_traj = build_trajectory_from_path(ego_opt_planned[k, :, :], dt=env.dt, t_start=env.sim_time)
+
+        ax.cla()
+        ax.plot(ego_traj[:, 0].detach().numpy(), ego_traj[:, 1].detach().numpy(), "-", color=env.ego.color, label="ego")
+        _add_agent_representation(ego_traj[0, :], env.ego.color, "ego", ax=ax)
+        for i in range(env.num_ado_ghosts):
+            ia, im = env.ghost_to_ado_index(i)
+            ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color
+            _add_agent_representation(ado_traj[k, ia, im, 0, :], ado_color, ado_id, ax=ax)
+            plt.plot(ado_traj[k, ia, im, :, 0], ado_traj[k, ia, im, :, 1], "--", color=ado_color, label=ado_id)
+
+        ax.set_xlim(env.axes[0])
+        ax.set_ylim(env.axes[1])
+        ax.grid()
+        ax.legend()
+        ax.set_title(f"Solving - Step {k}")
+
+        return ax
+
+    anim = FuncAnimation(fig, update, frames=ego_opt_planned.shape[0], interval=300)
+    anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
+
+
 def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, file_path: str):
     assert "iter_count" in optimization_log.keys(), "iteration count must be provided in optimization dict"
     assert "x" in optimization_log.keys(), "trajectory data x must be provided in optimization dict"
 
     vis_keys = ["obj", "inf", "grad"]
     horizon = optimization_log["x"][0].shape[0]
-
-    # For comparison in the visualization predict the behaviour of every agent in the scene for the base
-    # trajectory, i.e. x0 the initial value trajectory.
-    # x2_base_np = optimization_log["x"][0]
-    # x2_base = torch.from_numpy(x2_base_np)
-    # ego_traj_base = build_trajectory_from_positions(x2_base, dt=env.dt, t_start=env.sim_time)
-    # ego_traj_base_np = ego_traj_base.detach().numpy()
-    # ado_traj_base_np = env.predict(horizon, ego_trajectory=torch.from_numpy(x2_base_np)).detach().numpy()
 
     fig = plt.figure(figsize=(15, 15), constrained_layout=True)
     grid = plt.GridSpec(len(vis_keys) + 3, len(vis_keys), wspace=0.4, hspace=0.3, figure=fig)
@@ -42,7 +61,8 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
         x2_np = optimization_log["x"][k]
         x2 = torch.from_numpy(x2_np)
         ego_traj = build_trajectory_from_path(x2, dt=env.dt, t_start=env.sim_time)
-        ado_traj = env.predict(graph_input=ego_traj)
+        ado_traj = env.predict(ego_trajectory=ego_traj)
+        ado_traj_wo = env.predict_wo_ego(t_horizon=x2.shape[0])
 
         plt.axis("off")
         for i in range(len(axs)):
@@ -50,20 +70,27 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
 
         # Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as
         # the resulting ado trajectories based on some simulation.
-        axs[0].plot(x2_np[:, 0], x2_np[:, 1], "-", color=env.ego.color, label="ego_current")
+        # _add_agent_trajectories(env, ego_traj, ado_traj, ado_traj_wo, axes=env.axes, ax=axs[0])
+        ego_trajectory_np = x2.detach().numpy()
+        axs[0].plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label="ego")
         _add_agent_representation(env.ego.state, env.ego.color, "ego", ax=axs[0])
+
         # Plot current and base resulting simulated ado trajectories in the scene.
         for i in range(env.num_ado_ghosts):
             i_ado, i_mode = env.ghost_to_ado_index(i)
             ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color
             ado_pos = ado_traj[i_ado, i_mode, :, 0:2].detach().numpy()
-            axs[0].plot(ado_pos[:, 0], ado_pos[:, 1], "--", color=ado_color, label=f"{ado_id}_current")
+            ado_pos_wo = ado_traj_wo[i_ado, i_mode, :, 0:2].detach().numpy()
+
+            axs[0].plot(ado_pos[:, 0], ado_pos[:, 1], "--", color=ado_color, label=f"{ado_id}")
             _add_agent_representation(env.ado_ghosts[i].agent.state, ado_color, ado_id, ax=axs[0])
-        axs[0].set_title(f"iGrad optimization - IPOPT step {k} - Horizon {horizon}")
+            axs[0].plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "-*", color=ado_color, label=f"{ado_id}_wo")
+
         axs[0].set_xlim(env.axes[0])
         axs[0].set_ylim(env.axes[1])
         axs[0].grid()
         axs[0].legend()
+        axs[0].set_title(f"IPOPT Optimization - Step {k} - Horizon {horizon}")
 
         # Plot agent velocities for resulting solution vs base-line ego trajectory for current optimization step.
         ado_velocity_norm = np.linalg.norm(ado_traj[:, :, :, 2:4].detach().numpy(), axis=3)
@@ -74,7 +101,6 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
             axs[1].plot(time_axis, ado_velocity_norm[i_ado, i_mode, :], color=ado_color, label=f"{ado_id}_current")
         axs[1].plot(time_axis, ego_velocity_norm, color=env.ego.color, label="ego_current")
         axs[1].set_title("velocities [m/s]")
-        axs[1].set_ylim(0, agent_speed_max)
         axs[1].grid()
         axs[1].legend()
 
@@ -86,7 +112,6 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
             ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color
             axs[2].plot(time_axis, ado_acceleration_norm[i_ado, i_mode, :], color=ado_color, label=f"{ado_id}_current")
         axs[2].set_title("accelerations [m/s^2]")
-        axs[2].set_ylim(0, agent_speed_max / 2.0)
         axs[2].grid()
         axs[2].legend()
 
@@ -107,6 +132,9 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
     anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
 
 
+# ##########################################################################
+# Atomic plotting functions ################################################
+# ##########################################################################
 def _add_agent_representation(state: torch.Tensor, color: np.ndarray, name: Union[str, None], ax: plt.Axes):
     assert check_state(state, enforce_temporal=False), "state vector is invalid"
     state = state.detach().numpy()

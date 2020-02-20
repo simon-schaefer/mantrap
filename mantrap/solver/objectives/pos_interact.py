@@ -8,7 +8,7 @@ class InteractionPositionModule(ObjectiveModule):
     def __init__(self, env: GraphBasedSimulation, **module_kwargs):
         super(InteractionPositionModule, self).__init__(**module_kwargs)
         self._env = env
-        self._ado_positions_wo = self._env.predict(self.T, ego_trajectory=None)[:, :, :, 0:2]
+        self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.T)[:, :, :, 0:2]
 
     def _compute(self, x2: torch.Tensor) -> torch.Tensor:
         graphs = self._env.build_connected_graph(graph_input=x2, ego_grad=False)

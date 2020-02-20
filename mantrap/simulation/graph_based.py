@@ -1,19 +1,25 @@
 from abc import abstractmethod
-from typing import Dict, Tuple, Union
+from typing import Dict, Union
 
 import torch
 
 from mantrap.simulation.simulation import Simulation
-from mantrap.utility.shaping import check_ego_trajectory
+from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, check_policies, check_weights
 
 
 class GraphBasedSimulation(Simulation):
 
     @abstractmethod
-    def predict(
-        self, graph_input: Union[int, torch.Tensor], returns: bool = False, **graph_kwargs
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+    def predict(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         raise NotImplementedError
+
+    @abstractmethod
+    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        raise NotImplementedError
+
+    ###########################################################################
+    # Simulation Graph ########################################################
+    ###########################################################################
 
     @abstractmethod
     def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
@@ -58,3 +64,23 @@ class GraphBasedSimulation(Simulation):
         else:  # t_horizon
             assert graph_input > 0, "invalid prediction time horizon, must be larger zero"
         return dict()
+
+    def transcribe_graph(self, graphs: Dict[str, torch.Tensor], t_horizon: int, returns: bool = False):
+        # Remodel simulation outputs, as they are all stored in the simulation graph.
+        forces = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 2))
+        trajectories = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 5))
+        weights = torch.zeros((self.num_ados, self.num_ado_modes))
+        for i in range(self.num_ado_ghosts):
+            i_ado, i_mode = self.ghost_to_ado_index(i)
+            ghost_id = self.ado_ghosts[i].id
+            for k in range(t_horizon):
+                trajectories[i_ado, i_mode, k, 0:2] = graphs[f"{ghost_id}_{k}_position"]
+                trajectories[i_ado, i_mode, k, 2:4] = graphs[f"{ghost_id}_{k}_velocity"]
+                trajectories[i_ado, i_mode, k, -1] = self.sim_time + self.dt * k
+                forces[i_ado, i_mode, k, :] = graphs[f"{ghost_id}_{k}_force"]
+            weights[i_ado, i_mode] = self.ado_ghosts[i].weight
+
+        assert check_policies(forces, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon)
+        assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
+        assert check_trajectories(trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_ado_modes)
+        return trajectories if not returns else (trajectories, forces, weights)

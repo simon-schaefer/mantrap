@@ -9,7 +9,7 @@ class InteractionAccelerationModule(ObjectiveModule):
     def __init__(self, env: GraphBasedSimulation, **module_kwargs):
         super(InteractionAccelerationModule, self).__init__(**module_kwargs)
         self._env = env
-        ado_states_wo = self._env.predict(self.T, ego_trajectory=None)
+        ado_states_wo = self._env.predict_wo_ego(t_horizon=self.T)
         self._derivative_2 = Derivative2(horizon=self.T, dt=self._env.dt, num_axes=2)
         self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
 

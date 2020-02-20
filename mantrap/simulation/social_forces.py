@@ -10,12 +10,12 @@ from mantrap.constants import (
     sim_x_axis_default,
     sim_y_axis_default,
     sim_dt_default,
-    sim_social_forces_default_params,
+    sim_social_forces_defaults,
     sim_social_forces_min_goal_distance,
     sim_social_forces_max_interaction_distance,
 )
-from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, check_policies, check_weights
-from mantrap.utility.maths import Distribution, DirecDelta
+from mantrap.utility.shaping import check_ego_trajectory
+from mantrap.utility.maths import Distribution, Gaussian
 from mantrap.utility.utility import build_trajectory_from_path
 from mantrap.simulation.graph_based import GraphBasedSimulation
 
@@ -37,48 +37,17 @@ class SocialForcesSimulation(GraphBasedSimulation):
         super(SocialForcesSimulation, self).__init__(ego_type, ego_kwargs, x_axis=x_axis, y_axis=y_axis, dt=dt)
         self._ado_ghosts = []
 
-    def predict(
-        self, graph_input: Union[int, torch.Tensor], returns: bool = False, **graph_kwargs
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
-        """For predicting the ado states in future time-steps up to t* = t_horizon given some ego trajectory
-        subsequently build a graph representation of the current scene in order to predict all states in the next scene,
-        using the determined forces as control input for the ado state updates. Then, after iterating through all
-        time-steps up to t* = t_horizon, build the ado trajectories by using their state histories. In order to account
-        for different ado modes, simulate them as "ghost" agents independently. If no ego_trajectory is given, the
-        ego will be ignored instead, and the scene is being forward simulated `t_horizon = graph_input` steps.
+    def predict(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        if ego_trajectory.shape[1] == 2:
+            ego_trajectory = build_trajectory_from_path(positions=ego_trajectory, dt=self.dt, t_start=self.sim_time)
+        assert check_ego_trajectory(ego_trajectory=ego_trajectory, pos_and_vel_only=True)
 
-        :param graph_input: either ego trajectory or t_horizon.
-        :param returns: return the actual system inputs (at every time -> trajectory) and probabilities of each mode.
-        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
-        """
-        ignore_ego = type(graph_input) != torch.Tensor
-        if not ignore_ego:
-            if graph_input.shape[1] == 2:
-                graph_input = build_trajectory_from_path(positions=graph_input, dt=self.dt, t_start=self.sim_time)
-            assert check_ego_trajectory(ego_trajectory=graph_input, pos_and_vel_only=True)
-        t_horizon = graph_input if ignore_ego else graph_input.shape[0]
+        graphs = self.build_connected_graph(graph_input=ego_trajectory, ego_grad=False, **graph_kwargs)
+        return self.transcribe_graph(graphs, t_horizon=ego_trajectory.shape[0], returns=return_more)
 
-        # Build up simulation graph.
-        graphs = self.build_connected_graph(graph_input=graph_input, ego_grad=False, **graph_kwargs)
-
-        # Remodel simulation outputs, as they are all stored in the simulation graph.
-        forces = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 2))
-        trajectories = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 5))
-        weights = torch.zeros((self.num_ados, self.num_ado_modes))
-        for i, ghost in enumerate(self._ado_ghosts):
-            i_ado, i_mode = self.ghost_to_ado_index(i)
-            ghost_id = self.ado_ghosts[i].id
-            for k in range(t_horizon):
-                trajectories[i_ado, i_mode, k, 0:2] = graphs[f"{ghost_id}_{k}_position"]
-                trajectories[i_ado, i_mode, k, 2:4] = graphs[f"{ghost_id}_{k}_velocity"]
-                trajectories[i_ado, i_mode, k, -1] = self.sim_time + self.dt * k
-                forces[i_ado, i_mode, k, :] = graphs[f"{ghost_id}_{k}_force"]
-            weights[i_ado, i_mode] = ghost.weight
-
-        assert check_policies(forces, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon)
-        assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
-        assert check_trajectories(trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_ado_modes)
-        return trajectories if not returns else (trajectories, forces, weights)
+    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        graphs = self.build_connected_graph(graph_input=t_horizon, ego_grad=False, **graph_kwargs)
+        return self.transcribe_graph(graphs, t_horizon=t_horizon, returns=return_more)
 
     def step(self, ego_policy: torch.Tensor = None) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
         ado_states, ego_next_state = super(SocialForcesSimulation, self).step(ego_policy=ego_policy)
@@ -107,9 +76,11 @@ class SocialForcesSimulation(GraphBasedSimulation):
 
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces
         # simulation are sampled from distributions, each for one mode. If not stated the default parameters are
-        # used as hot-encoded (i.e. direc delta) distribution.
-        v0s = v0s if v0s is not None else [DirecDelta(sim_social_forces_default_params["v0"])] * num_modes
-        sigmas = sigmas if sigmas is not None else [DirecDelta(sim_social_forces_default_params["sigma"])] * num_modes
+        # used as Gaussian distribution around the default value.
+        v0s_default = Gaussian(sim_social_forces_defaults["v0"], sim_social_forces_defaults["v0"] / 2)
+        v0s = v0s if v0s is not None else [v0s_default] * num_modes
+        sigma_default = Gaussian(sim_social_forces_defaults["sigma"], sim_social_forces_defaults["sigma"] / 2)
+        sigmas = sigmas if sigmas is not None else [sigma_default] * num_modes
         weights = weights if weights is not None else (torch.ones(num_modes) / num_modes).tolist()
         assert len(v0s) == len(sigmas) == len(weights), "simulation parameters and number of modes do not match"
 
@@ -121,9 +92,9 @@ class SocialForcesSimulation(GraphBasedSimulation):
             ado = copy.deepcopy(self._ados[-1])
             v0 = float(v0s[i].sample())
             sigma = float(sigmas[i].sample())
-            tau = sim_social_forces_default_params["tau"]
-            id = ado.id + "_" + str(i)
-            self._ado_ghosts.append(self.Ghost(ado, goal=goal, v0=v0, sigma=sigma, tau=tau, weight=weights[i], id=id))
+            tau = sim_social_forces_defaults["tau"]
+            gid = ado.id + "_" + str(i)
+            self._ado_ghosts.append(self.Ghost(ado, goal=goal, v0=v0, sigma=sigma, tau=tau, weight=weights[i], id=gid))
 
     ###########################################################################
     # Simulation Graph ########################################################
