@@ -47,7 +47,7 @@ class Solver:
             logging.info(f"solver @ time-step k = {k}")
             ego_action, x_planned = self._determine_ego_action(iteration_tag=str(k), **solver_kwargs)
             assert ego_action is not None, "solver failed to find a valid solution for next ego action"
-            logging.info(f"solver @k={k}: ego action = {ego_action}")
+            logging.info(f"solver @k={k}: ego action = {ego_action.tolist()}")
 
             # Forward simulate environment.
             ado_state, ego_state = self._env.step(ego_policy=ego_action)
