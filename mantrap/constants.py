@@ -2,6 +2,7 @@
 # agent parameters ###############
 #######################################
 agent_speed_max = 4  # maximal agent velocity in [m/s].
+agent_acc_max = 4  # maximal agent acceleration in [m/s^2].
 
 #######################################
 # simulation parameters ###############

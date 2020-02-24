@@ -35,17 +35,30 @@ class Simulation:
         self._sim_time = 0
 
     @abstractmethod
-    def predict(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados with each other and between the ados and the ego. The implementation therefore is specific
         to each child-class.
 
-        :param ego_trajectory: ego trajectory for prediction horizon (pred_horizon, 5).
+        :param controls: ego control input (pred_horizon, 2).
         :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
-        pass
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_w_trajectory(self, trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        """Predict the environments future for the given time horizon (discrete time).
+        The internal prediction model is dependent on the exact implementation of the internal interaction model
+        between the ados with each other and between the ados and the ego. The implementation therefore is specific
+        to each child-class.
+
+        :param trajectory: ego trajectory (pred_horizon, 4).
+        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
@@ -59,26 +72,25 @@ class Simulation:
         """
         pass
 
-    def step(self, ego_policy: torch.Tensor) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
+    def step(self, ego_control: torch.Tensor) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
         """Run simulation step (time-step = dt). Update state and history of ados and ego. Also reset simulation time
         to sim_time_new = sim_time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
         one time-step at a time, not in general `t_horizon` steps, secondly, step() changes the actual agent states
         in the simulation while predict() copies all agents and changes the states of these copies (so the actual
         agent states remain unchanged).
 
-        :param ego_policy: planned ego policy (in case of dependence in behaviour between ado and ego).
+        :param ego_control: planned ego input for current time step.
         :return ado_states (num_ados, num_modes, 5), ego_next_state (5) in next time step.
         """
         self._sim_time = self._sim_time + self.dt
 
         # Unroll future ego trajectory, which is surely deterministic and certain due to the deterministic dynamics
         # assumption. Update ego based on the first action of the input ego policy.
-        ego_policy = ego_policy.unsqueeze(dim=0) if len(ego_policy.shape) == 1 else ego_policy
-        self._ego.update(ego_policy[0, :], dt=self.dt)
-        logging.info(f"simulation @t={self.sim_time} [ego]: policy={ego_policy.tolist()}")
+        self._ego.update(ego_control, dt=self.dt)
+        logging.info(f"simulation @t={self.sim_time} [ego]: action={ego_control.tolist()}")
 
         # Predict the next step in the environment by forward simulation.
-        _, policies, weights = self.predict(ego_trajectory=self.ego.history[-2:, :], return_more=True)
+        _, policies, weights = self.predict_w_controls(controls=ego_control, return_more=True)
 
         # Update ados by forward simulate them and determining their most likely policies. Therefore predict the
         # ado states at the next time step as well as the probabilities (weights) of them occurring. Then sample one
@@ -91,7 +103,7 @@ class Simulation:
             sampled_mode = np.random.choice(range(self.num_ado_modes), p=weights[i, :])
             ado.update(policies[i, sampled_mode, 0, :], dt=self.dt)
             ado_states[i, :, :, :] = ado.state_with_time
-            logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, :].tolist()}")
+            logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, 0, :].tolist()}")
 
         logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
         return ado_states.detach(), self.ego.state_with_time.detach()  # otherwise no scene independence (!)

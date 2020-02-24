@@ -8,13 +8,15 @@ from mantrap.utility.maths import Derivative2
 class InteractionAccelerationModule(ObjectiveModule):
     def __init__(self, env: GraphBasedSimulation, **module_kwargs):
         super(InteractionAccelerationModule, self).__init__(**module_kwargs)
+        assert env.num_ado_ghosts > 0 and env.ego is not None
+
         self._env = env
         ado_states_wo = self._env.predict_wo_ego(t_horizon=self.T)
         self._derivative_2 = Derivative2(horizon=self.T, dt=self._env.dt, num_axes=2)
         self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
 
-    def _compute(self, x2: torch.Tensor) -> torch.Tensor:
-        graphs = self._env.build_connected_graph(graph_input=x2, ego_grad=False)
+    def _compute(self, x4: torch.Tensor) -> torch.Tensor:
+        graphs = self._env.build_connected_graph(ego_trajectory=x4, ego_grad=False)
 
         objective = torch.zeros(1)
         for k in range(1, self.T - 1):

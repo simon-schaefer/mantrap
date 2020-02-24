@@ -46,7 +46,7 @@ def metric_ego_effort(**metric_kwargs) -> float:
     :param: metric_kwargs: dictionary of results of one (!) testing run.
     """
     assert "ego_trajectory" in metric_kwargs.keys()
-    assert check_ego_trajectory(metric_kwargs["ego_trajectory"], pos_only=False)
+    assert check_ego_trajectory(metric_kwargs["ego_trajectory"])
 
     ego_trajectory = metric_kwargs["ego_trajectory"]
     effort_score = 0.0

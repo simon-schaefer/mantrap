@@ -7,6 +7,7 @@ import numpy as np
 import torch
 
 from mantrap.constants import solver_horizon
+from mantrap.utility.shaping import check_ego_trajectory
 
 
 class ObjectiveModule:
@@ -26,22 +27,22 @@ class ObjectiveModule:
     # Optimization Formulation ################################################
     ###########################################################################
 
-    def objective(self, x2: torch.Tensor) -> float:
-        obj_value = self._compute(x2)
+    def objective(self, x4: torch.Tensor) -> float:
+        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True, t_horizon=self.T)
+        obj_value = self._compute(x4)
         return self._return_objective(float(obj_value.item()))
 
-    def gradient(self, x2: torch.Tensor, grad_wrt: torch.Tensor = None) -> np.ndarray:
-        grad_wrt = x2 if grad_wrt is None else grad_wrt
-        if not grad_wrt.requires_grad:
-            grad_wrt.requires_grad = True
+    def gradient(self, x4: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True, t_horizon=self.T)
+        assert grad_wrt.requires_grad
 
-        objective = self._compute(x2)
+        objective = self._compute(x4)
         gradient = torch.autograd.grad(objective, grad_wrt, retain_graph=True)[0].flatten().detach().numpy()
         return self._return_gradient(gradient)
 
     @abstractmethod
-    def _compute(self, x2: torch.Tensor) -> torch.Tensor:
-        pass
+    def _compute(self, x4: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
 
     ###########################################################################
     # Utility #################################################################

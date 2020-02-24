@@ -6,6 +6,8 @@ from typing import List
 import numpy as np
 import torch
 
+from mantrap.utility.shaping import check_ego_trajectory
+
 
 class ConstraintModule:
 
@@ -20,17 +22,17 @@ class ConstraintModule:
     # Constraint Formulation ##################################################
     ###########################################################################
 
-    def constraint(self, x2: torch.Tensor) -> np.ndarray:
-        constraint = self._compute(x2)
+    def constraint(self, x4: torch.Tensor) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True)
+        constraint = self._compute(x4)
         return self._return_constraint(constraint.detach().numpy())
 
-    def jacobian(self, x2: torch.Tensor, grad_wrt: torch.Tensor = None) -> np.ndarray:
-        grad_wrt = x2 if grad_wrt is None else grad_wrt
-        if not grad_wrt.requires_grad:
-            grad_wrt.requires_grad = True
+    def jacobian(self, x4: torch.Tensor, grad_wrt: torch.Tensor = None) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True)
+        assert grad_wrt.requires_grad
 
         grad_size = int(grad_wrt.numel())
-        constraint = self._compute(x2)
+        constraint = self._compute(x4)
         jacobian = torch.zeros(constraint.numel() * grad_size)
         for i, x in enumerate(constraint):
             grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)
@@ -38,7 +40,7 @@ class ConstraintModule:
         return jacobian.detach().numpy()
 
     @abstractmethod
-    def _compute(self, x2: torch.Tensor) -> torch.Tensor:
+    def _compute(self, x4: torch.Tensor) -> torch.Tensor:
         pass
 
     ###########################################################################
@@ -47,7 +49,7 @@ class ConstraintModule:
 
     def _return_constraint(self, constraint_value: np.ndarray) -> np.ndarray:
         self._constraint_current = constraint_value
-        logging.debug(f"Module {self.__str__()} with constraint value {self._constraint_current}")
+        logging.debug(f"Module {self.__str__()} computed")
         return self._constraint_current
 
     def logging(self):

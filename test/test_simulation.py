@@ -2,18 +2,16 @@ import copy
 import time
 from typing import List
 
-import numpy as np
 import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.constants import sim_social_forces_defaults
 from mantrap.simulation.simulation import Simulation
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
 from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.primitives import straight_line
-from mantrap.utility.shaping import check_trajectories, check_policies, check_weights
+from mantrap.utility.shaping import check_trajectories, check_controls, check_weights
 
 
 class ZeroSimulation(Simulation):
@@ -21,8 +19,8 @@ class ZeroSimulation(Simulation):
         super(ZeroSimulation, self).__init__(**kwargs)
         self._num_modes = num_modes
 
-    def predict(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        t_horizon = ego_trajectory.shape[0]
+    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        t_horizon = controls.shape[0]
         return self.predict_wo_ego(t_horizon, return_more=return_more, **graph_kwargs)
 
     def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
@@ -36,7 +34,7 @@ class ZeroSimulation(Simulation):
         trajectories = torch.stack([ado.history[-t_horizon:, :] for ado in ados_sim]).unsqueeze(1)
         weights = torch.ones((self.num_ados, self.num_ado_modes))
 
-        assert check_policies(policies, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon)
+        assert check_controls(policies, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon)
         assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
         assert check_trajectories(trajectories, t_horizon=t_horizon, ados=self.num_ados, modes=1)
         return trajectories if not return_more else (trajectories, policies, weights)
@@ -66,12 +64,12 @@ def test_step():
     sim.add_ado(type=IntegratorDTAgent, position=ado_position, velocity=torch.zeros(2))
     assert sim.num_ados == 1
 
-    ego_policy = torch.tensor([1, 0])
+    ego_control = torch.tensor([1, 0])
     num_steps = 100
     ado_trajectory = torch.zeros((sim.num_ados, 1, num_steps, 5))
     ego_trajectory = torch.zeros((num_steps, 5))
     for t in range(num_steps):
-        ado_t, ego_t = sim.step(ego_policy=ego_policy)
+        ado_t, ego_t = sim.step(ego_control=ego_control)
         assert ado_t.numel() == 5
         assert ado_t.shape == (1, 1, 1, 5)
         assert ego_t.numel() == 5
@@ -79,17 +77,17 @@ def test_step():
         ego_trajectory[t, :] = ego_t
 
     ego_trajectory_x_exp = torch.linspace(
-        ego_position[0].item(), ego_position[0].item() + ego_policy[0].item() * sim.dt * num_steps, num_steps + 1
+        ego_position[0].item(), ego_position[0].item() + ego_control[0].item() * sim.dt * num_steps, num_steps + 1
     )
     ego_trajectory_y_exp = torch.linspace(
-        ego_position[1].item(), ego_position[1].item() + ego_policy[1].item() * sim.dt * num_steps, num_steps + 1
+        ego_position[1].item(), ego_position[1].item() + ego_control[1].item() * sim.dt * num_steps, num_steps + 1
     )
     ego_t_exp = torch.stack(
         (
             ego_trajectory_x_exp,
             ego_trajectory_y_exp,
-            torch.ones(num_steps + 1) * ego_policy[0],
-            torch.ones(num_steps + 1) * ego_policy[1],
+            torch.ones(num_steps + 1) * ego_control[0],
+            torch.ones(num_steps + 1) * ego_control[1],
             torch.linspace(0, num_steps * sim.dt, num_steps + 1),
         )
     ).T
@@ -107,7 +105,7 @@ def test_update(position: torch.Tensor, modes: int):
     for t in range(num_steps):
         sim_times[t] = sim.sim_time
         ego_positions[t, :] = sim.ego.position
-        sim.step(ego_policy=torch.tensor([1, 0]))
+        sim.step(ego_control=torch.tensor([1, 0]))
 
     ego_trajectory_x_exp = torch.linspace(position[0].item(), position[0].item() + num_steps - 1, num_steps)
     ego_trajectory_y_exp = torch.linspace(position[1].item(), position[1].item(), num_steps)
@@ -182,15 +180,15 @@ def test_prediction_one_agent_only(num_modes: int, t_horizon: int, v0s: List[Dis
     assert torch.all(torch.eq(ado_trajectories[:, 0, :, :], ado_trajectories[:, 1, :, :]))
 
 
-def test_build_graph_over_horizon():
+def test_build_connected_graph():
     sim = SocialForcesSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0])})
     sim.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
     sim.add_ado(position=torch.tensor([5, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
     sim.add_ado(position=torch.tensor([10, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
 
     prediction_horizon = 10
-    ego_primitive = torch.ones((prediction_horizon, 2)) * sim.ego.position  # does not matter here anyway
-    graphs = sim.build_connected_graph(graph_input=ego_primitive)
+    trajectory = torch.zeros((prediction_horizon, 4))  # does not matter here anyway
+    graphs = sim.build_connected_graph(ego_trajectory=trajectory)
 
     assert all([f"ego_{k}_position" in graphs.keys() for k in range(prediction_horizon)])
     assert all([f"ego_{k}_velocity" in graphs.keys() for k in range(prediction_horizon)])
@@ -199,11 +197,12 @@ def test_build_graph_over_horizon():
 @pytest.mark.parametrize("position, goal", [(torch.tensor([-5, 0]), torch.tensor([5, 0]))])
 def test_ego_graph_updates(position: torch.Tensor, goal: torch.Tensor):
     sim = SocialForcesSimulation(IntegratorDTAgent, {"position": position, "velocity": torch.zeros(2)})
-    primitives = straight_line(start_pos=position, end_pos=goal, steps=11)
+    path = straight_line(start_pos=position, end_pos=goal, steps=11)
+    velocities = torch.zeros((11, 2))
 
-    graphs = sim.build_connected_graph(graph_input=primitives)
-    for k in range(primitives.shape[0]):
-        assert torch.all(torch.eq(primitives[k, :], graphs[f"ego_{k}_position"]))
+    graphs = sim.build_connected_graph(ego_trajectory=torch.cat((path, velocities), dim=1))
+    for k in range(path.shape[0]):
+        assert torch.all(torch.eq(path[k, :], graphs[f"ego_{k}_position"]))
 
 
 ###########################################################################

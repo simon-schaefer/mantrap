@@ -3,7 +3,7 @@ import scipy.interpolate
 import torch
 
 from mantrap.constants import agent_speed_max, solver_horizon
-from mantrap.utility.shaping import check_path
+from mantrap.utility.shaping import check_ego_path
 
 
 def square_primitives(start: torch.Tensor, end: torch.Tensor, dt: float, steps: int = solver_horizon) -> torch.Tensor:
@@ -17,7 +17,7 @@ def square_primitives(start: torch.Tensor, end: torch.Tensor, dt: float, steps: 
     for i, normal_distance in enumerate([-distance / 2, 0, distance / 2]):
         primitives[i, :, :] = midpoint_spline(start, end, normal_distance, agent_speed_max * dt, steps)
 
-    assert check_path(primitives, t_horizon=steps, num_primitives=3)
+    assert check_ego_path(primitives, t_horizon=steps, num_primitives=3)
     return primitives
 
 
@@ -61,7 +61,7 @@ def midpoint_spline(
     primitive = path[inter_indices[:num_points].astype(int), :]
 
     primitive = torch.from_numpy(primitive)
-    assert check_path(primitive, t_horizon=num_points)
+    assert check_ego_path(primitive, t_horizon=num_points)
     return primitive
 
 
@@ -69,5 +69,5 @@ def straight_line(start_pos: torch.Tensor, end_pos: torch.Tensor, steps: int):
     primitive = torch.zeros((steps, 2))
     primitive[:, 0] = torch.linspace(start_pos[0].item(), end_pos[0].item(), steps)
     primitive[:, 1] = torch.linspace(start_pos[1].item(), end_pos[1].item(), steps)
-    assert check_path(primitive, t_horizon=steps)
+    assert check_ego_path(primitive, t_horizon=steps)
     return primitive

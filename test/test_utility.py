@@ -1,21 +1,20 @@
 import pytest
 import torch
 
-from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import agent_speed_max
 from mantrap.utility.maths import Derivative2, lagrange_interpolation
 from mantrap.utility.primitives import square_primitives, straight_line
-from mantrap.utility.utility import build_trajectory_from_path
 
 
 ###########################################################################
 # Utility Testing #########################################################
 ###########################################################################
 def test_build_trajectory_from_positions():
-    positions = straight_line(start_pos=torch.zeros(2), end_pos=torch.ones(2) * 10, steps=11)
-    trajectory = build_trajectory_from_path(positions, dt=1.0, t_start=0.0)
+    path = straight_line(start_pos=torch.zeros(2), end_pos=torch.ones(2) * 10, steps=11)
+    velocities = torch.cat(((path[1:, 0:2] - path[:-1, 0:2]) / 1.0, torch.zeros((1, 2))))
+    trajectory = torch.cat((path, velocities), dim=1)
 
-    assert torch.all(torch.eq(trajectory[:, 0:2], positions))
+    assert torch.all(torch.eq(trajectory[:, 0:2], path))
     assert torch.all(torch.eq(trajectory[:-1, 2:4], torch.ones(10, 2)))
 
 
@@ -105,9 +104,8 @@ def test_lagrange_singularity():
 ###########################################################################
 @pytest.mark.parametrize("num_points", [5, 10])
 def test_square_primitives(num_points: int):
-    position, velocity, goal = torch.tensor([-5, 0]), torch.tensor([1, 0]), torch.tensor([20, 0])
-    agent = IntegratorDTAgent(position=position, velocity=velocity)
-    primitives = square_primitives(start=agent.position, end=goal, dt=1.0, steps=num_points)
+    position, velocity, goal = torch.tensor([-5.0, 0.0]), torch.tensor([1.0, 0.0]), torch.tensor([20.0, 0.0])
+    primitives = square_primitives(start=position, end=goal, dt=1.0, steps=num_points)
 
     assert primitives.shape[1] == num_points
     for m in range(primitives.shape[0]):

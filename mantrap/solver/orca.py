@@ -31,13 +31,14 @@ class ORCASolver(Solver):
     implementation.
     """
 
-    def _determine_ego_action(
+    def determine_ego_controls(
         self,
         agent_radius: float = orca_agent_radius,
         safe_dt: float = orca_agent_safe_dt,
         speed_max: float = agent_speed_max,
-    ) -> Tuple[Union[torch.Tensor, None], torch.Tensor]:
+    ) -> Union[torch.Tensor, None]:
         assert self._env.ego.__class__ == IntegratorDTAgent, "orca assumes ego to be holonomic and to single integrator"
+        assert self.T > 1, "orca only allows solving for next time-step"
 
         # Find line constraints.
         constraints = self._line_constraints(self._env, agent_radius=agent_radius, agent_safe_dt=safe_dt)
@@ -52,7 +53,7 @@ class ORCASolver(Solver):
         if i_fail < len(constraints):
             velocity_new = self._linear_solver_3d(constraints, i_fail, speed_max=speed_max, velocity_new=velocity_new)
 
-        return velocity_new, self._env.ego.position + velocity_new * self._env.dt
+        return velocity_new
 
     def _linear_solver_2d(
         self,

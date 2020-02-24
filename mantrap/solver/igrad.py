@@ -7,6 +7,7 @@ from mantrap.constants import agent_speed_max
 from mantrap.simulation.graph_based import GraphBasedSimulation
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.maths import lagrange_interpolation
+from mantrap.utility.primitives import straight_line
 
 
 class IGradSolver(IPOPTSolver):
@@ -22,10 +23,8 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
-    def x0_default(self) -> torch.Tensor:
-        steps = self.num_control_points + 2
-        x0 = torch.stack((torch.linspace(self.env.ego.position[0].item(), self.goal[0].item(), steps=steps),
-                          torch.linspace(self.env.ego.position[1].item(), self.goal[1].item(), steps=steps)), dim=1)
+    def z0_default(self) -> torch.Tensor:
+        x0 = straight_line(self.env.ego.position, self.goal, steps=self.num_control_points + 2)
         return x0[1:-1, :]  # skip start and end point
 
     ###########################################################################
@@ -38,7 +37,7 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
-    def constraint_bounds(self, x_init: torch.Tensor) -> Tuple[List, List, List, List]:
+    def constraint_bounds(self) -> Tuple[List, List, List, List]:
         # External constraint bounds (interpolated inter-point distance).
         cl = [None] * (self.T - 1)
         cu = [agent_speed_max * self._env.dt] * (self.T - 1)
@@ -50,20 +49,24 @@ class IGradSolver(IPOPTSolver):
 
     @staticmethod
     def constraints_modules() -> List[str]:
-        return ["path_length"]
+        return ["max_speed"]
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
 
-    def x_to_ego_trajectory(self, x: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        mid = torch.tensor(x.astype(np.float64), requires_grad=True).view(self.num_control_points, 2).double()
+    def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        mid = torch.tensor(z.astype(np.float64)).view(self.num_control_points, 2).double()
+        mid.requires_grad = True
+
         start_point = self._env.ego.position.unsqueeze(0)
         end_point = self._goal.unsqueeze(0)
         control_points = torch.cat((start_point, mid, end_point))
+        path = lagrange_interpolation(control_points, num_samples=self.T, deg=self.num_control_points + 2)
 
-        interpolated = lagrange_interpolation(control_points, num_samples=self.T, deg=self.num_control_points + 2)
-        return interpolated if not return_leaf else (interpolated, mid)
+        velocities = torch.cat(((path[1:, 0:2] - path[:-1, 0:2]) / self.env.dt, torch.zeros((1, 2))))
+        x4 = torch.cat((path, velocities), dim=1)
+        return x4 if not return_leaf else (x4, mid)
 
     @property
     def num_control_points(self) -> int:

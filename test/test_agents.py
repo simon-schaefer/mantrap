@@ -66,10 +66,17 @@ def test_update_double_integrator(
 
 
 def test_unrolling():
-    ego = IntegratorDTAgent(torch.zeros(2))
-    policy = torch.tensor([[1, 1], [2, 2], [4, 4]])
-    trajectory = ego.unroll_trajectory(policy, dt=1.0)
-    assert torch.all(torch.eq(trajectory[1:, 0:2], torch.cumsum(policy, dim=0)))
+    ego = IntegratorDTAgent(position=torch.zeros(2))
+    controls = torch.tensor([[1, 1], [2, 2], [4, 4]])
+    trajectory = ego.unroll_trajectory(controls, dt=1.0)
+    assert torch.all(torch.eq(trajectory[1:, 0:2], torch.cumsum(controls, dim=0)))
+
+
+def test_rolling():
+    ego = IntegratorDTAgent(position=torch.zeros(2))
+    controls = torch.tensor([[1, 1], [2, 2], [4, 4]])
+    trajectory = ego.unroll_trajectory(controls, dt=1.0)
+    assert torch.all(torch.eq(controls, ego.roll_trajectory(trajectory, dt=1.0)))
 
 
 def test_reset():
@@ -83,7 +90,7 @@ def test_reset():
 def test_ego_trajectory(position: torch.Tensor, velocity: torch.Tensor, dt: float, n: int):
     ego = IntegratorDTAgent(position=position, velocity=velocity)
     policy = torch.stack((torch.ones(n) * velocity[0], torch.ones(n) * velocity[1])).T
-    ego_trajectory = ego.unroll_trajectory(policy=policy, dt=dt)
+    ego_trajectory = ego.unroll_trajectory(controls=policy, dt=dt)
 
     ego_trajectory_x_exp = torch.linspace(position[0].item(), position[0].item() + velocity[0].item() * n * dt, n + 1)
     ego_trajectory_y_exp = torch.linspace(position[1].item(), position[1].item() + velocity[1].item() * n * dt, n + 1)
@@ -97,7 +104,7 @@ def test_ego_trajectory(position: torch.Tensor, velocity: torch.Tensor, dt: floa
 def test_history():
     agent = IntegratorDTAgent(position=torch.tensor([-1, 4]), velocity=torch.ones(2))
     for _ in range(4):
-        agent.update(action=torch.ones(2))
+        agent.update(action=torch.ones(2), dt=1.0)
     assert len(agent.history.shape) == 2
     assert agent.history.shape[0] == 5
     assert agent.history.shape[1] == 5

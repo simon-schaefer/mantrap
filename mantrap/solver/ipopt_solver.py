@@ -7,7 +7,6 @@ import ipopt
 import numpy as np
 import torch
 
-from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import ipopt_max_solver_steps, ipopt_max_solver_cpu_time
 from mantrap.simulation.graph_based import GraphBasedSimulation
 from mantrap.solver.constraints.constraint_module import ConstraintModule
@@ -41,26 +40,29 @@ class IPOPTSolver(Solver):
         # starting value, to which the new entry is appended. With an appending complexity O(1) instead of O(N) the
         # deque is way more efficient than the list type for storing simple floating point numbers in a sequence.
         self._optimization_log = defaultdict(deque)
-        self._x_latest = None  # iteration() function does not input x (!)
+        self._param_latest = dict()
 
     def solve_single_optimization(
         self,
-        x0: torch.Tensor = None,
+        z0: torch.Tensor = None,
         max_iter: int = ipopt_max_solver_steps,
         max_cpu_time: float = ipopt_max_solver_cpu_time,
         approx_jacobian: bool = False,
         approx_hessian: bool = True,
         check_derivative: bool = False,
+        return_controls: bool = False,
         iteration_tag: str = ""
     ):
         """Solve optimization problem by finding constraint bounds, constructing ipopt optimization problem and
         solve it using the parameters defined in the function header."""
-        x0 = x0 if x0 is not None else self.x0_default()
-        lb, ub, cl, cu = self.constraint_bounds(x_init=x0)
+        lb, ub, cl, cu = self.constraint_bounds()
 
         # Formulate optimization problem as in standardized IPOPT format.
-        x0_flat = x0.flatten().numpy().tolist()
-        nlp = ipopt.problem(n=len(x0_flat), m=len(cl), problem_obj=self, lb=lb, ub=ub, cl=cl, cu=cu)
+        z0 = z0 if z0 is not None else self.z0_default()
+        u0_flat = z0.flatten().numpy().tolist()
+        assert len(u0_flat) == len(lb) == len(ub)
+
+        nlp = ipopt.problem(n=len(u0_flat), m=len(cl), problem_obj=self, lb=lb, ub=ub, cl=cl, cu=cu)
         nlp.addOption("max_iter", max_iter)
         nlp.addOption("max_cpu_time", max_cpu_time)
         if approx_jacobian:
@@ -76,26 +78,24 @@ class IPOPTSolver(Solver):
             nlp.addOption("derivative_test_tol", 1e-4)
 
         # Solve optimization problem for "optimal" ego trajectory `x_optimized`.
-        x_optimized, info = nlp.solve(x0_flat)
-        x_optimized = self.x_to_ego_trajectory(x_optimized)
+        z_optimized, info = nlp.solve(u0_flat)
+        x5_optimized = self.z_to_ego_trajectory(z_optimized)
+        z2_optimized = torch.from_numpy(z_optimized).view(-1, 2)
 
         # Plot optimization progress.
         self.log_and_clean_up(tag=iteration_tag)
+        return x5_optimized if not return_controls else (x5_optimized, z2_optimized)
 
-        return x_optimized
-
-    def _determine_ego_action(self, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
-        assert self._env.ego.__class__ == IntegratorDTAgent
+    def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
         logging.info("solver starting ipopt optimization procedure")
-        x_opt = self.solve_single_optimization(**solver_kwargs)
-        ego_action = (x_opt[1, 0:2] - x_opt[0, 0:2]) / self.env.dt
-        return ego_action, x_opt
+        _, z_opt = self.solve_single_optimization(**solver_kwargs, return_controls=True)
+        return self.z_to_ego_controls(z_opt.detach.numpy())
 
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
     @abstractmethod
-    def x0_default(self) -> torch.Tensor:
+    def z0_default(self) -> torch.Tensor:
         raise NotImplementedError
 
     ###########################################################################
@@ -107,65 +107,72 @@ class IPOPTSolver(Solver):
     def objective_defaults() -> List[Tuple[str, float]]:
         raise NotImplementedError
 
-    def objective(self, x: np.ndarray) -> float:
-        x2 = self.x_to_ego_trajectory(x)
-        objective = np.sum([m.objective(x2) for m in self._objective_modules.values()])
+    def objective(self, z: np.ndarray) -> float:
+        x4 = self.z_to_ego_trajectory(z)
+        objective = np.sum([m.objective(x4) for m in self._objective_modules.values()])
 
         logging.debug(f"Objective function = {objective}")
-        if self.is_verbose:
-            self._x_latest = x2.detach().numpy().copy()  # logging most current optimization values
+        self.logging(z=torch.from_numpy(z).view(-1, 2), x4=x4)
         return float(objective)
 
-    def gradient(self, x: np.ndarray) -> np.ndarray:
-        x2, x_grad = self.x_to_ego_trajectory(x, return_leaf=True)
-        gradient = np.sum([m.gradient(x2, grad_wrt=x_grad) for m in self._objective_modules.values()], axis=0)
+    def gradient(self, z: np.ndarray) -> np.ndarray:
+        x4, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
+        gradient = np.sum([m.gradient(x4, grad_wrt=grad_wrt) for m in self._objective_modules.values()], axis=0)
 
         logging.debug(f"Gradient function = {gradient}")
-        if self.is_verbose:
-            self._x_latest = x2.detach().numpy().copy()  # logging most current optimization values
+        self.logging(z=torch.from_numpy(z).view(-1, 2), x4=x4)
         return gradient
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
     @abstractmethod
-    def constraint_bounds(self, x_init: torch.Tensor) -> Tuple[List, List, List, List]:
+    def constraint_bounds(self) -> Tuple[List, List, List, List]:
         raise NotImplementedError
 
     @staticmethod
     def constraints_modules() -> List[str]:
         raise NotImplementedError
 
-    def constraints(self, x: np.ndarray) -> np.ndarray:
-        x2 = self.x_to_ego_trajectory(x)
-        constraints = np.concatenate([m.constraint(x2) for m in self._constraint_modules.values()])
+    def constraints(self, z: np.ndarray) -> np.ndarray:
+        if self.is_unconstrained:
+            constraints = np.array([])
+        else:
+            x4 = self.z_to_ego_trajectory(z)
+            constraints = np.concatenate([m.constraint(x4) for m in self._constraint_modules.values()])
 
         logging.debug(f"Constraints vector = {constraints}")
-        if self.is_verbose:
-            self._x_latest = x2.detach().numpy().copy()  # logging most current optimization values
         return constraints
 
-    def jacobian(self, x: np.ndarray) -> np.ndarray:
-        x2, x_grad = self.x_to_ego_trajectory(x, return_leaf=True)
-        jacobian = np.concatenate([m.jacobian(x2, grad_wrt=x_grad) for m in self._constraint_modules.values()])
+    def jacobian(self, z: np.ndarray) -> np.ndarray:
+        if self.is_unconstrained:
+            jacobian = np.array([])
+        else:
+            x4, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
+            jacobian = np.concatenate([m.jacobian(x4, grad_wrt=grad_wrt) for m in self._constraint_modules.values()])
 
         logging.debug(f"Constraint jacobian function computed")
-        if self.is_verbose:
-            self._x_latest = x2.detach().numpy().copy()  # logging most current optimization values
         return jacobian
 
     # wrong hessian should just affect rate of convergence, not convergence in general
     # (given it is semi-positive definite which is the case for the identity matrix)
     # hessian = np.eye(3*self.O)
-    def hessian(self, x, lagrange=None, obj_factor=None) -> np.ndarray:
+    def hessian(self, z, lagrange=None, obj_factor=None) -> np.ndarray:
         raise NotImplementedError
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
     @abstractmethod
-    def x_to_ego_trajectory(self, x: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+    def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         raise NotImplementedError
+
+    @abstractmethod
+    def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        raise NotImplementedError
+
+    def logging(self, **kwargs):
+        self._param_latest.update(kwargs)
 
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES.keys() for name, _ in modules]), "invalid objective module detected"
@@ -185,7 +192,8 @@ class IPOPTSolver(Solver):
         self._optimization_log["obj_overall"].append(obj_value)
         self._optimization_log["inf_primal"].append(inf_pr)
         self._optimization_log["grad_lagrange"].append(d_norm)
-        self._optimization_log["x"].append(self._x_latest)
+        for key, value in self._param_latest.items():
+            self._optimization_log[key].append(value)
         for module in self._objective_modules.values():
             module.logging()
         for module in self._constraint_modules.values():
@@ -195,6 +203,10 @@ class IPOPTSolver(Solver):
         if len(self._optimization_log) == 0:
             return None
         return self._optimization_log["inf_primal"][-1] < 1e-6
+
+    @property
+    def is_unconstrained(self) -> bool:
+        return len(self._constraint_modules.keys()) == 0
 
     def log_and_clean_up(self, tag: str = ""):
         """Clean up optimization logs and reset optimization parameters.
@@ -216,16 +228,18 @@ class IPOPTSolver(Solver):
             module.clean_up()
 
         # Logging.
-        num_optimization_steps = self._optimization_log["iter_count"][-1]
-        obj_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "obj" in name}
-        inf_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "inf" in name}
-        logging.info(f"solver ipopt optimization finished after {num_optimization_steps} steps")
-        logging.info(f"solver ipopt optimization: {obj_dict}")
-        logging.info(f"solver ipopt optimization: {inf_dict}")
+        do_logging = len(self._optimization_log) > 0 and all([len(v) > 0 for v in self._optimization_log.values()])
+        if do_logging:
+            num_optimization_steps = self._optimization_log["iter_count"][-1]
+            obj_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "obj" in name}
+            inf_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "inf" in name}
+            logging.info(f"solver ipopt optimization finished after {num_optimization_steps} steps")
+            logging.info(f"solver ipopt optimization: {obj_dict}")
+            logging.info(f"solver ipopt optimization: {inf_dict}")
 
         # Plotting only makes sense if you see some progress in the optimization, i.e. compare and figure out what
         # the current optimization step has changed.
-        if self.is_verbose and len(self._optimization_log["iter_count"]) < 2:
+        if self.is_verbose and do_logging:
             from mantrap.evaluation.visualization import visualize_optimization
             name_tag = self.__class__.__name__.lower() + tag
             output_directory_path = build_os_path(f"test/graphs/{name_tag}_optimization", make_dir=False, free=False)
@@ -233,4 +247,4 @@ class IPOPTSolver(Solver):
 
         # Reset optimization logging parameters for next optimization.
         self._optimization_log = defaultdict(deque)
-        self._x_latest = None
+        self._param_latest = dict()

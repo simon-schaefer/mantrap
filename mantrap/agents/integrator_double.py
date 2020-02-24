@@ -1,7 +1,9 @@
+from typing import Tuple
+
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.constants import sim_dt_default
+from mantrap.constants import agent_acc_max, sim_dt_default
 from mantrap.utility.shaping import check_state
 from mantrap.utility.utility import build_state_vector
 
@@ -19,3 +21,12 @@ class DoubleIntegratorDTAgent(Agent):
         velocity_new = (state[2:4] + action * dt).double()
         position_new = (state[0:2] + state[2:4] * dt + 0.5 * action * dt ** 2).double()
         return build_state_vector(position_new, velocity_new)
+
+    def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
+        assert check_state(state, enforce_temporal=False)
+        assert check_state(state_previous, enforce_temporal=False)
+
+        return (state[2:4] - state_previous[2:4]) / dt
+
+    def control_limits(self) -> Tuple[float, float]:
+        return -agent_acc_max, agent_acc_max

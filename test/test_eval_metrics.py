@@ -3,7 +3,6 @@ import torch
 
 from mantrap.evaluation.metrics import metric_ego_effort, metric_minimal_distance
 from mantrap.utility.primitives import straight_line
-from mantrap.utility.utility import build_trajectory_from_path
 
 
 def test_minimal_distance_principle():
@@ -44,7 +43,10 @@ def test_minimal_distance_interpolation():
 
 
 def test_ego_effort():
-    ego_trajectory = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
-    ego_trajectory = build_trajectory_from_path(ego_trajectory, dt=1.0)
+    ego_trajectory = torch.zeros((10, 5))
+    ego_trajectory[:, 0:2] = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
+    ego_trajectory[:, 2:4] = torch.zeros((10, 2))
+    ego_trajectory[5, 2] = 1.0
+    ego_trajectory[:, 4] = torch.linspace(start=0, end=9, steps=10)
     effort = metric_ego_effort(ego_trajectory=ego_trajectory)
-    assert np.isclose(effort, 1.0, atol=1e-3)  # the last step is always a breaking step, in this case = 1 m/(s*s)
+    assert np.isclose(effort, 2.0, atol=1e-3)  # accelerating and de-accelerating @ t = 6

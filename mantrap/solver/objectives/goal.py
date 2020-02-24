@@ -13,8 +13,8 @@ class GoalModule(ObjectiveModule):
         self._distribution = torch.linspace(0, 1, steps=self.T) ** 2
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
 
-    def _compute(self, x2: torch.Tensor) -> torch.Tensor:
-        goal_distances = torch.norm(x2 - self._goal, dim=1)
+    def _compute(self, x4: torch.Tensor) -> torch.Tensor:
+        goal_distances = torch.norm(x4[:, 0:2] - self._goal, dim=1)
         return goal_distances.dot(self._distribution)
 
     @property
@@ -22,6 +22,6 @@ class GoalModule(ObjectiveModule):
         return self._distribution
 
     @importance_distribution.setter
-    def importance_distribution(self, x: torch.Tensor):
-        assert x.numel() == self.T, "distribution has invalid length"
-        self._distribution = x
+    def importance_distribution(self, weights: torch.Tensor):
+        assert weights.numel() == self.T, "distribution has invalid length"
+        self._distribution = weights

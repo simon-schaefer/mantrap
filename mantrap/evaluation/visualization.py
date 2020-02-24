@@ -9,14 +9,13 @@ from mantrap.constants import agent_speed_max
 from mantrap.simulation.simulation import Simulation
 from mantrap.utility.maths import Derivative2
 from mantrap.utility.shaping import check_state
-from mantrap.utility.utility import build_trajectory_from_path
 
 
 def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env: Simulation, file_path: str):
     fig, ax = plt.subplots(figsize=(15, 15), constrained_layout=True)
 
     def update(k):
-        ego_traj = build_trajectory_from_path(ego_opt_planned[k, :, :], dt=env.dt, t_start=env.sim_time)
+        ego_traj = env.ego.expand_trajectory(ego_opt_planned[k, :, :], dt=env.dt, t_start=env.sim_time)
 
         ax.cla()
         ax.plot(ego_traj[:, 0].detach().numpy(), ego_traj[:, 1].detach().numpy(), "-", color=env.ego.color, label="ego")
@@ -40,11 +39,10 @@ def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env:
 
 
 def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, file_path: str):
-    assert "iter_count" in optimization_log.keys(), "iteration count must be provided in optimization dict"
-    assert "x" in optimization_log.keys(), "trajectory data x must be provided in optimization dict"
+    assert all([key in optimization_log.keys() for key in ["iter_count", "x4"]])
 
     vis_keys = ["obj", "inf", "grad"]
-    horizon = optimization_log["x"][0].shape[0]
+    horizon = optimization_log["x4"][0].shape[0]
 
     fig = plt.figure(figsize=(15, 15), constrained_layout=True)
     grid = plt.GridSpec(len(vis_keys) + 3, len(vis_keys), wspace=0.4, hspace=0.3, figure=fig)
@@ -58,11 +56,9 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
     def update(k):
         time_axis = np.linspace(env.sim_time, env.sim_time + horizon * env.dt, num=horizon)
 
-        x2_np = optimization_log["x"][k]
-        x2 = torch.from_numpy(x2_np)
-        ego_traj = build_trajectory_from_path(x2, dt=env.dt, t_start=env.sim_time)
-        ado_traj = env.predict(ego_trajectory=ego_traj)
-        ado_traj_wo = env.predict_wo_ego(t_horizon=x2.shape[0])
+        x4 = optimization_log["x4"][k]
+        ado_traj = env.predict_w_trajectory(trajectory=x4)
+        ado_traj_wo = env.predict_wo_ego(t_horizon=x4.shape[0])
 
         plt.axis("off")
         for i in range(len(axs)):
@@ -71,7 +67,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
         # Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as
         # the resulting ado trajectories based on some simulation.
         # _add_agent_trajectories(env, ego_traj, ado_traj, ado_traj_wo, axes=env.axes, ax=axs[0])
-        ego_trajectory_np = x2.detach().numpy()
+        ego_trajectory_np = x4.detach().numpy()
         axs[0].plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label="ego")
         _add_agent_representation(env.ego.state, env.ego.color, "ego", ax=axs[0])
 
@@ -94,7 +90,7 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
 
         # Plot agent velocities for resulting solution vs base-line ego trajectory for current optimization step.
         ado_velocity_norm = np.linalg.norm(ado_traj[:, :, :, 2:4].detach().numpy(), axis=3)
-        ego_velocity_norm = np.linalg.norm(ego_traj[:, 2:4].detach().numpy(), axis=1)
+        ego_velocity_norm = np.linalg.norm(x4[:, 2:4].detach().numpy(), axis=1)
         for i in range(env.num_ado_ghosts):
             i_ado, i_mode = env.ghost_to_ado_index(i)
             ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color

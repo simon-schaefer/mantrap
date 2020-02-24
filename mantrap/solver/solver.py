@@ -6,7 +6,7 @@ import torch
 
 from mantrap.constants import solver_horizon
 from mantrap.simulation.simulation import Simulation
-from mantrap.utility.utility import expand_state_vector
+from mantrap.utility.shaping import check_ego_controls
 
 
 class Solver:
@@ -34,44 +34,48 @@ class Solver:
         :return: ado trajectories [horizon, num_ados, modes, T, 5] conditioned on the derived ego trajectory
         :return: planned ego trajectory for every step [horizon, T, 2].
         """
-        x_opt = torch.zeros((horizon, 5))
+        x5_opt = torch.zeros((horizon, 5))
         ado_trajectories = torch.zeros((horizon - 1, self._env.num_ados, self._env.num_ado_modes, self.T, 5))
-        x_opt_planned = torch.zeros((horizon - 1, self.T, 2))
+        x5_opt_planned = torch.zeros((horizon - 1, self.T, 5))
 
         # Initialize trajectories with current state and simulation time.
-        x_opt[0, :] = expand_state_vector(self._env.ego.state, self._env.sim_time)
+        x5_opt[0, :] = self._env.ego.state_with_time
         ado_trajectories[0] = self.env.predict_wo_ego(t_horizon=self.T).detach()
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {horizon} steps ...")
         for k in range(horizon - 1):
             logging.info(f"solver @ time-step k = {k}")
-            ego_action, x_planned = self._determine_ego_action(iteration_tag=str(k), **solver_kwargs)
-            assert ego_action is not None, "solver failed to find a valid solution for next ego action"
-            logging.info(f"solver @k={k}: ego action = {ego_action.tolist()}")
+            ego_controls = self.determine_ego_controls(**solver_kwargs, iteration_tag=str(k))
+            assert check_ego_controls(ego_controls, t_horizon=self.T - 1)
+            logging.info(f"solver @k={k}: ego optimized controls = {ego_controls.tolist()}")
 
             # Forward simulate environment.
-            ado_state, ego_state = self._env.step(ego_policy=ego_action)
+            ado_state, ego_state = self._env.step(ego_control=ego_controls[0, :])
 
             # Logging.
-            ado_trajectories[k] = self.env.predict(ego_trajectory=x_planned).detach()
-            x_opt[k + 1, :] = ego_state.detach()
-            x_opt_planned[k] = x_planned.detach()
+            ado_trajectories[k] = self.env.predict_w_controls(ego_controls=ego_controls).detach()
+            x5_opt[k + 1, :] = ego_state.detach()
+            x5_opt_planned[k] = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt).detach()
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 2 optimization steps instead of max_steps).
             if torch.norm(ego_state[0:2] - self._goal) < 0.1:
-                x_opt = x_opt[:k + 2, :].detach()
+                x5_opt = x5_opt[:k + 2, :].detach()
                 ado_trajectories = ado_trajectories[:k + 2].detach()
-                x_opt_planned = x_opt_planned[:k + 2].detach()
+                x5_opt_planned = x5_opt_planned[:k + 2].detach()
                 break
 
         logging.info(f"Finishing up trajectory optimization solving")
-        return x_opt, ado_trajectories, x_opt_planned
+        return x5_opt, ado_trajectories, x5_opt_planned
 
     @abstractmethod
-    def _determine_ego_action(self, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Determine the ego action (and the res"""
-        pass
+    def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
+        """Determine the ego control inputs for the internally stated problem and the current state of the environment.
+        The implementation crucially depends on the solver class itself and is hence not implemented here.
+
+        :return: ego_controls: control inputs of ego agent for whole planning horizon.
+        """
+        raise NotImplementedError
 
     ###########################################################################
     # Solver parameters #######################################################

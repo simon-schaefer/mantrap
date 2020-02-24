@@ -5,8 +5,7 @@ import torch
 
 from mantrap.constants import agent_speed_max
 from mantrap.solver.ipopt_solver import IPOPTSolver
-from mantrap.utility.primitives import straight_line
-from mantrap.utility.shaping import check_path
+from mantrap.utility.shaping import check_ego_trajectory
 
 
 class SGradSolver(IPOPTSolver):
@@ -14,8 +13,10 @@ class SGradSolver(IPOPTSolver):
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
-    def x0_default(self) -> torch.Tensor:
-        return straight_line(start_pos=self.env.ego.position, end_pos=self.goal, steps=self.T)
+    def z0_default(self) -> torch.Tensor:
+        u_goal = (self.goal - self.env.ego.position)
+        u_goal = (u_goal / torch.norm(u_goal)).view(1, 2)
+        return torch.cat((u_goal, torch.zeros(self.T - 2, 2)))
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
@@ -57,28 +58,33 @@ class SGradSolver(IPOPTSolver):
 
     sum_{t = 1}^T || x_{ego}^t - x_{ego}^{t - 1} || < gamma * T
     """
-    def constraint_bounds(self, x_init: torch.Tensor) -> Tuple[List, List, List, List]:
-        assert check_path(x_init, t_horizon=self.T), "invalid initial trajectory"
-        x_start = x_init[0, :].detach().numpy()
-
+    def constraint_bounds(self) -> Tuple[List, List, List, List]:
         # External constraint bounds (inter-point distance and initial point equality).
-        cl = [None] * (self.T - 1) + [x_start[0], x_start[1]]
-        cu = [agent_speed_max * self._env.dt] * (self.T - 1) + [x_start[0], x_start[1]]
+        cl = (np.ones(2 * self.T) * (-agent_speed_max)).tolist()
+        cu = (np.ones(2 * self.T) * agent_speed_max).tolist()
 
         # Optimization variable bounds.
-        lb = (np.ones(2 * self.T) * self._env.axes[0][0]).tolist()
-        ub = (np.ones(2 * self.T) * self._env.axes[0][1]).tolist()
+        limits = self._env.ego.control_limits()
+        lb = (np.ones(2 * (self.T - 1)) * limits[0]).tolist()
+        ub = (np.ones(2 * (self.T - 1)) * limits[1]).tolist()
 
         return lb, ub, cl, cu
 
     @staticmethod
     def constraints_modules() -> List[str]:
-        return ["path_length", "initial_point"]
+        return ["max_speed"]
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
-    def x_to_ego_trajectory(self, x: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        x2 = torch.from_numpy(x).view(self.T, 2)
-        assert check_path(x2, t_horizon=self.T), f"x should be ego trajectory with length {self.T}"
-        return x2 if not return_leaf else (x2, x2)
+    def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        u2 = torch.from_numpy(z).view(self.T - 1, 2)
+        u2.requires_grad = True
+        x4 = self.env.ego.unroll_trajectory(controls=u2, dt=self.env.dt)[:, 0:4]
+        assert check_ego_trajectory(x4, t_horizon=self.T, pos_and_vel_only=True)
+        return x4 if not return_leaf else (x4, u2)
+
+    def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        u2 = torch.from_numpy(z).view(self.T - 1, 2)
+        u2.requires_grad = True
+        return u2 if not return_leaf else (u2, u2)

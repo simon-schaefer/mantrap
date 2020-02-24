@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple, Union
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.agents import IntegratorDTAgent, DoubleIntegratorDTAgent
+from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import (
     sim_x_axis_default,
     sim_y_axis_default,
@@ -14,10 +14,9 @@ from mantrap.constants import (
     sim_social_forces_min_goal_distance,
     sim_social_forces_max_interaction_distance,
 )
-from mantrap.utility.shaping import check_ego_trajectory
-from mantrap.utility.maths import Distribution, Gaussian
-from mantrap.utility.utility import build_trajectory_from_path
 from mantrap.simulation.graph_based import GraphBasedSimulation
+from mantrap.utility.maths import Distribution, Gaussian
+from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
 
 
 class SocialForcesSimulation(GraphBasedSimulation):
@@ -37,20 +36,22 @@ class SocialForcesSimulation(GraphBasedSimulation):
         super(SocialForcesSimulation, self).__init__(ego_type, ego_kwargs, x_axis=x_axis, y_axis=y_axis, dt=dt)
         self._ado_ghosts = []
 
-    def predict(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        if ego_trajectory.shape[1] == 2:
-            ego_trajectory = build_trajectory_from_path(positions=ego_trajectory, dt=self.dt, t_start=self.sim_time)
-        assert check_ego_trajectory(ego_trajectory=ego_trajectory, pos_and_vel_only=True)
+    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        assert check_ego_controls(ego_policy=controls)
+        graphs = self.build_connected_graph(ego_controls=controls, ego_grad=False, **graph_kwargs)
+        return self.transcribe_graph(graphs, t_horizon=controls.shape[0], returns=return_more)
 
-        graphs = self.build_connected_graph(graph_input=ego_trajectory, ego_grad=False, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=ego_trajectory.shape[0], returns=return_more)
+    def predict_w_trajectory(self, trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        assert check_ego_trajectory(ego_trajectory=trajectory, pos_and_vel_only=True)
+        graphs = self.build_connected_graph(ego_trajectory=trajectory, ego_grad=False, **graph_kwargs)
+        return self.transcribe_graph(graphs, t_horizon=trajectory.shape[0], returns=return_more)
 
     def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        graphs = self.build_connected_graph(graph_input=t_horizon, ego_grad=False, **graph_kwargs)
+        graphs = self.build_connected_graph(t_horizon=t_horizon, ego_grad=False, **graph_kwargs)
         return self.transcribe_graph(graphs, t_horizon=t_horizon, returns=return_more)
 
-    def step(self, ego_policy: torch.Tensor = None) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
-        ado_states, ego_next_state = super(SocialForcesSimulation, self).step(ego_policy=ego_policy)
+    def step(self, ego_control: torch.Tensor = None) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
+        ado_states, ego_next_state = super(SocialForcesSimulation, self).step(ego_control=ego_control)
         for i in range(self.num_ado_ghosts):
             i_ado, i_mode = self.ghost_to_ado_index(i)
             self._ado_ghosts[i].agent.reset(ado_states[i_ado, i_mode, 0, :], history=None)  # new state is appended
@@ -90,8 +91,8 @@ class SocialForcesSimulation(GraphBasedSimulation):
             assert v0s[i].__class__.__bases__[0] == Distribution
             assert sigmas[i].__class__.__bases__[0] == Distribution
             ado = copy.deepcopy(self._ados[-1])
-            v0 = float(v0s[i].sample())
-            sigma = float(sigmas[i].sample())
+            v0 = abs(float(v0s[i].sample()))
+            sigma = abs(float(sigmas[i].sample()))
             tau = sim_social_forces_defaults["tau"]
             gid = ado.id + "_" + str(i)
             self._ado_ghosts.append(self.Ghost(ado, goal=goal, v0=v0, sigma=sigma, tau=tau, weight=weights[i], id=gid))
@@ -162,7 +163,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
                 else:
                     opos, ovel = graph[f"{other.id}_{k}_position"], graph[f"{other.id}_{k}_velocity"]
                     v_grad = _repulsive_force(gpos, opos, gvel, ovel, v_0=ghost.v0, sigma=ghost.sigma)
-                v_grad = v_grad * other.weight  # weight force by probability of the mode
+                v_grad = v_grad * other.weight  # weight force by probability of the modes
                 graph[f"{ghost.id}_{k}_force"] = torch.sub(graph[f"{ghost.id}_{k}_force"], v_grad)
 
             # Interactive force w.r.t. ego - Repulsive potential field.
@@ -182,22 +183,27 @@ class SocialForcesSimulation(GraphBasedSimulation):
     # Simulation Graph over time-horizon ######################################
     ###########################################################################
 
-    def build_connected_graph(self, graph_input: Union[int, torch.Tensor], **graph_kwargs) -> Dict[str, torch.Tensor]:
-        super(SocialForcesSimulation, self).build_connected_graph(graph_input, **graph_kwargs)
+    def build_connected_graph(self, **kwargs) -> Dict[str, torch.Tensor]:
+        assert any([x in kwargs.keys() for x in ["ego_controls", "ego_trajectory", "t_horizon"]])
+
+        if "ego_controls" in kwargs.keys():
+            ego_states = self.ego.unroll_trajectory(controls=kwargs["ego_controls"], dt=self.dt)
+            assert check_ego_trajectory(ego_states, pos_and_vel_only=True)
+            return self._build_connected_graph(t_horizon=kwargs["ego_controls"].shape[0], ego_states=ego_states)
+
+        elif "ego_trajectory" in kwargs.keys():
+            ego_trajectory = kwargs["ego_trajectory"]
+            assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+            return self._build_connected_graph(t_horizon=ego_trajectory.shape[0], ego_states=ego_trajectory)
+
+        else:
+            return self._build_connected_graph(t_horizon=kwargs["t_horizon"], ego_states=[None] * kwargs["t_horizon"])
+
+    def _build_connected_graph(self, t_horizon: int, ego_states: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         ado_ghosts_copy = copy.deepcopy(self._ado_ghosts)
 
-        # Depending on whether the prediction time horizon or the ego trajectory is given, the ego agent is either
-        # ignored or taken into account for simulation.
-        ignore_ego = type(graph_input) != torch.Tensor
-        t_horizon = graph_input if ignore_ego else graph_input.shape[0]
-        ego_first_state = None if ignore_ego else self.ego.state
-        ego_states = None
-        if not ignore_ego:
-            assert self.ego.__class__ == IntegratorDTAgent, "currently only single integrator egos are supported"
-            ego_states = build_trajectory_from_path(graph_input[:, 0:2], dt=self.dt, t_start=self.sim_time)
-
         # Build first graph for the next state, in case no forces are applied on the ego.
-        graphs = self.build_graph(ego_state=ego_first_state, k=0, **graph_kwargs)
+        graphs = self.build_graph(ego_state=ego_states[0], k=0, **kwargs)
 
         # Build the graph iteratively for the whole prediction horizon.
         # Social forces assumes all agents to be controlled by some force vector, i.e. to be double integrators.
@@ -208,8 +214,14 @@ class SocialForcesSimulation(GraphBasedSimulation):
 
             # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are
             # used for the ego motion, as guesses for the final trajectory i.e. starting points for optimization.
-            graph_k = self.build_graph(ego_states[k, :] if not ignore_ego else None, k=k, **graph_kwargs)
+            graph_k = self.build_graph(ego_states[k], k=k, **kwargs)
             graphs.update(graph_k)
+
+        # Update graph for a last time using the forces determined in the previous step.
+        for ig, ghost in enumerate(self._ado_ghosts):
+            self._ado_ghosts[ig].agent.update(graphs[f"{ghost.id}_{t_horizon - 1}_force"], dt=self.dt)
+            graphs[f"{ghost.id}_{t_horizon}_position"] = self._ado_ghosts[ig].agent.position
+            graphs[f"{ghost.id}_{t_horizon}_velocity"] = self._ado_ghosts[ig].agent.velocity
 
         # Reset ado ghosts to previous states.
         self._ado_ghosts = ado_ghosts_copy

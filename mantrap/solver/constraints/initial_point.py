@@ -8,5 +8,5 @@ class InitialPointModule(ConstraintModule):
     def __init__(self, **module_kwargs):
         super(InitialPointModule, self).__init__(**module_kwargs)
 
-    def _compute(self, x2: torch.Tensor) -> torch.Tensor:
-        return x2[0, :]
+    def _compute(self, x4: torch.Tensor) -> torch.Tensor:
+        return x4[0, 0:2]

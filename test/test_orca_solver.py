@@ -35,7 +35,7 @@ class ORCASimulation(Simulation):
         assert self._ego is None, "simulation merely should have ado agents"
         assert all([ado.__class__ == IntegratorDTAgent for ado in self._ados]), "agents should be single integrators"
 
-        policies = torch.zeros((self.num_ados, 2))
+        controls = torch.zeros((self.num_ados, 2))
         for ia, ado in enumerate(self._ados):
             ado_kwargs = {"position": ado.position, "velocity": ado.velocity, "log": False}
             ado_env = ORCASimulation(IntegratorDTAgent, ego_kwargs=ado_kwargs)
@@ -43,12 +43,12 @@ class ORCASimulation(Simulation):
                 ado_env.add_ado(position=other_ado.position, velocity=other_ado.velocity, goal_position=None)
 
             ado_solver = ORCASolver(ado_env, goal=self._ado_goals[ia])
-            policies[ia, :], _ = ado_solver._determine_ego_action(
+            controls[ia, :] = ado_solver.determine_ego_controls(
                 speed_max=self.sim_speed_max, agent_radius=self.orca_rad, safe_dt=self.orca_dt
             )
 
         for i, ado in enumerate(self._ados):
-            ado.update(policies[i, :], dt=self.dt)
+            ado.update(controls[i, :], dt=self.dt)
             logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado.state}")
         return torch.stack([ado.state for ado in self._ados]), None
 
