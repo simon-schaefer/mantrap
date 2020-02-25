@@ -37,7 +37,6 @@ class SocialForcesSimulation(GraphBasedSimulation):
         self._ado_ghosts = []
 
     def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        assert check_ego_controls(ego_policy=controls)
         graphs = self.build_connected_graph(ego_controls=controls, ego_grad=False, **graph_kwargs)
         return self.transcribe_graph(graphs, t_horizon=controls.shape[0], returns=return_more)
 

@@ -41,7 +41,7 @@ class IPOPTSolver(Solver):
         # starting value, to which the new entry is appended. With an appending complexity O(1) instead of O(N) the
         # deque is way more efficient than the list type for storing simple floating point numbers in a sequence.
         self._optimization_log = defaultdict(deque)
-        self._param_latest = dict()
+        self._variables_latest = defaultdict(deque)
 
     def solve_single_optimization(
         self,
@@ -122,7 +122,6 @@ class IPOPTSolver(Solver):
         gradient = np.sum([m.gradient(x4, grad_wrt=grad_wrt) for m in self._objective_modules.values()], axis=0)
 
         logging.debug(f"Gradient function = {gradient}")
-        self.logging(z=torch.from_numpy(z).view(-1, 2), x4=x4)
         return gradient
 
     ###########################################################################
@@ -174,7 +173,8 @@ class IPOPTSolver(Solver):
         raise NotImplementedError
 
     def logging(self, **kwargs):
-        self._param_latest.update(kwargs)
+        for key, value in kwargs.items():
+            self._variables_latest[key].append(value)
 
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES.keys() for name, _ in modules]), "invalid objective module detected"
@@ -194,8 +194,10 @@ class IPOPTSolver(Solver):
         self._optimization_log["obj_overall"].append(obj_value)
         self._optimization_log["inf_primal"].append(inf_pr)
         self._optimization_log["grad_lagrange"].append(d_norm)
-        for key, value in self._param_latest.items():
-            self._optimization_log[key].append(value)
+        for key, trials in self._variables_latest.items():
+            self._optimization_log[f"{key}_trials"].append(trials)
+            self._optimization_log[key].append(trials[-1])
+        self._variables_latest = defaultdict(deque)
         for module in self._objective_modules.values():
             module.logging()
         for module in self._constraint_modules.values():
@@ -250,4 +252,4 @@ class IPOPTSolver(Solver):
 
         # Reset optimization logging parameters for next optimization.
         self._optimization_log = defaultdict(deque)
-        self._param_latest = dict()
+        self._variables_latest = dict()

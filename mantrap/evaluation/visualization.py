@@ -39,7 +39,7 @@ def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env:
 
 
 def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, file_path: str):
-    assert all([key in optimization_log.keys() for key in ["iter_count", "x4"]])
+    assert all([key in optimization_log.keys() for key in ["iter_count", "x4", "x4_trials"]])
 
     vis_keys = ["obj", "inf", "grad"]
     horizon = optimization_log["x4"][0].shape[0]
@@ -67,10 +67,14 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
 
         # Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as
         # the resulting ado trajectories based on some simulation.
-        # _add_agent_trajectories(env, ego_traj, ado_traj, ado_traj_wo, axes=env.axes, ax=axs[0])
         ego_trajectory_np = x4.detach().numpy()
         axs[0].plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label="ego")
         _add_agent_representation(env.ego.state, env.ego.color, "ego", ax=axs[0])
+
+        ego_traj_trials = optimization_log["x4_trials"][k]
+        for x4_trial in ego_traj_trials:
+            x4_trial_np = x4_trial.detach().numpy()
+            axs[0].plot(x4_trial_np[:, 0], x4_trial_np[:, 1], "--", color=env.ego.color, label="ego_trials")
 
         # Plot current and base resulting simulated ado trajectories in the scene.
         for i in range(env.num_ado_ghosts):
@@ -79,9 +83,9 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
             ado_pos = ado_traj[i_ado, i_mode, :, 0:2].detach().numpy()
             ado_pos_wo = ado_traj_wo[i_ado, i_mode, :, 0:2].detach().numpy()
 
-            axs[0].plot(ado_pos[:, 0], ado_pos[:, 1], "--", color=ado_color, label=f"{ado_id}")
+            axs[0].plot(ado_pos[:, 0], ado_pos[:, 1], "-*", color=ado_color, label=f"{ado_id}")
             _add_agent_representation(env.ado_ghosts[i].agent.state, ado_color, ado_id, ax=axs[0])
-            axs[0].plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "-*", color=ado_color, label=f"{ado_id}_wo")
+            axs[0].plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "--", color=ado_color, label=f"{ado_id}_wo")
 
         axs[0].set_xlim(env.axes[0])
         axs[0].set_ylim(env.axes[1])
