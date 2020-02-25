@@ -56,6 +56,11 @@ class IPOPTSolver(Solver):
     ):
         """Solve optimization problem by finding constraint bounds, constructing ipopt optimization problem and
         solve it using the parameters defined in the function header."""
+        # Clean up & detaching graph for deleting previous gradients.
+        self._goal = self._goal.detach()
+        self._env.detach()
+
+        # Build constraint boundary values (optimisation variables + constraints).
         lb, ub = self.optimization_variable_bounds()
         cl, cu = list(), list()
         for name, constraint in self._constraint_modules.items():
@@ -180,10 +185,6 @@ class IPOPTSolver(Solver):
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         raise NotImplementedError
 
-    def logging(self, **kwargs):
-        for key, value in kwargs.items():
-            self._variables_latest[key].append(value)
-
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES.keys() for name, _ in modules]), "invalid objective module detected"
         assert all([0.0 <= weight for _, weight in modules]), "invalid solver module weight detected"
@@ -209,6 +210,10 @@ class IPOPTSolver(Solver):
             module.logging()
         for module in self._constraint_modules.values():
             module.logging()
+
+    def logging(self, **kwargs):
+        for key, value in kwargs.items():
+            self._variables_latest[key].append(value)
 
     def constraints_fulfilled(self) -> Union[bool, None]:
         if len(self._optimization_log) == 0:
@@ -260,4 +265,4 @@ class IPOPTSolver(Solver):
 
         # Reset optimization logging parameters for next optimization.
         self._optimization_log = defaultdict(deque)
-        self._variables_latest = dict()
+        self._variables_latest = defaultdict(deque)

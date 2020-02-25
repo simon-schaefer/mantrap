@@ -9,10 +9,6 @@ from mantrap.utility.shaping import check_trajectories, check_controls, check_we
 
 class GraphBasedSimulation(Simulation):
 
-    ###########################################################################
-    # Simulation Graph ########################################################
-    ###########################################################################
-
     @abstractmethod
     def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
         k = graph_kwargs["k"] if "k" in graph_kwargs.keys() else 0
@@ -71,3 +67,8 @@ class GraphBasedSimulation(Simulation):
         assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
         assert check_trajectories(trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_ado_modes)
         return trajectories if not returns else (trajectories, forces, weights)
+
+    def detach(self):
+        self._ego.detach()
+        for m in range(self.num_ado_ghosts):
+            self.ado_ghosts[m].agent.detach()
