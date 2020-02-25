@@ -45,9 +45,10 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
     horizon = optimization_log["x4"][0].shape[0]
 
     fig = plt.figure(figsize=(15, 15), constrained_layout=True)
-    grid = plt.GridSpec(len(vis_keys) + 3, len(vis_keys), wspace=0.4, hspace=0.3, figure=fig)
+    grid = plt.GridSpec(len(vis_keys) + 4, len(vis_keys), wspace=0.4, hspace=0.3, figure=fig)
     axs = list()
     axs.append(fig.add_subplot(grid[: len(vis_keys), :]))
+    axs.append(fig.add_subplot(grid[-4, :]))
     axs.append(fig.add_subplot(grid[-3, :]))
     axs.append(fig.add_subplot(grid[-2, :]))
     for j, _ in enumerate(vis_keys):
@@ -111,16 +112,22 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
         axs[2].grid()
         axs[2].legend()
 
+        # Plot ego control inputs (depending on ego agent type).
+        ego_controls_norm = np.linalg.norm(env.ego.roll_trajectory(trajectory=x4, dt=env.dt).detach().numpy(), axis=1)
+        axs[3].plot(time_axis[:-1], ego_controls_norm, color=env.ego.color)  # input have size = T - 1
+        axs[3].set_title("control input")
+        axs[3].grid()
+
         # Plot several parameter describing the optimization process, such as objective value, gradient and
         # the constraints (primal) infeasibility.
         for i, vis_key in enumerate(vis_keys):
             for name, data in optimization_log.items():
                 if vis_key not in name:
                     continue
-                axs[i + 3].plot(optimization_log["iter_count"][:k], np.log(np.asarray(data[:k]) + 1e-8), label=name)
-            axs[i + 3].set_title(f"log_{vis_key}")
-            axs[i + 3].legend()
-            axs[i + 3].grid()
+                axs[i + 4].plot(optimization_log["iter_count"][:k], np.log(np.asarray(data[:k]) + 1e-8), label=name)
+            axs[i + 4].set_title(f"log_{vis_key}")
+            axs[i + 4].legend()
+            axs[i + 4].grid()
 
         return axs
 

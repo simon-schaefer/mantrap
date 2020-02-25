@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from collections import defaultdict, deque
 import logging
+import os
 from typing import Dict, List, Tuple, Union
 
 import ipopt
@@ -228,7 +229,7 @@ class IPOPTSolver(Solver):
             module.clean_up()
 
         # Logging.
-        do_logging = len(self._optimization_log) > 0 and all([len(v) > 0 for v in self._optimization_log.values()])
+        do_logging = len(self._optimization_log) > 0 and all([len(v) > 2 for v in self._optimization_log.values()])
         if do_logging:
             num_optimization_steps = self._optimization_log["iter_count"][-1]
             obj_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "obj" in name}
@@ -241,9 +242,10 @@ class IPOPTSolver(Solver):
         # the current optimization step has changed.
         if self.is_verbose and do_logging:
             from mantrap.evaluation.visualization import visualize_optimization
-            name_tag = self.__class__.__name__.lower() + tag
-            output_directory_path = build_os_path(f"test/graphs/{name_tag}_optimization", make_dir=False, free=False)
-            visualize_optimization(self._optimization_log, env=self._env, file_path=output_directory_path)
+            name_tag = self.__class__.__name__.lower()
+            output_directory_path = build_os_path(f"test/graphs/{name_tag}", make_dir=True, free=True)
+            output_path = os.path.join(output_directory_path, tag)
+            visualize_optimization(self._optimization_log, env=self._env, file_path=output_path)
 
         # Reset optimization logging parameters for next optimization.
         self._optimization_log = defaultdict(deque)

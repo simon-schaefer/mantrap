@@ -1,5 +1,4 @@
 from abc import abstractmethod
-import logging
 
 import numpy as np
 import torch
