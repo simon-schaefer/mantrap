@@ -64,8 +64,7 @@ class IGradSolver(IPOPTSolver):
         control_points = torch.cat((start_point, mid, end_point))
         path = lagrange_interpolation(control_points, num_samples=self.T, deg=self.num_control_points + 2)
 
-        velocities = torch.cat(((path[1:, 0:2] - path[:-1, 0:2]) / self.env.dt, torch.zeros((1, 2))))
-        x4 = torch.cat((path, velocities), dim=1)
+        x4 = self.env.ego.expand_trajectory(path, dt=self.env.dt, t_start=self.env.sim_time)[:, 0:4]
         return x4 if not return_leaf else (x4, mid)
 
     @property

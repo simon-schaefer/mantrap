@@ -73,8 +73,9 @@ class IPOPTSolver(Solver):
 
         print_level = 5 if self.is_verbose or check_derivative else 0  # the larger the value, the more print output.
         nlp.addOption("print_level", print_level)
-        if self.is_verbose or check_derivative:
+        if self.is_verbose:
             nlp.addOption("print_timing_statistics", "yes")
+        if check_derivative:
             nlp.addOption("derivative_test", "first-order")
             nlp.addOption("derivative_test_tol", 1e-4)
 
@@ -90,7 +91,7 @@ class IPOPTSolver(Solver):
     def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
         logging.info("solver starting ipopt optimization procedure")
         _, z_opt = self.solve_single_optimization(**solver_kwargs, return_controls=True)
-        return self.z_to_ego_controls(z_opt.detach.numpy())
+        return self.z_to_ego_controls(z_opt.detach().numpy())
 
     ###########################################################################
     # Initialization ##########################################################
