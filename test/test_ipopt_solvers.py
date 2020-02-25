@@ -4,10 +4,11 @@ import numpy as np
 import pytest
 import torch
 
+from mantrap.constants import constraint_min_distance
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldSimulation
 from mantrap.simulation.graph_based import GraphBasedSimulation
-from mantrap.solver import IGradSolver, SGradSolver
+from mantrap.solver import CGradSolver, IGradSolver, SGradSolver
 from mantrap.solver.ipopt_solver import IPOPTSolver
 
 
@@ -19,6 +20,7 @@ from mantrap.solver.ipopt_solver import IPOPTSolver
         (IGradSolver, {"T": 10, "num_constraints": 20, "num_control_points": 4}),
         (SGradSolver, {"T": 10, "num_constraints": 20}),
         (SGradSolver, {"T": 5, "num_constraints": 10}),
+        (CGradSolver, {"T": 10, "num_constraints": 20 + 2 * 10})
     ]
 )
 class TestIPOPTSolvers:
@@ -113,3 +115,21 @@ class TestIPOPTSolvers:
         if solver.constraints_fulfilled():  # optimization variable bound constraint
             assert torch.all(sim.axes[0][0] <= x[:, 0]) and torch.all(x[:, 0] <= sim.axes[0][1])
             assert torch.all(sim.axes[1][0] <= x[:, 1]) and torch.all(x[:, 1] <= sim.axes[1][1])
+
+
+def test_c_grad_solver():
+    env = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.5])})
+    env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
+    c_grad_solver = CGradSolver(env, goal=torch.tensor([5, 0]), T=10, verbose=True)
+
+    from mantrap.utility.primitives import square_primitives
+    x0 = square_primitives(start=env.ego.position, end=c_grad_solver.goal, dt=env.dt, steps=10)[1, :, :]
+    x40 = env.ego.expand_trajectory(x0, dt=env.dt)
+    u0 = env.ego.roll_trajectory(x40, dt=env.dt)
+
+    x_solution = c_grad_solver.solve_single_optimization(z0=u0, max_cpu_time=10.0)
+    ado_trajectories = env.predict_w_trajectory(trajectory=x_solution)
+
+    for t in range(10):
+        for m in range(env.num_ado_ghosts):
+            assert torch.norm(x_solution[t, 0:2] - ado_trajectories[m, :, t, 0:2]).item() >= constraint_min_distance

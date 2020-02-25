@@ -3,7 +3,6 @@ from typing import List, Tuple
 import numpy as np
 import torch
 
-from mantrap.constants import agent_speed_max
 from mantrap.simulation.graph_based import GraphBasedSimulation
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.maths import lagrange_interpolation
@@ -37,16 +36,6 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
-    def constraint_bounds(self) -> Tuple[List, List, List, List]:
-        # External constraint bounds (interpolated inter-point distance).
-        cl = [None] * (self.T - 1)
-        cu = [agent_speed_max * self._env.dt] * (self.T - 1)
-
-        # Optimization variable bounds.
-        lb = (np.ones(2 * self.num_control_points) * self._env.axes[0][0]).tolist()
-        ub = (np.ones(2 * self.num_control_points) * self._env.axes[0][1]).tolist()
-        return lb, ub, cl, cu
-
     @staticmethod
     def constraints_modules() -> List[str]:
         return ["max_speed"]
@@ -54,7 +43,6 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
-
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         mid = torch.tensor(z.astype(np.float64)).view(self.num_control_points, 2).double()
         mid.requires_grad = True

@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, Union
 
 from matplotlib.animation import FuncAnimation
@@ -135,8 +136,9 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, fi
 
         return axs
 
-    anim = FuncAnimation(fig, update, frames=optimization_log["iter_count"][-1], interval=300)
+    anim = FuncAnimation(fig, update, frames=optimization_log["iter_count"][-1], interval=200)
     anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
+    logging.info(f"Optimisation visualisation stored in {file_path}")
 
 
 # ##########################################################################

@@ -52,18 +52,23 @@ class IPOPTSolver(Solver):
         approx_hessian: bool = True,
         check_derivative: bool = False,
         return_controls: bool = False,
-        iteration_tag: str = ""
+        iteration_tag: str = None
     ):
         """Solve optimization problem by finding constraint bounds, constructing ipopt optimization problem and
         solve it using the parameters defined in the function header."""
-        lb, ub, cl, cu = self.constraint_bounds()
+        lb, ub = self.optimization_variable_bounds()
+        cl, cu = list(), list()
+        for name, constraint in self._constraint_modules.items():
+            cl += list(constraint.lower)
+            cu += list(constraint.upper)
+            logging.debug(f"Constraint {name} has bounds lower = {constraint.lower} & upper = {constraint.upper}")
 
         # Formulate optimization problem as in standardized IPOPT format.
         z0 = z0 if z0 is not None else self.z0_default()
-        u0_flat = z0.flatten().numpy().tolist()
-        assert len(u0_flat) == len(lb) == len(ub)
+        z0_flat = z0.flatten().numpy().tolist()
+        assert len(z0_flat) == len(lb) == len(ub), f"initial value z0 should be {len(lb)} long"
 
-        nlp = ipopt.problem(n=len(u0_flat), m=len(cl), problem_obj=self, lb=lb, ub=ub, cl=cl, cu=cu)
+        nlp = ipopt.problem(n=len(z0_flat), m=len(cl), problem_obj=self, lb=lb, ub=ub, cl=cl, cu=cu)
         nlp.addOption("max_iter", max_iter)
         nlp.addOption("max_cpu_time", max_cpu_time)
         if approx_jacobian:
@@ -80,7 +85,7 @@ class IPOPTSolver(Solver):
             nlp.addOption("derivative_test_tol", 1e-4)
 
         # Solve optimization problem for "optimal" ego trajectory `x_optimized`.
-        z_optimized, info = nlp.solve(u0_flat)
+        z_optimized, info = nlp.solve(z0_flat)
         x5_optimized = self.z_to_ego_trajectory(z_optimized)
         z2_optimized = torch.from_numpy(z_optimized).view(-1, 2)
 
@@ -128,8 +133,11 @@ class IPOPTSolver(Solver):
     # Optimization formulation - Constraints ##################################
     ###########################################################################
     @abstractmethod
-    def constraint_bounds(self) -> Tuple[List, List, List, List]:
-        raise NotImplementedError
+    def optimization_variable_bounds(self) -> Tuple[List, List]:
+        limits = self._env.ego.control_limits()
+        lb = (np.ones(2 * (self.T - 1)) * limits[0]).tolist()
+        ub = (np.ones(2 * (self.T - 1)) * limits[1]).tolist()
+        return lb, ub
 
     @staticmethod
     def constraints_modules() -> List[str]:
@@ -181,10 +189,9 @@ class IPOPTSolver(Solver):
         assert all([0.0 <= weight for _, weight in modules]), "invalid solver module weight detected"
         return {m: OBJECTIVES[m](horizon=self.T, weight=w, env=self._env, goal=self.goal) for m, w in modules}
 
-    @staticmethod
-    def _build_constraint_modules(modules: List[str]) -> Dict[str, ConstraintModule]:
+    def _build_constraint_modules(self, modules: List[str]) -> Dict[str, ConstraintModule]:
         assert all([name in CONSTRAINTS.keys() for name in modules]), "invalid constraint module detected"
-        return {m: CONSTRAINTS[m]() for m in modules}
+        return {m: CONSTRAINTS[m](horizon=self.T, env=self._env) for m in modules}
 
     ###########################################################################
     # Visualization ###########################################################
@@ -212,7 +219,7 @@ class IPOPTSolver(Solver):
     def is_unconstrained(self) -> bool:
         return len(self._constraint_modules.keys()) == 0
 
-    def log_and_clean_up(self, tag: str = ""):
+    def log_and_clean_up(self, tag: str = None):
         """Clean up optimization logs and reset optimization parameters.
         IPOPT determines the CPU time including the intermediate function, therefore if we would plot at every step,
         we would loose valuable optimization time. Therefore the optimization progress is plotted all at once at the
@@ -246,7 +253,8 @@ class IPOPTSolver(Solver):
         if self.is_verbose and do_logging:
             from mantrap.evaluation.visualization import visualize_optimization
             name_tag = self.__class__.__name__.lower()
-            output_directory_path = build_os_path(f"test/graphs/{name_tag}", make_dir=True, free=True)
+            tag = "optimisation" if tag is None else tag
+            output_directory_path = build_os_path(f"test/graphs/{name_tag}", make_dir=True, free=False)
             output_path = os.path.join(output_directory_path, tag)
             visualize_optimization(self._optimization_log, env=self._env, file_path=output_path)
 

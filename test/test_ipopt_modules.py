@@ -6,11 +6,16 @@ import torch
 
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
+from mantrap.solver.constraints import MaxSpeedModule, MinDistanceModule
+from mantrap.solver.constraints.constraint_module import ConstraintModule
 from mantrap.solver.objectives import GoalModule, InteractionAccelerationModule, InteractionPositionModule
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.utility.primitives import straight_line
 
 
+###########################################################################
+# Objectives ##############################################################
+###########################################################################
 @pytest.mark.parametrize("module_class", [InteractionAccelerationModule, InteractionPositionModule])
 class TestObjectiveInteraction:
 
@@ -81,3 +86,33 @@ def test_objective_goal_distribution():
 
     objective = module.objective(x4)
     assert objective == torch.norm(x4[3, 0:2] - goal)
+
+
+###########################################################################
+# Constraints #############################################################
+###########################################################################
+@pytest.mark.parametrize("module_class", [InitialPointModule, MaxSpeedModule, MinDistanceModule])
+class TestConstraints:
+
+    @staticmethod
+    def test_runtime(module_class: ConstraintModule.__class__):
+        for sim_class in [PotentialFieldSimulation, SocialForcesSimulation]:
+            sim = sim_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+            sim.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=1)
+            sim.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=1)
+            x4 = sim.ego.unroll_trajectory(controls=torch.ones((9, 2)) / 10.0, dt=sim.dt)
+            x4.requires_grad = True
+
+            module = module_class(env=sim)
+            constraint_run_times, jacobian_run_times = list(), list()
+            for i in range(10):
+                start_time = time.time()
+                module.objective(x4)
+                constraint_run_times.append(time.time() - start_time)
+
+                start_time = time.time()
+                module.gradient(x4, grad_wrt=x4)
+                jacobian_run_times.append(time.time() - start_time)
+
+            assert np.mean(constraint_run_times) < 0.02  # 50 Hz
+            assert np.mean(jacobian_run_times) < 0.04  # 25 Hz

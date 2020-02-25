@@ -1,8 +1,8 @@
 import torch
 
 from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.simulation import SocialForcesSimulation
-from mantrap.solver import IGradSolver, SGradSolver
+from mantrap.simulation import PotentialFieldSimulation
+from mantrap.solver import CGradSolver, IGradSolver, SGradSolver
 from mantrap.evaluation.visualization import visualize_scenes
 from mantrap.utility.io import build_os_path
 
@@ -13,10 +13,10 @@ ado_positions = torch.stack((torch.tensor([-7, -1]), torch.tensor([7, 3]), torch
 ado_goals = torch.stack((torch.tensor([0, 0]), torch.tensor([-7, 0]), torch.tensor([-7, 4])))
 ado_velocities = torch.stack((torch.tensor([1, 0]), torch.tensor([-1, 0]), torch.tensor([-1, 1])))
 
-sim = SocialForcesSimulation(DoubleIntegratorDTAgent, {"position": ego_position, "velocity": ego_velocity})
+sim = PotentialFieldSimulation(DoubleIntegratorDTAgent, {"position": ego_position, "velocity": ego_velocity})
 for position, goal, velocity in zip(ado_positions, ado_goals, ado_velocities):
-    sim.add_ado(position=position, goal=goal, velocity=velocity, num_modes=2)
-solver = SGradSolver(sim, goal=ego_goal, verbose=True, T=10, num_control_points=2)
+    sim.add_ado(position=position, goal=goal, velocity=velocity, num_modes=1)
+solver = CGradSolver(sim, goal=ego_goal, verbose=True, T=10, num_control_points=2)
 
 x_opt, ado_states, x_opt_planned = solver.solve(horizon=20, max_iter=10, max_cpu_time=10.0)
-# visualize_scenes(x_opt_planned, ado_states, env=sim, file_path=build_os_path("test/graphs/sim_exp"))
+visualize_scenes(x_opt_planned, ado_states, env=sim, file_path=build_os_path("test/graphs/sim_exp"))

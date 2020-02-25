@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from collections import deque
 import logging
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -11,7 +11,13 @@ from mantrap.utility.shaping import check_ego_trajectory
 
 class ConstraintModule:
 
-    def __init__(self, **module_kwargs):
+    def __init__(self, horizon: int, **module_kwargs):
+        self.T = horizon
+
+        # Determine constraint bounds (defined in child classes).
+        self.lower, self.upper = self.constraint_bounds()
+        assert len(self.lower) == len(self.upper)
+
         # Logging variables for objective and gradient values. For logging the latest variables are stored
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
         # appending multiple values within one optimization step.
@@ -21,6 +27,9 @@ class ConstraintModule:
     ###########################################################################
     # Constraint Formulation ##################################################
     ###########################################################################
+    @abstractmethod
+    def constraint_bounds(self) -> Tuple[np.ndarray, np.ndarray]:
+        raise NotImplementedError
 
     def constraint(self, x4: torch.Tensor) -> np.ndarray:
         assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True)
@@ -41,19 +50,24 @@ class ConstraintModule:
 
     @abstractmethod
     def _compute(self, x4: torch.Tensor) -> torch.Tensor:
-        pass
+        raise NotImplementedError
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
-
     def _return_constraint(self, constraint_value: np.ndarray) -> np.ndarray:
         self._constraint_current = constraint_value
         logging.debug(f"Module {self.__str__()} computed")
         return self._constraint_current
 
+    def compute_violation(self) -> float:
+        no_violation = np.zeros(len(self.lower))
+        violation_lower = self.lower - self._constraint_current if None not in self.lower else no_violation
+        violation_upper = self._constraint_current - self.upper if None not in self.upper else no_violation
+        return float(np.sum(np.maximum(no_violation, violation_lower) + np.maximum(no_violation, violation_upper)))
+
     def logging(self):
-        self._log_constraint.append(np.linalg.norm(self._constraint_current))
+        self._log_constraint.append(self.compute_violation())
 
     def clean_up(self):
         self._log_constraint = deque()

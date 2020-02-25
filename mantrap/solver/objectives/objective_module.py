@@ -6,13 +6,12 @@ from typing import List, Tuple
 import numpy as np
 import torch
 
-from mantrap.constants import solver_horizon
 from mantrap.utility.shaping import check_ego_trajectory
 
 
 class ObjectiveModule:
 
-    def __init__(self, horizon: int = solver_horizon, weight: float = 1.0, **module_kwargs):
+    def __init__(self, horizon: int, weight: float = 1.0, **module_kwargs):
         self.weight = weight
         self.T = horizon
 

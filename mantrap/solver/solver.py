@@ -53,7 +53,7 @@ class Solver:
             ado_state, ego_state = self._env.step(ego_control=ego_controls[0, :])
 
             # Logging.
-            ado_trajectories[k] = self.env.predict_w_controls(ego_controls=ego_controls).detach()
+            ado_trajectories[k] = self.env.predict_w_controls(controls=ego_controls).detach()
             x5_opt[k + 1, :] = ego_state.detach()
             x5_opt_planned[k] = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt).detach()
 

@@ -2,11 +2,11 @@ import numpy as np
 import scipy.interpolate
 import torch
 
-from mantrap.constants import agent_speed_max, solver_horizon
+from mantrap.constants import agent_speed_max
 from mantrap.utility.shaping import check_ego_path
 
 
-def square_primitives(start: torch.Tensor, end: torch.Tensor, dt: float, steps: int = solver_horizon) -> torch.Tensor:
+def square_primitives(start: torch.Tensor, end: torch.Tensor, dt: float, steps: int) -> torch.Tensor:
     """As the trajectory is optimized over several time-steps we have to set some base ego trajectory in order to
      estimate the reactive behaviour of all other agents. Therefore in the following some trajectory primitives
      between the current state of the ego and its goal state are defined, such as a first order (straight line from
@@ -25,9 +25,9 @@ def midpoint_spline(
     start_pos: torch.Tensor,
     end_pos: torch.Tensor,
     midpoint_distance: float,
+    num_points: int,
     distance_per_step: float = 0.1,
-    num_points: int = solver_horizon,
-    num_interpolation: int = 1000,
+    num_interpolation: int = 10,
 ) -> torch.Tensor:
     """B-Spline primitive interpolated between a start, an end position and a midpoint that is constructed by
     moving from the center point between start and end position in normal direction by the defined amount."""
@@ -49,20 +49,22 @@ def midpoint_spline(
     points = np.vstack((start_point, mid_point + normal_direction * midpoint_distance, end_point))
     psi = np.linspace(0, 1, num=points.shape[0])
     interpolator = scipy.interpolate.interp1d(psi, points, kind="quadratic", axis=0)
-    path = interpolator(np.linspace(0, 1, num_interpolation))
+    path = interpolator(np.linspace(0, 1, 10))
 
-    # Re-sample path so that each point is equal-distant from its neighbours.
-    inter_distances = np.cumsum(np.sqrt(np.sum(np.diff(path, axis=0) ** 2, axis=1)))
-    inter_distances = np.asarray(np.hstack((np.zeros(1), inter_distances)) / distance_per_step, dtype=int)
-    _, inter_indices = np.unique(inter_distances, return_index=True)
-    if len(inter_indices) < num_points:
-        inter_indices = np.hstack((inter_indices, np.ones(num_points - len(inter_indices)) * num_interpolation))
-    inter_indices[inter_indices >= num_interpolation] = num_interpolation - 1
-    primitive = path[inter_indices[:num_points].astype(int), :]
+    return torch.from_numpy(path)
 
-    primitive = torch.from_numpy(primitive)
-    assert check_ego_path(primitive, t_horizon=num_points)
-    return primitive
+    # # Re-sample path so that each point is equal-distant from its neighbours.
+    # inter_distances = np.cumsum(np.sqrt(np.sum(np.diff(path, axis=0) ** 2, axis=1)))
+    # inter_distances = np.asarray(np.hstack((np.zeros(1), inter_distances)) / distance_per_step, dtype=int)
+    # _, inter_indices = np.unique(inter_distances, return_index=True)
+    # if len(inter_indices) < num_points:
+    #     inter_indices = np.hstack((inter_indices, np.ones(num_points - len(inter_indices)) * num_interpolation))
+    # inter_indices[inter_indices >= num_interpolation] = num_interpolation - 1
+    # primitive = path[inter_indices[:int(num_points)].astype(int), :]
+    #
+    # primitive = torch.from_numpy(primitive)
+    # assert check_ego_path(primitive, t_horizon=num_points)
+    # return primitive
 
 
 def straight_line(start_pos: torch.Tensor, end_pos: torch.Tensor, steps: int):
