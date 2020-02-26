@@ -40,12 +40,12 @@ class ConstraintModule:
         assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True)
         assert grad_wrt.requires_grad
 
+        constraints = self._compute(x4)
         grad_size = int(grad_wrt.numel())
-        constraint = self._compute(x4)
-        jacobian = torch.zeros(constraint.numel() * grad_size)
-        for i, x in enumerate(constraint):
+        jacobian = torch.zeros(constraints.numel() * grad_size)
+        for i, x in enumerate(constraints):
             grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)
-            jacobian[i*grad_size:(i+1)*grad_size] = grad[0].flatten()
+            jacobian[i*grad_size:(i+1)*grad_size] = grad[0].flatten().detach()
         return jacobian.detach().numpy()
 
     @abstractmethod
@@ -61,7 +61,7 @@ class ConstraintModule:
         return self._constraint_current
 
     def compute_violation(self) -> float:
-        no_violation = np.zeros(len(self.lower))
+        no_violation = np.zeros(self.num_constraints)
         violation_lower = self.lower - self._constraint_current if None not in self.lower else no_violation
         violation_upper = self._constraint_current - self.upper if None not in self.upper else no_violation
         return float(np.sum(np.maximum(no_violation, violation_lower) + np.maximum(no_violation, violation_upper)))
@@ -75,3 +75,7 @@ class ConstraintModule:
     @property
     def logs(self) -> List[float]:
         return list(self._log_constraint)
+
+    @property
+    def num_constraints(self) -> int:
+        return len(self.lower)

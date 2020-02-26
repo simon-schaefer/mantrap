@@ -7,7 +7,7 @@ agent_acc_max = 4  # maximal agent acceleration in [m/s^2].
 #######################################
 # simulation parameters ###############
 #######################################
-sim_dt_default = 0.25
+sim_dt_default = 0.4
 sim_x_axis_default = (-10, 10)
 sim_y_axis_default = (-10, 10)
 

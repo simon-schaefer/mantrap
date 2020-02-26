@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import numpy as np
 import torch
@@ -11,3 +12,4 @@ logging.getLogger("matplotlib").setLevel(logging.ERROR)
 logging.getLogger("numpy").setLevel(logging.WARNING)
 torch.set_default_dtype(torch.float64)
 np.set_printoptions(precision=4)
+np.set_printoptions(threshold=sys.maxsize)  # dont collapse arrays while printing

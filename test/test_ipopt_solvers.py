@@ -35,7 +35,7 @@ class TestIPOPTSolvers:
         for pos in ado_poses:
             sim.add_ado(position=pos)
         solver = solver_class(sim, goal=ego_goal, **test_kwargs)
-        z0 = solver.z0_default().detach().numpy()
+        z0 = solver.z0s_default().detach().numpy()
 
         # Test gradient function.
         grad = solver.gradient(z=z0)
@@ -60,7 +60,7 @@ class TestIPOPTSolvers:
         sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(sim, goal=torch.tensor([8, 0]), **test_kwargs)
 
-        x4_opt = solver.solve_single_optimization(z0=solver.z0_default(), approx_jacobian=False, approx_hessian=True)
+        x4_opt = solver.solve_single_optimization(z0=solver.z0s_default(), approx_jacobian=False, approx_hessian=True)
         TestIPOPTSolvers.check_output_trajectory(x4_opt, sim=sim, solver=solver)
 
     @staticmethod
@@ -71,7 +71,7 @@ class TestIPOPTSolvers:
         sim.add_ado(position=torch.tensor([3, -8]), velocity=torch.tensor([2.5, 1.5]))
         solver = solver_class(sim, goal=torch.tensor([8, 0]), **test_kwargs)
 
-        x_opt = solver.solve_single_optimization(z0=solver.z0_default(), approx_jacobian=False, approx_hessian=True)
+        x_opt = solver.solve_single_optimization(z0=solver.z0s_default(), approx_jacobian=False, approx_hessian=True)
         TestIPOPTSolvers.check_output_trajectory(x_opt, sim=sim, solver=solver)
 
     @staticmethod
@@ -79,7 +79,7 @@ class TestIPOPTSolvers:
         sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0])})
         sim.add_ado(position=torch.zeros(2))
         solver = solver_class(sim, goal=torch.tensor([5, 0]), **test_kwargs)
-        z0 = solver.z0_default().detach().numpy().flatten()
+        z0 = solver.z0s_default().detach().numpy().flatten()
         x0 = solver.z_to_ego_trajectory(z0).detach().numpy()[:, 0:2]
 
         x02 = np.reshape(x0, (-1, 2))
@@ -91,7 +91,7 @@ class TestIPOPTSolvers:
         sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0])})
         sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(sim, goal=torch.tensor([5, 0]), **test_kwargs)
-        x = solver.z0_default().detach().numpy()
+        x = solver.z0s_default().detach().numpy()
 
         # Determine objective/gradient and measure computation time.
         comp_times_objective = []

@@ -10,7 +10,7 @@ class GoalModule(ObjectiveModule):
 
         super(GoalModule, self).__init__(**module_kwargs)
         self._goal = goal
-        self._distribution = torch.linspace(0, 1, steps=self.T) ** 2
+        self._distribution = torch.linspace(0, 1, steps=self.T) ** 4
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
 
     def _compute(self, x4: torch.Tensor) -> torch.Tensor:

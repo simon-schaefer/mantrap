@@ -6,7 +6,7 @@ import torch
 from mantrap.simulation.graph_based import GraphBasedSimulation
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.maths import lagrange_interpolation
-from mantrap.utility.primitives import straight_line
+from mantrap.utility.primitives import square_primitives
 
 
 class IGradSolver(IPOPTSolver):
@@ -22,9 +22,12 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
-    def z0_default(self) -> torch.Tensor:
-        x0 = straight_line(self.env.ego.position, self.goal, steps=self.num_control_points + 2)
-        return x0[1:-1, :]  # skip start and end point
+    def z0s_default(self) -> torch.Tensor:
+        x20s = square_primitives(start=self.env.ego.position, end=self.goal, dt=self.env.dt, steps=self.T)
+        x40s = torch.zeros((self.T, 4))
+        for i, x20 in enumerate(x20s):
+            x40s[i] = self.env.ego.expand_trajectory(path=x20, dt=self.env.dt)
+        return x40s
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
@@ -52,7 +55,7 @@ class IGradSolver(IPOPTSolver):
         control_points = torch.cat((start_point, mid, end_point))
         path = lagrange_interpolation(control_points, num_samples=self.T, deg=self.num_control_points + 2)
 
-        x4 = self.env.ego.expand_trajectory(path, dt=self.env.dt, t_start=self.env.sim_time)[:, 0:4]
+        x4 = self.env.ego.expand_trajectory(path, dt=self.env.dt)[:, 0:4]
         return x4 if not return_leaf else (x4, mid)
 
     @property

@@ -104,13 +104,13 @@ class Agent:
         assert check_ego_controls(controls, t_horizon=trajectory.shape[0] - 1)
         return controls
 
-    @staticmethod
-    def expand_trajectory(path: torch.Tensor, dt: float, t_start: float = 0.0) -> torch.Tensor:
+    def expand_trajectory(self, path: torch.Tensor, dt: float) -> torch.Tensor:
         """Derive (position, orientation, velocity)-trajectory information from position data only, using naive
         discrete differentiation, i.e. v_i = (x_i+1 - x_i) / dt. """
         assert check_ego_path(path)
 
         t_horizon = path.shape[0]
+        t_start = float(self.state_with_time[-1])
         trajectory = torch.zeros((t_horizon, 5))
 
         trajectory[:, 0:2] = path

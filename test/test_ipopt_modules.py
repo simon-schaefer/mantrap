@@ -91,7 +91,7 @@ def test_objective_goal_distribution():
 ###########################################################################
 # Constraints #############################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", [InitialPointModule, MaxSpeedModule, MinDistanceModule])
+@pytest.mark.parametrize("module_class", [MaxSpeedModule, MinDistanceModule])
 class TestConstraints:
 
     @staticmethod

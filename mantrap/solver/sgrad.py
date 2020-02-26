@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from mantrap.solver.ipopt_solver import IPOPTSolver
+from mantrap.utility.primitives import square_primitives
 from mantrap.utility.shaping import check_ego_trajectory
 
 
@@ -12,10 +13,13 @@ class SGradSolver(IPOPTSolver):
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
-    def z0_default(self) -> torch.Tensor:
-        u_goal = (self.goal - self.env.ego.position)
-        u_goal = (u_goal / torch.norm(u_goal)).view(1, 2)
-        return torch.cat((u_goal, torch.zeros(self.T - 2, 2)))
+    def z0s_default(self) -> torch.Tensor:
+        x20s = square_primitives(start=self.env.ego.position, end=self.goal, dt=self.env.dt, steps=self.T)
+        u0s = torch.zeros((x20s.shape[0], self.T - 1, 2))
+        for i, x20 in enumerate(x20s):
+            x40 = self.env.ego.expand_trajectory(path=x20, dt=self.env.dt)
+            u0s[i] = self.env.ego.roll_trajectory(trajectory=x40, dt=self.env.dt)
+        return u0s
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
