@@ -5,6 +5,7 @@ import os
 from typing import Dict, List, Tuple, Union
 
 import ipopt
+import joblib
 import numpy as np
 import torch
 
@@ -53,7 +54,7 @@ class IPOPTSolver(Solver):
         check_derivative: bool = False,
         return_controls: bool = False,
         iteration_tag: str = None
-    ):
+    ) -> Union[Tuple[torch.Tensor, torch.Tensor, float], torch.Tensor]:
         """Solve optimization problem by finding constraint bounds, constructing ipopt optimization problem and
         solve it using the parameters defined in the function header."""
         # Clean up & detaching graph for deleting previous gradients.
@@ -69,7 +70,7 @@ class IPOPTSolver(Solver):
             logging.debug(f"Constraint {name} has bounds lower = {constraint.lower} & upper = {constraint.upper}")
 
         # Formulate optimization problem as in standardized IPOPT format.
-        z0 = z0 if z0 is not None else self.z0_default()
+        z0 = z0 if z0 is not None else self.z0s_default()[0]
         z0_flat = z0.flatten().numpy().tolist()
         assert len(z0_flat) == len(lb) == len(ub), f"initial value z0 should be {len(lb)} long"
 
@@ -93,21 +94,30 @@ class IPOPTSolver(Solver):
         z_optimized, info = nlp.solve(z0_flat)
         x5_optimized = self.z_to_ego_trajectory(z_optimized)
         z2_optimized = torch.from_numpy(z_optimized).view(-1, 2)
+        objective_optimized = self._optimization_log["obj_overall"][-1]
 
         # Plot optimization progress.
         self.log_and_clean_up(tag=iteration_tag)
-        return x5_optimized if not return_controls else (x5_optimized, z2_optimized)
+        return x5_optimized if not return_controls else (x5_optimized, z2_optimized, float(objective_optimized))
 
     def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
         logging.info("solver starting ipopt optimization procedure")
-        _, z_opt = self.solve_single_optimization(**solver_kwargs, return_controls=True)
-        return self.z_to_ego_controls(z_opt.detach().numpy())
+        z0s = self.z0s_default()
+
+        def evaluate(i: int) -> Tuple[float, torch.Tensor]:
+            solver_kwargs["iteration_tag"] = solver_kwargs["iteration_tag"] + f"_{i}"
+            _, z_opt, obj_opt = self.solve_single_optimization(z0=z0s[i], **solver_kwargs, return_controls=True)
+            return obj_opt, z_opt
+
+        results = joblib.Parallel(n_jobs=8)(joblib.delayed(evaluate)(i) for i in range(z0s.shape[0]))
+        z_opt_best = results[int(np.argmin([obj for obj, _ in results]))][1]
+        return self.z_to_ego_controls(z_opt_best.detach().numpy())
 
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
     @abstractmethod
-    def z0_default(self) -> torch.Tensor:
+    def z0s_default(self) -> torch.Tensor:
         raise NotImplementedError
 
     ###########################################################################
@@ -247,11 +257,11 @@ class IPOPTSolver(Solver):
         do_logging = len(self._optimization_log) > 0 and all([len(v) > 2 for v in self._optimization_log.values()])
         if do_logging:
             num_optimization_steps = self._optimization_log["iter_count"][-1]
-            obj_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "obj" in name}
-            inf_dict = {name: f"{xs[0]} ==> {xs[-1]}" for name, xs in self._optimization_log.items() if "inf" in name}
-            logging.info(f"solver ipopt optimization finished after {num_optimization_steps} steps")
-            logging.info(f"solver ipopt optimization: {obj_dict}")
-            logging.info(f"solver ipopt optimization: {inf_dict}")
+            obj_dict = {n: f"{xs[0]:.4f} => {xs[-1]:.4f}" for n, xs in self._optimization_log.items() if "obj" in n}
+            inf_dict = {n: f"{xs[0]:.4f} => {xs[-1]:.4f}" for n, xs in self._optimization_log.items() if "inf" in n}
+            logging.info(f"ipopt optimization [{tag}] finished after {num_optimization_steps} steps")
+            logging.info(f"ipopt optimization [{tag}]: {obj_dict}")
+            logging.info(f"ipopt optimization [{tag}]: {inf_dict}")
 
         # Plotting only makes sense if you see some progress in the optimization, i.e. compare and figure out what
         # the current optimization step has changed.
