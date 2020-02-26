@@ -16,11 +16,14 @@ from mantrap.constants import (
 )
 from mantrap.simulation.graph_based import GraphBasedSimulation
 from mantrap.utility.maths import Distribution, Gaussian
-from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
+from mantrap.utility.shaping import check_ego_trajectory
 
 
 class SocialForcesSimulation(GraphBasedSimulation):
-
+    """
+    Social Forces Simulation.
+    Pedestrian Dynamics based on to "Social Force Model for Pedestrian Dynamics" (D. Helbling, P. Molnar).
+    """
     # Re-Definition of the Ghost object introducing further social-forces specific parameters such as a goal or
     # agent-dependent simulation parameters v0, sigma and tau.
     Ghost = namedtuple("Ghost", "agent goal v0 sigma tau weight id")
