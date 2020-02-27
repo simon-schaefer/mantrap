@@ -34,7 +34,8 @@ test/graphs/
 .ipynb_checkpoints
 
 # External libraries.
-external/cyipopt
-external/Ipopt/build
-external/Ipopt/Ipopt
-external/Ipopt/ThirdParty
+#external/cyipopt
+#external/Ipopt/build
+#external/Ipopt/Ipopt
+#external/Ipopt/ThirdParty
+external/
