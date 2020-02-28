@@ -2,7 +2,7 @@ from abc import abstractmethod
 from collections import defaultdict, deque
 import logging
 import os
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -166,11 +166,6 @@ class Solver:
     @property
     def is_unconstrained(self) -> bool:
         return len(self._constraint_modules.keys()) == 0
-
-    def constraints_fulfilled(self) -> Union[bool, None]:
-        if len(self._optimization_log) == 0:
-            return None
-        return self._optimization_log["inf_primal"][-1] < 1e-6
 
     ###########################################################################
     # Utility #################################################################

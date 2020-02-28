@@ -125,6 +125,11 @@ class IPOPTSolver(Solver):
     def hessian(self, z, lagrange=None, obj_factor=None) -> np.ndarray:
         raise NotImplementedError
 
+    def constraints_fulfilled(self) -> Union[bool, None]:
+        if len(self._optimization_log) == 0:
+            return None
+        return self._optimization_log["inf_primal"][-1] < 1e-6
+
     ###########################################################################
     # Visualization & Logging #################################################
     ###########################################################################

@@ -90,7 +90,7 @@ def test_step():
             torch.ones(num_steps + 1) * ego_control[1],
             torch.linspace(0, num_steps * sim.dt, num_steps + 1),
         )
-    ).T
+    ).t
     assert torch.all(torch.eq(ego_trajectory, ego_t_exp[1:, :]))
 
 
