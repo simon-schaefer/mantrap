@@ -13,13 +13,21 @@ class CGradSolver(IPOPTSolver):
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
-    def z0s_default(self) -> torch.Tensor:
+    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
         x20s = square_primitives(start=self.env.ego.position, end=self.goal, dt=self.env.dt, steps=self.T)
+
         u0s = torch.zeros((x20s.shape[0], self.T - 1, 2))
         for i, x20 in enumerate(x20s):
             x40 = self.env.ego.expand_trajectory(path=x20, dt=self.env.dt)
             u0s[i] = self.env.ego.roll_trajectory(trajectory=x40, dt=self.env.dt)
-        return u0s
+
+        return u0s if not just_one else u0s[1].reshape(-1, 2)
+
+    ###########################################################################
+    # Problem formulation - Formulation #######################################
+    ###########################################################################
+    def num_optimization_variables(self) -> int:
+        return self.T - 1
 
     ###########################################################################
     # Optimization formulation - Objective ####################################

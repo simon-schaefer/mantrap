@@ -1,6 +1,6 @@
 import torch
 
-from mantrap.simulation.graph_based import GraphBasedSimulation
+from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.utility.maths import Derivative2
 

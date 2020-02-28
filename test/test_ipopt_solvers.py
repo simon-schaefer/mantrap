@@ -7,7 +7,7 @@ import torch
 from mantrap.constants import constraint_min_distance
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldSimulation
-from mantrap.simulation.graph_based import GraphBasedSimulation
+from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver import CGradSolver, IGradSolver, SGradSolver
 from mantrap.solver.ipopt_solver import IPOPTSolver
 
@@ -15,12 +15,12 @@ from mantrap.solver.ipopt_solver import IPOPTSolver
 @pytest.mark.parametrize(
     "solver_class, test_kwargs",
     [
-        (IGradSolver, {"T": 5, "num_constraints": 10, "num_control_points": 1}),
-        (IGradSolver, {"T": 10, "num_constraints": 20, "num_control_points": 2}),
-        (IGradSolver, {"T": 10, "num_constraints": 20, "num_control_points": 4}),
-        (SGradSolver, {"T": 10, "num_constraints": 20}),
-        (SGradSolver, {"T": 5, "num_constraints": 10}),
-        (CGradSolver, {"T": 10, "num_constraints": 20 + 2 * 10})
+        (IGradSolver, {"t_planning": 5, "num_constraints": 10, "num_control_points": 1}),
+        (IGradSolver, {"t_planning": 10, "num_constraints": 20, "num_control_points": 2}),
+        (IGradSolver, {"t_planning": 10, "num_constraints": 20, "num_control_points": 4}),
+        (SGradSolver, {"t_planning": 10, "num_constraints": 20}),
+        (SGradSolver, {"t_planning": 5, "num_constraints": 10}),
+        (CGradSolver, {"t_planning": 10, "num_constraints": 20 + 2 * 10})
     ]
 )
 class TestIPOPTSolvers:
@@ -35,7 +35,7 @@ class TestIPOPTSolvers:
         for pos in ado_poses:
             sim.add_ado(position=pos)
         solver = solver_class(sim, goal=ego_goal, **test_kwargs)
-        z0 = solver.z0s_default().detach().numpy()
+        z0 = solver.z0s_default(just_one=True).detach().numpy()
 
         # Test gradient function.
         grad = solver.gradient(z=z0)
@@ -60,7 +60,8 @@ class TestIPOPTSolvers:
         sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(sim, goal=torch.tensor([8, 0]), **test_kwargs)
 
-        x4_opt = solver.solve_single_optimization(z0=solver.z0s_default(), approx_jacobian=False, approx_hessian=True)
+        z0 = solver.z0s_default(just_one=True)
+        x4_opt = solver.solve_single_optimization(z0=z0, approx_jacobian=False, approx_hessian=True)
         TestIPOPTSolvers.check_output_trajectory(x4_opt, sim=sim, solver=solver)
 
     @staticmethod
@@ -71,15 +72,17 @@ class TestIPOPTSolvers:
         sim.add_ado(position=torch.tensor([3, -8]), velocity=torch.tensor([2.5, 1.5]))
         solver = solver_class(sim, goal=torch.tensor([8, 0]), **test_kwargs)
 
-        x_opt = solver.solve_single_optimization(z0=solver.z0s_default(), approx_jacobian=False, approx_hessian=True)
+        z0 = solver.z0s_default(just_one=True)
+        x_opt = solver.solve_single_optimization(z0=z0, approx_jacobian=False, approx_hessian=True)
         TestIPOPTSolvers.check_output_trajectory(x_opt, sim=sim, solver=solver)
 
     @staticmethod
     def test_x_to_x2(solver_class: IPOPTSolver.__class__, test_kwargs):
         sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0])})
         sim.add_ado(position=torch.zeros(2))
+
         solver = solver_class(sim, goal=torch.tensor([5, 0]), **test_kwargs)
-        z0 = solver.z0s_default().detach().numpy().flatten()
+        z0 = solver.z0s_default(just_one=True).detach().numpy().flatten()
         x0 = solver.z_to_ego_trajectory(z0).detach().numpy()[:, 0:2]
 
         x02 = np.reshape(x0, (-1, 2))
@@ -91,7 +94,7 @@ class TestIPOPTSolvers:
         sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0])})
         sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(sim, goal=torch.tensor([5, 0]), **test_kwargs)
-        x = solver.z0s_default().detach().numpy()
+        x = solver.z0s_default(just_one=True).detach().numpy()
 
         # Determine objective/gradient and measure computation time.
         comp_times_objective = []
@@ -120,14 +123,14 @@ class TestIPOPTSolvers:
 def test_c_grad_solver():
     env = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.5])})
     env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
-    c_grad_solver = CGradSolver(env, goal=torch.tensor([5, 0]), T=10, verbose=True)
+    c_grad_solver = CGradSolver(env, goal=torch.tensor([5, 0]), t_planning=10, verbose=False)
 
     from mantrap.utility.primitives import square_primitives
-    x0 = square_primitives(start=env.ego.position, end=c_grad_solver.goal, dt=env.dt, steps=10)[1, :, :]
+    x0 = square_primitives(start=env.ego.position, end=c_grad_solver.goal, dt=env.dt, steps=10)[1]
     x40 = env.ego.expand_trajectory(x0, dt=env.dt)
     u0 = env.ego.roll_trajectory(x40, dt=env.dt)
 
-    x_solution = c_grad_solver.solve_single_optimization(z0=u0, max_cpu_time=10.0)
+    x_solution = c_grad_solver.solve_single_optimization(z0=u0, max_cpu_time=5.0)
     ado_trajectories = env.predict_w_trajectory(trajectory=x_solution)
 
     for t in range(10):

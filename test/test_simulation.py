@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation.simulation import Simulation
+from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
 from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import Distribution, DirecDelta
@@ -14,7 +14,7 @@ from mantrap.utility.primitives import straight_line
 from mantrap.utility.shaping import check_trajectories, check_controls, check_weights
 
 
-class ZeroSimulation(Simulation):
+class ZeroSimulation(GraphBasedSimulation):
     def __init__(self, num_modes: int = 1, **kwargs):
         super(ZeroSimulation, self).__init__(**kwargs)
         self._num_modes = num_modes
@@ -49,11 +49,11 @@ class ZeroSimulation(Simulation):
 ###########################################################################
 def test_initialization():
     sim = ZeroSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([4, 6])}, dt=1.0)
-    assert torch.all(torch.eq(sim.ego.position, torch.tensor([4, 6])))
+    assert torch.all(torch.eq(sim.ego.position, torch.tensor([4, 6]).float()))
     assert sim.num_ados == 0
     assert sim.sim_time == 0.0
     sim.add_ado(type=IntegratorDTAgent, position=torch.tensor([6, 7]), velocity=torch.zeros(2))
-    assert torch.all(torch.eq(sim.ados[0].position, torch.tensor([6, 7])))
+    assert torch.all(torch.eq(sim.ados[0].position, torch.tensor([6, 7]).float()))
     assert torch.all(torch.eq(sim.ados[0].velocity, torch.zeros(2)))
 
 

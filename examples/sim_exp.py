@@ -18,5 +18,5 @@ for position, goal, velocity in zip(ado_positions, ado_goals, ado_velocities):
     sim.add_ado(position=position, goal=goal, velocity=velocity, num_modes=1)
 solver = CGradSolver(sim, goal=ego_goal, verbose=False, T=10)
 
-x_opt, ado_states, x_opt_planned = solver.solve(horizon=20, max_cpu_time=10.0)
+x_opt, ado_states, x_opt_planned = solver.solve(time_steps=20, max_cpu_time=10.0)
 visualize_scenes(x_opt_planned, ado_states, env=sim, file_path=build_os_path("test/graphs/sim_exp"))

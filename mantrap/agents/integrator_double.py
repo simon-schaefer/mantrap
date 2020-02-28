@@ -17,9 +17,10 @@ class DoubleIntegratorDTAgent(Agent):
     def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float = sim_dt_default) -> torch.Tensor:
         assert check_state(state, enforce_temporal=False), "state should be two-dimensional (x, y, theta, vx, vy)"
         assert action.size() == torch.Size([2]), "action must be two-dimensional (vx, vy)"
+        action = action.float()
 
-        velocity_new = (state[2:4] + action * dt).double()
-        position_new = (state[0:2] + state[2:4] * dt + 0.5 * action * dt ** 2).double()
+        velocity_new = (state[2:4] + action * dt).float()
+        position_new = (state[0:2] + state[2:4] * dt + 0.5 * action * dt ** 2).float()
         return build_state_vector(position_new, velocity_new)
 
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:

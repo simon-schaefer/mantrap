@@ -14,7 +14,7 @@ from mantrap.constants import (
     sim_social_forces_min_goal_distance,
     sim_social_forces_max_interaction_distance,
 )
-from mantrap.simulation.graph_based import GraphBasedSimulation
+from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.utility.maths import Distribution, Gaussian
 from mantrap.utility.shaping import check_ego_trajectory
 
@@ -76,6 +76,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
         assert goal.size() == torch.Size([2]), "goal position must be two-dimensional (x, y)"
+        goal = goal.float()
 
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces
         # simulation are sampled from distributions, each for one mode. If not stated the default parameters are

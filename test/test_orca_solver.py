@@ -4,11 +4,11 @@ from typing import Dict, Tuple, Union
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation.simulation import Simulation
+from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver import ORCASolver
 
 
-class ORCASimulation(Simulation):
+class ORCASimulation(GraphBasedSimulation):
 
     orca_rad = 1.0
     orca_dt = 10.0
@@ -18,12 +18,6 @@ class ORCASimulation(Simulation):
     def __init__(self, ego_type=None, ego_kwargs=None, **kwargs):
         super(ORCASimulation, self).__init__(ego_type, ego_kwargs, dt=self.sim_dt, **kwargs)
         self._ado_goals = []
-
-    def build_graph(self, **kwargs) -> Dict[str, torch.Tensor]:
-        pass
-
-    def predict(self, **kwargs) -> torch.Tensor:
-        pass
 
     def add_ado(self, goal_position: Union[torch.Tensor, None], **ado_kwargs):
         super(ORCASimulation, self).add_ado(type=IntegratorDTAgent, log=False, **ado_kwargs)
@@ -56,8 +50,6 @@ class ORCASimulation(Simulation):
 ###########################################################################
 # Tests ###################################################################
 ###########################################################################
-
-
 def test_single_agent():
     pos_init = torch.zeros(2)
     vel_init = torch.zeros(2)

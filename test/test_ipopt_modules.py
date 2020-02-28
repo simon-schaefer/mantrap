@@ -103,15 +103,15 @@ class TestConstraints:
             x4 = sim.ego.unroll_trajectory(controls=torch.ones((9, 2)) / 10.0, dt=sim.dt)
             x4.requires_grad = True
 
-            module = module_class(env=sim)
+            module = module_class(env=sim, horizon=10)
             constraint_run_times, jacobian_run_times = list(), list()
             for i in range(10):
                 start_time = time.time()
-                module.objective(x4)
+                module.constraint(x4)
                 constraint_run_times.append(time.time() - start_time)
 
                 start_time = time.time()
-                module.gradient(x4, grad_wrt=x4)
+                module.jacobian(x4, grad_wrt=x4)
                 jacobian_run_times.append(time.time() - start_time)
 
             assert np.mean(constraint_run_times) < 0.02  # 50 Hz

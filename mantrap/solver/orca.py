@@ -2,11 +2,12 @@ from collections import namedtuple
 import logging
 from typing import List, Tuple, Union
 
+import numpy as np
 import torch
 
 from mantrap.constants import eps_numeric, agent_speed_max, orca_agent_radius, orca_agent_safe_dt
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation.simulation import Simulation
+from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver.solver import Solver
 
 
@@ -31,15 +32,17 @@ class ORCASolver(Solver):
     implementation.
     """
 
+    def __init__(self, sim: GraphBasedSimulation, goal: torch.Tensor, verbose: bool = False, **solver_params):
+        super(ORCASolver, self).__init__(sim, goal, t_planning=1, verbose=verbose, objectives=None, **solver_params)
+        assert self._env.ego.__class__ == IntegratorDTAgent, "orca assumes ego to be holonomic and to single integrator"
+
     def determine_ego_controls(
         self,
         agent_radius: float = orca_agent_radius,
         safe_dt: float = orca_agent_safe_dt,
         speed_max: float = agent_speed_max,
+        **solver_kwargs
     ) -> Union[torch.Tensor, None]:
-        assert self._env.ego.__class__ == IntegratorDTAgent, "orca assumes ego to be holonomic and to single integrator"
-        assert self.T > 1, "orca only allows solving for next time-step"
-
         # Find line constraints.
         constraints = self._line_constraints(self._env, agent_radius=agent_radius, agent_safe_dt=safe_dt)
         logging.info(f"ORCA constraints for ego [{self._env.ego.id}]: {constraints}")
@@ -48,13 +51,31 @@ class ORCASolver(Solver):
         # to the goal with maximal speed.
         velocity_preferred = self.goal - self._env.ego.position
         velocity_preferred = velocity_preferred / torch.norm(velocity_preferred) * speed_max
-
         i_fail, velocity_new = self._linear_solver_2d(constraints, speed_max=speed_max, velocity_opt=velocity_preferred)
         if i_fail < len(constraints):
             velocity_new = self._linear_solver_3d(constraints, i_fail, speed_max=speed_max, velocity_new=velocity_new)
 
+        # Logging.
+        controls = self.z_to_ego_controls(z=velocity_new.detach().numpy(), return_leaf=False)
+        x4 = self.z_to_ego_trajectory(z=velocity_new.detach().numpy(), return_leaf=False)
+        self.logging(z=controls, x4=x4)
+        self.log_and_clean_up(tag=str(self._iteration))
         return velocity_new
 
+    ###########################################################################
+    # Problem formulation #####################################################
+    ###########################################################################
+    @staticmethod
+    def objective_defaults() -> List[Tuple[str, float]]:
+        return []
+
+    @staticmethod
+    def constraints_modules() -> List[str]:
+        return []
+
+    ###########################################################################
+    # ORCA specific solver methods ############################################
+    ###########################################################################
     def _linear_solver_2d(
         self,
         constraints: List[LineConstraint],
@@ -164,7 +185,7 @@ class ORCASolver(Solver):
         return velocity_new
 
     @staticmethod
-    def _line_constraints(env: Simulation, agent_radius: float, agent_safe_dt: float) -> List[LineConstraint]:
+    def _line_constraints(env: GraphBasedSimulation, agent_radius: float, agent_safe_dt: float) -> List[LineConstraint]:
         constraints = []
 
         # We only want to find a new velocity for the ego robot, therefore we merely determine constraints between
@@ -216,3 +237,13 @@ class ORCASolver(Solver):
             point = env.ego.velocity + 0.5 * u  # usually 0.5 but we want to avoid interaction there 1.0
             constraints.append(LineConstraint(point=point, direction=direction))
         return constraints
+
+    ###########################################################################
+    # Utility #################################################################
+    ###########################################################################
+    def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        controls = self.z_to_ego_controls(z, return_leaf=return_leaf)
+        return self.env.ego.unroll_trajectory(controls, dt=self.env.dt)
+
+    def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        return torch.from_numpy(z).view(-1, 2)

@@ -11,8 +11,8 @@ from mantrap.agents import IntegratorDTAgent, DoubleIntegratorDTAgent
         (
             torch.ones(2),
             torch.zeros(2),
-            torch.tensor([5, 6, 0, 0, -1]).view(1, 5),
-            torch.tensor([[5, 6, 0, 0, -1], [1, 1, 0, 0, 0]]),
+            torch.tensor([5, 6, 0, 0, -1]).view(1, 5).float(),
+            torch.tensor([[5, 6, 0, 0, -1], [1, 1, 0, 0, 0]]).float(),
         ),
     ],
 )
@@ -39,8 +39,8 @@ def test_update_single_integrator(
 ):
     agent = IntegratorDTAgent(position, velocity)
     agent.update(velocity_input, dt=dt)
-    assert torch.all(torch.eq(agent.position, position_expected))
-    assert torch.all(torch.eq(agent.velocity, velocity_expected))
+    assert torch.all(torch.eq(agent.position, position_expected.float()))
+    assert torch.all(torch.eq(agent.velocity, velocity_expected.float()))
 
 
 @pytest.mark.parametrize(
@@ -61,20 +61,20 @@ def test_update_double_integrator(
 ):
     agent = DoubleIntegratorDTAgent(position, velocity)
     agent.update(velocity_input, dt=dt)
-    assert torch.all(torch.eq(agent.position, position_expected))
-    assert torch.all(torch.eq(agent.velocity, velocity_expected))
+    assert torch.all(torch.eq(agent.position, position_expected.float()))
+    assert torch.all(torch.eq(agent.velocity, velocity_expected.float()))
 
 
 def test_unrolling():
     ego = IntegratorDTAgent(position=torch.zeros(2))
-    controls = torch.tensor([[1, 1], [2, 2], [4, 4]])
+    controls = torch.tensor([[1, 1], [2, 2], [4, 4]]).float()
     trajectory = ego.unroll_trajectory(controls, dt=1.0)
     assert torch.all(torch.eq(trajectory[1:, 0:2], torch.cumsum(controls, dim=0)))
 
 
 def test_rolling():
     ego = IntegratorDTAgent(position=torch.zeros(2))
-    controls = torch.tensor([[1, 1], [2, 2], [4, 4]])
+    controls = torch.tensor([[1, 1], [2, 2], [4, 4]]).float()
     trajectory = ego.unroll_trajectory(controls, dt=1.0)
     assert torch.all(torch.eq(controls, ego.roll_trajectory(trajectory, dt=1.0)))
 
@@ -82,11 +82,11 @@ def test_rolling():
 def test_reset():
     agent = IntegratorDTAgent(torch.tensor([5, 6]))
     agent.reset(state=torch.tensor([1, 5, 4, 2, 1.0]), history=None)
-    assert torch.all(torch.eq(agent.position, torch.tensor([1, 5])))
-    assert torch.all(torch.eq(agent.velocity, torch.tensor([4, 2])))
+    assert torch.all(torch.eq(agent.position, torch.tensor([1, 5]).float()))
+    assert torch.all(torch.eq(agent.velocity, torch.tensor([4, 2]).float()))
 
 
-@pytest.mark.parametrize("position, velocity, dt, n", [(torch.tensor([-5, 0]), torch.tensor([1, 0]), 1, 10)])
+@pytest.mark.parametrize("position, velocity, dt, n", [(torch.tensor([-5.0, 0.0]), torch.tensor([1.0, 0.0]), 1, 10)])
 def test_ego_trajectory(position: torch.Tensor, velocity: torch.Tensor, dt: float, n: int):
     ego = IntegratorDTAgent(position=position, velocity=velocity)
     policy = torch.stack((torch.ones(n) * velocity[0], torch.ones(n) * velocity[1])).T

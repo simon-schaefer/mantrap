@@ -7,16 +7,16 @@ import numpy as np
 import torch
 
 from mantrap.constants import agent_speed_max
-from mantrap.simulation.simulation import Simulation
+from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.utility.maths import Derivative2
 from mantrap.utility.shaping import check_state
 
 
-def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env: Simulation, file_path: str):
+def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env: GraphBasedSimulation, file_path: str):
     fig, ax = plt.subplots(figsize=(15, 15), constrained_layout=True)
 
     def update(k):
-        ego_traj = env.ego.expand_trajectory(ego_opt_planned[k, :, :], dt=env.dt, t_start=env.sim_time)
+        ego_traj = env.ego.expand_trajectory(ego_opt_planned[k, :, :], dt=env.dt)
 
         ax.cla()
         ax.plot(ego_traj[:, 0].detach().numpy(), ego_traj[:, 1].detach().numpy(), "-", color=env.ego.color, label="ego")
@@ -39,10 +39,10 @@ def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env:
     anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
 
 
-def visualize_optimization(optimization_log: Dict[str, Any], env: Simulation, file_path: str):
+def visualize_optimization(optimization_log: Dict[str, Any], env: GraphBasedSimulation, file_path: str):
     assert all([key in optimization_log.keys() for key in ["iter_count", "x4", "x4_trials"]])
 
-    vis_keys = ["obj", "inf", "grad"]
+    vis_keys = [x for x in ["obj", "inf", "grad"] if any([x in key for key in optimization_log.keys()])]
     horizon = optimization_log["x4"][0].shape[0]
 
     fig = plt.figure(figsize=(15, 15), constrained_layout=True)

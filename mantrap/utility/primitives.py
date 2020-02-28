@@ -11,11 +11,11 @@ def square_primitives(start: torch.Tensor, end: torch.Tensor, dt: float, steps: 
      estimate the reactive behaviour of all other agents. Therefore in the following some trajectory primitives
      between the current state of the ego and its goal state are defined, such as a first order (straight line from
      current to goal position) or higher order fits."""
-    primitives = torch.ones((3, steps, 2)) * end.detach().numpy()
+    primitives = torch.ones((3, steps, 2)) * end.detach()
 
     distance = torch.norm(start - end).item()
     for i, normal_distance in enumerate([-distance / 2, 0, distance / 2]):
-        primitives[i, :, :] = midpoint_spline(start, end, normal_distance, agent_speed_max * dt, steps)
+        primitives[i, :, :] = midpoint_spline(start, end, normal_distance, num_points=steps)
 
     assert check_ego_path(primitives, t_horizon=steps, num_primitives=3)
     return primitives
@@ -49,7 +49,7 @@ def midpoint_spline(
     points = np.vstack((start_point, mid_point + normal_direction * midpoint_distance, end_point))
     psi = np.linspace(0, 1, num=points.shape[0])
     interpolator = scipy.interpolate.interp1d(psi, points, kind="quadratic", axis=0)
-    path = interpolator(np.linspace(0, 1, 10))
+    path = interpolator(np.linspace(0, 1, num_points))
 
     return torch.from_numpy(path)
 

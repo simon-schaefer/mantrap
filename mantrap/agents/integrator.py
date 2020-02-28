@@ -18,8 +18,8 @@ class IntegratorDTAgent(Agent):
         assert check_state(state, enforce_temporal=False)
         assert action.size() == torch.Size([2])
 
-        velocity_new = action.double()
-        position_new = (state[0:2] + velocity_new * dt).double()
+        velocity_new = action.float()
+        position_new = (state[0:2] + velocity_new * dt).float()
         return build_state_vector(position_new, velocity_new)
 
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:

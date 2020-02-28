@@ -3,7 +3,7 @@ from typing import List, Tuple
 import numpy as np
 import torch
 
-from mantrap.simulation.graph_based import GraphBasedSimulation
+from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.maths import lagrange_interpolation
 from mantrap.utility.primitives import square_primitives
@@ -22,12 +22,15 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
-    def z0s_default(self) -> torch.Tensor:
-        x20s = square_primitives(start=self.env.ego.position, end=self.goal, dt=self.env.dt, steps=self.T)
-        x40s = torch.zeros((self.T, 4))
-        for i, x20 in enumerate(x20s):
-            x40s[i] = self.env.ego.expand_trajectory(path=x20, dt=self.env.dt)
-        return x40s
+    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
+        x20s = square_primitives(self.env.ego.position, self.goal, dt=self.env.dt, steps=self.num_control_points + 2)
+        return x20s[:, 1:-1, :] if not just_one else x20s[1, 1:-1, :]
+
+    ###########################################################################
+    # Problem formulation - Formulation #######################################
+    ###########################################################################
+    def num_optimization_variables(self) -> int:
+        return self.num_control_points
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
@@ -47,12 +50,15 @@ class IGradSolver(IPOPTSolver):
     # Utility #################################################################
     ###########################################################################
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        mid = torch.tensor(z.astype(np.float64)).view(self.num_control_points, 2).double()
+        mid = torch.tensor(z).view(self.num_control_points, 2).float()
         mid.requires_grad = True
 
         start_point = self._env.ego.position.unsqueeze(0)
         end_point = self._goal.unsqueeze(0)
         control_points = torch.cat((start_point, mid, end_point))
+
+        print(control_points)
+
         path = lagrange_interpolation(control_points, num_samples=self.T, deg=self.num_control_points + 2)
 
         x4 = self.env.ego.expand_trajectory(path, dt=self.env.dt)[:, 0:4]
