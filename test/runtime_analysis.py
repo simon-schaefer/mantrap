@@ -79,7 +79,7 @@ def measure_igrad_objective(horizon: int, **kwargs):
     solver.objective(z=x0)
 
 
-def measure_cgrad_objective(horizon: int, **kwargs):
+def measure_sgrad_objective(horizon: int, **kwargs):
     solver = SGradSolver(**kwargs, verbose=False, T=horizon)
     x0 = straight_line(start_pos=kwargs["sim"].ego.position, end_pos=solver.goal, steps=horizon).detach().numpy()
     solver.objective(z=x0)
@@ -91,7 +91,7 @@ def measure_igrad_gradient(horizon: int, **kwargs):
     solver.gradient(z=x0)
 
 
-def measure_cgrad_gradient(horizon: int, **kwargs):
+def measure_sgrad_gradient(horizon: int, **kwargs):
     solver = SGradSolver(**kwargs, verbose=False, T=horizon)
     x0 = straight_line(start_pos=kwargs["sim"].ego.position, end_pos=solver.goal, steps=horizon).detach().numpy()
     solver.gradient(z=x0)

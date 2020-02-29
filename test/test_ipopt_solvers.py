@@ -8,7 +8,7 @@ from mantrap.constants import constraint_min_distance
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation import PotentialFieldSimulation
 from mantrap.simulation.simulation import GraphBasedSimulation
-from mantrap.solver import CGradSolver, IGradSolver, SGradSolver
+from mantrap.solver import SGradSolver, IGradSolver, SGradSolver
 from mantrap.solver.ipopt_solver import IPOPTSolver
 
 
@@ -18,9 +18,7 @@ from mantrap.solver.ipopt_solver import IPOPTSolver
         (IGradSolver, {"t_planning": 5, "num_constraints": 10, "num_control_points": 1}),
         (IGradSolver, {"t_planning": 10, "num_constraints": 20, "num_control_points": 2}),
         (IGradSolver, {"t_planning": 10, "num_constraints": 20, "num_control_points": 4}),
-        (SGradSolver, {"t_planning": 10, "num_constraints": 20}),
-        (SGradSolver, {"t_planning": 5, "num_constraints": 10}),
-        (CGradSolver, {"t_planning": 10, "num_constraints": 20 + 2 * 10})
+        (SGradSolver, {"t_planning": 10, "num_constraints": 20 + 2 * 10})
     ]
 )
 class TestIPOPTSolvers:
@@ -120,10 +118,10 @@ class TestIPOPTSolvers:
             assert torch.all(sim.axes[1][0] <= x[:, 1]) and torch.all(x[:, 1] <= sim.axes[1][1])
 
 
-def test_c_grad_solver():
+def test_s_grad_solver():
     env = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.5])})
     env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
-    c_grad_solver = CGradSolver(env, goal=torch.tensor([5, 0]), t_planning=10, verbose=False)
+    c_grad_solver = SGradSolver(env, goal=torch.tensor([5, 0]), t_planning=10, verbose=False)
 
     from mantrap.utility.primitives import square_primitives
     x0 = square_primitives(start=env.ego.position, end=c_grad_solver.goal, dt=env.dt, steps=10)[1]
