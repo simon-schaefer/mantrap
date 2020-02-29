@@ -23,14 +23,18 @@ sim_social_forces_max_interaction_distance = 2.0  # [m] maximal distance between
 # solver parameters ###################
 #######################################
 solver_horizon = 5  # number of future time-steps to be taken into account
+solver_constraint_limit = 1e-3  # limit of sum of constraints to be fulfilled
 
-ipopt_max_solver_steps = 100  # maximal number of IPOPT solver iterations.
-ipopt_max_solver_cpu_time = 1.0  # [s] maximal IPOPT solver CPU time.
+ipopt_max_steps = 100  # maximal number of IPOPT solver iterations.
+ipopt_max_cpu_time = 1.0  # [s] maximal IPOPT solver CPU time.
 
 constraint_min_distance = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 
 orca_agent_radius = 1.0  # ado collision radius [m].
 orca_agent_safe_dt = 10.0  # safe time for agent [s].
+
+mcts_max_steps = 1000  # maximal number of samples.
+mcts_max_cpu_time = 1.0  # [s] maximal sampling CPU time.
 
 #######################################
 # visualization parameters ############

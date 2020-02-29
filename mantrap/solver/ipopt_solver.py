@@ -7,7 +7,7 @@ import joblib
 import numpy as np
 import torch
 
-from mantrap.constants import ipopt_max_solver_steps, ipopt_max_solver_cpu_time
+from mantrap.constants import ipopt_max_steps, ipopt_max_cpu_time
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver.solver import Solver
 
@@ -21,8 +21,8 @@ class IPOPTSolver(Solver):
     def solve_single_optimization(
         self,
         z0: torch.Tensor = None,
-        max_iter: int = ipopt_max_solver_steps,
-        max_cpu_time: float = ipopt_max_solver_cpu_time,
+        max_iter: int = ipopt_max_steps,
+        max_cpu_time: float = ipopt_max_cpu_time,
         approx_jacobian: bool = False,
         approx_hessian: bool = True,
         check_derivative: bool = False,
@@ -111,10 +111,10 @@ class IPOPTSolver(Solver):
     ###########################################################################
     def jacobian(self, z: np.ndarray) -> np.ndarray:
         if self.is_unconstrained:
-            jacobian = np.array([])
-        else:
-            x4, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-            jacobian = np.concatenate([m.jacobian(x4, grad_wrt=grad_wrt) for m in self._constraint_modules.values()])
+            return np.array([])
+
+        x4, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
+        jacobian = np.concatenate([m.jacobian(x4, grad_wrt=grad_wrt) for m in self._constraint_modules.values()])
 
         logging.debug(f"Constraint jacobian function computed")
         return jacobian
@@ -124,11 +124,6 @@ class IPOPTSolver(Solver):
     # hessian = np.eye(3*self.O)
     def hessian(self, z, lagrange=None, obj_factor=None) -> np.ndarray:
         raise NotImplementedError
-
-    def constraints_fulfilled(self) -> Union[bool, None]:
-        if len(self._optimization_log) == 0:
-            return None
-        return self._optimization_log["inf_primal"][-1] < 1e-6
 
     ###########################################################################
     # Visualization & Logging #################################################

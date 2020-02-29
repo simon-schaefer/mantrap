@@ -115,7 +115,7 @@ class TestIPOPTSolvers:
         assert torch.norm(x[0, 0:2] - sim.ego.position).item() < 1e-3
         assert torch.norm(x[-1, 0:2] - solver.goal) <= torch.norm(x[0, 0:2] - solver.goal)
 
-        if solver.constraints_fulfilled():  # optimization variable bound constraint
+        if solver._optimization_log["inf_overall"][-1] < 1e-6:  # optimization variable bound constraint
             assert torch.all(sim.axes[0][0] <= x[:, 0]) and torch.all(x[:, 0] <= sim.axes[0][1])
             assert torch.all(sim.axes[1][0] <= x[:, 1]) and torch.all(x[:, 1] <= sim.axes[1][1])
 

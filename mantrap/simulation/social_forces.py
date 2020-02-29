@@ -160,7 +160,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
             for other in self._ado_ghosts:
                 if ghost.agent.id == other.agent.id:  # ghosts from the same parent agent dont repulse each other
                     continue
-                distance = torch.sub(graph[f"{ghost.id}_{k}_position"], graph[f"{other.id}_{k}_position"]).data
+                distance = torch.sub(graph[f"{ghost.id}_{k}_position"], graph[f"{other.id}_{k}_position"])
                 if torch.norm(distance) > sim_social_forces_max_interaction_distance:
                     continue
                 else:
@@ -185,7 +185,6 @@ class SocialForcesSimulation(GraphBasedSimulation):
     ###########################################################################
     # Simulation Graph over time-horizon ######################################
     ###########################################################################
-
     def build_connected_graph(self, **kwargs) -> Dict[str, torch.Tensor]:
         assert any([x in kwargs.keys() for x in ["ego_controls", "ego_trajectory", "t_horizon"]])
 

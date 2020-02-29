@@ -88,15 +88,16 @@ class Solver:
 
             ego_controls = self.determine_ego_controls(**solver_kwargs)
             assert check_ego_controls(ego_controls, t_horizon=self.T - 1)
-            logging.info(f"solver @k={k}: ego optimized controls = {ego_controls.tolist()}")
-
-            # Forward simulate environment.
-            ado_state, ego_state = self._env.step(ego_control=ego_controls[0, :])
 
             # Logging.
             ado_trajectories[k] = self.env.predict_w_controls(controls=ego_controls).detach()
-            x5_opt[k + 1, :] = ego_state.detach()
             x5_opt_planned[k] = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt).detach()
+            x5_opt[k + 1, :] = x5_opt_planned[k, 0, :].detach()
+            logging.info(f"solver @k={k}: ego optimized controls = {ego_controls.tolist()}")
+            logging.info(f"solver @k={k}: ego optimized path = {x5_opt_planned[k, :, 0:2].tolist()}")
+
+            # Forward simulate environment.
+            ado_state, ego_state = self._env.step(ego_control=ego_controls[0, :])
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 2 optimization steps instead of max_steps).
@@ -153,15 +154,16 @@ class Solver:
     def constraints_modules() -> List[str]:
         raise NotImplementedError
 
-    def constraints(self, z: np.ndarray) -> np.ndarray:
+    def constraints(self, z: np.ndarray, return_violation: bool = False) -> np.ndarray:
         if self.is_unconstrained:
-            constraints = np.array([])
-        else:
-            x4 = self.z_to_ego_trajectory(z)
-            constraints = np.concatenate([m.constraint(x4) for m in self._constraint_modules.values()])
+            return np.array([]) if not return_violation else (np.array([]), 0.0)
+
+        x4 = self.z_to_ego_trajectory(z)
+        constraints = np.concatenate([m.constraint(x4) for m in self._constraint_modules.values()])
+        violation = float(np.sum([m.compute_violation() for m in self._constraint_modules.values()]))
 
         logging.debug(f"Constraints vector = {constraints}")
-        return constraints
+        return constraints if not return_violation else (constraints, violation)
 
     @property
     def is_unconstrained(self) -> bool:
@@ -190,10 +192,10 @@ class Solver:
     ###########################################################################
     # Visualization & Logging #################################################
     ###########################################################################
-    def intermediate_log(self, iter_count: int, obj_value: float, inf_pr: float):
+    def intermediate_log(self, iter_count: int, obj_value: float, inf_value: float):
         self._optimization_log["iter_count"].append(iter_count)
         self._optimization_log["obj_overall"].append(obj_value)
-        self._optimization_log["inf_primal"].append(inf_pr)
+        self._optimization_log["inf_overall"].append(inf_value)
 
         # Log recent trial (trajectory solutions that have been tried).
         for key, trials in self._variables_latest.items():
@@ -211,7 +213,7 @@ class Solver:
         for key, value in kwargs.items():
             self._variables_latest[key].append(value)
 
-    def log_and_clean_up(self, tag: str = None):
+    def log_and_clean_up(self, tag: str = None, **vis_kwargs):
         """Clean up optimization logs and reset optimization parameters.
         IPOPT determines the CPU time including the intermediate function, therefore if we would plot at every step,
         we would loose valuable optimization time. Therefore the optimization progress is plotted all at once at the
@@ -231,14 +233,14 @@ class Solver:
             module.clean_up()
 
         # Logging.
-        do_logging = len(self._optimization_log) > 0 and all([len(v) > 2 for v in self._optimization_log.values()])
+        do_logging = len(self._optimization_log) > 0
         if do_logging:
             num_optimization_steps = self._optimization_log["iter_count"][-1]
             obj_dict = {n: f"{xs[0]:.4f} => {xs[-1]:.4f}" for n, xs in self._optimization_log.items() if "obj" in n}
             inf_dict = {n: f"{xs[0]:.4f} => {xs[-1]:.4f}" for n, xs in self._optimization_log.items() if "inf" in n}
-            logging.info(f"ipopt optimization [{tag}] finished after {num_optimization_steps} steps")
-            logging.info(f"ipopt optimization [{tag}]: {obj_dict}")
-            logging.info(f"ipopt optimization [{tag}]: {inf_dict}")
+            logging.info(f"optimization [{tag}] finished after {num_optimization_steps} steps")
+            logging.info(f"optimization [{tag}]: {obj_dict}")
+            logging.info(f"optimization [{tag}]: {inf_dict}")
 
         # Plotting only makes sense if you see some progress in the optimization, i.e. compare and figure out what
         # the current optimization step has changed.
@@ -248,7 +250,7 @@ class Solver:
             tag = "optimisation" if tag is None else tag
             output_directory_path = build_os_path(f"test/graphs/{name_tag}", make_dir=True, free=False)
             output_path = os.path.join(output_directory_path, tag)
-            visualize_optimization(self._optimization_log, env=self._env, file_path=output_path)
+            visualize_optimization(self._optimization_log, env=self._env, file_path=output_path, **vis_kwargs)
 
         # Reset optimization logging parameters for next optimization.
         self._optimization_log = defaultdict(deque)

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Union
 
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
@@ -39,26 +39,33 @@ def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env:
     anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
 
 
-def visualize_optimization(optimization_log: Dict[str, Any], env: GraphBasedSimulation, file_path: str):
-    assert all([key in optimization_log.keys() for key in ["iter_count", "x4", "x4_trials"]])
+def visualize_optimization(
+    log: Dict[str, Any],
+    env: GraphBasedSimulation,
+    file_path: str,
+    last_only: bool = False,
+    vis_keys: List[str] = None
+):
+    assert all([key in log.keys() for key in ["iter_count", "x4", "x4_trials"]])
 
-    vis_keys = [x for x in ["obj", "inf", "grad"] if any([x in key for key in optimization_log.keys()])]
-    horizon = optimization_log["x4"][0].shape[0]
+    vis_keys_default = [x for x in ["obj", "inf", "grad"] if any([x in key for key in log.keys()])]
+    vis_keys = vis_keys_default if vis_keys is None else vis_keys
+    horizon = log["x4"][0].shape[0]
 
     fig = plt.figure(figsize=(15, 15), constrained_layout=True)
-    grid = plt.GridSpec(len(vis_keys) + 4, len(vis_keys), wspace=0.4, hspace=0.3, figure=fig)
+    grid = plt.GridSpec(len(vis_keys) + 4, max(len(vis_keys), 1), wspace=0.4, hspace=0.3, figure=fig)
     axs = list()
-    axs.append(fig.add_subplot(grid[: len(vis_keys), :]))
-    axs.append(fig.add_subplot(grid[-4, :]))
-    axs.append(fig.add_subplot(grid[-3, :]))
-    axs.append(fig.add_subplot(grid[-2, :]))
+    axs.append(fig.add_subplot(grid[: max(len(vis_keys), 1), :]))
+    axs.append(fig.add_subplot(grid[max(len(vis_keys), 1), :]))
+    axs.append(fig.add_subplot(grid[max(len(vis_keys), 1) + 1, :]))
+    axs.append(fig.add_subplot(grid[max(len(vis_keys), 1) + 2, :]))
     for j, _ in enumerate(vis_keys):
-        axs.append(fig.add_subplot(grid[-1, j]))
+        axs.append(fig.add_subplot(grid[max(len(vis_keys), 1) + 3, j]))
 
     def update(k):
         time_axis = np.linspace(env.sim_time, env.sim_time + horizon * env.dt, num=horizon)
 
-        x4 = optimization_log["x4"][k]
+        x4 = log["x4"][k]
         ado_traj = env.predict_w_trajectory(trajectory=x4)
         ado_traj_wo = env.predict_wo_ego(t_horizon=x4.shape[0])
 
@@ -72,10 +79,10 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: GraphBasedSimu
         axs[0].plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label="ego")
         _add_agent_representation(env.ego.state, env.ego.color, "ego", ax=axs[0])
 
-        ego_traj_trials = optimization_log["x4_trials"][k]
+        ego_traj_trials = log["x4_trials"][k]
         for x4_trial in ego_traj_trials:
             x4_trial_np = x4_trial.detach().numpy()
-            axs[0].plot(x4_trial_np[:, 0], x4_trial_np[:, 1], "--", color=env.ego.color, label="ego_trials")
+            axs[0].plot(x4_trial_np[:, 0], x4_trial_np[:, 1], "--", color=env.ego.color, alpha=0.02)
 
         # Plot current and base resulting simulated ado trajectories in the scene.
         for i in range(env.num_ado_ghosts):
@@ -88,11 +95,12 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: GraphBasedSimu
             _add_agent_representation(env.ado_ghosts[i].agent.state, ado_color, ado_id, ax=axs[0])
             axs[0].plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "--", color=ado_color, label=f"{ado_id}_wo")
 
+        optimization_step = log["iter_count"][k]
         axs[0].set_xlim(env.axes[0])
         axs[0].set_ylim(env.axes[1])
         axs[0].grid()
         axs[0].legend()
-        axs[0].set_title(f"IPOPT Optimization - Step {k} - Horizon {horizon}")
+        axs[0].set_title(f"Optimization - Step {optimization_step} - Horizon {horizon}")
 
         # Plot agent velocities for resulting solution vs base-line ego trajectory for current optimization step.
         ado_velocity_norm = np.linalg.norm(ado_traj[:, :, :, 2:4].detach().numpy(), axis=3)
@@ -126,18 +134,22 @@ def visualize_optimization(optimization_log: Dict[str, Any], env: GraphBasedSimu
         # Plot several parameter describing the optimization process, such as objective value, gradient and
         # the constraints (primal) infeasibility.
         for i, vis_key in enumerate(vis_keys):
-            for name, data in optimization_log.items():
+            for name, data in log.items():
                 if vis_key not in name:
                     continue
-                axs[i + 4].plot(optimization_log["iter_count"][:k], np.log(np.asarray(data[:k]) + 1e-8), label=name)
+                axs[i + 4].plot(log["iter_count"][:k], np.log(np.asarray(data[:k]) + 1e-8), label=name)
             axs[i + 4].set_title(f"log_{vis_key}")
             axs[i + 4].legend()
             axs[i + 4].grid()
 
         return axs
 
-    anim = FuncAnimation(fig, update, frames=optimization_log["iter_count"][-1], interval=200)
-    anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
+    if not last_only:
+        anim = FuncAnimation(fig, update, frames=len(log["iter_count"]), interval=200)
+        anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
+    else:
+        axs = update(len(log["iter_count"]) - 1)
+        plt.savefig(f"{file_path}.png")
     logging.info(f"Optimisation visualisation stored in {file_path}")
 
 
