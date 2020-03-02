@@ -25,7 +25,8 @@ class Solver:
         goal: torch.Tensor,
         t_planning: int = solver_horizon,
         objectives: List[Tuple[str, float]] = None,
-        verbose: bool = False,
+        constraints: List[str] = None,
+        verbose: int = 0,
         **solver_params
     ):
         """Initialise solver class by building objective and constraint modules as defined within the specific
@@ -35,8 +36,9 @@ class Solver:
         :param: sim: simulation environment the solver's forward simulations are based on.
         :param: goal: goal state (position) of the robot (2).
         :param: t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
-        :param: verbose: debugging flag (logging, visualisation -> comp. expensive !).
+        :param: verbose: debugging flag (0: nothing, 1: +printing, 2: +plotting).
         :param: objectives: List of objective module names and according weights.
+        :param constraints: List of constraint module names.
         """
         assert goal.size() == torch.Size([2])
         self._env = sim
@@ -52,7 +54,8 @@ class Solver:
         # visualization.
         objective_modules = self.objective_defaults() if objectives is None else objectives
         self._objective_modules = self._build_objective_modules(modules=objective_modules)
-        self._constraint_modules = self._build_constraint_modules(modules=self.constraints_modules())
+        constraint_modules = self.constraints_defaults() if constraints is None else constraints
+        self._constraint_modules = self._build_constraint_modules(modules=constraint_modules)
 
         # Logging variables. Using default-dict(deque) whenever a new entry is created, it does not have to be checked
         # whether the related key is already existing, since if it is not existing, it is created with a queue as
@@ -61,6 +64,12 @@ class Solver:
         self._optimization_log = defaultdict(deque)
         self._variables_latest = defaultdict(deque)
         self._iteration = 0
+
+        # Initialize child class.
+        self.initialize(**solver_params)
+
+        # Sanity checks.
+        assert self.num_optimization_variables() > 0
 
     def solve(self, time_steps: int, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal simulation with the current scene as initial condition.
@@ -73,16 +82,16 @@ class Solver:
         :return: ado trajectories [horizon, num_ados, modes, T, 5] conditioned on the derived ego trajectory
         :return: planned ego trajectory for every step [horizon, T, 2].
         """
-        x5_opt = torch.zeros((time_steps, 5))
-        ado_trajectories = torch.zeros((time_steps - 1, self._env.num_ados, self._env.num_ado_modes, self.T, 5))
-        x5_opt_planned = torch.zeros((time_steps - 1, self.T, 5))
+        x5_opt = torch.zeros((time_steps + 1, 5))
+        ado_trajectories = torch.zeros((time_steps, self._env.num_ados, self._env.num_ado_modes, self.T, 5))
+        x5_opt_planned = torch.zeros((time_steps, self.T, 5))
 
         # Initialize trajectories with current state and simulation time.
         x5_opt[0, :] = self._env.ego.state_with_time
         ado_trajectories[0] = self.env.predict_wo_ego(t_horizon=self.T).detach()
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
-        for k in range(time_steps - 1):
+        for k in range(time_steps):
             logging.info(f"solver @ time-step k = {k}")
             self._iteration = k
 
@@ -92,7 +101,7 @@ class Solver:
             # Logging.
             ado_trajectories[k] = self.env.predict_w_controls(controls=ego_controls).detach()
             x5_opt_planned[k] = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt).detach()
-            x5_opt[k + 1, :] = x5_opt_planned[k, 0, :].detach()
+            x5_opt[k + 1, :] = x5_opt_planned[k, 1, :].detach()  # 0th step of x5_opt_planned is current state (!)
             logging.info(f"solver @k={k}: ego optimized controls = {ego_controls.tolist()}")
             logging.info(f"solver @k={k}: ego optimized path = {x5_opt_planned[k, :, 0:2].tolist()}")
 
@@ -100,11 +109,11 @@ class Solver:
             ado_state, ego_state = self._env.step(ego_control=ego_controls[0, :])
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
-            # contain only states up to now (i.e. k + 2 optimization steps instead of max_steps).
+            # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
             if torch.norm(ego_state[0:2] - self._goal) < 0.1:
-                x5_opt = x5_opt[:k + 2, :].detach()
-                ado_trajectories = ado_trajectories[:k + 2].detach()
-                x5_opt_planned = x5_opt_planned[:k + 2].detach()
+                x5_opt = x5_opt[:k + 1, :].detach()
+                ado_trajectories = ado_trajectories[:k + 1].detach()
+                x5_opt_planned = x5_opt_planned[:k + 1].detach()
                 break
 
         logging.info(f"Finishing up trajectory optimization solving")
@@ -117,6 +126,17 @@ class Solver:
 
         :return: ego_controls: control inputs of ego agent for whole planning horizon.
         """
+        raise NotImplementedError
+
+    ###########################################################################
+    # Initialization ##########################################################
+    ###########################################################################
+    @abstractmethod
+    def initialize(self, **solver_params):
+        raise NotImplementedError
+
+    @abstractmethod
+    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
         raise NotImplementedError
 
     ###########################################################################
@@ -151,7 +171,7 @@ class Solver:
         return lb, ub
 
     @staticmethod
-    def constraints_modules() -> List[str]:
+    def constraints_defaults() -> List[str]:
         raise NotImplementedError
 
     def constraints(self, z: np.ndarray, return_violation: bool = False) -> np.ndarray:
@@ -244,7 +264,7 @@ class Solver:
 
         # Plotting only makes sense if you see some progress in the optimization, i.e. compare and figure out what
         # the current optimization step has changed.
-        if self.is_verbose and do_logging:
+        if self.is_verbose > 1 and do_logging:
             from mantrap.evaluation.visualization import visualize_optimization
             name_tag = self.__class__.__name__.lower()
             tag = "optimisation" if tag is None else tag
@@ -275,6 +295,17 @@ class Solver:
     def T(self) -> int:
         return self._solver_params["t_planning"]
 
+    @property
+    def objective_modules(self) -> Dict[str, ObjectiveModule]:
+        return self._objective_modules
+
+    @property
+    def constraint_modules(self) -> Dict[str, ConstraintModule]:
+        return self._constraint_modules
+
+    ###########################################################################
+    # Utility parameters ######################################################
+    ###########################################################################
     @property
     def is_verbose(self) -> bool:
         return self._solver_params["verbose"]

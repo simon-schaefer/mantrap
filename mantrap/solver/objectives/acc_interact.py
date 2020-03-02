@@ -11,8 +11,8 @@ class InteractionAccelerationModule(ObjectiveModule):
         assert env.num_ado_ghosts > 0 and env.ego is not None
 
         self._env = env
-        ado_states_wo = self._env.predict_wo_ego(t_horizon=self.T)
-        self._derivative_2 = Derivative2(horizon=self.T, dt=self._env.dt, num_axes=2)
+        ado_states_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)
+        self._derivative_2 = Derivative2(horizon=self.T + 1, dt=self._env.dt, num_axes=2)
         self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
 
     def _compute(self, x4: torch.Tensor) -> torch.Tensor:

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 import torch
@@ -9,14 +9,16 @@ from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 class MinDistanceModule(ConstraintModule):
 
-    def __init__(self, **module_kwargs):
+    def __init__(self, horizon: int, **module_kwargs):
+        self._env = None
+        super(MinDistanceModule, self).__init__(horizon, **module_kwargs)
+
+    def initialize(self, **module_kwargs):
         assert all([key in module_kwargs.keys() for key in ["env"]])
         self._env = module_kwargs["env"]
-        super(MinDistanceModule, self).__init__(**module_kwargs)
 
-    def constraint_bounds(self) -> Tuple[np.ndarray, np.ndarray]:
-        num_constraints = self.T * self._env.num_ado_ghosts
-        return np.ones(num_constraints) * constraint_min_distance, [None] * num_constraints
+    def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
+        return np.ones(self.num_constraints) * constraint_min_distance, [None] * self.num_constraints
 
     def _compute(self, x4: torch.Tensor) -> torch.Tensor:
         horizon = x4.shape[0]
@@ -29,3 +31,7 @@ class MinDistanceModule(ConstraintModule):
                 ego_position = x4[k, 0:2]
                 constraints[m, k] = torch.norm(ado_position - ego_position)
         return constraints.flatten()
+
+    @property
+    def num_constraints(self) -> int:
+        return (self.T + 1) * self._env.num_ado_ghosts

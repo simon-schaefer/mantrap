@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from collections import deque
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 import torch
@@ -14,6 +14,9 @@ class ConstraintModule:
     def __init__(self, horizon: int, **module_kwargs):
         self.T = horizon
 
+        # Initialize module.
+        self.initialize(**module_kwargs)
+
         # Determine constraint bounds (defined in child classes).
         self.lower, self.upper = self.constraint_bounds()
         assert len(self.lower) == len(self.upper)
@@ -24,11 +27,18 @@ class ConstraintModule:
         self._constraint_current = None
         self._log_constraint = deque()
 
+        # Sanity checks.
+        assert self.num_constraints == len(self.lower) == len(self.upper)
+
+    @abstractmethod
+    def initialize(self, **module_kwargs):
+        raise NotImplementedError
+
     ###########################################################################
     # Constraint Formulation ##################################################
     ###########################################################################
     @abstractmethod
-    def constraint_bounds(self) -> Tuple[np.ndarray, np.ndarray]:
+    def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
         raise NotImplementedError
 
     def constraint(self, x4: torch.Tensor) -> np.ndarray:
@@ -52,6 +62,12 @@ class ConstraintModule:
     def _compute(self, x4: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
+    def compute_violation(self) -> float:
+        no_violation = np.zeros(self.num_constraints)
+        violation_lower = self.lower - self._constraint_current if None not in self.lower else no_violation
+        violation_upper = self._constraint_current - self.upper if None not in self.upper else no_violation
+        return float(np.sum(np.maximum(no_violation, violation_lower) + np.maximum(no_violation, violation_upper)))
+
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
@@ -60,22 +76,19 @@ class ConstraintModule:
         logging.debug(f"Module {self.__str__()} computed")
         return self._constraint_current
 
-    def compute_violation(self) -> float:
-        no_violation = np.zeros(self.num_constraints)
-        violation_lower = self.lower - self._constraint_current if None not in self.lower else no_violation
-        violation_upper = self._constraint_current - self.upper if None not in self.upper else no_violation
-        return float(np.sum(np.maximum(no_violation, violation_lower) + np.maximum(no_violation, violation_upper)))
-
     def logging(self):
         self._log_constraint.append(self.compute_violation())
 
     def clean_up(self):
         self._log_constraint = deque()
 
+    ###########################################################################
+    # Constraint Properties ###################################################
+    ###########################################################################
     @property
     def logs(self) -> List[float]:
         return list(self._log_constraint)
 
     @property
     def num_constraints(self) -> int:
-        return len(self.lower)
+        raise NotImplementedError  # should be absolute input-independent number for sanity checking

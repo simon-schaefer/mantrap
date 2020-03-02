@@ -8,15 +8,10 @@ import numpy as np
 import torch
 
 from mantrap.constants import ipopt_max_steps, ipopt_max_cpu_time
-from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver.solver import Solver
 
 
 class IPOPTSolver(Solver):
-
-    def __init__(self, sim: GraphBasedSimulation, goal: torch.Tensor, **solver_kwargs):
-        super(IPOPTSolver, self).__init__(sim, goal, **solver_kwargs)
-        assert self.T > 2, "planning horizon must be larger 2 time-steps due to auto-grad structure"
 
     def solve_single_optimization(
         self,
@@ -27,7 +22,8 @@ class IPOPTSolver(Solver):
         approx_hessian: bool = True,
         check_derivative: bool = False,
         return_controls: bool = False,
-        iteration_tag: str = None
+        iteration_tag: str = None,
+        **kwargs
     ) -> Union[Tuple[torch.Tensor, torch.Tensor, float], torch.Tensor]:
         """Solve optimization problem by finding constraint bounds, constructing ipopt optimization problem and
         solve it using the parameters defined in the function header."""
@@ -76,6 +72,7 @@ class IPOPTSolver(Solver):
 
     def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
         logging.info("solver starting ipopt optimization procedure")
+        use_multiprocessing = solver_kwargs["multiprocessing"] if "multiprocessing" in solver_kwargs.keys() else True
         z0s = self.z0s_default()
 
         def evaluate(i: int) -> Tuple[float, torch.Tensor]:
@@ -83,16 +80,15 @@ class IPOPTSolver(Solver):
             _, z_opt, obj_opt = self.solve_single_optimization(z0=z0s[i], **solver_kwargs, return_controls=True)
             return obj_opt, z_opt
 
-        results = joblib.Parallel(n_jobs=8)(joblib.delayed(evaluate)(i) for i in range(z0s.shape[0]))
+        # Solve optimisation problem for each initial condition, either in multiprocessing or sequential.
+        if use_multiprocessing:
+            results = joblib.Parallel(n_jobs=8)(joblib.delayed(evaluate)(i) for i in range(z0s.shape[0]))
+        else:
+            results = [evaluate(i) for i in range(z0s.shape[0])]
+
+        # Return controls with minimal objective function result.
         z_opt_best = results[int(np.argmin([obj for obj, _ in results]))][1]
         return self.z_to_ego_controls(z_opt_best.detach().numpy())
-
-    ###########################################################################
-    # Initialization ##########################################################
-    ###########################################################################
-    @abstractmethod
-    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
-        raise NotImplementedError
 
     ###########################################################################
     # Optimization formulation - Objective ####################################

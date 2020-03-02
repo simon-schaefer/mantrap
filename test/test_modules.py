@@ -23,9 +23,9 @@ class TestObjectiveInteraction:
     def test_objective_far_and_near(module_class: ObjectiveModule.__class__):
         sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         sim.add_ado(position=torch.zeros(2))
-        x2_near = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), 10)
+        x2_near = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=11)
         x4_near = sim.ego.expand_trajectory(x2_near, dt=sim.dt)
-        x2_far = straight_line(torch.tensor([-5, 10.0]), torch.tensor([5, 10.0]), 10)
+        x2_far = straight_line(torch.tensor([-5, 10.0]), torch.tensor([5, 10.0]), steps=11)
         x4_far = sim.ego.expand_trajectory(x2_far, dt=sim.dt)
 
         module = module_class(horizon=10, env=sim)
@@ -36,7 +36,7 @@ class TestObjectiveInteraction:
         sim = SocialForcesSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         ado_pos, ado_vel, ado_goal = torch.zeros(2), torch.tensor([-1, 0]), torch.tensor([-5, 0])
         sim.add_ado(position=ado_pos, velocity=ado_vel, num_modes=2, weights=[0.1, 0.9], goal=ado_goal)
-        x4 = sim.ego.unroll_trajectory(controls=torch.ones((9, 2)), dt=sim.dt)
+        x4 = sim.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=sim.dt)
 
         module = module_class(horizon=10, env=sim)
         assert module.objective(x4) is not None
@@ -45,7 +45,7 @@ class TestObjectiveInteraction:
     def test_output(module_class: ObjectiveModule.__class__):
         sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         sim.add_ado(position=torch.zeros(2))
-        x4 = sim.ego.unroll_trajectory(controls=torch.ones((9, 2)), dt=sim.dt)
+        x4 = sim.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=sim.dt)
         x4.requires_grad = True
 
         module = module_class(horizon=10, env=sim)
@@ -58,7 +58,7 @@ class TestObjectiveInteraction:
             sim = sim_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
             sim.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=1)
             sim.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=1)
-            x4 = sim.ego.unroll_trajectory(controls=torch.ones((9, 2)) / 10.0, dt=sim.dt)
+            x4 = sim.ego.unroll_trajectory(controls=torch.ones((10, 2)) / 10.0, dt=sim.dt)
             x4.requires_grad = True
 
             module = module_class(horizon=10, env=sim)
@@ -78,10 +78,10 @@ class TestObjectiveInteraction:
 
 def test_objective_goal_distribution():
     goal = torch.tensor([4.1, 8.9])
-    x4 = torch.rand((10, 4))
+    x4 = torch.rand((11, 4))
 
     module = GoalModule(goal=goal, horizon=10, weight=1.0)
-    module.importance_distribution = torch.zeros(10)
+    module.importance_distribution = torch.zeros(module.importance_distribution.size())
     module.importance_distribution[3] = 1.0
 
     objective = module.objective(x4)

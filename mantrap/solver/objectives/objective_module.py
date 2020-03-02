@@ -27,12 +27,12 @@ class ObjectiveModule:
     ###########################################################################
 
     def objective(self, x4: torch.Tensor) -> float:
-        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True, t_horizon=self.T)
+        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True, t_horizon=self.T + 1)
         obj_value = self._compute(x4)
         return self._return_objective(float(obj_value.item()))
 
     def gradient(self, x4: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
-        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True, t_horizon=self.T)
+        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True, t_horizon=self.T + 1)
         assert grad_wrt.requires_grad
 
         objective = self._compute(x4)

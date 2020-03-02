@@ -10,7 +10,7 @@ class InteractionPositionModule(ObjectiveModule):
         assert env.num_ado_ghosts > 0 and env.ego is not None
 
         self._env = env
-        self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.T)[:, :, :, 0:2]
+        self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)[:, :, :, 0:2]
 
     def _compute(self, x4: torch.Tensor) -> torch.Tensor:
         graphs = self._env.build_connected_graph(ego_trajectory=x4, ego_grad=False, ado_grad=False)

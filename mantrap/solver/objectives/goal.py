@@ -10,7 +10,7 @@ class GoalModule(ObjectiveModule):
 
         super(GoalModule, self).__init__(**module_kwargs)
         self._goal = goal
-        self._distribution = torch.linspace(0, 1, steps=self.T) ** 4
+        self._distribution = torch.linspace(0, 1, steps=self.T + 1) ** 3
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
 
     def _compute(self, x4: torch.Tensor) -> torch.Tensor:
@@ -23,5 +23,5 @@ class GoalModule(ObjectiveModule):
 
     @importance_distribution.setter
     def importance_distribution(self, weights: torch.Tensor):
-        assert weights.numel() == self.T, "distribution has invalid length"
+        assert weights.numel() == self.T + 1, "distribution has invalid length"
         self._distribution = weights

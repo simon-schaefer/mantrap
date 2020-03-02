@@ -82,7 +82,7 @@ def test_step():
     ego_trajectory_y_exp = torch.linspace(
         ego_position[1].item(), ego_position[1].item() + ego_control[1].item() * sim.dt * num_steps, num_steps + 1
     )
-    ego_t_exp = torch.stack(
+    ego_t_exp = torch.transpose(torch.stack(
         (
             ego_trajectory_x_exp,
             ego_trajectory_y_exp,
@@ -90,7 +90,8 @@ def test_step():
             torch.ones(num_steps + 1) * ego_control[1],
             torch.linspace(0, num_steps * sim.dt, num_steps + 1),
         )
-    ).t
+    ), 0, 1)
+    print(ego_t_exp)
     assert torch.all(torch.eq(ego_trajectory, ego_t_exp[1:, :]))
 
 

@@ -1,7 +1,6 @@
 import pytest
 import torch
 
-from mantrap.constants import agent_speed_max
 from mantrap.utility.maths import Derivative2, lagrange_interpolation
 from mantrap.utility.primitives import square_primitives, straight_line
 

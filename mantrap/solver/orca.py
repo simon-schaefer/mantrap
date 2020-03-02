@@ -31,11 +31,6 @@ class ORCASolver(Solver):
     executed by the ego itself, instead of splitting it up between the two avoiding agents, as in the original ORCA
     implementation.
     """
-
-    def __init__(self, sim: GraphBasedSimulation, goal: torch.Tensor, verbose: bool = False, **solver_params):
-        super(ORCASolver, self).__init__(sim, goal, t_planning=1, verbose=verbose, objectives=None, **solver_params)
-        assert self._env.ego.__class__ == IntegratorDTAgent, "orca assumes ego to be holonomic and to single integrator"
-
     def determine_ego_controls(
         self,
         agent_radius: float = orca_agent_radius,
@@ -63,6 +58,17 @@ class ORCASolver(Solver):
         return velocity_new
 
     ###########################################################################
+    # Initialization ##########################################################
+    ###########################################################################
+    def initialize(self, **solver_params):
+        assert self.T == 1
+        assert len(self._objective_modules) == len(self._constraint_modules) == 0
+        assert self._env.ego.__class__ == IntegratorDTAgent, "orca assumes ego to be holonomic and to single integrator"
+
+    def num_optimization_variables(self) -> int:
+        return 2
+
+    ###########################################################################
     # Problem formulation #####################################################
     ###########################################################################
     @staticmethod
@@ -70,7 +76,7 @@ class ORCASolver(Solver):
         return []
 
     @staticmethod
-    def constraints_modules() -> List[str]:
+    def constraints_defaults() -> List[str]:
         return []
 
     ###########################################################################

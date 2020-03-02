@@ -5,7 +5,7 @@ import torch
 
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.primitives import square_primitives
-from mantrap.utility.shaping import check_ego_trajectory
+from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
 
 
 class SGradSolver(IPOPTSolver):
@@ -13,21 +13,24 @@ class SGradSolver(IPOPTSolver):
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
-    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
-        x20s = square_primitives(start=self.env.ego.position, end=self.goal, dt=self.env.dt, steps=self.T)
+    def initialize(self, **solver_params):
+        pass
 
-        u0s = torch.zeros((x20s.shape[0], self.T - 1, 2))
+    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
+        x20s = square_primitives(start=self.env.ego.position, end=self.goal, dt=self.env.dt, steps=self.T + 1)
+
+        u0s = torch.zeros((x20s.shape[0], self.T, 2))
         for i, x20 in enumerate(x20s):
             x40 = self.env.ego.expand_trajectory(path=x20, dt=self.env.dt)
             u0s[i] = self.env.ego.roll_trajectory(trajectory=x40, dt=self.env.dt)
 
-        return u0s if not just_one else u0s[1].reshape(-1, 2)
+        return u0s if not just_one else u0s[1].reshape(self.T, 2)
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
     ###########################################################################
     def num_optimization_variables(self) -> int:
-        return self.T - 1
+        return self.T
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
@@ -40,20 +43,21 @@ class SGradSolver(IPOPTSolver):
     # Optimization formulation - Constraints ##################################
     ###########################################################################
     @staticmethod
-    def constraints_modules() -> List[str]:
+    def constraints_defaults() -> List[str]:
         return ["max_speed", "min_distance"]
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        u2 = torch.from_numpy(z).view(self.T - 1, 2)
+        u2 = torch.from_numpy(z).view(self.T, 2)
         u2.requires_grad = True
         x4 = self.env.ego.unroll_trajectory(controls=u2, dt=self.env.dt)[:, 0:4]
-        assert check_ego_trajectory(x4, t_horizon=self.T, pos_and_vel_only=True)
+        assert check_ego_trajectory(x4, t_horizon=self.T + 1, pos_and_vel_only=True)
         return x4 if not return_leaf else (x4, u2)
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        u2 = torch.from_numpy(z).view(self.T - 1, 2)
+        u2 = torch.from_numpy(z).view(self.T, 2)
         u2.requires_grad = True
+        assert check_ego_controls(u2, t_horizon=self.T)
         return u2 if not return_leaf else (u2, u2)
