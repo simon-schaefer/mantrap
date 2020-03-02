@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from mantrap.constants import agent_speed_max
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.utility.maths import Derivative2
 from mantrap.utility.shaping import check_state
@@ -14,18 +13,25 @@ from mantrap.utility.shaping import check_state
 
 def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env: GraphBasedSimulation, file_path: str):
     fig, ax = plt.subplots(figsize=(15, 15), constrained_layout=True)
+    ado_traj_wo = env.predict_wo_ego(t_horizon=ado_traj.shape[0])
 
     def update(k):
-        ego_traj = env.ego.expand_trajectory(ego_opt_planned[k, :, :], dt=env.dt)
+        ego_traj = ego_opt_planned[k]
 
         ax.cla()
+
+        # Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as
+        # the resulting ado trajectories based on some simulation.
         ax.plot(ego_traj[:, 0].detach().numpy(), ego_traj[:, 1].detach().numpy(), "-", color=env.ego.color, label="ego")
         _add_agent_representation(ego_traj[0, :], env.ego.color, "ego", ax=ax)
+
+        # Plot current and base resulting simulated ado trajectories in the scene.
         for i in range(env.num_ado_ghosts):
             ia, im = env.ghost_to_ado_index(i)
             ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color
             _add_agent_representation(ado_traj[k, ia, im, 0, :], ado_color, ado_id, ax=ax)
-            plt.plot(ado_traj[k, ia, im, :, 0], ado_traj[k, ia, im, :, 1], "--", color=ado_color, label=ado_id)
+            plt.plot(ado_traj[k, ia, im, :, 0], ado_traj[k, ia, im, :, 1], "*-", color=ado_color, label=ado_id)
+            plt.plot(ado_traj_wo[ia, 0, k, 0], ado_traj_wo[ia, 0, k, 1], "--", color=ado_color, label=f"{ado_id}_wo")
 
         ax.set_xlim(env.axes[0])
         ax.set_ylim(env.axes[1])
@@ -163,15 +169,9 @@ def _add_agent_representation(state: torch.Tensor, color: np.ndarray, name: Unio
     # Add circle for agent itself.
     ado_circle = plt.Circle(state[0:2], 0.2, color=color, clip_on=True)
     ax.add_artist(ado_circle)
-    arrow_length = np.linalg.norm(state[2:4]) / agent_speed_max * 0.5
 
     # Add agent id description.
     if id is not None:
         ax.text(state[0], state[1], name, fontsize=8)
 
-    # Add arrow for orientation and speed.
-    rot = np.array([[np.cos(state[2]), -np.sin(state[2])], [np.sin(state[2]), np.cos(state[2])]])
-    darrow = rot.dot(np.array([1, 0])) * arrow_length
-    head_width = max(0.02, arrow_length / 10)
-    plt.arrow(state[0], state[1], darrow[0], darrow[1], head_width=head_width, head_length=0.1, fc="k", ec="k")
     return ax

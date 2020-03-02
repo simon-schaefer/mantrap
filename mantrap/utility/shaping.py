@@ -19,26 +19,27 @@ def check_weights(weights: torch.Tensor, num_ados: int = None, num_modes: int = 
     return is_correct
 
 
-def check_ego_path(primitives: torch.Tensor, num_primitives: int = None, t_horizon: int = None) -> bool:
+def check_ego_path(path: torch.Tensor, num_primitives: int = None, t_horizon: int = None) -> bool:
     is_correct = True
     if num_primitives is not None:
-        is_correct = is_correct and len(primitives.shape) == 3  # (num_primitives, t_horizon, 2)
-        is_correct = is_correct and primitives.shape[2] == 2
-        is_correct = is_correct and primitives.shape[0] == num_primitives
+        is_correct = is_correct and len(path.shape) == 3  # (num_primitives, t_horizon, 2)
+        is_correct = is_correct and path.shape[2] == 2
+        is_correct = is_correct and path.shape[0] == num_primitives
         if t_horizon is not None:
-            is_correct = is_correct and primitives.shape[1] == t_horizon
+            is_correct = is_correct and path.shape[1] == t_horizon
     else:
-        is_correct = is_correct and len(primitives.shape) == 2  # (t_horizon, 2)
+        is_correct = is_correct and len(path.shape) == 2  # (t_horizon, 2)
+        is_correct = is_correct and path.shape[1] == 2
         if t_horizon is not None:
-            is_correct = is_correct and primitives.shape[0] == t_horizon
+            is_correct = is_correct and path.shape[0] == t_horizon
     return is_correct
 
 
-def check_ego_controls(ego_policy: torch.Tensor, t_horizon: int = None) -> bool:
+def check_ego_controls(controls: torch.Tensor, t_horizon: int = None) -> bool:
     is_correct = True
-    is_correct = is_correct and len(ego_policy.shape) == 2  # (t_horizon, dims)
+    is_correct = is_correct and len(controls.shape) == 2  # (t_horizon, dims)
     if t_horizon is not None:
-        is_correct = is_correct and ego_policy.shape[0] == t_horizon
+        is_correct = is_correct and controls.shape[0] == t_horizon
     return is_correct
 
 

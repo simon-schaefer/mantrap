@@ -95,12 +95,13 @@ class Solver:
         :return: planned ego trajectory for every step [horizon, T, 2].
         """
         x5_opt = torch.zeros((time_steps + 1, 5))
-        ado_trajectories = torch.zeros((time_steps, self._env.num_ados, self._env.num_ado_modes, self.T, 5))
-        x5_opt_planned = torch.zeros((time_steps, self.T, 5))
+        ado_trajectories = torch.zeros((time_steps + 1, self._env.num_ados, self._env.num_ado_modes, self.T + 1, 5))
+        x5_opt_planned = torch.zeros((time_steps + 1, self.T + 1, 5))
 
         # Initialize trajectories with current state and simulation time.
-        x5_opt[0, :] = self._env.ego.state_with_time
-        ado_trajectories[0] = self.env.predict_wo_ego(t_horizon=self.T).detach()
+        x5_opt[0] = self._env.ego.state_with_time
+        ado_trajectories[0] = self.env.predict_wo_ego(t_horizon=self.T + 1).detach()
+        x5_opt_planned[0] = self.env.ego.unroll_trajectory(controls=torch.zeros((self.T, 2)), dt=self.env.dt).detach()
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
@@ -108,12 +109,12 @@ class Solver:
             self._iteration = k
 
             ego_controls = self.determine_ego_controls(**solver_kwargs)
-            assert check_ego_controls(ego_controls, t_horizon=self.T - 1)
+            assert check_ego_controls(ego_controls, t_horizon=self.T)
 
             # Logging.
-            ado_trajectories[k] = self.env.predict_w_controls(controls=ego_controls).detach()
-            x5_opt_planned[k] = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt).detach()
-            x5_opt[k + 1, :] = x5_opt_planned[k, 1, :].detach()  # 0th step of x5_opt_planned is current state (!)
+            ado_trajectories[k + 1] = self.env.predict_w_controls(controls=ego_controls).detach()
+            x5_opt_planned[k + 1] = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt).detach()
+            x5_opt[k + 1] = x5_opt_planned[k + 1, 1, :].detach()  # 0th step of x5_opt_planned is current state (!)
             logging.info(f"solver @k={k}: ego optimized controls = {ego_controls.tolist()}")
             logging.info(f"solver @k={k}: ego optimized path = {x5_opt_planned[k, :, 0:2].tolist()}")
 

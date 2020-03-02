@@ -1,6 +1,9 @@
+import importlib
+import inspect
 import glob
 import logging
 import os
+from typing import Callable, Dict
 
 
 def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> str:
@@ -34,3 +37,19 @@ def remove_bytes_from_logging(fn):
             return
         return fn(*args)
     return remove_bytes
+
+
+def load_functions_from_module(module: str, prefix: str = None) -> Dict[str, Callable]:
+    """Using importlib and inspect libraries load all functions (with prefix) from given module."""
+    function_dict = {}
+    module = importlib.import_module(module)
+    functions = [o for o in inspect.getmembers(module) if inspect.isfunction(o[1])]
+    for function_tuple in functions:
+        function_name, _ = function_tuple
+        if prefix is not None:
+            if function_name.startswith(prefix):
+                function_tag = function_name.replace(prefix, "")
+                function_dict[function_tag] = function_tuple[1]
+        else:
+            function_dict[function_name] = function_tuple[1]
+    return function_dict

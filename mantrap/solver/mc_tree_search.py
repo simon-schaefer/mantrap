@@ -26,7 +26,7 @@ class MonteCarloTreeSearch(Solver):
 
         # First of all evaluate the default trajectory as "baseline" for further trajectories.
         z0 = self.z0s_default(just_one=True).detach().numpy()
-        obj_best = inf_best, x4_best, u2_best = self._evaluate(z=z0)
+        obj_best, inf_best, x4_best, u2_best = self._evaluate(z=z0)
 
         # Then start sampling (MCTS) loop for finding more optimal trajectories.
         while sampling_iteration < max_iter and (time.time() - sampling_start_time) < max_cpu_time:

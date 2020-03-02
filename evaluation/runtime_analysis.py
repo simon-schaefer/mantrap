@@ -1,5 +1,3 @@
-import importlib
-import inspect
 import logging
 import time
 from typing import Callable, List
@@ -11,10 +9,45 @@ from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import agent_speed_max
 from mantrap.simulation import PotentialFieldSimulation
 from mantrap.solver import SGradSolver, IGradSolver
-from mantrap.utility.io import build_os_path
+from mantrap.utility.io import build_os_path, load_functions_from_module
 from mantrap.utility.primitives import straight_line
 
 
+def measure_igrad_objective(horizon: int, **kwargs):
+    solver = IGradSolver(**kwargs, verbose=False, T=horizon)
+    x0 = np.random.uniform(-10, 10, size=2)
+    solver.objective(z=x0)
+
+
+def measure_sgrad_objective(horizon: int, **kwargs):
+    solver = SGradSolver(**kwargs, verbose=False, T=horizon)
+    x0 = straight_line(start_pos=kwargs["sim"].ego.position, end_pos=solver.goal, steps=horizon).detach().numpy()
+    solver.objective(z=x0)
+
+
+def measure_igrad_gradient(horizon: int, **kwargs):
+    solver = IGradSolver(**kwargs, verbose=False, T=horizon)
+    x0 = np.random.uniform(-10, 10, size=2)
+    solver.gradient(z=x0)
+
+
+def measure_sgrad_gradient(horizon: int, **kwargs):
+    solver = SGradSolver(**kwargs, verbose=False, T=horizon)
+    x0 = straight_line(start_pos=kwargs["sim"].ego.position, end_pos=solver.goal, steps=horizon).detach().numpy()
+    solver.gradient(z=x0)
+
+
+def measure_sim_prediction(horizon: int, **kwargs):
+    kwargs["sim"].predict_wo_ego(t_horizon=horizon)
+
+
+def measure_sim_connected_graph(horizon: int, **kwargs):
+    kwargs["sim"].build_connected_graph(graph_input=torch.ones((horizon, 2)))
+
+
+###########################################################################
+# Analysis Backend ########################################################
+###########################################################################
 class RunTimeAnalysis:
 
     def __init__(self, num_agents: List[float], horizons: List[float]):
@@ -71,45 +104,12 @@ class RunTimeAnalysis:
 
 
 ###########################################################################
-# Functions ###############################################################
+# Script ##################################################################
 ###########################################################################
-def measure_igrad_objective(horizon: int, **kwargs):
-    solver = IGradSolver(**kwargs, verbose=False, T=horizon)
-    x0 = np.random.uniform(-10, 10, size=2)
-    solver.objective(z=x0)
-
-
-def measure_sgrad_objective(horizon: int, **kwargs):
-    solver = SGradSolver(**kwargs, verbose=False, T=horizon)
-    x0 = straight_line(start_pos=kwargs["sim"].ego.position, end_pos=solver.goal, steps=horizon).detach().numpy()
-    solver.objective(z=x0)
-
-
-def measure_igrad_gradient(horizon: int, **kwargs):
-    solver = IGradSolver(**kwargs, verbose=False, T=horizon)
-    x0 = np.random.uniform(-10, 10, size=2)
-    solver.gradient(z=x0)
-
-
-def measure_sgrad_gradient(horizon: int, **kwargs):
-    solver = SGradSolver(**kwargs, verbose=False, T=horizon)
-    x0 = straight_line(start_pos=kwargs["sim"].ego.position, end_pos=solver.goal, steps=horizon).detach().numpy()
-    solver.gradient(z=x0)
-
-
-def measure_sim_prediction(horizon: int, **kwargs):
-    kwargs["sim"].predict_wo_ego(t_horizon=horizon)
-
-
-def measure_sim_connected_graph(horizon: int, **kwargs):
-    kwargs["sim"].build_connected_graph(graph_input=torch.ones((horizon, 2)))
-
-
 if __name__ == '__main__':
     analysis = RunTimeAnalysis(num_agents=[1, 2, 3, 5, 7, 10], horizons=list(range(3, 20, 2)))
-    module = importlib.__import__("runtime_analysis")
-    measurements = [o for o in inspect.getmembers(module) if inspect.isfunction(o[1]) and "measure" in o[0]]
-    for m in measurements:
-        logging.info(f"Running measurement ==> {m[0]}")
-        analysis.measure(function=m[1])
+    measurements = load_functions_from_module(module="runtime_analysis", prefix="measure_")
+    for name, measurement in measurements.items():
+        logging.info(f"Running measurement ==> {name}")
+        analysis.measure(function=measurement)
     analysis.visualize()

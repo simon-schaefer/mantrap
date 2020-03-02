@@ -55,7 +55,7 @@ class ORCASolver(Solver):
         x4 = self.z_to_ego_trajectory(z=velocity_new.detach().numpy(), return_leaf=False)
         self.logging(z=controls, x4=x4)
         self.log_and_clean_up(tag=str(self._iteration))
-        return velocity_new
+        return velocity_new.unsqueeze(dim=0)
 
     ###########################################################################
     # Initialization ##########################################################

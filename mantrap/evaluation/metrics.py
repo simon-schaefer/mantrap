@@ -55,11 +55,3 @@ def metric_ego_effort(**metric_kwargs) -> float:
         effort_score += torch.norm(ego_trajectory[t, 2:4] - ego_trajectory[t-1, 2:4]).item() / dt
 
     return float(effort_score)
-
-
-def metric_test_name(**metrics_kwargs) -> str:
-    """Give test a name tag, either by using the input arguments or by creating a default name.
-
-    :param: metric_kwargs: dictionary of results of one (!) testing run.
-    """
-    return str(metrics_kwargs["name"]) if "name" in metrics_kwargs.keys() else "test"
