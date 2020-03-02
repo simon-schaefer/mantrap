@@ -53,13 +53,24 @@ class Agent:
 
         # maximal speed constraint.
         if self.speed > agent_speed_max:
-            logging.error(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {agent_speed_max}")
+            logging.info(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {agent_speed_max}")
             assert not torch.isinf(self.speed), "speed is infinite, physical break"
             self._velocity = self._velocity / self.speed * agent_speed_max
 
         # append history with new state.
         state_new = expand_state_vector(self.state, time=self._history[-1, -1].item() + dt).unsqueeze(0)
         self._history = torch.cat((self._history, state_new), dim=0)
+
+    def reset(self, state: torch.Tensor, history: torch.Tensor = None):
+        """Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent's
+        history to the new state (i.e. append it to the already existing history) if history is given as None or set
+        it to some given trajectory.
+        """
+        assert check_state(state, enforce_temporal=True), "state has to be at least 5-dimensional"
+
+        self._position = state[0:2]
+        self._velocity = state[2:4]
+        self._history = torch.cat((self._history, state.unsqueeze(0)), dim=0) if history is None else history
 
     def unroll_trajectory(self, controls: torch.Tensor, dt: float) -> torch.Tensor:
         """Build the trajectory from some controls and current state, by iteratively applying the model dynamics.
@@ -120,18 +131,6 @@ class Agent:
         assert check_ego_trajectory(trajectory, t_horizon=t_horizon, pos_and_vel_only=True)
         return trajectory
 
-    def reset(self, state: torch.Tensor, history: torch.Tensor = None):
-        """Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent's
-        history to the new state (i.e. append it to the already existing history) if history is given as None or set
-        it to some given trajectory.
-        """
-        assert check_state(state, enforce_temporal=True), "state has to be at least 5-dimensional"
-        if history is None:
-            history = self._history = torch.cat((self._history, state.unsqueeze(0)), dim=0)
-        self._position = state[0:2]
-        self._velocity = state[2:4]
-        self._history = history
-
     @abstractmethod
     def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         """Forward integrate the egos motion given some state-action pair and an integration time-step. Since every
@@ -157,6 +156,15 @@ class Agent:
     def detach(self):
         self._position = self._position.detach()
         self._velocity = self._velocity.detach()
+
+    ###########################################################################
+    # Operators ###############################################################
+    ###########################################################################
+    def __eq__(self, other):
+        is_equal = True
+        is_equal = is_equal and torch.all(torch.eq(self.state_with_time, other.state_with_time))
+        is_equal = is_equal and torch.all(torch.eq(self.history, other.history))
+        return is_equal
 
     ###########################################################################
     # State properties ########################################################

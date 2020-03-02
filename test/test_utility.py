@@ -90,7 +90,7 @@ def test_lagrange_singularity():
     start = torch.tensor([0.0, 0.0])
     mid = torch.tensor([0.0, 5.0], requires_grad=True)
     end = torch.tensor([10.0, 0.0])
-    points = torch.stack((start, mid, end))
+    points = torch.stack((start, mid, end))  # singular matrix (!)
 
     points_up = lagrange_interpolation(control_points=points, num_samples=10)
     for n in range(1, 10):

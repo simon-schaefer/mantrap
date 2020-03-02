@@ -8,7 +8,7 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.constants import sim_x_axis_default, sim_y_axis_default, sim_dt_default
-from mantrap.utility.shaping import check_trajectories, check_controls, check_weights
+from mantrap.utility.shaping import check_state, check_trajectories, check_controls, check_weights
 
 
 class GraphBasedSimulation:
@@ -80,18 +80,19 @@ class GraphBasedSimulation:
         in the simulation while predict() copies all agents and changes the states of these copies (so the actual
         agent states remain unchanged).
 
-        :param ego_control: planned ego input for current time step.
-        :return ado_states (num_ados, num_modes, 5), ego_next_state (5) in next time step.
+        :param ego_control: planned ego control input for current time step (2).
+        :return ado_states (num_ados, num_modes, 1, 5), ego_next_state (5) in next time step.
         """
         self._sim_time = self._sim_time + self.dt
 
         # Unroll future ego trajectory, which is surely deterministic and certain due to the deterministic dynamics
         # assumption. Update ego based on the first action of the input ego policy.
         self._ego.update(ego_control, dt=self.dt)
-        logging.info(f"simulation @t={self.sim_time} [ego]: action={ego_control.tolist()}")
+        logging.info(f"simulation step @t={self.sim_time} [ego]: action={ego_control.tolist()}")
+        logging.info(f"simulation step @t={self.sim_time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
 
         # Predict the next step in the environment by forward simulation.
-        _, policies, weights = self.predict_w_controls(controls=ego_control, return_more=True)
+        _, ado_controls, weights = self.predict_w_controls(controls=ego_control, return_more=True)
 
         # Update ados by forward simulate them and determining their most likely policies. Therefore predict the
         # ado states at the next time step as well as the probabilities (weights) of them occurring. Then sample one
@@ -102,12 +103,30 @@ class GraphBasedSimulation:
         ado_states = torch.zeros((self.num_ados, self.num_ado_modes, 1, 5))
         for i, ado in enumerate(self._ados):
             sampled_mode = np.random.choice(range(self.num_ado_modes), p=weights[i, :])
-            ado.update(policies[i, sampled_mode, 0, :], dt=self.dt)
+            ado.update(ado_controls[i, sampled_mode, 0, :], dt=self.dt)
             ado_states[i, :, :, :] = ado.state_with_time
-            logging.info(f"simulation @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, 0, :].tolist()}")
+            logging.info(f"simulation step @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, 0, :].tolist()}")
 
-        logging.info(f"simulation @t={self.sim_time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
         return ado_states.detach(), self.ego.state_with_time.detach()  # otherwise no scene independence (!)
+
+    def step_reset(self, ego_state_next: torch.Tensor, ado_states_next: torch.Tensor):
+        """Run simulation step (time-step = dt). Instead of predicting the behaviour of every agent in the scene, it
+        is given as an input and the agents are merely updated. All the ghosts (modes of an ado) will collapse to the
+        same given state, since the update is deterministic.
+
+        :param ego_state_next: ego state for next time step (5).
+        :param ado_states_next: ado states for next time step (num_ados, num_modes, 1, 5).
+        """
+        self._sim_time = self._sim_time + self.dt
+
+        # Reset ego agent.
+        assert check_state(ego_state_next, enforce_temporal=True)
+        self._ego.reset(state=ego_state_next, history=None)  # new state is appended
+
+        # Reset ado agents, each mode similarly.
+        assert check_trajectories(ado_states_next, ados=self.num_ados, t_horizon=1)
+        for i in range(self.num_ados):
+            self._ados[i].reset(state=ado_states_next[i, 0, 0, :], history=None)  # new state is appended
 
     def add_ado(self, **ado_kwargs):
         assert "type" in ado_kwargs.keys() and type(ado_kwargs["type"]) == Agent.__class__, "ado type required"
@@ -187,9 +206,23 @@ class GraphBasedSimulation:
             self.ado_ghosts[m].agent.detach()
 
     ###########################################################################
+    # Operators ###############################################################
+    ###########################################################################
+    def same_initial_conditions(self, other):
+        """Similar to __eq__() function, but not enforcing parameters of simulation to be completely equivalent,
+        merely enforcing the initial conditions to be equal, such as states of agents in scene. Hence, all prediction
+        depending parameters, namely the number of modes or agent's parameters dont have to be equal.
+        """
+        is_equal = True
+        is_equal = is_equal and self.dt == other.dt
+        is_equal = is_equal and self.num_ados == other.num_ados
+        is_equal = is_equal and self.ego == other.ego
+        is_equal = is_equal and all([self.ados[i] == other.ados[i] for i in range(self.num_ados)])
+        return is_equal
+
+    ###########################################################################
     # Ado properties ##########################################################
     ###########################################################################
-
     @property
     def ados(self) -> List[Agent]:
         return self._ados
@@ -215,7 +248,6 @@ class GraphBasedSimulation:
     # Per default the ghosts (i.e. the multimodal representations of the ados #
     # are the ados themselves, as the default case is uni-modal. ##############
     ###########################################################################
-
     @property
     def ado_ghosts_agents(self) -> List[Agent]:
         return self.ados
@@ -232,6 +264,7 @@ class GraphBasedSimulation:
         """Ghost of the same "parent" agent are appended to the internal storage of ghosts together, therefore it can
         be backtracked which ghost index belongs to which agent and mode by simple integer division (assuming the same
         number of modes of every ado).
+
         :return ado index, mode index
         """
         return int(ghost_index / self.num_ado_modes), int(ghost_index % self.num_ado_modes)
@@ -239,7 +272,6 @@ class GraphBasedSimulation:
     ###########################################################################
     # Ego properties ##########################################################
     ###########################################################################
-
     @property
     def ego(self) -> Union[Agent, None]:
         return self._ego
@@ -247,7 +279,6 @@ class GraphBasedSimulation:
     ###########################################################################
     # Simulation parameters ###################################################
     ###########################################################################
-
     @property
     def dt(self) -> float:
         return self._dt

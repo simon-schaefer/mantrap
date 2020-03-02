@@ -75,7 +75,7 @@ def check_trajectories(
 ) -> bool:
     is_correct = True
     is_correct = is_correct and len(trajectories.shape) == 4  # (num_ados,num_modes,t_horizon, 5)
-    is_correct = is_correct and trajectories.shape[3] >= 5 if not pos_only else 2  # (x, y, vx, vy, t)
+    is_correct = is_correct and trajectories.shape[3] >= 4 if not pos_only else 2  # (x, y, vx, vy, t)
     if ados is not None:
         is_correct = is_correct and trajectories.shape[0] == ados
     if modes is not None:

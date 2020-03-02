@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections import defaultdict, deque
+from copy import deepcopy
 import logging
 import os
 from typing import Dict, List, Tuple
@@ -21,11 +22,12 @@ class Solver:
 
     def __init__(
         self,
-        sim: GraphBasedSimulation,
+        env: GraphBasedSimulation,
         goal: torch.Tensor,
         t_planning: int = solver_horizon,
         objectives: List[Tuple[str, float]] = None,
         constraints: List[str] = None,
+        eval_env: GraphBasedSimulation = None,
         verbose: int = 0,
         **solver_params
     ):
@@ -33,16 +35,26 @@ class Solver:
         definition of the (optimisation) problem. The verbose flag enables printing more debugging flags as well
         as plotting the optimisation history at the end.
 
-        :param: sim: simulation environment the solver's forward simulations are based on.
-        :param: goal: goal state (position) of the robot (2).
-        :param: t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
-        :param: verbose: debugging flag (0: nothing, 1: +printing, 2: +plotting).
-        :param: objectives: List of objective module names and according weights.
+        Internally, the solver stores two environments, the environment it uses for planning (optimization etc) and
+        the environment it uses for evaluation, i.e. which is actually unknown for the solver but encodes the way
+        the scene actually changes from one time-step to another. If `eval_env = None` the planning and evaluation
+        environment are the same.
+
+        :param sim: simulation environment the solver's forward simulations are based on.
+        :param goal: goal state (position) of the robot (2).
+        :param t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
+        :param verbose: debugging flag (0: nothing, 1: +printing, 2: +plotting).
+        :param objectives: List of objective module names and according weights.
         :param constraints: List of constraint module names.
+        :param eval_env: simulation environment that should be used for evaluation ("real" environment).
         """
         assert goal.size() == torch.Size([2])
-        self._env = sim
         self._goal = goal.float()
+
+        # Set planning and evaluation environment.
+        self._env = deepcopy(env)
+        self._eval_env = deepcopy(eval_env) if eval_env is not None else deepcopy(env)
+        assert self._env.same_initial_conditions(other=self._eval_env)
 
         # Dictionary of solver parameters.
         self._solver_params = solver_params
@@ -77,7 +89,7 @@ class Solver:
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
         This method changes the internal environment by forward simulating it over the prediction horizon.
 
-        :param: time_steps: how many time-steps shall be solved (not planning horizon !).
+        :param time_steps: how many time-steps shall be solved (not planning horizon !).
         :return: derived ego trajectory [horizon, 5].
         :return: ado trajectories [horizon, num_ados, modes, T, 5] conditioned on the derived ego trajectory
         :return: planned ego trajectory for every step [horizon, T, 2].
@@ -106,7 +118,8 @@ class Solver:
             logging.info(f"solver @k={k}: ego optimized path = {x5_opt_planned[k, :, 0:2].tolist()}")
 
             # Forward simulate environment.
-            ado_state, ego_state = self._env.step(ego_control=ego_controls[0, :])
+            ado_states, ego_state = self._eval_env.step(ego_control=ego_controls[0, :])
+            self._env.step_reset(ego_state_next=ego_state, ado_states_next=ado_states)
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
@@ -286,6 +299,10 @@ class Solver:
     @env.setter
     def env(self, env: GraphBasedSimulation):
         self._env = env
+
+    @property
+    def eval_env(self) -> GraphBasedSimulation:
+        return self._eval_env
 
     @property
     def goal(self) -> torch.Tensor:

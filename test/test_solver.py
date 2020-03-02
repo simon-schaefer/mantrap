@@ -7,7 +7,7 @@ import torch
 
 from mantrap.constants import agent_speed_max, constraint_min_distance
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation import PotentialFieldSimulation
+from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver import MonteCarloTreeSearch, SGradSolver, IGradSolver, ORCASolver
 from mantrap.solver.solver import Solver
@@ -63,7 +63,9 @@ def test_solve():
     assert tuple(ado_trajectories.shape) == (t_horizon_exp, 1, 1, solver.T, 5)
     assert tuple(x5_opt_planned.shape) == (t_horizon_exp, solver.T, 5)
 
-    # Test ego output trajectory.
+    # Test ego output trajectory, which can be determined independent from simulation since it basically is the
+    # unrolled trajectory resulting from applying the same, known control action (determined in `ConstantSolver`)
+    # again and again.
     x_path_exp = torch.tensor([-8.0 + 1.0 * sim.dt * k for k in range(t_horizon_exp)])
     assert torch.all(torch.isclose(x5_opt[:, 0], x_path_exp, atol=1e-3))
     assert torch.all(torch.eq(x5_opt[:, 1], torch.zeros(t_horizon_exp)))
@@ -89,6 +91,45 @@ def test_solve():
     for k in range(t_horizon_exp):
         time_steps_exp = torch.tensor([x5_opt[k, -1] + i * sim.dt for i in range(solver.T)])
         assert torch.all(torch.isclose(x5_opt_planned[k, :, -1], time_steps_exp))
+
+
+def test_eval_environment():
+    sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+    sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0.2]))
+    sim.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]))
+
+    # Since the determine ego controls are predictable in the constant solver, the output ego trajectory basically
+    # is the unrolled trajectory by applying the same controls again and again.
+    time_steps = 5
+    ego_controls = torch.tensor([1, 0] * time_steps).view(-1, 2)
+    x5_opt_exp = sim.ego.unroll_trajectory(controls=ego_controls, dt=sim.dt)
+    ado_trajectories_exp_sim = sim.predict_w_controls(controls=ego_controls)[:, :, :-1, :]
+
+    # First dont pass evaluation environment, then it planning and evaluation environment should be equal.
+    # Ado Trajectories -> just the actual positions (first entry of planning trajectory at every time-step)
+    solver = ConstantSolver(sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
+    x5_opt, ado_trajectories, _ = solver.solve(time_steps=time_steps)
+    assert torch.all(torch.isclose(x5_opt, x5_opt_exp))
+    ado_trajectories = ado_trajectories[:, :, :, 0, :].permute(1, 2, 0, 3)
+    assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_sim, atol=0.01))
+
+    # Second pass evaluation environment. Since the environment updates should be performed using the evaluation
+    # environment the ado trajectories should be equal to predicting the ado behaviour given the (known) ego controls.
+    # To test multi-modality but still have a deterministic mode collapse all weight is put on one mode.
+    # However, since the agents themselves are the same, especially the ego agent, the ego trajectory should be the
+    # same as in the first test.
+    eval_sim = SocialForcesSimulation(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+    mode_kwargs = {"num_modes": 2, "weights": [1.0, 0.0]}
+    eval_sim.add_ado(position=torch.zeros(2), velocity=torch.tensor([-1, 0.2]), goal=torch.ones(2) * 10, **mode_kwargs)
+    eval_sim.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]), goal=torch.ones(2) * 10, **mode_kwargs)
+    ado_trajectories_exp_eval = eval_sim.predict_w_controls(controls=ego_controls)[:, :, :-1, :]
+
+    solver = ConstantSolver(sim, eval_env=eval_sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
+    x5_opt, ado_trajectories, _ = solver.solve(time_steps=time_steps)
+    assert torch.all(torch.isclose(x5_opt, x5_opt_exp))
+    ado_trajectories = ado_trajectories[:, :, :, 0, :].permute(1, 2, 0, 3)
+    ado_trajectories_exp_eval = ado_trajectories_exp_eval[:, 0, :, :].unsqueeze(1)
+    assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_eval, atol=0.01))
 
 
 ###########################################################################

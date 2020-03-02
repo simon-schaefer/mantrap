@@ -61,8 +61,11 @@ def test_step():
     ado_position = torch.zeros(2)
     ego_position = torch.tensor([-4, 6])
     sim = ZeroSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_position}, dt=1.0)
+
     sim.add_ado(type=IntegratorDTAgent, position=ado_position, velocity=torch.zeros(2))
     assert sim.num_ados == 1
+    assert sim.num_ado_modes == 1
+    assert sim.num_ado_ghosts == 1
 
     ego_control = torch.tensor([1, 0])
     num_steps = 100
@@ -91,8 +94,21 @@ def test_step():
             torch.linspace(0, num_steps * sim.dt, num_steps + 1),
         )
     ), 0, 1)
-    print(ego_t_exp)
     assert torch.all(torch.eq(ego_trajectory, ego_t_exp[1:, :]))
+
+
+def test_step_reset():
+    sim = ZeroSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-4, 6])}, dt=1.0)
+    sim.add_ado(type=IntegratorDTAgent, position=torch.zeros(2), velocity=torch.zeros(2))
+    sim.add_ado(type=IntegratorDTAgent, position=torch.ones(2), velocity=torch.zeros(2))
+
+    ego_next_state = torch.rand(5)
+    ado_next_states = torch.rand(sim.num_ados, 1, 1, 5)
+    sim.step_reset(ego_state_next=ego_next_state, ado_states_next=ado_next_states)
+
+    assert torch.all(torch.eq(sim.ego.state_with_time, ego_next_state))
+    for i in range(sim.num_ados):
+        assert torch.all(torch.eq(sim.ados[i].state_with_time, ado_next_states[i]))
 
 
 @pytest.mark.parametrize("position, modes", [(torch.zeros(2), 1), (torch.zeros(2), 4)])

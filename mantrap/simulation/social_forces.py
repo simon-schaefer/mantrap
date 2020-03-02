@@ -59,6 +59,14 @@ class SocialForcesSimulation(GraphBasedSimulation):
             self._ado_ghosts[i].agent.reset(ado_states[i_ado, i_mode, 0, :], history=None)  # new state is appended
         return ado_states, ego_next_state
 
+    def step_reset(self, ego_state_next: torch.Tensor, ado_states_next: torch.Tensor):
+        super(SocialForcesSimulation, self).step_reset(ego_state_next, ado_states_next)
+        for i in range(self.num_ado_ghosts):
+            i_ado, i_mode = self.ghost_to_ado_index(i)
+            # enforce that all modes are updating similarly (update deterministic !)
+            assert torch.all(torch.isclose(ado_states_next[i_ado, 0], ado_states_next[i_ado, i_mode]))
+            self._ado_ghosts[i].agent.reset(ado_states_next[i_ado, i_mode, 0, :], history=None)  # new state is appended
+
     def add_ado(
         self,
         goal: torch.Tensor,
@@ -232,7 +240,6 @@ class SocialForcesSimulation(GraphBasedSimulation):
     ###########################################################################
     # Ado properties ##########################################################
     ###########################################################################
-
     @property
     def ado_ghosts_agents(self) -> List[Agent]:
         return [ghost.agent for ghost in self._ado_ghosts]
