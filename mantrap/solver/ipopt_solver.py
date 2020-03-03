@@ -1,4 +1,3 @@
-from abc import abstractmethod
 import logging
 from typing import Tuple, Union
 
@@ -9,6 +8,7 @@ import torch
 
 from mantrap.constants import ipopt_max_steps, ipopt_max_cpu_time
 from mantrap.solver.solver import Solver
+from mantrap.utility.io import dict_value_or_default
 
 
 class IPOPTSolver(Solver):
@@ -72,7 +72,7 @@ class IPOPTSolver(Solver):
 
     def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
         logging.info("solver starting ipopt optimization procedure")
-        use_multiprocessing = solver_kwargs["multiprocessing"] if "multiprocessing" in solver_kwargs.keys() else True
+        use_multiprocessing = dict_value_or_default(solver_kwargs, key="multiprocessing", default=True)
         z0s = self.z0s_default()
 
         def evaluate(i: int) -> Tuple[float, torch.Tensor]:

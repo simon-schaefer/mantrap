@@ -3,6 +3,7 @@ from typing import Dict
 import torch
 
 from mantrap.simulation import SocialForcesSimulation
+from mantrap.utility.io import dict_value_or_default
 
 
 class PotentialFieldSimulation(SocialForcesSimulation):
@@ -15,9 +16,9 @@ class PotentialFieldSimulation(SocialForcesSimulation):
     def add_ado(self, **ado_kwargs):
         # enforce static agent - no incentive to move (overwriting goal input !)
         ado_kwargs["goal"] = ado_kwargs["position"]
-        ado_kwargs["velocity"] = torch.zeros(2) if "velocity" not in ado_kwargs else ado_kwargs["velocity"]
+        ado_kwargs["velocity"] = dict_value_or_default(ado_kwargs, key="velocity", default=torch.zeros(2))
         # enforce uni-modality of agent (simulation)
-        ado_kwargs["num_modes"] = 1 if "num_modes" not in ado_kwargs.keys() else ado_kwargs["num_modes"]
+        ado_kwargs["num_modes"] = dict_value_or_default(ado_kwargs, key="num_modes", default=1)
         assert ado_kwargs["num_modes"] == 1, "simulation merely supports uni-modal ados"
 
         super(PotentialFieldSimulation, self).add_ado(**ado_kwargs)
@@ -25,7 +26,7 @@ class PotentialFieldSimulation(SocialForcesSimulation):
     def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = super(SocialForcesSimulation, self).build_graph(ego_state, **graph_kwargs)
-        k = graph_kwargs["k"] if "k" in graph_kwargs.keys() else 0
+        k = dict_value_or_default(graph_kwargs, key="k", default=0)
         for ghost in self.ado_ghosts:
             graph[f"{ghost.id}_{k}_goal"] = ghost.goal
 

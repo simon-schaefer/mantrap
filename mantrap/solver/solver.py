@@ -83,24 +83,28 @@ class Solver:
         # Sanity checks.
         assert self.num_optimization_variables() > 0
 
-    def solve(self, time_steps: int, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def solve(self, time_steps: int, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal simulation with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
         This method changes the internal environment by forward simulating it over the prediction horizon.
 
         :param time_steps: how many time-steps shall be solved (not planning horizon !).
-        :return: derived ego trajectory [horizon, 5].
-        :return: ado trajectories [horizon, num_ados, modes, T, 5] conditioned on the derived ego trajectory
-        :return: planned ego trajectory for every step [horizon, T, 2].
+        :return: derived ego trajectory [horizon + 1, 5].
+        :return derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
+        :return: ado trajectories [horizon + 1, num_ados, modes, T, 5] conditioned on the derived ego trajectory
+        :return: planned ego trajectory for every step [horizon + 1, T, 2].
         """
         x5_opt = torch.zeros((time_steps + 1, 5))
-        ado_trajectories = torch.zeros((time_steps + 1, self._env.num_ados, self._env.num_ado_modes, self.T + 1, 5))
+        ado_traj = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
+        ado_traj_planned = torch.zeros((time_steps + 1, self.env.num_ados, self.env.num_ado_modes, self.T + 1, 5))
         x5_opt_planned = torch.zeros((time_steps + 1, self.T + 1, 5))
 
         # Initialize trajectories with current state and simulation time.
         x5_opt[0] = self._env.ego.state_with_time
-        ado_trajectories[0] = self.env.predict_wo_ego(t_horizon=self.T + 1).detach()
+        for m, ado in enumerate(self.env.ados):
+            ado_traj[m, :, 0, :] = ado.state_with_time
+        ado_traj_planned[0] = self.env.predict_wo_ego(t_horizon=self.T + 1).detach()
         x5_opt_planned[0] = self.env.ego.unroll_trajectory(controls=torch.zeros((self.T, 2)), dt=self.env.dt).detach()
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
@@ -112,7 +116,8 @@ class Solver:
             assert check_ego_controls(ego_controls, t_horizon=self.T)
 
             # Logging.
-            ado_trajectories[k + 1] = self.env.predict_w_controls(controls=ego_controls).detach()
+            ado_traj_planned[k + 1] = self.env.predict_w_controls(controls=ego_controls).detach()
+            ado_traj[:, 0, k + 1, :] = ado_traj_planned[k + 1, :, 0, 0, :].detach()
             x5_opt_planned[k + 1] = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt).detach()
             x5_opt[k + 1] = x5_opt_planned[k + 1, 1, :].detach()  # 0th step of x5_opt_planned is current state (!)
             logging.info(f"solver @k={k}: ego optimized controls = {ego_controls.tolist()}")
@@ -126,12 +131,13 @@ class Solver:
             # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
             if torch.norm(ego_state[0:2] - self._goal) < 0.1:
                 x5_opt = x5_opt[:k + 1, :].detach()
-                ado_trajectories = ado_trajectories[:k + 1].detach()
+                ado_traj = ado_traj[:, :, :k + 1, :].detach()
                 x5_opt_planned = x5_opt_planned[:k + 1].detach()
+                ado_traj_planned = ado_traj_planned[:k + 1].detach()
                 break
 
         logging.info(f"Finishing up trajectory optimization solving")
-        return x5_opt, ado_trajectories, x5_opt_planned
+        return x5_opt, ado_traj, x5_opt_planned, ado_traj_planned
 
     @abstractmethod
     def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:

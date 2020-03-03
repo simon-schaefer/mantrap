@@ -8,6 +8,7 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.constants import sim_x_axis_default, sim_y_axis_default, sim_dt_default
+from mantrap.utility.io import dict_value_or_default
 from mantrap.utility.shaping import check_state, check_trajectories, check_controls, check_weights
 
 
@@ -109,7 +110,7 @@ class GraphBasedSimulation:
 
         return ado_states.detach(), self.ego.state_with_time.detach()  # otherwise no scene independence (!)
 
-    def step_reset(self, ego_state_next: torch.Tensor, ado_states_next: torch.Tensor):
+    def step_reset(self, ego_state_next: Union[torch.Tensor, None], ado_states_next: Union[torch.Tensor, None]):
         """Run simulation step (time-step = dt). Instead of predicting the behaviour of every agent in the scene, it
         is given as an input and the agents are merely updated. All the ghosts (modes of an ado) will collapse to the
         same given state, since the update is deterministic.
@@ -119,14 +120,16 @@ class GraphBasedSimulation:
         """
         self._sim_time = self._sim_time + self.dt
 
-        # Reset ego agent.
-        assert check_state(ego_state_next, enforce_temporal=True)
-        self._ego.reset(state=ego_state_next, history=None)  # new state is appended
+        # Reset ego agent (if there is an ego in the scene), otherwise just do not reset it.
+        if ego_state_next is not None:
+            assert check_state(ego_state_next, enforce_temporal=True)
+            self._ego.reset(state=ego_state_next, history=None)  # new state is appended
 
-        # Reset ado agents, each mode similarly.
-        assert check_trajectories(ado_states_next, ados=self.num_ados, t_horizon=1)
-        for i in range(self.num_ados):
-            self._ados[i].reset(state=ado_states_next[i, 0, 0, :], history=None)  # new state is appended
+        # Reset ado agents, each mode similarly, if `ado_states_next` is None just do not reset them.
+        if ado_states_next is not None:
+            assert check_trajectories(ado_states_next, ados=self.num_ados, t_horizon=1, modes=1)
+            for i in range(self.num_ados):
+                self._ados[i].reset(state=ado_states_next[i, 0, 0, :], history=None)  # new state is appended
 
     def add_ado(self, **ado_kwargs):
         assert "type" in ado_kwargs.keys() and type(ado_kwargs["type"]) == Agent.__class__, "ado type required"
@@ -143,9 +146,9 @@ class GraphBasedSimulation:
     ###########################################################################
     @abstractmethod
     def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
-        k = graph_kwargs["k"] if "k" in graph_kwargs.keys() else 0
-        ado_grad = graph_kwargs["ado_grad"] if "ado_grad" in graph_kwargs.keys() else False
-        ego_grad = graph_kwargs["ego_grad"] if "ego_grad" in graph_kwargs.keys() else True
+        k = dict_value_or_default(graph_kwargs, key="k", default=0)
+        ado_grad = dict_value_or_default(graph_kwargs, key="ado_grad", default=False)
+        ego_grad = dict_value_or_default(graph_kwargs, key="ego_grad", default=True)
         graph = {}
 
         if ego_state is not None:

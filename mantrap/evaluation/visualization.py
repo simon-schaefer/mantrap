@@ -11,12 +11,18 @@ from mantrap.utility.maths import Derivative2
 from mantrap.utility.shaping import check_state
 
 
-def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env: GraphBasedSimulation, file_path: str):
+def visualize_scenes(
+    x_ego_planned: torch.Tensor,
+    x_ado_planned: torch.Tensor,
+    env: GraphBasedSimulation,
+    file_path: str
+):
     fig, ax = plt.subplots(figsize=(15, 15), constrained_layout=True)
-    ado_traj_wo = env.predict_wo_ego(t_horizon=ado_traj.shape[0])
+    ado_traj_wo = env.predict_wo_ego(t_horizon=x_ado_planned.shape[0])
 
     def update(k):
-        ego_traj = ego_opt_planned[k]
+        ego_traj = x_ego_planned[k]
+        ado_traj = x_ado_planned[k]
 
         ax.cla()
 
@@ -29,8 +35,8 @@ def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env:
         for i in range(env.num_ado_ghosts):
             ia, im = env.ghost_to_ado_index(i)
             ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color
-            _add_agent_representation(ado_traj[k, ia, im, 0, :], ado_color, ado_id, ax=ax)
-            plt.plot(ado_traj[k, ia, im, :, 0], ado_traj[k, ia, im, :, 1], "*-", color=ado_color, label=ado_id)
+            _add_agent_representation(ado_traj[ia, im, 0, :], ado_color, ado_id, ax=ax)
+            plt.plot(ado_traj[ia, im, :, 0], ado_traj[ia, im, :, 1], "*-", color=ado_color, label=ado_id)
             plt.plot(ado_traj_wo[ia, 0, k, 0], ado_traj_wo[ia, 0, k, 1], "--", color=ado_color, label=f"{ado_id}_wo")
 
         ax.set_xlim(env.axes[0])
@@ -41,7 +47,7 @@ def visualize_scenes(ego_opt_planned: torch.Tensor, ado_traj: torch.Tensor, env:
 
         return ax
 
-    anim = FuncAnimation(fig, update, frames=ego_opt_planned.shape[0], interval=300)
+    anim = FuncAnimation(fig, update, frames=x_ego_planned.shape[0], interval=300)
     anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
 
 

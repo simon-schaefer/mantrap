@@ -16,6 +16,7 @@ from mantrap.constants import (
 )
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.utility.maths import Distribution, Gaussian
+from mantrap.utility.io import dict_value_or_default
 from mantrap.utility.shaping import check_ego_trajectory
 
 
@@ -59,7 +60,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
             self._ado_ghosts[i].agent.reset(ado_states[i_ado, i_mode, 0, :], history=None)  # new state is appended
         return ado_states, ego_next_state
 
-    def step_reset(self, ego_state_next: torch.Tensor, ado_states_next: torch.Tensor):
+    def step_reset(self, ego_state_next: Union[torch.Tensor, None], ado_states_next: Union[torch.Tensor, None]):
         super(SocialForcesSimulation, self).step_reset(ego_state_next, ado_states_next)
         for i in range(self.num_ado_ghosts):
             i_ado, i_mode = self.ghost_to_ado_index(i)
@@ -145,7 +146,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
 
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = super(SocialForcesSimulation, self).build_graph(ego_state, ado_grad=True, **graph_kwargs)
-        k = graph_kwargs["k"] if "k" in graph_kwargs.keys() else 0
+        k = dict_value_or_default(graph_kwargs, key="k", default=0)
         for ghost in self.ado_ghosts:
             graph[f"{ghost.id}_{k}_goal"] = ghost.goal
 

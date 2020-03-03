@@ -1,7 +1,12 @@
+from copy import deepcopy
+
 import numpy as np
+import pytest
 import torch
 
-from mantrap.evaluation.metrics import metric_ego_effort, metric_minimal_distance
+from mantrap.agents import DoubleIntegratorDTAgent
+from mantrap.simulation import PotentialFieldSimulation
+from mantrap.evaluation.metrics import metric_ado_effort, metric_directness, metric_ego_effort, metric_minimal_distance
 from mantrap.utility.primitives import straight_line
 
 
@@ -42,11 +47,69 @@ def test_minimal_distance_interpolation():
     assert np.isclose(min_distance_ct, 0.0, atol=1e-3)
 
 
-def test_ego_effort():
-    ego_trajectory = torch.zeros((10, 5))
-    ego_trajectory[:, 0:2] = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
-    ego_trajectory[:, 2:4] = torch.zeros((10, 2))
-    ego_trajectory[5, 2] = 1.0
-    ego_trajectory[:, 4] = torch.linspace(start=0, end=9, steps=10)
-    effort = metric_ego_effort(ego_trajectory=ego_trajectory)
-    assert np.isclose(effort, 2.0, atol=1e-3)  # accelerating and de-accelerating @ t = 6
+@pytest.mark.parametrize(
+    "controls, effort_score",
+    [
+        (torch.stack((torch.ones(5) * 2.0, torch.zeros(5)), dim=1), 1.0),
+        (torch.zeros((5, 2)), 0.0),
+        (torch.stack((torch.tensor([2.0, 2.0, 1.0, 2.0]), torch.zeros(4)), dim=1), 0.875)  # 7/8
+    ]
+)
+def test_ego_effort(controls: torch.Tensor, effort_score: float):
+    ego = DoubleIntegratorDTAgent(position=torch.zeros(2))
+    x5 = ego.unroll_trajectory(controls=controls, dt=1.0)
+
+    metric_score = metric_ego_effort(ego_trajectory=x5, max_acceleration=2.0)
+    assert np.isclose(metric_score, effort_score)
+
+
+@pytest.mark.parametrize(
+    "velocity_profiles, directness_score",
+    [
+        (torch.stack((torch.ones(5) * 2.0, torch.zeros(5)), dim=1), 1.0),
+        (torch.stack((torch.ones(5) * 1.49, torch.zeros(5)), dim=1), 1.0),
+        (torch.stack((torch.ones(5) * (-2.0), torch.zeros(5)), dim=1), -1.0),
+        (torch.zeros((5, 2)), 0.0),
+        (torch.ones((5, 2)) * 2, np.cos(np.pi / 4))  # length of arrow in x direction of (0, 0) -> (1, 1) vector
+    ]
+)
+def test_directness(velocity_profiles: torch.Tensor, directness_score: float):
+    start, goal = torch.zeros(2), torch.tensor([10.0, 0.0])
+    x5 = torch.zeros((velocity_profiles.shape[0], 5))
+    x5[:, 2:4] = velocity_profiles  # the remaining data is not used anyways (just checked for shape sanity)
+
+    metric_score = metric_directness(ego_trajectory=x5, goal=goal)
+    assert np.isclose(metric_score, directness_score)
+
+
+def test_ado_effort():
+    env = PotentialFieldSimulation(DoubleIntegratorDTAgent, {"position": torch.tensor([5, 0])})
+    env.add_ado(position=torch.zeros(2), velocity=torch.tensor([1, 0]))
+    env.add_ado(position=torch.zeros(2), velocity=torch.tensor([0, 1]))
+
+    # When the ado trajectories are exactly the same as predicting them without an ego, the score should be zero.
+    ado_traj = env.predict_wo_ego(t_horizon=10)
+    metric_score = metric_ado_effort(ado_trajectories=ado_traj, env=env)
+    assert np.isclose(metric_score, 0.0)
+
+    # Otherwise it is very hard to predict the exact score, but we know it should be non-zero and positive.
+    ado_traj = env.predict_w_controls(controls=torch.ones(5, 2))
+    metric_score = metric_ado_effort(ado_trajectories=ado_traj, env=env)
+    assert metric_score > 0.0
+
+    # For testing the effect of re-predicting the ado trajectories without an ego for the current scene state we
+    # stack an altered ado trajectory tensor to another one with is exactly the same as without ego in the scene.
+    # When the environment is correctly reset at every time-step, then the only contribution to the ado effort comes
+    # from the first part of the ado trajectory (which was predicted with an ego agent in the scene). Therefore the
+    # score w.r.t. only the first part and for the combined ado trajectory should be the same.
+    env_test = deepcopy(env)
+
+    ado_traj_1 = env.predict_w_controls(controls=torch.ones(3, 2)).detach()
+    metric_score_1 = metric_ado_effort(ado_trajectories=ado_traj_1, env=env)
+
+    env_test.step_reset(ego_state_next=None, ado_states_next=ado_traj_1[:, :, -1, :].unsqueeze(dim=2))
+    ado_traj_2 = env_test.predict_wo_ego(t_horizon=4).detach()
+    ado_traj_12 = torch.cat((ado_traj_1, ado_traj_2), dim=2)
+    ado_traj_12[:, :, :, -1] = torch.linspace(0, 7 * env.dt, steps=8)
+    metric_score_12 = metric_ado_effort(ado_trajectories=ado_traj_12, env=env)
+    assert np.isclose(metric_score_1, metric_score_12)

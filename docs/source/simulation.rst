@@ -8,13 +8,6 @@ Simulation
     :undoc-members:
     :show-inheritance:
 
-Graph-Based
-----------------------------
-.. automodule:: mantrap.simulation.graph_based
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 Social Forces
 ----------------------------
 .. automodule:: mantrap.simulation.social_forces

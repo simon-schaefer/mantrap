@@ -22,13 +22,6 @@ Abstract IPOPT-Solver
     :undoc-members:
     :show-inheritance:
 
-C-GRAD-IPOPT
-----------------------------
-.. automodule:: mantrap.solver.cgrad
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 I-GRAD-IPOPT
 ----------------------------
 .. automodule:: mantrap.solver.igrad

@@ -12,7 +12,7 @@ from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver import MonteCarloTreeSearch, SGradSolver, IGradSolver, ORCASolver
 from mantrap.solver.solver import Solver
 from mantrap.solver.ipopt_solver import IPOPTSolver
-from mantrap.utility.shaping import check_ego_trajectory
+from mantrap.utility.shaping import check_ego_trajectory, check_trajectories
 
 
 def scenario(solver_class: Solver.__class__, **solver_kwargs):
@@ -55,12 +55,13 @@ def test_solve():
     assert solver.T == 10
     assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
 
-    x5_opt, ado_trajectories, x5_opt_planned = solver.solve(100)
+    x5_opt, ado_traj, x5_opt_planned, ado_traj_planned = solver.solve(100)
 
     # Test output shapes.
     t_horizon_exp = int(8 / sim.dt)  # distance ego position and goal = 8 / velocity 1.0 = 8.0 s
     assert check_ego_trajectory(x5_opt, t_horizon=t_horizon_exp)
-    assert tuple(ado_trajectories.shape) == (t_horizon_exp, 1, 1, solver.T, 5)
+    assert check_trajectories(ado_traj, t_horizon=t_horizon_exp, ados=sim.num_ados, modes=1)
+    assert tuple(ado_traj_planned.shape) == (t_horizon_exp, 1, 1, solver.T, 5)
     assert tuple(x5_opt_planned.shape) == (t_horizon_exp, solver.T, 5)
 
     # Test ego output trajectory, which can be determined independent from simulation since it basically is the
@@ -108,9 +109,8 @@ def test_eval_environment():
     # First dont pass evaluation environment, then it planning and evaluation environment should be equal.
     # Ado Trajectories -> just the actual positions (first entry of planning trajectory at every time-step)
     solver = ConstantSolver(sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
-    x5_opt, ado_trajectories, _ = solver.solve(time_steps=time_steps)
+    x5_opt, ado_trajectories, _, _ = solver.solve(time_steps=time_steps)
     assert torch.all(torch.isclose(x5_opt, x5_opt_exp))
-    ado_trajectories = ado_trajectories[:, :, :, 0, :].permute(1, 2, 0, 3)
     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_sim, atol=0.01))
 
     # Second pass evaluation environment. Since the environment updates should be performed using the evaluation
@@ -125,10 +125,9 @@ def test_eval_environment():
     ado_trajectories_exp_eval = eval_sim.predict_w_controls(controls=ego_controls)[:, :, :-1, :]
 
     solver = ConstantSolver(sim, eval_env=eval_sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
-    x5_opt, ado_trajectories, _ = solver.solve(time_steps=time_steps)
+    x5_opt, ado_trajectories, _, _ = solver.solve(time_steps=time_steps)
     assert torch.all(torch.isclose(x5_opt, x5_opt_exp))
     ado_trajectories = ado_trajectories[:, :, :, 0, :].permute(1, 2, 0, 3)
-    ado_trajectories_exp_eval = ado_trajectories_exp_eval[:, 0, :, :].unsqueeze(1)
     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_eval, atol=0.01))
 
 

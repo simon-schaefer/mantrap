@@ -3,7 +3,7 @@ import inspect
 import glob
 import logging
 import os
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 
 
 def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> str:
@@ -53,3 +53,7 @@ def load_functions_from_module(module: str, prefix: str = None) -> Dict[str, Cal
         else:
             function_dict[function_name] = function_tuple[1]
     return function_dict
+
+
+def dict_value_or_default(dictionary: Dict[str, Any], key: str, default: Any) -> Any:
+    return dictionary[key] if key in dictionary.keys() else default
