@@ -127,8 +127,8 @@ def visualize_optimization(
         axs[1].legend()
 
         # Plot agent accelerations for resulting solution vs base-line ego trajectory for current optimization step.
-        dd = Derivative2(horizon=horizon, dt=env.dt)
-        ado_acceleration_norm = np.linalg.norm(dd.compute(ado_traj[:, :, :, 0:2]).detach().numpy(), axis=3)
+        dd = Derivative2(horizon=horizon, dt=env.dt, velocity=True)
+        ado_acceleration_norm = np.linalg.norm(dd.compute(ado_traj[:, :, :, 2:4]).detach().numpy(), axis=3)
         for i in range(env.num_ado_ghosts):
             i_ado, i_mode = env.ghost_to_ado_index(i)
             ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color

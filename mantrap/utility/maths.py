@@ -53,17 +53,27 @@ class Derivative2:
     [1, T - 1]), can be regarded as single matrix operation b = Ax with A = diag([1, -2, 1]).
     """
 
-    def __init__(self, horizon: int, dt: float, num_axes: int = 2):
+    def __init__(self, horizon: int, dt: float, num_axes: int = 2, velocity: bool = False):
         assert num_axes >= 2, "minimal number of axes of differentiable matrix is 2"
         self._num_axes = num_axes
         self._dt = dt
 
-        self._diff_mat = torch.zeros((horizon, horizon))
-        for k in range(1, horizon - 1):
-            self._diff_mat[k, k - 1] = 1
-            self._diff_mat[k, k] = -2
-            self._diff_mat[k, k + 1] = 1
-        self._diff_mat *= 1 / dt ** 2
+        if not velocity:  # acceleration estimate based on positions
+            self._diff_mat = torch.zeros((horizon, horizon))
+            for k in range(1, horizon - 1):
+                self._diff_mat[k, k - 1] = 1
+                self._diff_mat[k, k] = -2
+                self._diff_mat[k, k + 1] = 1
+            self._diff_mat *= 1 / dt ** 2
+
+        else:  # acceleration estimate based on velocities
+            self._diff_mat = torch.zeros((horizon, horizon))
+            for k in range(1, horizon):
+                self._diff_mat[k, k - 1] = -1
+                self._diff_mat[k, k] = 1
+            self._diff_mat *= 1 / dt
+
+        # Unsqueeze difference matrix in case the state tensor is larger then two dimensional (batching).
         for _ in range(num_axes - 2):
             self._diff_mat = self._diff_mat.unsqueeze(0)
 

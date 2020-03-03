@@ -4,6 +4,7 @@ import torch
 
 from mantrap.constants import agent_acc_max
 from mantrap.utility.io import dict_value_or_default
+from mantrap.utility.maths import Derivative2
 from mantrap.utility.primitives import straight_line
 from mantrap.utility.shaping import check_ego_trajectory, check_trajectories
 
@@ -61,7 +62,8 @@ def metric_ego_effort(**metric_kwargs) -> float:
     max_effort = 0.0
     for t in range(1, ego_trajectory.shape[0]):
         dt = ego_trajectory[t, -1] - ego_trajectory[t - 1, -1]
-        ego_effort += torch.norm(ego_trajectory[t, 2:4] - ego_trajectory[t-1, 2:4]).item()
+        dd = Derivative2(dt=dt, horizon=2, velocity=True)
+        ego_effort += torch.norm(dd.compute(ego_trajectory[t-1:t+1, 2:4])).item()
         max_effort += max_acceleration * dt
 
     return float(ego_effort / max_effort)
@@ -100,8 +102,9 @@ def metric_ado_effort(**metric_kwargs) -> float:
 
             # Determine acceleration difference between actual and without scene w.r.t. ados.
             dt = ado_traj[m, :, t, -1] - ado_traj[m, :, t - 1, -1]
-            ado_acc = torch.norm(ado_traj[m, :, t, 2:4] - ado_traj[m, :, t - 1, 2:4]).item() / dt
-            ado_acc_wo = torch.norm(ado_traj_wo[m, :, 1, 2:4] - ado_traj_wo[m, :, 0, 2:4]).item() / dt
+            dd = Derivative2(horizon=2, dt=dt, velocity=True)
+            ado_acc = torch.norm(dd.compute(ado_traj[m, :, t-1:t+1, 2:4])).item()
+            ado_acc_wo = torch.norm(dd.compute(ado_traj_wo[m, :, 0:2, 2:4])).item()
 
             # Accumulate L2 norm of difference in metric score.
             effort_score += torch.norm(ado_acc - ado_acc_wo)
