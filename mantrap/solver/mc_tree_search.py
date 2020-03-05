@@ -6,7 +6,7 @@ import torch
 
 from mantrap.constants import mcts_max_cpu_time, mcts_max_steps, solver_constraint_limit
 from mantrap.solver.solver import Solver
-from mantrap.utility.shaping import check_ego_trajectory
+from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
 from mantrap.utility.primitives import square_primitives
 
 
@@ -45,7 +45,7 @@ class MonteCarloTreeSearch(Solver):
         # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
         # be the best iteration (logging within objective and constraint function).
         self._evaluate(z=z_best, tag=tag)
-        return self.z_to_ego_controls(z=z_best), obj_best, self.optimization_log.copy()
+        return self.z_to_ego_controls(z=z_best), obj_best, self.optimization_log
 
     def _evaluate(self, z: np.ndarray, tag: str) -> Tuple[float, float]:
         objective = self.objective(z, tag=tag)
@@ -101,6 +101,7 @@ class MonteCarloTreeSearch(Solver):
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         u2 = torch.from_numpy(z).view(self.T, 2)
         u2.requires_grad = True
+        assert check_ego_controls(controls=u2, t_horizon=self.T)
         return u2 if not return_leaf else (u2, u2)
 
     ###########################################################################

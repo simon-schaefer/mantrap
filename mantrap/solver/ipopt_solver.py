@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Dict, Tuple
 
 import ipopt
 import numpy as np
@@ -21,7 +21,7 @@ class IPOPTSolver(Solver):
         approx_hessian: bool = True,
         check_derivative: bool = False,
         **solver_kwargs
-    ) -> Tuple[torch.Tensor, float]:
+    ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
         # Clean up & detaching graph for deleting previous gradients.
         self._goal = self._goal.detach()
         self._env.detach()
@@ -35,7 +35,6 @@ class IPOPTSolver(Solver):
             logging.debug(f"Constraint {name} has bounds lower = {constraint.lower} & upper = {constraint.upper}")
 
         # Formulate optimization problem as in standardized IPOPT format.
-        z0 = z0 if z0 is not None else self.z0s_default(just_one=True)
         z0_flat = z0.flatten().numpy().tolist()
         assert len(z0_flat) == len(lb) == len(ub), f"initial value z0 should be {len(lb)} long"
 
@@ -63,7 +62,7 @@ class IPOPTSolver(Solver):
         z_opt, info = nlp.solve(z0_flat)
         z2_opt = torch.from_numpy(z_opt).view(-1, 2)
         objective_opt = self.objective(z_opt, tag=tag)
-        return z2_opt, objective_opt
+        return z2_opt, objective_opt, self.optimization_log
 
     ###########################################################################
     # Optimization formulation - Objective ####################################s

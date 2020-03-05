@@ -103,7 +103,7 @@ class GraphBasedSimulation:
         # The base state should be the same between all modes, therefore update all mode states according to the
         # one sampled mode policy.
         weights = weights / torch.sum(weights, dim=1)[:, np.newaxis]
-        ado_states = torch.zeros((self.num_ados, self.num_ado_modes, 1, 5))
+        ado_states = torch.zeros((self.num_ados, 1, 1, 5))  # deterministic update (!)
         for i, ado in enumerate(self._ados):
             sampled_mode = np.random.choice(range(self.num_ado_modes), p=weights[i, :])
             ado.update(ado_controls[i, sampled_mode, 0, :], dt=self.dt)

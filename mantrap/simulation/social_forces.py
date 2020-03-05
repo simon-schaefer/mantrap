@@ -58,7 +58,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
         ado_states, ego_next_state = super(SocialForcesSimulation, self).step(ego_control=ego_control)
         for i in range(self.num_ado_ghosts):
             i_ado, i_mode = self.ghost_to_ado_index(i)
-            self._ado_ghosts[i].agent.reset(ado_states[i_ado, i_mode, 0, :], history=None)  # new state is appended
+            self._ado_ghosts[i].agent.reset(ado_states[i_ado, 0, 0, :], history=None)  # new state is appended
         return ado_states, ego_next_state
 
     def step_reset(self, ego_state_next: Union[torch.Tensor, None], ado_states_next: Union[torch.Tensor, None]):

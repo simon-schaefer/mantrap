@@ -37,7 +37,7 @@ class ORCASolver(Solver):
         safe_dt: float = orca_agent_safe_dt,
         speed_max: float = agent_speed_max,
         **solver_kwargs
-    ) -> Tuple[Union[torch.Tensor, None], float, float]:
+    ) -> Union[torch.Tensor, None]:
         # Find line constraints.
         constraints = self._line_constraints(self._env, agent_radius=agent_radius, agent_safe_dt=safe_dt)
         logging.info(f"ORCA constraints for ego [{self._env.ego.id}]: {constraints}")
@@ -51,14 +51,7 @@ class ORCASolver(Solver):
             velocity_new = self._linear_solver_3d(constraints, i_fail, speed_max=speed_max, velocity_new=velocity_new)
 
         # Logging.
-        controls = self.z_to_ego_controls(z=velocity_new.detach().numpy(), return_leaf=False)
-        x4 = self.z_to_ego_trajectory(z=velocity_new.detach().numpy(), return_leaf=False)
-        self.log(z=controls, x4=x4)
-        self.log_and_clean_up(tag=str(self._iteration))
-
-        # Mock values for objective and infeasibility.
-        objective_value, infeasibility_value = -1.0, 0.0
-        return velocity_new.unsqueeze(dim=0), objective_value, infeasibility_value
+        return self.z_to_ego_controls(z=velocity_new.detach().numpy(), return_leaf=False)
 
     ###########################################################################
     # Initialization ##########################################################
@@ -66,7 +59,8 @@ class ORCASolver(Solver):
     def initialize(self, **solver_params):
         assert self.T == 1
         assert len(self._objective_modules) == len(self._constraint_modules) == 0
-        assert self._env.ego.__class__ == IntegratorDTAgent, "orca assumes ego to be holonomic and to single integrator"
+        assert self._env.ego.__class__ == IntegratorDTAgent
+        assert self.do_multiprocessing is False
 
     def num_optimization_variables(self) -> int:
         return 2
