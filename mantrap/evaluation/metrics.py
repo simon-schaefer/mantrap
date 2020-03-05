@@ -20,7 +20,7 @@ def metric_minimal_distance(**metric_kwargs) -> float:
     :param: metric_kwargs: dictionary of results of one (!) testing run.
     """
     assert all([x in metric_kwargs.keys() for x in ["ego_trajectory", "ado_trajectories"]])
-    inter_steps = dict_value_or_default(metric_kwargs, key="num_inter_points", default=100)
+    n_inter = dict_value_or_default(metric_kwargs, key="num_inter_points", default=100)
 
     ego_trajectory = metric_kwargs["ego_trajectory"].detach()
     assert check_ego_trajectory(ego_trajectory, pos_only=True)
@@ -28,13 +28,12 @@ def metric_minimal_distance(**metric_kwargs) -> float:
     horizon = ego_trajectory.shape[0]
     num_ados = ado_trajectories.shape[0]
     assert check_trajectories(ado_trajectories, t_horizon=horizon, pos_only=True, modes=1)
-    ado_trajectories = ado_trajectories.clone().view(-1, horizon, 2)  # dropping mode (since axis = 1)
 
     minimal_distance = float("Inf")
     for t in range(1, horizon):
-        ego_dense = straight_line(ego_trajectory[t - 1, 0:2], ego_trajectory[t, 0:2], steps=inter_steps)
+        ego_dense = straight_line(ego_trajectory[t - 1, 0:2], ego_trajectory[t, 0:2], steps=n_inter)
         for m in range(num_ados):
-            ado_dense = straight_line(ado_trajectories[m, t - 1, 0:2], ado_trajectories[m, t, 0:2], steps=inter_steps)
+            ado_dense = straight_line(ado_trajectories[m, 0, t-1, 0:2], ado_trajectories[m, 0, t, 0:2], steps=n_inter)
             min_distance_current = torch.min(torch.norm(ego_dense - ado_dense, dim=1)).item()
             if min_distance_current < minimal_distance:
                 minimal_distance = min_distance_current
@@ -64,7 +63,7 @@ def metric_ego_effort(**metric_kwargs) -> float:
         dt = ego_trajectory[t, -1] - ego_trajectory[t - 1, -1]
         dd = Derivative2(dt=dt, horizon=2, velocity=True)
         ego_effort += torch.norm(dd.compute(ego_trajectory[t-1:t+1, 2:4])).item()
-        max_effort += max_acceleration * dt
+        max_effort += max_acceleration
 
     return float(ego_effort / max_effort)
 
@@ -103,11 +102,11 @@ def metric_ado_effort(**metric_kwargs) -> float:
             # Determine acceleration difference between actual and without scene w.r.t. ados.
             dt = ado_traj[m, :, t, -1] - ado_traj[m, :, t - 1, -1]
             dd = Derivative2(horizon=2, dt=dt, velocity=True)
-            ado_acc = torch.norm(dd.compute(ado_traj[m, :, t-1:t+1, 2:4])).item()
-            ado_acc_wo = torch.norm(dd.compute(ado_traj_wo[m, :, 0:2, 2:4])).item()
+            ado_acc = torch.norm(dd.compute(ado_traj[m, :, t-1:t+1, 2:4]))
+            ado_acc_wo = torch.norm(dd.compute(ado_traj_wo[m, :, 0:2, 2:4]))
 
             # Accumulate L2 norm of difference in metric score.
-            effort_score += torch.norm(ado_acc - ado_acc_wo)
+            effort_score += torch.norm(ado_acc - ado_acc_wo).detach()
 
     return float(effort_score) / num_ados
 

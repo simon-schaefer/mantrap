@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from collections import deque
 import logging
 from typing import List, Tuple, Union
 
@@ -25,7 +24,6 @@ class ConstraintModule:
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
         # appending multiple values within one optimization step.
         self._constraint_current = None
-        self._log_constraint = deque()
 
         # Sanity checks.
         assert self.num_constraints == len(self.lower) == len(self.upper)
@@ -41,16 +39,16 @@ class ConstraintModule:
     def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
         raise NotImplementedError
 
-    def constraint(self, x4: torch.Tensor) -> np.ndarray:
-        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True)
-        constraint = self._compute(x4)
+    def constraint(self, x5: torch.Tensor) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True)
+        constraint = self._compute(x5)
         return self._return_constraint(constraint.detach().numpy())
 
-    def jacobian(self, x4: torch.Tensor, grad_wrt: torch.Tensor = None) -> np.ndarray:
-        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True)
+    def jacobian(self, x5: torch.Tensor, grad_wrt: torch.Tensor = None) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True)
         assert grad_wrt.requires_grad
 
-        constraints = self._compute(x4)
+        constraints = self._compute(x5)
         grad_size = int(grad_wrt.numel())
         jacobian = torch.zeros(constraints.numel() * grad_size)
         for i, x in enumerate(constraints):
@@ -59,7 +57,7 @@ class ConstraintModule:
         return jacobian.detach().numpy()
 
     @abstractmethod
-    def _compute(self, x4: torch.Tensor) -> torch.Tensor:
+    def _compute(self, x5: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
     def compute_violation(self) -> float:
@@ -76,18 +74,12 @@ class ConstraintModule:
         logging.debug(f"Module {self.__str__()} computed")
         return self._constraint_current
 
-    def logging(self):
-        self._log_constraint.append(self.compute_violation())
-
-    def clean_up(self):
-        self._log_constraint = deque()
-
     ###########################################################################
     # Constraint Properties ###################################################
     ###########################################################################
     @property
-    def logs(self) -> List[float]:
-        return list(self._log_constraint)
+    def inf_current(self) -> float:
+        return self.compute_violation()
 
     @property
     def num_constraints(self) -> int:

@@ -99,7 +99,7 @@ class RunTimeAnalysis:
             plt.grid()
             ax.set_ylabel("RunTime [s]")
 
-        plt.savefig(build_os_path("test/graphs/runtime_analysis.png", make_dir=False))
+        plt.savefig(build_os_path("outputs/runtime_analysis.png", make_dir=False))
         plt.close()
 
 

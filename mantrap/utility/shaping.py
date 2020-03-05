@@ -59,24 +59,36 @@ def check_ego_trajectory(
     return is_correct
 
 
-def check_controls(policies: torch.Tensor, t_horizon: int = None, num_ados: int = None, num_modes: int = None):
+def check_controls(controls: torch.Tensor, t_horizon: int = None, num_ados: int = None, num_modes: int = None):
     is_correct = True
-    is_correct = is_correct and len(policies.shape) == 4  # (num_ados, num_modes, t_horizon, dims)
+    is_correct = is_correct and len(controls.shape) == 4  # (num_ados, num_modes, t_horizon, dims)
     if t_horizon is not None:
-        is_correct = is_correct and policies.shape[2] == t_horizon
+        is_correct = is_correct and controls.shape[2] == t_horizon
     if num_ados is not None:
-        is_correct = is_correct and policies.shape[0] == num_ados
+        is_correct = is_correct and controls.shape[0] == num_ados
     if num_modes is not None:
-        is_correct = is_correct and policies.shape[1] == num_modes
+        is_correct = is_correct and controls.shape[1] == num_modes
     return is_correct
 
 
 def check_trajectories(
-    trajectories: torch.Tensor, ados: int = None, modes: int = None, t_horizon: int = None, pos_only: bool = False,
+    trajectories: torch.Tensor,
+    ados: int = None,
+    modes: int = None,
+    t_horizon: int = None,
+    pos_only: bool = False,
+    pos_and_vel_only: bool = False
 ) -> bool:
     is_correct = True
     is_correct = is_correct and len(trajectories.shape) == 4  # (num_ados,num_modes,t_horizon, 5)
-    is_correct = is_correct and trajectories.shape[3] >= 4 if not pos_only else 2  # (x, y, vx, vy, t)
+
+    if pos_only:
+        is_correct = is_correct and trajectories.shape[3] >= 2  # (x, y)
+    elif pos_and_vel_only:
+        is_correct = is_correct and trajectories.shape[3] >= 4  # (x, y, vx, vy)
+    else:
+        is_correct = is_correct and trajectories.shape[3] == 5  # (x, y, vx, vy, t)
+
     if ados is not None:
         is_correct = is_correct and trajectories.shape[0] == ados
     if modes is not None:

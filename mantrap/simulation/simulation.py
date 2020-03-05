@@ -23,6 +23,7 @@ class GraphBasedSimulation:
         x_axis: Tuple[float, float] = sim_x_axis_default,
         y_axis: Tuple[float, float] = sim_y_axis_default,
         dt: float = sim_dt_default,
+        scene_name: str = "unknown"
     ):
         assert x_axis[0] < x_axis[1], "x axis must be in form (x_min, x_max)"
         assert y_axis[0] < y_axis[1], "y axis must be in form (y_min, y_max)"
@@ -35,6 +36,7 @@ class GraphBasedSimulation:
         self._y_axis = y_axis
         self._dt = dt
         self._sim_time = 0
+        self._scene_name = scene_name
 
     @abstractmethod
     def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
@@ -89,8 +91,8 @@ class GraphBasedSimulation:
         # Unroll future ego trajectory, which is surely deterministic and certain due to the deterministic dynamics
         # assumption. Update ego based on the first action of the input ego policy.
         self._ego.update(ego_control, dt=self.dt)
-        logging.info(f"simulation step @t={self.sim_time} [ego]: action={ego_control.tolist()}")
-        logging.info(f"simulation step @t={self.sim_time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
+        logging.info(f"sim {self.name} step @t={self.sim_time} [ego]: action={ego_control.tolist()}")
+        logging.info(f"sim {self.name} step @t={self.sim_time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
 
         # Predict the next step in the environment by forward simulation.
         _, ado_controls, weights = self.predict_w_controls(controls=ego_control, return_more=True)
@@ -106,7 +108,7 @@ class GraphBasedSimulation:
             sampled_mode = np.random.choice(range(self.num_ado_modes), p=weights[i, :])
             ado.update(ado_controls[i, sampled_mode, 0, :], dt=self.dt)
             ado_states[i, :, :, :] = ado.state_with_time
-            logging.info(f"simulation step @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, 0, :].tolist()}")
+            logging.info(f"sim {self.name} step @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, 0].tolist()}")
 
         return ado_states.detach(), self.ego.state_with_time.detach()  # otherwise no scene independence (!)
 
@@ -293,3 +295,11 @@ class GraphBasedSimulation:
     @property
     def axes(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         return self._x_axis, self._y_axis
+
+    @property
+    def simulation_name(self) -> str:
+        return self.__class__.__name__.lower()
+
+    @property
+    def name(self) -> str:
+        return self.simulation_name + "_" + self._scene_name

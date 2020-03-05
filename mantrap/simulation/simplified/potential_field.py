@@ -45,3 +45,10 @@ class PotentialFieldSimulation(SocialForcesSimulation):
             graph[f"{ghost.id}_{k}_output"] = torch.norm(graph[f"{ghost.id}_{k}_force"])
 
         return graph
+
+    ###########################################################################
+    # Simulation parameters ###################################################
+    ###########################################################################
+    @property
+    def simulation_name(self) -> str:
+        return "potential_field"

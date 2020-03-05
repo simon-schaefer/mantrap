@@ -55,7 +55,7 @@ def test_solve():
     assert solver.T == 10
     assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
 
-    x5_opt, ado_traj, x5_opt_planned, ado_traj_planned = solver.solve(100)
+    x5_opt, ado_traj, x5_opt_planned, ado_traj_planned, opt_dicts = solver.solve(100)
 
     # Test output shapes.
     t_horizon_exp = int(8 / sim.dt)  # distance ego position and goal = 8 / velocity 1.0 = 8.0 s
@@ -63,6 +63,7 @@ def test_solve():
     assert check_trajectories(ado_traj, t_horizon=t_horizon_exp, ados=sim.num_ados, modes=1)
     assert tuple(ado_traj_planned.shape) == (t_horizon_exp, 1, 1, solver.T, 5)
     assert tuple(x5_opt_planned.shape) == (t_horizon_exp, solver.T, 5)
+    assert len(opt_dicts) == t_horizon_exp
 
     # Test ego output trajectory, which can be determined independent from simulation since it basically is the
     # unrolled trajectory resulting from applying the same, known control action (determined in `ConstantSolver`)
@@ -109,7 +110,7 @@ def test_eval_environment():
     # First dont pass evaluation environment, then it planning and evaluation environment should be equal.
     # Ado Trajectories -> just the actual positions (first entry of planning trajectory at every time-step)
     solver = ConstantSolver(sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
-    x5_opt, ado_trajectories, _, _ = solver.solve(time_steps=time_steps)
+    x5_opt, ado_trajectories, _, _, _ = solver.solve(time_steps=time_steps)
     assert torch.all(torch.isclose(x5_opt, x5_opt_exp))
     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_sim, atol=0.01))
 
@@ -125,7 +126,7 @@ def test_eval_environment():
     ado_trajectories_exp_eval = eval_sim.predict_w_controls(controls=ego_controls)[:, :, :-1, :]
 
     solver = ConstantSolver(sim, eval_env=eval_sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
-    x5_opt, ado_trajectories, _, _ = solver.solve(time_steps=time_steps)
+    x5_opt, ado_trajectories, _, _, _ = solver.solve(time_steps=time_steps)
     assert torch.all(torch.isclose(x5_opt, x5_opt_exp))
     ado_trajectories = ado_trajectories[:, :, :, 0, :].permute(1, 2, 0, 3)
     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_eval, atol=0.01))
@@ -214,7 +215,7 @@ class TestIPOPTSolvers:
         assert jacobian.size == num_constraints * z0.flatten().size
 
         # Test derivatives using derivative-checker from IPOPT framework, format = "mine ~ estimated (difference)".
-        if solver.is_verbose:
+        if solver.verbose:
             x0 = torch.from_numpy(z0)
             solver.solve_single_optimization(x0, approx_jacobian=False, approx_hessian=True, check_derivative=True)
 
@@ -245,7 +246,7 @@ def test_s_grad_solver():
     x40 = env.ego.expand_trajectory(x0, dt=env.dt)
     u0 = env.ego.roll_trajectory(x40, dt=env.dt)
 
-    x_solution = c_grad_solver.solve_single_optimization(z0=u0, max_cpu_time=5.0)
+    x_solution, _, _, _ = c_grad_solver.solve_single_optimization(z0=u0, max_cpu_time=5.0)
     ado_trajectories = env.predict_w_trajectory(trajectory=x_solution)
 
     for t in range(10):

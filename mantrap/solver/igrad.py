@@ -56,16 +56,23 @@ class IGradSolver(IPOPTSolver):
         control_points = torch.cat((start_point, mid, end_point))
         path = lagrange_interpolation(control_points, num_samples=self.T + 1, deg=self.num_control_points + 2)
 
-        x4 = self.env.ego.expand_trajectory(path, dt=self.env.dt)[:, 0:4]
-        assert check_ego_trajectory(x4, t_horizon=self.T + 1, pos_and_vel_only=True)
-        return x4 if not return_leaf else (x4, mid)
+        x5 = self.env.ego.expand_trajectory(path, dt=self.env.dt)
+        assert check_ego_trajectory(x5, t_horizon=self.T + 1, pos_and_vel_only=True)
+        return x5 if not return_leaf else (x5, mid)
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        x4, mid = self.z_to_ego_trajectory(z, return_leaf=True)
-        u2 = self.env.ego.roll_trajectory(trajectory=x4, dt=self.env.dt)
+        x5, mid = self.z_to_ego_trajectory(z, return_leaf=True)
+        u2 = self.env.ego.roll_trajectory(trajectory=x5, dt=self.env.dt)
         assert check_ego_controls(u2, t_horizon=self.T)
         return u2 if not return_leaf else (u2, mid)
 
     @property
     def num_control_points(self) -> int:
         return self._solver_params["num_control_points"]
+
+    ###########################################################################
+    # Logging parameters ######################################################
+    ###########################################################################
+    @property
+    def solver_name(self) -> str:
+        return "igrad"

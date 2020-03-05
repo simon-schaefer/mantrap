@@ -8,8 +8,6 @@ build/
 
 # Unit test / coverage reports
 .pytest_cache/
-test/cache/
-test/graphs/
 
 # Compiled Object files
 *.slo
@@ -28,14 +26,12 @@ test/graphs/
 # Code Environments
 .venv_*/
 .DS_Store
-.idea/
 
 # Jupyter Notebook
 .ipynb_checkpoints
 
 # External libraries.
-#external/cyipopt
-#external/Ipopt/build
-#external/Ipopt/Ipopt
-#external/Ipopt/ThirdParty
 external/
+
+# Output files.
+outputs/

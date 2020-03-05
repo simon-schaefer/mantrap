@@ -1,7 +1,5 @@
 from abc import abstractmethod
-from collections import deque
 import logging
-from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -19,23 +17,21 @@ class ObjectiveModule:
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
         # appending multiple values within one optimization step.
         self._obj_current, self._grad_current = 0.0, np.zeros(2)
-        self._log_obj = deque()
-        self._log_grad = deque()
 
     ###########################################################################
     # Optimization Formulation ################################################
     ###########################################################################
 
-    def objective(self, x4: torch.Tensor) -> float:
-        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True, t_horizon=self.T + 1)
-        obj_value = self._compute(x4)
+    def objective(self, x5: torch.Tensor) -> float:
+        assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True, t_horizon=self.T + 1)
+        obj_value = self._compute(x5)
         return self._return_objective(float(obj_value.item()))
 
-    def gradient(self, x4: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
-        assert check_ego_trajectory(ego_trajectory=x4, pos_and_vel_only=True, t_horizon=self.T + 1)
+    def gradient(self, x5: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True, t_horizon=self.T + 1)
         assert grad_wrt.requires_grad
 
-        objective = self._compute(x4)
+        objective = self._compute(x5)
         gradient = torch.autograd.grad(objective, grad_wrt, retain_graph=True)[0].flatten().detach().numpy()
         return self._return_gradient(gradient)
 
@@ -46,7 +42,6 @@ class ObjectiveModule:
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
-
     def _return_objective(self, obj_value: float) -> float:
         self._obj_current = self.weight * obj_value
         logging.debug(f"Module {self.__str__()} with objective value {self._obj_current}")
@@ -57,14 +52,10 @@ class ObjectiveModule:
         self._grad_current = self.weight * gradient
         return self._grad_current
 
-    def logging(self):
-        self._log_obj.append(self._obj_current)
-        self._log_grad.append(np.linalg.norm(self._grad_current))
-
-    def clean_up(self):
-        self._log_obj = deque()
-        self._log_grad = deque()
+    @property
+    def obj_current(self) -> float:
+        return self._obj_current
 
     @property
-    def logs(self) -> Tuple[List[float], List[float]]:
-        return list(self._log_obj), list(self._log_grad)
+    def grad_current(self) -> float:
+        return np.linalg.norm(self._grad_current)

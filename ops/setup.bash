@@ -24,5 +24,8 @@ cp "${PROJECT_HOME}"/ops/setup.py "${PROJECT_HOME}"
 pip3 install -e .
 rm "${PROJECT_HOME}"/setup.py
 
+# Create output directory.
+mkdir "${PROJECT_HOME}"/outputs
+
 cd "${PROJECT_HOME}" || return
 echo $'\nSuccessfully set up project !'

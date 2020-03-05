@@ -37,7 +37,7 @@ class ORCASolver(Solver):
         safe_dt: float = orca_agent_safe_dt,
         speed_max: float = agent_speed_max,
         **solver_kwargs
-    ) -> Union[torch.Tensor, None]:
+    ) -> Tuple[Union[torch.Tensor, None], float, float]:
         # Find line constraints.
         constraints = self._line_constraints(self._env, agent_radius=agent_radius, agent_safe_dt=safe_dt)
         logging.info(f"ORCA constraints for ego [{self._env.ego.id}]: {constraints}")
@@ -53,9 +53,12 @@ class ORCASolver(Solver):
         # Logging.
         controls = self.z_to_ego_controls(z=velocity_new.detach().numpy(), return_leaf=False)
         x4 = self.z_to_ego_trajectory(z=velocity_new.detach().numpy(), return_leaf=False)
-        self.logging(z=controls, x4=x4)
+        self.log(z=controls, x4=x4)
         self.log_and_clean_up(tag=str(self._iteration))
-        return velocity_new.unsqueeze(dim=0)
+
+        # Mock values for objective and infeasibility.
+        objective_value, infeasibility_value = -1.0, 0.0
+        return velocity_new.unsqueeze(dim=0), objective_value, infeasibility_value
 
     ###########################################################################
     # Initialization ##########################################################

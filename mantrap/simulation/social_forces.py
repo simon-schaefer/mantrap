@@ -1,5 +1,5 @@
 from collections import namedtuple
-import copy
+from copy import deepcopy
 from typing import Any, Dict, List, Tuple, Union
 
 import torch
@@ -36,8 +36,9 @@ class SocialForcesSimulation(GraphBasedSimulation):
         x_axis: Tuple[float, float] = sim_x_axis_default,
         y_axis: Tuple[float, float] = sim_y_axis_default,
         dt: float = sim_dt_default,
+        **kwargs
     ):
-        super(SocialForcesSimulation, self).__init__(ego_type, ego_kwargs, x_axis=x_axis, y_axis=y_axis, dt=dt)
+        super(SocialForcesSimulation, self).__init__(ego_type, ego_kwargs, x_axis, y_axis, dt=dt, **kwargs)
         self._ado_ghosts = []
 
     def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
@@ -102,7 +103,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
         for i in range(num_modes):
             assert v0s[i].__class__.__bases__[0] == Distribution
             assert sigmas[i].__class__.__bases__[0] == Distribution
-            ado = copy.deepcopy(self._ados[-1])
+            ado = deepcopy(self._ados[-1])
             v0 = abs(float(v0s[i].sample()))
             sigma = abs(float(sigmas[i].sample()))
             tau = sim_social_forces_defaults["tau"]
@@ -211,7 +212,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
             return self._build_connected_graph(t_horizon=kwargs["t_horizon"], ego_states=[None] * kwargs["t_horizon"])
 
     def _build_connected_graph(self, t_horizon: int, ego_states: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
-        ado_ghosts_copy = copy.deepcopy(self._ado_ghosts)
+        ado_ghosts_copy = deepcopy(self._ado_ghosts)
 
         # Build first graph for the next state, in case no forces are applied on the ego.
         graphs = self.build_graph(ego_state=ego_states[0], k=0, **kwargs)
@@ -264,3 +265,10 @@ class SocialForcesSimulation(GraphBasedSimulation):
             assert len(self._ado_ghosts) % self.num_ados == 0
             num_ado_modes = int(len(self._ado_ghosts) / self.num_ados)
         return num_ado_modes
+
+    ###########################################################################
+    # Simulation parameters ###################################################
+    ###########################################################################
+    @property
+    def simulation_name(self) -> str:
+        return "social_forces"

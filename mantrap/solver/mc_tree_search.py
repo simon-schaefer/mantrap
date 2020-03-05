@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -12,46 +12,45 @@ from mantrap.utility.primitives import square_primitives
 
 class MonteCarloTreeSearch(Solver):
 
-    def determine_ego_controls(
+    def optimize(
         self,
+        z0: torch.Tensor,
+        tag: str,
         max_iter: int = mcts_max_steps,
         max_cpu_time: float = mcts_max_cpu_time,
         **solver_kwargs
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
+        # Find variable bounds for random sampling during search.
         lb, ub = self.optimization_variable_bounds()
         lb, ub = np.asarray(lb), np.asarray(ub)
 
+        # Start stopping conditions (runtime or number of iterations).
         sampling_start_time = time.time()
         sampling_iteration = 0
 
         # First of all evaluate the default trajectory as "baseline" for further trajectories.
-        z0 = self.z0s_default(just_one=True).detach().numpy()
-        obj_best, inf_best, x4_best, u2_best = self._evaluate(z=z0)
+        z_best = z0.detach().numpy()
+        obj_best, _ = self._evaluate(z=z_best, tag=tag)
 
         # Then start sampling (MCTS) loop for finding more optimal trajectories.
         while sampling_iteration < max_iter and (time.time() - sampling_start_time) < max_cpu_time:
             z_sample = np.random.uniform(lb, ub)
-            objective, constraint_violation, x4, u2 = self._evaluate(z=z_sample)
+            objective, constraint_violation = self._evaluate(z=z_sample, tag=tag)
 
             if obj_best > objective and constraint_violation < solver_constraint_limit:
                 obj_best = objective
-                inf_best = constraint_violation
-                x4_best, u2_best = x4.detach().clone(), u2.detach().clone()
-
-            self.logging(x4=x4, u2=u2)
+                z_best = z_sample
             sampling_iteration += 1
 
-        self.logging(x4=x4_best, u2=u2_best)  # last results are assumed to be the best ones
-        self.intermediate_log(iter_count=sampling_iteration, obj_value=obj_best, inf_value=inf_best)
-        self.log_and_clean_up(tag=str(self._iteration), last_only=True, vis_keys=[])
-        return u2_best
+        # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
+        # be the best iteration (logging within objective and constraint function).
+        self._evaluate(z=z_best, tag=tag)
+        return self.z_to_ego_controls(z=z_best), obj_best, self.optimization_log.copy()
 
-    def _evaluate(self, z: np.ndarray) -> Tuple[float, float, torch.Tensor, torch.Tensor]:
-        objective = self.objective(z)
-        _, constraint_violation = self.constraints(z, return_violation=True)
-        x4 = self.z_to_ego_trajectory(z=z)
-        u2 = self.z_to_ego_controls(z=z)
-        return objective, constraint_violation, x4, u2
+    def _evaluate(self, z: np.ndarray, tag: str) -> Tuple[float, float]:
+        objective = self.objective(z, tag=tag)
+        _, constraint_violation = self.constraints(z, return_violation=True, tag=tag)
+        return objective, constraint_violation
 
     ###########################################################################
     # Initialization ##########################################################
@@ -95,11 +94,18 @@ class MonteCarloTreeSearch(Solver):
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         u2 = torch.from_numpy(z).view(self.T, 2)
         u2.requires_grad = True
-        x4 = self.env.ego.unroll_trajectory(controls=u2, dt=self.env.dt)[:, 0:4]
-        assert check_ego_trajectory(x4, t_horizon=self.T + 1, pos_and_vel_only=True)
-        return x4 if not return_leaf else (x4, u2)
+        x5 = self.env.ego.unroll_trajectory(controls=u2, dt=self.env.dt)
+        assert check_ego_trajectory(x5, t_horizon=self.T + 1, pos_and_vel_only=True)
+        return x5 if not return_leaf else (x5, u2)
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         u2 = torch.from_numpy(z).view(self.T, 2)
         u2.requires_grad = True
         return u2 if not return_leaf else (u2, u2)
+
+    ###########################################################################
+    # Logging parameters ######################################################
+    ###########################################################################
+    @property
+    def solver_name(self) -> str:
+        return "mcts"
