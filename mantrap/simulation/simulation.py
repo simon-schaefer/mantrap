@@ -38,44 +38,6 @@ class GraphBasedSimulation:
         self._sim_time = 0
         self._scene_name = scene_name
 
-    @abstractmethod
-    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        """Predict the environments future for the given time horizon (discrete time).
-        The internal prediction model is dependent on the exact implementation of the internal interaction model
-        between the ados with each other and between the ados and the ego. The implementation therefore is specific
-        to each child-class.
-
-        :param controls: ego control input (pred_horizon, 2).
-        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
-        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def predict_w_trajectory(self, trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        """Predict the environments future for the given time horizon (discrete time).
-        The internal prediction model is dependent on the exact implementation of the internal interaction model
-        between the ados with each other and between the ados and the ego. The implementation therefore is specific
-        to each child-class.
-
-        :param trajectory: ego trajectory (pred_horizon, 4).
-        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
-        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        """Predict the environments future for the given time horizon (discrete time).
-        The internal prediction model is dependent on the exact implementation of the internal interaction model
-        between the ados while ignoring the ego.
-
-        :param t_horizon: prediction horizon, number of discrete time-steps.
-        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
-        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
-        """
-        pass
-
     def step(self, ego_control: torch.Tensor) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
         """Run simulation step (time-step = dt). Update state and history of ados and ego. Also reset simulation time
         to sim_time_new = sim_time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
@@ -133,6 +95,51 @@ class GraphBasedSimulation:
             for i in range(self.num_ados):
                 self._ados[i].reset(state=ado_states_next[i, 0, 0, :], history=None)  # new state is appended
 
+    ###########################################################################
+    # Prediction ##############################################################
+    ###########################################################################
+    @abstractmethod
+    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        """Predict the environments future for the given time horizon (discrete time).
+        The internal prediction model is dependent on the exact implementation of the internal interaction model
+        between the ados with each other and between the ados and the ego. The implementation therefore is specific
+        to each child-class.
+
+        :param controls: ego control input (pred_horizon, 2).
+        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_w_trajectory(self, trajectory: torch.Tensor, return_more: bool = False,
+                             **graph_kwargs) -> torch.Tensor:
+        """Predict the environments future for the given time horizon (discrete time).
+        The internal prediction model is dependent on the exact implementation of the internal interaction model
+        between the ados with each other and between the ados and the ego. The implementation therefore is specific
+        to each child-class.
+
+        :param trajectory: ego trajectory (pred_horizon, 4).
+        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        """Predict the environments future for the given time horizon (discrete time).
+        The internal prediction model is dependent on the exact implementation of the internal interaction model
+        between the ados while ignoring the ego.
+
+        :param t_horizon: prediction horizon, number of discrete time-steps.
+        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
+        """
+        pass
+
+    ###########################################################################
+    # Scene ###################################################################
+    ###########################################################################
     def add_ado(self, **ado_kwargs):
         assert "type" in ado_kwargs.keys() and type(ado_kwargs["type"]) == Agent.__class__, "ado type required"
         ado = ado_kwargs["type"](**ado_kwargs)
@@ -147,7 +154,19 @@ class GraphBasedSimulation:
     # Simulation graph ########################################################
     ###########################################################################
     @abstractmethod
-    def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
+    def build_connected_graph(self, **kwargs) -> Dict[str, torch.Tensor]:
+        """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
+         the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
+         using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
+         graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.
+
+         For building the graph the graphs for each single time-step is built independently while being connected
+         using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
+         terms of computational effort and space, however end-to-end-differentiable.
+        """
+        raise NotImplementedError
+
+    def write_state_to_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
         k = dict_value_or_default(graph_kwargs, key="k", default=0)
         ado_grad = dict_value_or_default(graph_kwargs, key="ado_grad", default=False)
         ego_grad = dict_value_or_default(graph_kwargs, key="ego_grad", default=True)
@@ -170,22 +189,9 @@ class GraphBasedSimulation:
 
         return graph
 
-    @abstractmethod
-    def build_connected_graph(self, **kwargs) -> Dict[str, torch.Tensor]:
-        """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
-         the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
-         using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
-         graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.
-
-         For building the graph the graphs for each single time-step is built independently while being connected
-         using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
-         terms of computational effort and space, however end-to-end-differentiable.
-        """
-        raise NotImplementedError
-
     def transcribe_graph(self, graph: Dict[str, torch.Tensor], t_horizon: int, returns: bool = False):
         # Remodel simulation outputs, as they are all stored in the simulation graph.
-        forces = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon - 1, 2))
+        controls = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon - 1, 2))
         trajectories = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 5))
         weights = torch.zeros((self.num_ados, self.num_ado_modes))
 
@@ -197,13 +203,13 @@ class GraphBasedSimulation:
                 trajectories[i_ado, i_mode, k, 2:4] = graph[f"{ghost_id}_{k}_velocity"]
                 trajectories[i_ado, i_mode, k, -1] = self.sim_time + self.dt * k
                 if k < t_horizon - 1:
-                    forces[i_ado, i_mode, k, :] = graph[f"{ghost_id}_{k}_force"]
+                    controls[i_ado, i_mode, k, :] = graph[f"{ghost_id}_{k}_force"]
             weights[i_ado, i_mode] = self.ado_ghosts[i].weight
 
-        assert check_controls(forces, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon - 1)
+        assert check_controls(controls, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon - 1)
         assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
         assert check_trajectories(trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_ado_modes)
-        return trajectories if not returns else (trajectories, forces, weights)
+        return trajectories if not returns else (trajectories, controls, weights)
 
     def detach(self):
         self._ego.detach()

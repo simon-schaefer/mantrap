@@ -2,7 +2,6 @@
 [submodule "external/ORCA"]
 	path = external/ORCA
 	url = https://github.com/snape/RVO2
-[submodule "external/TrajectronETH"]
-	path = external/TrajectronETH
-	url = https://github.com/StanfordASL/Trajectron-plus-plus.git
-        branch = ETH_UCY_dataset
+[submodule "external/GenTrajectron"]
+ 	path = external/GenTrajectron
+ 	url = https://github.com/simon-schaefer/GenTrajectron

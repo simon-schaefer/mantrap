@@ -2,6 +2,7 @@
 
 # Setup environment variables.
 PROJECT_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+EXTERNAL_HOME="$PROJECT_HOME/external"
 VIRTUAL_ENV=".venv_mantrap"
 echo 'Setting up project ...'
 
@@ -23,6 +24,9 @@ pip3 install -r "${PROJECT_HOME}"/ops/requirements.txt
 cp "${PROJECT_HOME}"/ops/setup.py "${PROJECT_HOME}"
 pip3 install -e .
 rm "${PROJECT_HOME}"/setup.py
+
+# Install external libraries requirements.
+pip3 install -r "${EXTERNAL_HOME}"/GenTrajectron/requirements.txt
 
 # Create output directory.
 mkdir "${PROJECT_HOME}"/outputs

@@ -25,7 +25,7 @@ class PotentialFieldSimulation(SocialForcesSimulation):
 
     def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
-        graph = super(SocialForcesSimulation, self).build_graph(ego_state, **graph_kwargs)
+        graph = self.write_state_to_graph(ego_state, **graph_kwargs)
         k = dict_value_or_default(graph_kwargs, key="k", default=0)
         for ghost in self.ado_ghosts:
             graph[f"{ghost.id}_{k}_goal"] = ghost.goal

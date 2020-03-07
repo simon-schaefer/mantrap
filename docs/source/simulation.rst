@@ -21,3 +21,10 @@ Potential Field
     :members:
     :undoc-members:
     :show-inheritance:
+
+Trajectron
+----------------------------
+ .. automodule:: mantrap.simulation.trajectron
+     :members:
+     :undoc-members:
+     :show-inheritance:

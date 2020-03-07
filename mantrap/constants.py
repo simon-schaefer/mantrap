@@ -19,6 +19,8 @@ sim_social_forces_defaults = {
 sim_social_forces_min_goal_distance = 0.1  # [m] minimal distance to goal to have non-zero goal traction force.
 sim_social_forces_max_interaction_distance = 2.0  # [m] maximal distance between agents for interaction force.
 
+sim_trajectron_model = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
+
 #######################################
 # solver parameters ###################
 #######################################

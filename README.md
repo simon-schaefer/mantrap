@@ -48,3 +48,5 @@ export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/external/IPOPT
 cd external/cyipopt
 python setup.py install
 ```
+
+In order to ensure a working Trajectron model the branch `online_with_torch` has to be checkout.

@@ -30,12 +30,10 @@ class Agent:
         self._velocity = velocity.float()
 
         # Initialize (and/or append) history vector.
+        self._history = expand_state_vector(self.state, time=time).view(1, 5).float()
         if history is not None:
-            assert history.shape[1] == 5, "history should contain 2D stamped position & velocity (x, y, vx, vy, t)"
-            history = history.float()
-            self._history = torch.stack((history, expand_state_vector(self.state, time).unsqueeze(0)), dim=1)
-        else:
-            self._history = expand_state_vector(self.state, time=time).view(1, 5).float()
+            assert history.shape[1] == 5
+            self._history = torch.cat((history.float(), self._history), dim=0)
 
         # Create random agent color (reddish), for evaluation only.
         self._color = np.random.uniform(0.0, 0.8, size=3).tolist()

@@ -1,2 +1,3 @@
-from .social_forces import SocialForcesSimulation
-from .simplified.potential_field import PotentialFieldSimulation
+from mantrap.simulation.social_forces import SocialForcesSimulation
+from mantrap.simulation.simplified.potential_field import PotentialFieldSimulation
+from mantrap.simulation.trajectron import Trajectron

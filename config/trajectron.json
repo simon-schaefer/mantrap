@@ -1,0 +1,39 @@
+{
+"env_params": {
+    "standardization": {
+        "PEDESTRIAN": {
+            "position": {
+                "x": {"mean": 0, "std": 1},
+                "y": {"mean": 0, "std": 1}
+            },
+            "velocity": {
+              "x": {"mean": 0, "std": 2},
+              "y": {"mean": 0, "std": 2}
+            },
+            "acceleration": {
+                "x": {"mean": 0, "std": 1},
+                "y": {"mean": 0, "std": 1}
+            }
+        },
+        "ROBOT": {
+            "position": {
+                "x": {"mean": 0, "std": 1},
+                "y": {"mean": 0, "std": 1}
+            },
+            "velocity": {
+              "x": {"mean": 0, "std": 2},
+              "y": {"mean": 0, "std": 2}
+            },
+            "acceleration": {
+                "x": {"mean": 0, "std": 1},
+                "y": {"mean": 0, "std": 1}
+            }
+        }
+    },
+    "node_type_list": ["PEDESTRIAN", "ROBOT"]
+  },
+  "dt": 0.4,
+  "attention_radius_pp": 10.0,
+  "attention_radius_pr": 10.0,
+  "attention_radius_rp": 10.0
+}
