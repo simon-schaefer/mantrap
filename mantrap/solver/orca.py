@@ -193,7 +193,8 @@ class ORCASolver(Solver):
 
         # We only want to find a new velocity for the ego robot, therefore we merely determine constraints between
         # the ados in the scene and the ego, not inter-ado constraints (as we cannot control them anyway).
-        for ado in env.ados:
+        for ghost in env.ado_ghosts:
+            ado = ghost.agent  # uni-modal so ghosts = ados
             rel_pos = ado.position - env.ego.position
             rel_vel = env.ego.velocity - ado.velocity
             distance_sq = torch.norm(rel_pos) ** 2

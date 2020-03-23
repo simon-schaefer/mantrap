@@ -86,8 +86,9 @@ def metric_ado_effort(**metric_kwargs) -> float:
     # Copy environment to not alter passed env object when resetting its state. Also check whether the initial
     # state in the environment and the ado trajectory tensor are equal.
     env = deepcopy(metric_kwargs["env"])
-    for ia, ado in enumerate(env.ados):
-        assert torch.all(torch.isclose(ado_traj[ia, 0, 0, :], ado.state_with_time))
+    for j, ghost in enumerate(env.ado_ghosts):
+        i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
+        assert torch.all(torch.isclose(ado_traj[i_ado, i_mode, 0, :], ghost.agent.state_with_time))
 
     effort_score = 0.0
     for m in range(num_ados):

@@ -154,6 +154,7 @@ class Agent:
     def detach(self):
         self._position = self._position.detach()
         self._velocity = self._velocity.detach()
+        self._history = self._history.detach()
 
     ###########################################################################
     # Operators ###############################################################

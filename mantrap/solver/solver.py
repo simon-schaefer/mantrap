@@ -106,8 +106,9 @@ class Solver:
         # Initialize trajectories with current state and simulation time.
         x5_opt[0] = self._env.ego.state_with_time
         self.log_append(x5_planned=self.env.ego.unroll_trajectory(torch.zeros((self.T, 2)), dt=self.env.dt), tag="opt")
-        for m, ado in enumerate(self.env.ados):
-            ado_traj[m, :, 0, :] = ado.state_with_time
+        for j, ghost in enumerate(self.env.ado_ghosts):
+            i_ado, i_mode = self.env.index_ghost_id(ghost_id=ghost.id)
+            ado_traj[i_ado, i_mode, 0, :] = ghost.agent.state_with_time
         self.log_append(ado_planned=self.env.predict_wo_ego(t_horizon=self.T + 1), tag="opt")
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
@@ -123,7 +124,7 @@ class Solver:
             # For logging purposes unroll and predict the scene for the derived ego controls.
             x5_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
             self.log_append(x5_planned=x5_opt_planned, tag="opt")
-            ado_planned = self.env.predict_w_controls(controls=ego_controls_k)
+            ado_planned = self._env.predict_w_controls(controls=ego_controls_k)
             self.log_append(ado_planned=ado_planned, tag="opt")
 
             # Forward simulate environment.

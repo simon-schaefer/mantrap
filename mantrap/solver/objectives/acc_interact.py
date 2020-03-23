@@ -21,12 +21,13 @@ class InteractionAccelerationModule(ObjectiveModule):
         objective = torch.zeros(1)
         for k in range(1, self.T - 1):
             for m in range(self._env.num_ado_ghosts):
+                ghost_id = self._env.ado_ghosts[m].id
+                m_ado, m_mode = self._env.index_ghost_id(ghost_id=ghost_id)
                 ado_acceleration = self._derivative_2.compute_single(
-                    graphs[f"{self._env.ado_ghosts[m].id}_{k - 1}_position"],
-                    graphs[f"{self._env.ado_ghosts[m].id}_{k}_position"],
-                    graphs[f"{self._env.ado_ghosts[m].id}_{k}_position"],
+                    graphs[f"{ghost_id}_{k - 1}_position"],
+                    graphs[f"{ghost_id}_{k}_position"],
+                    graphs[f"{ghost_id}_{k}_position"],
                 )
-                m_ado, m_mode = self._env.ghost_to_ado_index(m)
                 ado_acceleration_wo = self._ado_accelerations_wo[m_ado, m_mode, k, :]
                 objective += torch.norm(ado_acceleration - ado_acceleration_wo) * self._env.ado_ghosts[m].weight
 

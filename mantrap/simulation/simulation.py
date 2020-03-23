@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections import namedtuple
+from copy import deepcopy
 import logging
 from typing import Any, Dict, List, Tuple, Union
 
@@ -30,7 +31,9 @@ class GraphBasedSimulation:
         assert dt > 0.0, "time-step must be larger than 0"
 
         self._ego = ego_type(**ego_kwargs, identifier="ego") if ego_type is not None else None
-        self._ados = []
+        self._ado_ghosts = []
+        self._num_ado_modes = 0
+        self._ado_ids = []
 
         self._x_axis = x_axis
         self._y_axis = y_axis
@@ -66,12 +69,23 @@ class GraphBasedSimulation:
         # one sampled mode policy.
         weights = weights / torch.sum(weights, dim=1)[:, np.newaxis]
         ado_states = torch.zeros((self.num_ados, 1, 1, 5))  # deterministic update (!)
-        for i, ado in enumerate(self._ados):
-            sampled_mode = np.random.choice(range(self.num_ado_modes), p=weights[i, :])
-            ado.update(ado_controls[i, sampled_mode, 0, :], dt=self.dt)
-            ado_states[i, :, :, :] = ado.state_with_time
-            logging.info(f"sim {self.name} step @t={self.sim_time} [ado_{ado.id}]: state={ado_states[i, 0].tolist()}")
+        sampled_modes = {}
+        for ado_id in self.ado_ids:   # TODO: enforce same order of ado_id and weights
+            i_ado = self.index_ado_id(ado_id=ado_id)
+            assert weights[i_ado, :].numel() == self.num_ado_modes
+            sampled_modes[ado_id] = np.random.choice(range(self.num_ado_modes), p=weights[i_ado, :])
 
+        # Now update the internal ghost representations accordingly, every ghost originating from the ado should now
+        # be "synchronized", i.e. have the same current state.
+        for j in range(self.num_ado_ghosts):
+            ado_id, _ = self.split_ghost_id(ghost_id=self.ado_ghosts[j].id)
+            i_ado = self.index_ado_id(ado_id=ado_id)
+            self._ado_ghosts[j].agent.update(action=ado_controls[i_ado, sampled_modes[ado_id], 0, :], dt=self.dt)
+            ado_states[i_ado, :, :, :] = self.ado_ghosts[j].agent.state_with_time  # TODO: repetitive !
+            logging.info(f"sim {self.name} step @t={self.sim_time} [ado_{ado_id}]: state={ado_states[i_ado].tolist()}")
+
+        # Detach agents from graph in order to keep independence between subsequent runs.
+        self.detach()
         return ado_states.detach(), self.ego.state_with_time.detach()  # otherwise no scene independence (!)
 
     def step_reset(self, ego_state_next: Union[torch.Tensor, None], ado_states_next: Union[torch.Tensor, None]):
@@ -89,11 +103,13 @@ class GraphBasedSimulation:
             assert check_state(ego_state_next, enforce_temporal=True)
             self._ego.reset(state=ego_state_next, history=None)  # new state is appended
 
-        # Reset ado agents, each mode similarly, if `ado_states_next` is None just do not reset them.
+        # Reset ado agents, each mode similarly, if `ado_states_next` is None just do not reset them. When resetting
+        # with `history=None` the new state is appended automatically.
         if ado_states_next is not None:
             assert check_trajectories(ado_states_next, ados=self.num_ados, t_horizon=1, modes=1)
-            for i in range(self.num_ados):
-                self._ados[i].reset(state=ado_states_next[i, 0, 0, :], history=None)  # new state is appended
+            for j in range(self.num_ado_ghosts):
+                i_ado, _ = self.index_ghost_id(ghost_id=self.ado_ghosts[j].id)
+                self._ado_ghosts[j].agent.reset(ado_states_next[i_ado, 0, 0, :], history=None)
 
     ###########################################################################
     # Prediction ##############################################################
@@ -140,15 +156,67 @@ class GraphBasedSimulation:
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, **ado_kwargs):
+    def states(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Return current states of ego and ado agents in the scene. Since the current state is known for every
+        ado the states are deterministic and uni-modal. States are returned as vector including temporal dimension.
+        """
+        ado_states = torch.zeros((self.num_ados, self.num_ado_modes, 1, 5))
+        for ghost in self.ado_ghosts:
+            i_ado, i_mode = self.index_ghost_id(ghost_id=ghost.id)
+            ado_states[i_ado, i_mode, 0, :] = ghost.agent.state
+        return self.ego.state_with_time, ado_states
+
+    def add_ado(self, num_modes: int = 1, weights: List[float] = None, arg_list: List[Dict] = None, **ado_kwargs):
         assert "type" in ado_kwargs.keys() and type(ado_kwargs["type"]) == Agent.__class__, "ado type required"
         ado = ado_kwargs["type"](**ado_kwargs)
+        self._ado_ids.append(ado.id)
 
         # Append ado to internal list of ados and rebuilt the graph (could be also extended but small computational
         # to actually rebuild it).
         assert self._x_axis[0] <= ado.position[0] <= self._x_axis[1], "ado x position must be in scene"
         assert self._y_axis[0] <= ado.position[1] <= self._y_axis[1], "ado y position must be in scene"
-        self._ados.append(ado)
+        if self._num_ado_modes == 0:
+            self._num_ado_modes = num_modes
+        assert num_modes == self.num_ado_modes  # all ados should have same number of modes
+
+        # Append the created ado for every mode.
+        arg_list = arg_list if arg_list is not None else [dict()] * num_modes
+        weights = weights if weights is not None else (torch.ones(num_modes) / num_modes).tolist()
+        assert len(arg_list) == len(weights) == num_modes
+        for i in range(num_modes):
+            ado = deepcopy(ado)
+            gid = self.build_ghost_id(ado_id=ado.id, mode_index=i)
+            self._ado_ghosts.append(self.Ghost(ado, weight=weights[i], id=gid, **arg_list[i]))  # required to be general
+
+    def ados_most_important_mode(self) -> List[Ghost]:
+        """Return a list of the most important ghosts, i.e. the ones with the highest weight, for each ado."""
+        ado_ghost_dict = {}
+        for ghost in self.ado_ghosts:
+            ado_id = ghost.agent.id
+            if ado_id not in ado_ghost_dict.keys() or ado_ghost_dict[ado_id].weight < ghost.weight:
+                ado_ghost_dict[ado_id] = ghost
+
+        assert len(ado_ghost_dict.values()) == self.num_ados
+        return list(ado_ghost_dict.values())
+
+    ###########################################################################
+    # Ghost ID ################################################################
+    ###########################################################################
+    @staticmethod
+    def build_ghost_id(ado_id: str, mode_index: int) -> str:
+        return ado_id + "_" + str(mode_index)
+
+    @staticmethod
+    def split_ghost_id(ghost_id: str) -> Tuple[str, int]:
+        ado_id, mode_index = ghost_id.split("_")
+        return ado_id, int(mode_index)
+
+    def index_ado_id(self, ado_id: str) -> int:
+        return self.ado_ids.index(ado_id)
+
+    def index_ghost_id(self, ghost_id: str) -> Tuple[int, int]:
+        ado_id, mode_index = self.split_ghost_id(ghost_id)
+        return self.ado_ids.index(ado_id), mode_index
 
     ###########################################################################
     # Simulation graph ########################################################
@@ -190,21 +258,20 @@ class GraphBasedSimulation:
         return graph
 
     def transcribe_graph(self, graph: Dict[str, torch.Tensor], t_horizon: int, returns: bool = False):
-        # Remodel simulation outputs, as they are all stored in the simulation graph.
+        """Remodel simulation outputs, as they are all stored in the simulation graph. """
         controls = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon - 1, 2))
         trajectories = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 5))
         weights = torch.zeros((self.num_ados, self.num_ado_modes))
 
-        for i in range(self.num_ado_ghosts):
-            i_ado, i_mode = self.ghost_to_ado_index(i)
-            ghost_id = self.ado_ghosts[i].id
+        for j, ghost in enumerate(self.ado_ghosts):
+            i_ado, i_mode = self.index_ghost_id(ghost_id=ghost.id)
             for k in range(t_horizon):
-                trajectories[i_ado, i_mode, k, 0:2] = graph[f"{ghost_id}_{k}_position"]
-                trajectories[i_ado, i_mode, k, 2:4] = graph[f"{ghost_id}_{k}_velocity"]
+                trajectories[i_ado, i_mode, k, 0:2] = graph[f"{ghost.id}_{k}_position"]
+                trajectories[i_ado, i_mode, k, 2:4] = graph[f"{ghost.id}_{k}_velocity"]
                 trajectories[i_ado, i_mode, k, -1] = self.sim_time + self.dt * k
                 if k < t_horizon - 1:
-                    controls[i_ado, i_mode, k, :] = graph[f"{ghost_id}_{k}_force"]
-            weights[i_ado, i_mode] = self.ado_ghosts[i].weight
+                    controls[i_ado, i_mode, k, :] = graph[f"{ghost.id}_{k}_force"]
+            weights[i_ado, i_mode] = ghost.weight
 
         assert check_controls(controls, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon - 1)
         assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
@@ -228,31 +295,26 @@ class GraphBasedSimulation:
         is_equal = is_equal and self.dt == other.dt
         is_equal = is_equal and self.num_ados == other.num_ados
         is_equal = is_equal and self.ego == other.ego
-        is_equal = is_equal and all([self.ados[i] == other.ados[i] for i in range(self.num_ados)])
+        ghosts_equal = [True] * self.num_ados
+        ghosts_imp = self.ados_most_important_mode()
+        other_imp = other.ados_most_important_mode()
+        for i in range(self.num_ados):
+            ghosts_equal[i] = ghosts_equal[i] and ghosts_imp[i].agent == other_imp[i].agent
+        is_equal = is_equal and all(ghosts_equal)
         return is_equal
 
     ###########################################################################
     # Ado properties ##########################################################
     ###########################################################################
     @property
-    def ados(self) -> List[Agent]:
-        return self._ados
-
-    @property
-    def num_ados(self) -> int:
-        return len(self._ados)
-
-    @property
-    def num_ado_modes(self) -> int:
-        return 1
-
-    @property
     def ado_colors(self) -> List[List[float]]:
-        return [ado.color for ado in self._ados]
+        ados = self.ados_most_important_mode()
+        return [ado.agent.color for ado in ados]
 
     @property
     def ado_ids(self) -> List[str]:
-        return [ado.id for ado in self._ados]
+        assert len(self.ado_ghosts) == len(self._ado_ids) * self._num_ado_modes
+        return self._ado_ids
 
     ###########################################################################
     # Ghost properties ########################################################
@@ -260,25 +322,20 @@ class GraphBasedSimulation:
     # are the ados themselves, as the default case is uni-modal. ##############
     ###########################################################################
     @property
-    def ado_ghosts_agents(self) -> List[Agent]:
-        return self.ados
+    def ado_ghosts(self) -> List[Ghost]:
+        return self._ado_ghosts
 
     @property
-    def ado_ghosts(self) -> List[Ghost]:
-        return [self.Ghost(ado, weight=torch.ones(1), id=f"{ado.id}_0") for ado in self.ados]
+    def num_ados(self) -> int:
+        return len(self.ado_ids)
 
     @property
     def num_ado_ghosts(self) -> int:
-        return self.num_ados
+        return len(self._ado_ghosts)
 
-    def ghost_to_ado_index(self, ghost_index: int) -> Tuple[int, int]:
-        """Ghost of the same "parent" agent are appended to the internal storage of ghosts together, therefore it can
-        be backtracked which ghost index belongs to which agent and mode by simple integer division (assuming the same
-        number of modes of every ado).
-
-        :return ado index, mode index
-        """
-        return int(ghost_index / self.num_ado_modes), int(ghost_index % self.num_ado_modes)
+    @property
+    def num_ado_modes(self) -> int:
+        return self._num_ado_modes
 
     ###########################################################################
     # Ego properties ##########################################################

@@ -1,13 +1,11 @@
 from collections import namedtuple
 from copy import deepcopy
-from typing import Any, Dict, List, Tuple, Union
+from typing import Dict, List
 
 import torch
 
-from mantrap.agents.agent import Agent
 from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import (
-    sim_dt_default,
     sim_social_forces_defaults,
     sim_social_forces_min_goal_distance,
     sim_social_forces_max_interaction_distance,
@@ -26,31 +24,6 @@ class SocialForcesSimulation(GraphBasedSimulation):
     # Re-Definition of the Ghost object introducing further social-forces specific parameters such as a goal or
     # agent-dependent simulation parameters v0, sigma and tau.
     Ghost = namedtuple("Ghost", "agent goal v0 sigma tau weight id")
-
-    def __init__(
-        self,
-        ego_type: Agent.__class__ = None,
-        ego_kwargs: Dict[str, Any] = None,
-        dt: float = sim_dt_default,
-        **sim_kwargs
-    ):
-        super(SocialForcesSimulation, self).__init__(ego_type, ego_kwargs, dt=dt, **sim_kwargs)
-        self._ado_ghosts = []
-
-    def step(self, ego_control: torch.Tensor = None) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
-        ado_states, ego_next_state = super(SocialForcesSimulation, self).step(ego_control=ego_control)
-        for i in range(self.num_ado_ghosts):
-            i_ado, i_mode = self.ghost_to_ado_index(i)
-            self._ado_ghosts[i].agent.reset(ado_states[i_ado, 0, 0, :], history=None)  # new state is appended
-        return ado_states, ego_next_state
-
-    def step_reset(self, ego_state_next: Union[torch.Tensor, None], ado_states_next: Union[torch.Tensor, None]):
-        super(SocialForcesSimulation, self).step_reset(ego_state_next, ado_states_next)
-        for i in range(self.num_ado_ghosts):
-            i_ado, i_mode = self.ghost_to_ado_index(i)
-            # enforce that all modes are updating similarly (update deterministic !)
-            assert torch.all(torch.isclose(ado_states_next[i_ado, 0], ado_states_next[i_ado, i_mode]))
-            self._ado_ghosts[i].agent.reset(ado_states_next[i_ado, i_mode, 0, :], history=None)  # new state is appended
 
     ###########################################################################
     # Prediction ##############################################################
@@ -73,8 +46,8 @@ class SocialForcesSimulation(GraphBasedSimulation):
     ###########################################################################
     def add_ado(
         self,
-        goal: torch.Tensor,
-        num_modes: int,
+        num_modes: int = 1,
+        goal: torch.Tensor = torch.zeros(2),
         v0s: List[Distribution] = None,
         sigmas: List[Distribution] = None,
         weights: List[float] = None,
@@ -88,7 +61,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
         assert goal.size() == torch.Size([2]), "goal position must be two-dimensional (x, y)"
-        goal = goal.float()
+        goal = goal.detach().float()
 
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces
         # simulation are sampled from distributions, each for one mode. If not stated the default parameters are
@@ -97,20 +70,26 @@ class SocialForcesSimulation(GraphBasedSimulation):
         v0s = v0s if v0s is not None else [v0s_default] * num_modes
         sigma_default = Gaussian(sim_social_forces_defaults["sigma"], sim_social_forces_defaults["sigma"] / 2)
         sigmas = sigmas if sigmas is not None else [sigma_default] * num_modes
-        weights = weights if weights is not None else (torch.ones(num_modes) / num_modes).tolist()
-        assert len(v0s) == len(sigmas) == len(weights), "simulation parameters and number of modes do not match"
+        assert len(v0s) == len(sigmas)
 
-        # Create ado and ado ghosts.
-        super(SocialForcesSimulation, self).add_ado(type=DoubleIntegratorDTAgent, **ado_kwargs)
+        # For each mode sample new parameters from the previously defined distribution.
+        args_list = []
         for i in range(num_modes):
             assert v0s[i].__class__.__bases__[0] == Distribution
             assert sigmas[i].__class__.__bases__[0] == Distribution
-            ado = deepcopy(self._ados[-1])
             v0 = abs(float(v0s[i].sample()))
             sigma = abs(float(sigmas[i].sample()))
             tau = sim_social_forces_defaults["tau"]
-            gid = ado.id + "_" + str(i)
-            self._ado_ghosts.append(self.Ghost(ado, goal=goal, v0=v0, sigma=sigma, tau=tau, weight=weights[i], id=gid))
+            args_list.append({"v0": v0, "sigma": sigma, "tau": tau, "goal": goal})
+
+        # Finally add ado ghosts to simulation.
+        super(SocialForcesSimulation, self).add_ado(
+            type=DoubleIntegratorDTAgent,
+            num_modes=num_modes,
+            weights=weights,
+            arg_list=args_list,
+            **ado_kwargs
+        )
 
     ###########################################################################
     # Simulation Graph ########################################################
@@ -231,41 +210,15 @@ class SocialForcesSimulation(GraphBasedSimulation):
             graphs.update(graph_k)
 
         # Update graph for a last time using the forces determined in the previous step.
-        for ig, ghost in enumerate(self._ado_ghosts):
-            self._ado_ghosts[ig].agent.update(graphs[f"{ghost.id}_{t_horizon - 1}_force"], dt=self.dt)
-            graphs[f"{ghost.id}_{t_horizon}_position"] = self._ado_ghosts[ig].agent.position
-            graphs[f"{ghost.id}_{t_horizon}_velocity"] = self._ado_ghosts[ig].agent.velocity
+        for ig in range(self.num_ado_ghosts):
+            ghost_id = self.ado_ghosts[ig].id
+            self._ado_ghosts[ig].agent.update(graphs[f"{ghost_id}_{t_horizon - 1}_force"], dt=self.dt)
+            graphs[f"{ghost_id}_{t_horizon}_position"] = self.ado_ghosts[ig].agent.position
+            graphs[f"{ghost_id}_{t_horizon}_velocity"] = self.ado_ghosts[ig].agent.velocity
 
         # Reset ado ghosts to previous states.
         self._ado_ghosts = ado_ghosts_copy
         return graphs
-
-    ###########################################################################
-    # Ado properties ##########################################################
-    ###########################################################################
-    @property
-    def ado_ghosts_agents(self) -> List[Agent]:
-        return [ghost.agent for ghost in self._ado_ghosts]
-
-    @property
-    def ado_ghosts(self) -> List[Ghost]:
-        return self._ado_ghosts
-
-    @property
-    def num_ado_ghosts(self) -> int:
-        return len(self._ado_ghosts)
-
-    @property
-    def num_ado_modes(self) -> int:
-        """The number of modes results from the ratio between the number of ado ghosts (pseudo ados, i.e. different
-        versions of an ado differentiating by a their parameters) and the number of ados. Thereby we assume that
-        all ados have the same number of modes (which is usually the case by construction). """
-        if self.num_ados == 0:
-            num_ado_modes = 0
-        else:
-            assert len(self._ado_ghosts) % self.num_ados == 0
-            num_ado_modes = int(len(self._ado_ghosts) / self.num_ados)
-        return num_ado_modes
 
     ###########################################################################
     # Simulation parameters ###################################################

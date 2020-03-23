@@ -23,8 +23,9 @@ class InteractionPositionModule(ObjectiveModule):
         objective = torch.zeros(1)
         for k in range(self.T):
             for m in range(self._env.num_ado_ghosts):
-                ado_position = graphs[f"{self._env.ado_ghosts[m].id}_{k}_position"]
-                m_ado, m_mode = self._env.ghost_to_ado_index(m)
+                ghost_id = self._env.ado_ghosts[m].id
+                m_ado, m_mode = self._env.index_ghost_id(ghost_id=ghost_id)
+                ado_position = graphs[f"{ghost_id}_{k}_position"]
                 ado_position_wo = self._ado_positions_wo[m_ado, m_mode, k, :]
                 objective += torch.norm(ado_position - ado_position_wo) * self._env.ado_ghosts[m].weight
 

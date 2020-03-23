@@ -1,5 +1,4 @@
 import copy
-import time
 from typing import List
 
 import pytest
@@ -8,7 +7,6 @@ import torch
 from mantrap.agents import IntegratorDTAgent
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
-from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.primitives import straight_line
 from mantrap.utility.shaping import check_trajectories, check_controls, check_weights
@@ -25,18 +23,22 @@ class ZeroSimulation(GraphBasedSimulation):
 
     def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         policies = torch.zeros((self.num_ados, self.num_ado_modes, t_horizon, 2))
-        ados_sim = copy.deepcopy(self._ados)
+        ados_ghosts_copy = copy.deepcopy(self.ado_ghosts)
 
         for t in range(t_horizon):
-            for i in range(self.num_ados):
-                for m in range(self.num_ado_modes):
-                    ados_sim[i].update(policies[i, m, t, :], dt=self.dt)
-        trajectories = torch.stack([ado.history[-t_horizon:, :] for ado in ados_sim]).unsqueeze(1)
+            for j in range(self.num_ado_ghosts):
+                i_ado, i_mode = self.index_ghost_id(ghost_id=self.ado_ghosts[j].id)
+                self._ado_ghosts[j].agent.update(action=policies[i_ado, i_mode, t, :], dt=self.dt)
+
+        ghosts = self.ados_most_important_mode()
+        trajectories = torch.stack([ghost.agent.history[-t_horizon:, :] for ghost in ghosts]).unsqueeze(1)
         weights = torch.ones((self.num_ados, self.num_ado_modes))
 
         assert check_controls(policies, num_ados=self.num_ados, num_modes=self.num_ado_modes, t_horizon=t_horizon)
         assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_ado_modes)
         assert check_trajectories(trajectories, t_horizon=t_horizon, ados=self.num_ados, modes=1)
+
+        self._ado_ghosts = ados_ghosts_copy
         return trajectories if not return_more else (trajectories, policies, weights)
 
     @property
@@ -52,9 +54,10 @@ def test_initialization():
     assert torch.all(torch.eq(sim.ego.position, torch.tensor([4, 6]).float()))
     assert sim.num_ados == 0
     assert sim.sim_time == 0.0
-    sim.add_ado(type=IntegratorDTAgent, position=torch.tensor([6, 7]), velocity=torch.zeros(2))
-    assert torch.all(torch.eq(sim.ados[0].position, torch.tensor([6, 7]).float()))
-    assert torch.all(torch.eq(sim.ados[0].velocity, torch.zeros(2)))
+    sim.add_ado(type=IntegratorDTAgent, position=torch.tensor([6, 7]), velocity=torch.zeros(2), num_modes=1)
+
+    assert torch.all(torch.eq(sim.ado_ghosts[0].agent.position, torch.tensor([6, 7]).float()))
+    assert torch.all(torch.eq(sim.ado_ghosts[0].agent.velocity, torch.zeros(2)))
 
 
 def test_step():
@@ -79,16 +82,12 @@ def test_step():
         ado_trajectory[:, :, t, :] = ado_t
         ego_trajectory[t, :] = ego_t
 
-    ego_trajectory_x_exp = torch.linspace(
-        ego_position[0].item(), ego_position[0].item() + ego_control[0].item() * sim.dt * num_steps, num_steps + 1
-    )
-    ego_trajectory_y_exp = torch.linspace(
-        ego_position[1].item(), ego_position[1].item() + ego_control[1].item() * sim.dt * num_steps, num_steps + 1
-    )
+    x_start, x_end = ego_position[0].item(), ego_position[0].item() + ego_control[0].item() * sim.dt * num_steps
+    y_start, y_end = ego_position[1].item(), ego_position[1].item() + ego_control[1].item() * sim.dt * num_steps
     ego_t_exp = torch.transpose(torch.stack(
         (
-            ego_trajectory_x_exp,
-            ego_trajectory_y_exp,
+            torch.linspace(x_start, x_end, num_steps + 1),
+            torch.linspace(y_start, y_end, num_steps + 1),
             torch.ones(num_steps + 1) * ego_control[0],
             torch.ones(num_steps + 1) * ego_control[1],
             torch.linspace(0, num_steps * sim.dt, num_steps + 1),
@@ -99,23 +98,23 @@ def test_step():
 
 def test_step_reset():
     sim = ZeroSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-4, 6])}, dt=1.0)
-    sim.add_ado(type=IntegratorDTAgent, position=torch.zeros(2), velocity=torch.zeros(2))
-    sim.add_ado(type=IntegratorDTAgent, position=torch.ones(2), velocity=torch.zeros(2))
+    sim.add_ado(type=IntegratorDTAgent, position=torch.zeros(2), velocity=torch.zeros(2), num_modes=1)
+    sim.add_ado(type=IntegratorDTAgent, position=torch.ones(2), velocity=torch.zeros(2), num_modes=1)
 
     ego_next_state = torch.rand(5)
     ado_next_states = torch.rand(sim.num_ados, 1, 1, 5)
     sim.step_reset(ego_state_next=ego_next_state, ado_states_next=ado_next_states)
 
     assert torch.all(torch.eq(sim.ego.state_with_time, ego_next_state))
-    for i in range(sim.num_ados):
-        assert torch.all(torch.eq(sim.ados[i].state_with_time, ado_next_states[i]))
+    for i in range(sim.num_ado_ghosts):
+        assert torch.all(torch.eq(sim.ado_ghosts[i].agent.state_with_time, ado_next_states[i]))
 
 
 @pytest.mark.parametrize("position, modes", [(torch.zeros(2), 1), (torch.zeros(2), 4)])
 def test_update(position: torch.Tensor, modes: int):
     sim = ZeroSimulation(ego_type=IntegratorDTAgent, ego_kwargs={"position": position}, dt=1, num_modes=modes)
-    sim.add_ado(type=IntegratorDTAgent, position=torch.zeros(2), velocity=torch.zeros(2))
-    sim.add_ado(type=IntegratorDTAgent, position=torch.ones(2), velocity=torch.ones(2))
+    sim.add_ado(type=IntegratorDTAgent, position=torch.zeros(2), velocity=torch.zeros(2), num_modes=modes)
+    sim.add_ado(type=IntegratorDTAgent, position=torch.ones(2), velocity=torch.ones(2), num_modes=modes)
     num_steps = 10
     sim_times = torch.zeros(num_steps)
     ego_positions = torch.zeros((num_steps, 2))
@@ -165,8 +164,8 @@ def test_ado_ghosts_construction(pos: torch.Tensor, vel: torch.Tensor, num_modes
     sim.add_ado(goal=torch.zeros(2), position=pos, velocity=vel, num_modes=num_modes, v0s=v0s)
 
     assert sim.num_ado_modes == num_modes
-    assert all([ghost.id == sim.ados[0].id for ghost in sim.ado_ghosts_agents])
-    assert len(sim.ado_ghosts_agents) == num_modes
+    assert all([sim.split_ghost_id(ghost.id)[0] == sim.ado_ids[0] for ghost in sim.ado_ghosts])
+    assert len(sim.ado_ghosts) == num_modes
 
     assert all([type(v0) == DirecDelta for v0 in v0s])  # otherwise hard to compare due to sampling
     sim_v0s = [ghost.v0 for ghost in sim.ado_ghosts]
