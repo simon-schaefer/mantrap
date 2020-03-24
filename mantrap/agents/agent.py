@@ -13,6 +13,27 @@ from mantrap.utility.utility import expand_state_vector
 
 
 class Agent:
+    """
+    General agent representation.
+    An agent, whether in simulation or real world, has a five-dimensional state vector and a state history, which are
+    defined as follows:
+
+    .. math:: s_t = (pos_x(t), pos_y(t), vel_x(t), vel_y(t), time)
+    .. math:: history = (s_{t0}, s_{t1}, ..., s_{t})
+
+    For unique identification each agent has an id (3-character string) and for visualisation purposes a unique color.
+    Both are created randomly during initialization.
+    The internal state of the agent can be altered by calling the `update()` function, which uses some (control) input
+    to update the agent's state using its dynamics, or the `reset()` function, which sets the internal state to some
+    value directly. All other methods do not alter the internal state.
+
+    :param position: current 2D position vector (2).
+    :param velocity: current 2D velocity vector (2).
+    :param time: current time stamp, default = 0.0.
+    :param history: current agent's state history (N, 5), default = no history.
+    :param identifier: agent's pre-set identifier, default = none so initialized randomly during initialization.
+    """
+
     def __init__(
         self,
         position: torch.Tensor,
@@ -43,7 +64,12 @@ class Agent:
         logging.debug(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
 
     def update(self, action: torch.Tensor, dt: float):
-        """Update internal state (position, velocity and history) by executing some action for time dt."""
+        """Update internal state (position, velocity and history) by forward integrating the agent's dynamics over
+        the given time-step. The new state and time are then appended to the agent's state history.
+
+        :param action: control input (size depending on agent type).
+        :param dt: forward integration time step [s].
+        """
         assert dt > 0.0, "time-step must be larger than 0"
         state_new = self.dynamics(self.state, action, dt=dt)
         self._position = state_new[0:2]
@@ -63,6 +89,9 @@ class Agent:
         """Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent's
         history to the new state (i.e. append it to the already existing history) if history is given as None or set
         it to some given trajectory.
+
+        :param state: new state (4 or 5).
+        :param history: new state history (N, 5).
         """
         assert check_state(state, enforce_temporal=True), "state has to be at least 5-dimensional"
 
@@ -115,7 +144,12 @@ class Agent:
 
     def expand_trajectory(self, path: torch.Tensor, dt: float) -> torch.Tensor:
         """Derive (position, orientation, velocity)-trajectory information from position data only, using naive
-        discrete differentiation, i.e. v_i = (x_i+1 - x_i) / dt. """
+        discrete differentiation, i.e. v_i = (x_i+1 - x_i) / dt.
+
+        :param path: sequence of states (position, velocity) without temporal dimension (N, 4).
+        :param dt: time interval which is assumed to be constant over full path sequence [s].
+        :returns trajectory: temporally-expanded path (N, 5).s
+        """
         assert check_ego_path(path)
 
         t_horizon = path.shape[0]
@@ -131,27 +165,45 @@ class Agent:
 
     @abstractmethod
     def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
-        """Forward integrate the egos motion given some state-action pair and an integration time-step. Since every
-        agent type has different dynamics (like single-integrator or Dubins Car) this method is implemented
-        abstractly.
+        """Forward integrate the egos motion given some state-action pair and an integration time-step. Passing the
+        state, instead of using the internal state, allows the method to be used for other state vector than the
+        internal state, e.g. for forward predicting over a time horizon > 1.
+        Since every agent type has different dynamics (like single-integrator or Dubins Car) this method is
+        implemented abstractly.
+
+        :param state: state to be updated @ t = k (4 or 5).
+        :param action: control input @ t = k (size depending on agent type).
+        :param dt: forward integration time step [s].
+        :returns: updated state vector @ t = k + dt (4).
         """
         raise NotImplementedError
 
     @abstractmethod
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
-        """Determine the ego motion given its current and previous state. Since every agent type has different dynamics
-        (like single-integrator or Dubins Car) this method is implemented abstractly.
+        """Determine the ego motion given its current and previous state. Passing the state, instead of using the
+        internal state, allows the method to be used for other state vector than the internal state, e.g. for forward
+        predicting over a time horizon > 1.
+        Since every agent type has different dynamics (like single-integrator or Dubins Car) this method is
+        implemented abstractly.
+
+        :param state: state @ t = k (4 or 5).
+        :param state_previous: previous state @ t = k - dt (4 or 5).
+        :param dt: forward integration time step [s].
+        :returns: control input @ t = k (size depending on agent type).
         """
         raise NotImplementedError
 
     @abstractmethod
     def control_limits(self) -> Tuple[float, float]:
+        """Returns agent's control input limitations, i.e. lower and upper bound."""
         raise NotImplementedError
 
     ###########################################################################
     # Computation graph #######################################################
     ###########################################################################
     def detach(self):
+        """Detach the agent's internal variables (position, velocity, history) from computation tree. This is sometimes
+        required to completely separate subsequent computations in PyTorch."""
         self._position = self._position.detach()
         self._velocity = self._velocity.detach()
         self._history = self._history.detach()
@@ -160,7 +212,13 @@ class Agent:
     # Operators ###############################################################
     ###########################################################################
     def __eq__(self, other):
+        """Two agents are considered as being identical when their current state and their complete state history are
+        equal. Also the agent's class should be the same, e.g. single or double integrators.
+        However the agent's descriptive parameters such as its id are not part of this comparison, since they are
+        initialized as random and not descriptive for the state an agent is in.
+        """
         is_equal = True
+        is_equal = is_equal and self.__class__ == other.__class__
         is_equal = is_equal and torch.all(torch.eq(self.state_with_time, other.state_with_time))
         is_equal = is_equal and torch.all(torch.eq(self.history, other.history))
         return is_equal

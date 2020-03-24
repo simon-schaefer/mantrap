@@ -7,12 +7,30 @@ from mantrap.utility.io import dict_value_or_default
 
 
 class PotentialFieldSimulation(SocialForcesSimulation):
-    """Simplified version of social forces simulation class. The simplified model assumes static agents (ados) in the
-    scene, having zero velocity (if not stated otherwise) and no incentive to move since goal and position are the same.
-    Hereby, the graph model is cut to the pure interaction between ego and ado, no inter-ado interaction and goal
-    pulling force. Since the ados would not move at all without an ego agent in the scene, the interaction loss
-    simply comes down the the distance of every position of the ados in time to their initial (static) position. """
+    """Simplified version of social forces simulation class.
 
+    The simplified model assumes static agents (ados) in the scene, having zero velocity (if not stated otherwise)
+    and no incentive to move since goal and position are the same. Hereby, the graph model is cut to the pure
+    interaction between ego and ado, no inter-ado interaction and goal pulling force. Since the ados would not move
+    at all without an ego agent in the scene, the interaction loss simply comes down the the distance of every position
+    of the ados in time to their initial (static) position.
+    """
+
+    ###########################################################################
+    # Prediction ##############################################################
+    ###########################################################################
+    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        return super(PotentialFieldSimulation, self).predict_w_controls(controls, return_more, **graph_kwargs)
+
+    def predict_w_trajectory(self, trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        return super(PotentialFieldSimulation, self).predict_w_trajectory(trajectory, return_more, **graph_kwargs)
+
+    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+        return super(PotentialFieldSimulation, self).predict_wo_ego(t_horizon, return_more, **graph_kwargs)
+
+    ###########################################################################
+    # Scene ###################################################################
+    ###########################################################################
     def add_ado(self, **ado_kwargs):
         # enforce static agent - no incentive to move (overwriting goal input !)
         ado_kwargs["goal"] = ado_kwargs["position"]

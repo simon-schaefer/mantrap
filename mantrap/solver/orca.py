@@ -7,11 +7,7 @@ import torch
 
 from mantrap.constants import eps_numeric, agent_speed_max, orca_agent_radius, orca_agent_safe_dt
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.solver.solver import Solver
-
-
-LineConstraint = namedtuple("LineConstraint", ["point", "direction"])
 
 
 class ORCASolver(Solver):
@@ -31,6 +27,9 @@ class ORCASolver(Solver):
     executed by the ego itself, instead of splitting it up between the two avoiding agents, as in the original ORCA
     implementation.
     """
+
+    LineConstraint = namedtuple("LineConstraint", ["point", "direction"])
+
     def determine_ego_controls(
         self,
         agent_radius: float = orca_agent_radius,
@@ -126,7 +125,7 @@ class ORCASolver(Solver):
 
                     direction = constraints[j].direction - constraints[i].direction
                     direction = direction / torch.norm(direction)
-                    constraints_p.append(LineConstraint(point=point, direction=direction))
+                    constraints_p.append(self.LineConstraint(point=point, direction=direction))
 
                 velocity_temp = velocity_new
                 velocity_opt = torch.tensor([-constraints[i].direction[1], constraints[i].direction[0]])
@@ -187,8 +186,7 @@ class ORCASolver(Solver):
                 velocity_new = constraints[i].point + t * constraints[i].direction
         return velocity_new
 
-    @staticmethod
-    def _line_constraints(env: GraphBasedSimulation, agent_radius: float, agent_safe_dt: float) -> List[LineConstraint]:
+    def _line_constraints(self, env, agent_radius: float, agent_safe_dt: float) -> List[LineConstraint]:
         constraints = []
 
         # We only want to find a new velocity for the ego robot, therefore we merely determine constraints between
@@ -239,7 +237,7 @@ class ORCASolver(Solver):
                 u = w * (combined_radius / env.dt / torch.norm(w) - 1)
 
             point = env.ego.velocity + 0.5 * u  # usually 0.5 but we want to avoid interaction there 1.0
-            constraints.append(LineConstraint(point=point, direction=direction))
+            constraints.append(self.LineConstraint(point=point, direction=direction))
         return constraints
 
     ###########################################################################

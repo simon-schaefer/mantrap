@@ -14,6 +14,32 @@ from mantrap.utility.shaping import check_state, check_trajectories, check_contr
 
 
 class GraphBasedSimulation:
+    """General simulation engine for obstacle-free, interaction-aware, probabilistic and multi-modal agent environments.
+    As used in a robotics use-case the simulation separates between the ego-agent (the robot) and ado-agents (other
+    agents in the scene which are not the robot).
+
+    In order to deal with multi-modality the simulation uses so called "ghosts", which are weighted representations
+    of an agent. If for example an agent has two modes, two ghosts objects will be assigned to this agent, while being
+    treated independently from each other (just not interacting with each other).
+
+    To store only the ghosts themselves and not the agents was avoids storage overhead and makes it easier to simulate
+    several independent modes at the same time. However if only ado representations are required, the most important
+    mode of each ado can be collected using the `ados_most_important_mode()` method.
+
+    The internal states basically are the states of the ego and ados and can only be changed by either using the
+    `step()` or `step_reset()` function, which simulate how the environment reacts based on some action performed by
+    the ego or resets it directly to some given states.
+
+    The simulated world is two-dimensional and defined in the area limited by the passed `x_axis` and `y_axis`. It has
+    a constant simulation time-step `dt`.
+
+    :param ego_type: agent class of ego agent (should be agent child-class).
+    :param ego_kwargs: initialization arguments of ego agent such as position, velocity, etc.
+    :param x_axis: simulation environment limitation in x-direction.
+    :param y_axis: simulation environment limitation in y-direction.
+    :param dt: simulation time-step [s].
+    :param scene_name: configuration name of initialized environment (for logging purposes only).
+    """
 
     Ghost = namedtuple("Ghost", "agent weight id")
 
@@ -49,7 +75,7 @@ class GraphBasedSimulation:
         agent states remain unchanged).
 
         :param ego_control: planned ego control input for current time step (2).
-        :return ado_states (num_ados, num_modes, 1, 5), ego_next_state (5) in next time step.
+        :returns: ado_states (num_ados, num_modes, 1, 5), ego_next_state (5) in next time step.
         """
         self._sim_time = self._sim_time + self.dt
 
@@ -159,6 +185,9 @@ class GraphBasedSimulation:
     def states(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return current states of ego and ado agents in the scene. Since the current state is known for every
         ado the states are deterministic and uni-modal. States are returned as vector including temporal dimension.
+
+        :returns: ego state vector including temporal dimension (5).
+        :returns: ado state vectors including temporal dimension (num_ados, 5).
         """
         ado_states = torch.zeros((self.num_ados, self.num_ado_modes, 1, 5))
         for ghost in self.ado_ghosts:
@@ -167,7 +196,17 @@ class GraphBasedSimulation:
         return self.ego.state_with_time, ado_states
 
     def add_ado(self, num_modes: int = 1, weights: List[float] = None, arg_list: List[Dict] = None, **ado_kwargs):
-        assert "type" in ado_kwargs.keys() and type(ado_kwargs["type"]) == Agent.__class__, "ado type required"
+        """Add (multi-modal) ado (i.e. non-robot) agent to simulation.
+        While the ego is added to the simulation during initialization, the ado agents have to be added afterwards,
+        individually. To do so for each mode an agent is initialized using the passed initialization arguments and
+        appended to the internal list of ghosts, while staying assignable to the original ado agent by id, i.e.
+        ghost_id = ado_id + mode_index.
+
+        :param num_modes: number of modes of multi-modal ado agent (>=1).
+        :param weights: mode weight vector, default = uniform distribution.
+        :param arg_list: initialization arguments for each mode.
+        """
+        assert "type" in ado_kwargs.keys() and type(ado_kwargs["type"]) == Agent.__class__
         ado = ado_kwargs["type"](**ado_kwargs)
         self._ado_ids.append(ado.id)
 
@@ -224,13 +263,13 @@ class GraphBasedSimulation:
     @abstractmethod
     def build_connected_graph(self, **kwargs) -> Dict[str, torch.Tensor]:
         """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
-         the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
-         using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
-         graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.
+        the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
+        using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
+        graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.
 
-         For building the graph the graphs for each single time-step is built independently while being connected
-         using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
-         terms of computational effort and space, however end-to-end-differentiable.
+        For building the graph the graphs for each single time-step is built independently while being connected
+        using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
+        terms of computational effort and space, however end-to-end-differentiable.
         """
         raise NotImplementedError
 
@@ -279,6 +318,8 @@ class GraphBasedSimulation:
         return trajectories if not returns else (trajectories, controls, weights)
 
     def detach(self):
+        """Detach all internal agents (ego and all ado ghosts) from computation graph. This is sometimes required to
+        completely separate subsequent computations in PyTorch."""
         self._ego.detach()
         for m in range(self.num_ado_ghosts):
             self.ado_ghosts[m].agent.detach()

@@ -8,7 +8,17 @@ from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
 class MinDistanceModule(ConstraintModule):
+    """Constraint for minimal distance between the robot (ego) and any other agent (ado) at any point in time.
 
+    For computing the minimal distance between the ego and every ado the scene is forward simulated given the
+    planned ego trajectory, using the `build_connected_graph()` method. Then the distance between ego and every ado
+    is computed for every time-step of the trajectory. For 0 < t < T_{planning}:
+
+    .. math:: || pos(t) - pos^{ado}_{0:2}(t) || > D
+
+    :param horizon: planning time horizon in number of time-steps (>= 1).
+    :param env: environment object for forward simulation of scene.
+    """
     def __init__(self, horizon: int, **module_kwargs):
         self._env = None
         super(MinDistanceModule, self).__init__(horizon, **module_kwargs)

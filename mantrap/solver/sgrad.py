@@ -9,6 +9,12 @@ from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
 
 
 class SGradSolver(IPOPTSolver):
+    """Shooting NLP using IPOPT solver.
+
+    .. math:: z = controls
+    .. math:: J(z) = J_{goal} + J_{interaction}
+    .. math:: C(z) = [C_{max-speed}, C_{min-distance}]
+    """
 
     ###########################################################################
     # Initialization ##########################################################

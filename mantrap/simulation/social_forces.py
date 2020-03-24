@@ -17,9 +17,28 @@ from mantrap.utility.shaping import check_ego_trajectory
 
 
 class SocialForcesSimulation(GraphBasedSimulation):
-    """
-    Social Forces Simulation.
-    Pedestrian Dynamics based on to "Social Force Model for Pedestrian Dynamics" (D. Helbling, P. Molnar).
+    """Social Forces Simulation.
+    Pedestrian Dynamics based on to "Social Force Model for Pedestrian Dynamics" (D. Helbling, P. Molnar). The idea of
+    Social Forces is to determine interaction forces by taking into account the following entities:
+
+    *Goal force*:
+    Each ado has a specific goal state/position in mind, to which it moves to. The goal pulling force
+    is modelled as correction term between the direction vector of the current velocity and the goal direction (vector
+    between current position and goal).
+
+    .. math:: F_{goal} = 1 / tau_{a} (v_a^0 e_a - v_a)
+
+    *Interaction force*:
+    For modelling interaction between multiple agents such as avoiding collisions each agent
+    has an with increasing distance exponentially decaying repulsion field. Together with the scalar product of the
+    velocity of each agent pair (in order to not alter close but non interfering agents, e.g. moving parallel to each
+    other) the interaction term is constructed.
+
+    .. math:: V_{aB} (x) = V0_a exp(−x / \sigma_a)
+    .. math:: F_{interaction} = - grad_{r_{ab}} V_{aB}(||r_{ab}||)
+
+    To create multi-modality and stochastic effects several sets of simulation parameters can be assigned to the ado,
+    each representing one of it's modes.
     """
     # Re-Definition of the Ghost object introducing further social-forces specific parameters such as a goal or
     # agent-dependent simulation parameters v0, sigma and tau.
@@ -53,11 +72,6 @@ class SocialForcesSimulation(GraphBasedSimulation):
         weights: List[float] = None,
         **ado_kwargs,
     ):
-        """Add ado to the simulation. To create multi-modality and stochastic effects several sets of simulation
-        parameters can be assigned to the ado, each representing one of it's modes, and weights by the given
-        weight vector, representing the probability of each mode occurring. The ado_kwargs are basis ado parameters
-        such as position, velocity, id, etc.
-        """
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
         assert goal.size() == torch.Size([2]), "goal position must be two-dimensional (x, y)"

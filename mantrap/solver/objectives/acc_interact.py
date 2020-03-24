@@ -6,6 +6,21 @@ from mantrap.utility.maths import Derivative2
 
 
 class InteractionAccelerationModule(ObjectiveModule):
+    """Loss based on accelerational interaction between robot and ados.
+
+    As a proxy for interaction based on the acceleration of every ado is computed in a (fictional) scene without an
+    ego (robot) and compared to the actual occurring accelerations in the scene. As for autonomous driving the
+    acceleration can be expressed "moving comfort", since a change in acceleration, especially a sudden change like
+    strong de-acceleration, decreases the comfort of the agent.
+
+    Re-Predicting it every time-step would be more correct, however it would also require a lot more computational
+    effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
+    that would occur, if the ego is not there from the beginning.
+
+    .. math:: objective = \sum_{T} \sum_{ghosts} || acc_{t,i} - acc_{t,i}^{wo} ||_2
+
+    :param env: solver's simulation environment for predicting the behaviour without interaction.
+    """
     def __init__(self, env: GraphBasedSimulation, **module_kwargs):
         super(InteractionAccelerationModule, self).__init__(**module_kwargs)
         assert env.num_ado_ghosts > 0 and env.ego is not None

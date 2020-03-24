@@ -50,3 +50,8 @@ python setup.py install
 ```
 
 In order to ensure a working Trajectron model the branch `online_with_torch` has to be checkout.
+
+## Documentation 
+For code documentation the [Sphinx](https://www.sphinx-doc.org/en/master/) engine has been used. For building the 
+documentation locally setup the project and run `make html` in the documentation folder. Then open the documentation 
+by opening the `index.html` file in the resulting documentation build directory. 

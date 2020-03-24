@@ -9,7 +9,16 @@ from mantrap.utility.shaping import check_ego_trajectory
 
 
 class ConstraintModule:
+    """General constraint class.
 
+    For an unified and general implementation of the constraint function modules this superclass implements methods
+    for computing and logging the constraint value as well as the jacobian matrix simply based on a single method,
+    the `_compute()` method, which has to be implemented in the child classes. `_compute()` returns the constraint value
+    given a planned ego trajectory, while building a torch computation graph, which is used later on to determine the
+    jacobian matrix using the PyTorch autograd library.
+
+    :param horizon: planning time horizon in number of time-steps (>= 1).
+    """
     def __init__(self, horizon: int, **module_kwargs):
         self.T = horizon
 
@@ -40,11 +49,22 @@ class ConstraintModule:
         raise NotImplementedError
 
     def constraint(self, x5: torch.Tensor) -> np.ndarray:
+        """Determine constraint value for passed ego trajectory `x5` by calling the internal `compute()` method.
+
+        :param x5: planned ego trajectory (t_horizon, 5).
+        """
         assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True)
         constraint = self._compute(x5)
         return self._return_constraint(constraint.detach().numpy())
 
     def jacobian(self, x5: torch.Tensor, grad_wrt: torch.Tensor = None) -> np.ndarray:
+        """Determine jacobian matrix for passed ego trajectory `x5`. Therefore determine the constraint values by
+        calling the internal `compute()` method and en passant build a computation graph. Then using the pytorch
+        autograd library compute the jacobian matrix through the previously built computation graph.
+
+        :param x5: planned ego trajectory (t_horizon, 5).
+        :param grad_wrt: vector w.r.t. which the gradient should be determined.
+        """
         assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True)
         assert grad_wrt.requires_grad
 
@@ -61,6 +81,10 @@ class ConstraintModule:
         raise NotImplementedError
 
     def compute_violation(self) -> float:
+        """Determine constraint violation, i.e. how much the actual state is inside the constraint active region.
+        When the constraint is not active, then the violation is zero. The calculation is based on the last (cached)
+        evaluation of the constraint function.
+        """
         no_violation = np.zeros(self.num_constraints)
         violation_lower = self.lower - self._constraint_current if None not in self.lower else no_violation
         violation_upper = self._constraint_current - self.upper if None not in self.upper else no_violation

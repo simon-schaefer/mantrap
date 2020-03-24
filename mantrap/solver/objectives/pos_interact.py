@@ -5,11 +5,20 @@ from mantrap.solver.objectives.objective_module import ObjectiveModule
 
 
 class InteractionPositionModule(ObjectiveModule):
-    """Predict the scene without the presence of an ego robot. Re-Predicting it every time-step would be more correct,
-    however it would also require a lot more computational effort (horizon times as much to be exact). Therefore
-    merely the behavior of the ado without ego is computed that would occur, if the ego is not there from the beginning.
-    """
+    """Loss based on positional interaction between robot and ados.
 
+    As a proxy for interaction based on the position of every ado is computed in a (fictional) scene without an
+    ego (robot) and compared to the actual occurring positions in the scene, as in intuitive measure for the change
+    the robot's presence introduces to the scene.
+
+    Re-Predicting it every time-step would be more correct, however it would also require a lot more computational
+    effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
+    that would occur, if the ego is not there from the beginning.
+
+    .. math:: objective = \sum_{T} \sum_{ghosts} || pos_{t,i} - pos_{t,i}^{wo} ||_2
+
+    :param env: solver's simulation environment for predicting the behaviour without interaction.
+    """
     def __init__(self, env: GraphBasedSimulation, **module_kwargs):
         super(InteractionPositionModule, self).__init__(**module_kwargs)
         assert env.num_ado_ghosts > 0 and env.ego is not None

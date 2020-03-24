@@ -8,7 +8,15 @@ from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
 class MaxSpeedModule(ConstraintModule):
+    """Maximal ego speed of every trajectory point.
 
+    For computing this constraint simply the norm of the planned velocity is determined and compared to the maximal
+    agent's speed limit. For 0 < t < T_{planning}:
+
+    .. math:: vel(t) < v_{max}
+
+    :param horizon: planning time horizon in number of time-steps (>= 1).
+    """
     def initialize(self, **module_kwargs):
         pass
 

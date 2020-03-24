@@ -19,7 +19,33 @@ from mantrap.utility.shaping import check_ego_controls
 
 
 class Solver:
+    """General abstract solver implementation.
 
+    The idea of this general implementation is that in order to build a solver class only the `optimize()` method
+    has to be implemented, that determines the "optimal" value for the optimization variable given its initial value
+    and the internally stored scene, while the general solver implementation deals with multi-threading and provides
+    methods for computing the objective and constraint values (given a list of modules which should be taken into
+    account, see below).
+
+    Initialise solver class by building objective and constraint modules as defined within the specific
+    definition of the (optimisation) problem. The verbose flag enables printing more debugging flags as well
+    as plotting the optimisation history at the end.
+
+    Internally, the solver stores two environments, the environment it uses for planning (optimization etc) and
+    the environment it uses for evaluation, i.e. which is actually unknown for the solver but encodes the way
+    the scene actually changes from one time-step to another. If `eval_env = None` the planning and evaluation
+    environment are the same.
+
+    :param sim: simulation environment the solver's forward simulations are based on.
+    :param goal: goal state (position) of the robot (2).
+    :param t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
+    :param verbose: debugging flag (-1: nothing, 0: logging, 1: +printing, 2: +plot scenes, 3: +plot optimization).
+    :param multiprocessing: use multiprocessing for optimization.
+    :param objectives: List of objective module names and according weights.
+    :param constraints: List of constraint module names.
+    :param eval_env: simulation environment that should be used for evaluation ("real" environment).
+    :param config_name: name of solver configuration.
+    """
     def __init__(
         self,
         env: GraphBasedSimulation,
@@ -33,25 +59,6 @@ class Solver:
         config_name: str = "unknown",
         **solver_params
     ):
-        """Initialise solver class by building objective and constraint modules as defined within the specific
-        definition of the (optimisation) problem. The verbose flag enables printing more debugging flags as well
-        as plotting the optimisation history at the end.
-
-        Internally, the solver stores two environments, the environment it uses for planning (optimization etc) and
-        the environment it uses for evaluation, i.e. which is actually unknown for the solver but encodes the way
-        the scene actually changes from one time-step to another. If `eval_env = None` the planning and evaluation
-        environment are the same.
-
-        :param sim: simulation environment the solver's forward simulations are based on.
-        :param goal: goal state (position) of the robot (2).
-        :param t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
-        :param verbose: debugging flag (-1: nothing, 0: logging, 1: +printing, 2: +plot scenes, 3: +plot optimization).
-        :param multiprocessing: use multiprocessing for optimization.
-        :param objectives: List of objective module names and according weights.
-        :param constraints: List of constraint module names.
-        :param eval_env: simulation environment that should be used for evaluation ("real" environment).
-        :param config_name: name of solver configuration.
-        """
         assert goal.size() == torch.Size([2])
         self._goal = goal.float()
 
@@ -93,11 +100,12 @@ class Solver:
         """Find the ego trajectory given the internal simulation with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
+
         This method changes the internal environment by forward simulating it over the prediction horizon.
 
         :param time_steps: how many time-steps shall be solved (not planning horizon !).
         :return: derived ego trajectory [horizon + 1, 5].
-        :return derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
+        :return: derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
         """
         x5_opt = torch.zeros((time_steps + 1, 5))
         ado_traj = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
@@ -175,9 +183,7 @@ class Solver:
         return self.z_to_ego_controls(z_opt_best.detach().numpy())
 
     @abstractmethod
-    def optimize(
-        self, z0: torch.Tensor, tag: str, **solver_kwargs
-    ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
+    def optimize(self, z0: torch.Tensor, tag: str, **kwargs) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
         raise NotImplementedError
 
     ###########################################################################
@@ -290,7 +296,6 @@ class Solver:
         return ["x5_planned", "ado_planned"]
 
     def log_reset(self, log_horizon: int):
-        """Reset optimization logging parameters for next optimization. """
         # Reset iteration counter.
         self._iteration = 0
 
@@ -335,6 +340,8 @@ class Solver:
                     self._optimization_log[f"{key}_{k}"] = torch.stack(self._optimization_log[f"{key}_{k}"])
 
     def visualize_optimization(self):
+        """Visualize optimization iterations by plotting the planned ego trajectory for every optimization step as
+        well as the values of objective and infeasibility (constraint violation), iff verbose > 2."""
         if self.verbose > 2:
             from mantrap.evaluation.visualization import visualize
             assert self.optimization_log is not None
@@ -357,6 +364,8 @@ class Solver:
                               file_path=os.path.join(output_directory_path, f"{self.name}:{self.env.name}:{tag}_{k}"))
 
     def visualize_scenes(self):
+        """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
+        trajectories conditioned on the planned ego trajectory), iff verbose > 1."""
         if self.verbose > 1:
             from mantrap.evaluation.visualization import visualize
             assert self.optimization_log is not None
