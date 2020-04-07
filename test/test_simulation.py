@@ -1,5 +1,4 @@
-import copy
-from typing import Dict, List
+from typing import List
 
 import pytest
 import torch
@@ -9,52 +8,15 @@ from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation, Trajectron
 from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.primitives import straight_line
-from mantrap.utility.shaping import check_trajectories, check_controls, check_weights
+from mantrap.utility.shaping import check_trajectories
 
-
-class ZeroSimulation(GraphBasedSimulation):
-
-    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        t_horizon = controls.shape[0]
-        return self.predict_wo_ego(t_horizon, return_more=return_more, **graph_kwargs)
-
-    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        policies = torch.zeros((self.num_ados, self.num_modes, t_horizon, 2))
-        ados_ghosts_copy = copy.deepcopy(self.ghosts)
-
-        for t in range(t_horizon):
-            for j in range(self.num_ghosts):
-                i_ado, i_mode = self.index_ghost_id(ghost_id=self.ghosts[j].id)
-                self._ado_ghosts[j].agent.update(action=policies[i_ado, i_mode, t, :], dt=self.dt)
-
-        trajectories = torch.zeros(self.num_ados, self.num_modes, t_horizon, 5)
-        for ghost in self.ghosts:
-            i_ado, i_mode = self.index_ghost_id(ghost_id=ghost.id)
-            trajectories[i_ado, i_mode, :, :] = ghost.agent.history[-t_horizon:, :]
-        weights = torch.ones((self.num_ados, self.num_modes))
-
-        assert check_controls(policies, num_ados=self.num_ados, num_modes=self.num_modes, t_horizon=t_horizon)
-        assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_modes)
-        assert check_trajectories(trajectories, t_horizon=t_horizon, ados=self.num_ados, modes=self.num_modes)
-
-        self._ado_ghosts = ados_ghosts_copy
-        return trajectories if not return_more else (trajectories, policies, weights)
-
-    def add_ado(self, **ado_kwargs):
-        super(ZeroSimulation, self).add_ado(type=IntegratorDTAgent, **ado_kwargs)
-
-    def _build_connected_graph(self, t_horizon: int, trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
-        graph = {}
-        for t in range(t_horizon):
-            graph.update(self.write_state_to_graph(ego_state=trajectory[t, :], k=t))
-        return graph
 
 ###########################################################################
 # Tests - All Simulations #################################################
 ###########################################################################
 # In order to test the functionality of the simulation environment in a standardized way
 @pytest.mark.parametrize(
-    "simulation_class", (ZeroSimulation, SocialForcesSimulation, PotentialFieldSimulation, Trajectron)
+    "simulation_class", (SocialForcesSimulation, PotentialFieldSimulation, Trajectron)
 )
 class TestSimulation:
 
@@ -159,6 +121,26 @@ class TestSimulation:
 
         ghost_weights = [ghost.weight for ghost in sim.ghosts]
         assert ghost_weights == list(reversed(sorted(weights_initial)))  # sorted increasing values per default
+
+    @staticmethod
+    def test_detaching(simulation_class: GraphBasedSimulation.__class__):
+        sim = simulation_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
+        sim.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
+
+        # Build computation graph to detach later on. Then check whether the graph has been been built by checking
+        # for gradient availability.
+        ego_control = torch.ones((1, 2))
+        ego_control.requires_grad = True
+        _, ado_controls, weights = sim.predict_w_controls(controls=ego_control, return_more=True)
+        for j in range(sim.num_ghosts):
+            ado_id, _ = sim.split_ghost_id(ghost_id=sim.ghosts[j].id)
+            i_ado = sim.index_ado_id(ado_id=ado_id)
+            sim._ado_ghosts[j].agent.update(action=ado_controls[i_ado, 0, 0, :], dt=sim.dt)
+        assert sim.ghosts[0].agent.position.grad_fn is not None
+
+        # Detach computation graph.
+        sim.detach()
+        assert sim.ghosts[0].agent.position.grad_fn is None
 
 
 ###########################################################################

@@ -97,7 +97,7 @@ class GraphBasedSimulation:
         weights = weights / torch.sum(weights, dim=1)[:, np.newaxis]
         ado_states = torch.zeros((self.num_ados, 1, 1, 5))  # deterministic update (!)
         sampled_modes = {}
-        for ado_id in self.ado_ids:   # TODO: enforce same order of ado_id and weights
+        for ado_id in self.ado_ids:
             i_ado = self.index_ado_id(ado_id=ado_id)
             assert weights[i_ado, :].numel() == self.num_modes
             sampled_modes[ado_id] = np.random.choice(range(self.num_modes), p=weights[i_ado, :])
@@ -257,7 +257,11 @@ class GraphBasedSimulation:
 
     def ghosts_by_ado_index(self, ado_index: int) -> List[Ghost]:
         assert 0 <= ado_index < self.num_ados
-        return self._ado_ghosts[ado_index * self.num_modes:self.num_modes]
+        return self._ado_ghosts[ado_index * self.num_modes:(ado_index + 1)*self.num_modes]
+
+    def ghosts_by_ado_id(self, ado_id: str) -> List[Ghost]:
+        index = self.index_ado_id(ado_id=ado_id)
+        return self.ghosts_by_ado_index(ado_index=index)
 
     ###########################################################################
     # Ghost ID ################################################################

@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.agents import DoubleIntegratorDTAgent, IntegratorDTAgent
+from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import sim_trajectron_model
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.utility.io import build_os_path
@@ -50,39 +50,54 @@ class Trajectron(GraphBasedSimulation):
         self.trajectron = OnlineTrajectron(model_registrar, hyperparams=self.config, device="cpu")
 
         # Add robot to the scene as a first node.
-        if self.ego is not None:
-            ego_history, ego_id = self.ego.history, self.ego.id
-        else:
-            ego_history, ego_id = self._pseudo_ego.history, self._pseudo_ego.id
-
-        from data import Node
-        node_data = self._create_node_data(state_history=ego_history)
-        node = Node(node_type=self._gt_env.NodeType.ROBOT, node_id=ego_id, data=node_data, is_robot=True)
-        self._gt_scene.robot = node
-        self._gt_scene.nodes.append(node)
-
-        # Create online simulation environment.
-        self._online_env = self.create_online_env(env=self._gt_env, scene=self._gt_scene)
+        self._online_env = None
+        self._add_ego_to_graph(ego=self.ego if self.ego is not None else self._pseudo_ego)
 
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
     def add_ado(self, **ado_kwargs):
         super(Trajectron, self).add_ado(type=IntegratorDTAgent, **ado_kwargs)
+
+        # For the Trajectron model the multi-modality evolves at the output, not the input. Therefore instead of
+        # multiple ghosts of the same ado agent just the agent is added to the internal scene graph, as Pedestrian
+        # node. However the representation of the agents and their modes in the base class intrinsically is multimodal,
+        # by keeping the different modes as independent agents sharing the same history. Therefore a reference ghost
+        # is chosen to pass these shared properties to  the Trajectron scene.
+        ado_id, _ = self.split_ghost_id(ghost_id=self.ghosts[-1].id)
+        ado_history = self.ghosts[-1].agent.history
+        self._add_ado_to_graph(ado_history=ado_history, ado_id=ado_id)
+
+    def _add_ado_to_graph(self, ado_history: torch.Tensor, ado_id: str):
         from data import Node
 
         # Add a ado to online environment. Since the model predicts over the full time horizon internally and all
         # modes share the same state history, merely one ghost has to be added to the scene, representing all other
         # modes of the added ado agent.
-        node_data = self._create_node_data(state_history=self.ghosts[-1].agent.history)
-        node = Node(node_type=self._gt_env.NodeType.PEDESTRIAN, node_id=self.ghosts[-1].id, data=node_data)
+        node_data = self._create_node_data(state_history=ado_history)
+        node = Node(node_type=self._gt_env.NodeType.PEDESTRIAN, node_id=ado_id, data=node_data)
+        self._gt_scene.nodes.append(node)
+
+        # Re-Create online environment with recently appended node.
+        self._online_env = self.create_online_env(env=self._gt_env, scene=self._gt_scene)
+
+    def _add_ego_to_graph(self, ego: Agent):
+        from data import Node
+
+        # Add the ego as robot-type agent to the scene integrating its state history and passing the pre-build
+        # ego id as node id. Since the Trajectron model used is conditioned on the robot's movement, each prediction
+        # requires this ego. Therefore we have to add a robot to the scene, might it be an actual ego robot or (if
+        # no ego is in the scene) some pseudo robot very far away from the other agents in the scene.
+        node_data = self._create_node_data(state_history=ego.history)
+        node = Node(node_type=self._gt_env.NodeType.ROBOT, node_id=ego.id, data=node_data, is_robot=True)
+        self._gt_scene.robot = node
         self._gt_scene.nodes.append(node)
 
         # Re-Create online environment with recently appended node.
         self._online_env = self.create_online_env(env=self._gt_env, scene=self._gt_scene)
 
     @staticmethod
-    def ghost_id_from_node_id(node_id: str) -> str:
+    def ado_id_from_node_id(node_id: str) -> str:
         return node_id.split("/")[1]
 
     ###########################################################################
@@ -110,8 +125,8 @@ class Trajectron(GraphBasedSimulation):
         ado_planned = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
         _, ado_planned[:, :, 0:1, :] = self.states()
         for node, node_gmm in distribution.items():
-            ghost_id = self.ghost_id_from_node_id(node.__str__())
-            i_ado, _ = self.index_ghost_id(ghost_id)
+            ado_id = self.ado_id_from_node_id(node.__str__())
+            i_ado = self.index_ado_id(ado_id)
             ado_paths = node_gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :self.num_modes, :, 0:2]
 
             ado_planned[i_ado, :, 1:, 0:2] = ado_paths
@@ -134,8 +149,21 @@ class Trajectron(GraphBasedSimulation):
         return self._build_connected_graph(t_horizon=t_horizon, trajectory=pseudo_traj, **kwargs)
 
     def detach(self):
+        """Detaching the whole graph (which is the whole neural network) might be hard. Therefore just rebuilt it
+        from scratch completely, using the most up-to-date states of the agents. """
         super(Trajectron, self).detach()
-        raise NotImplementedError
+
+        # Reset internal scene representation.
+        self._gt_scene.nodes = []
+        self._gt_scene.robot = None
+
+        # Add all agents to the scene again.
+        self._add_ego_to_graph(ego=self.ego if self.ego is not None else self._pseudo_ego)
+        for i in range(self.num_ados):
+            ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
+            ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
+            ado_history = ghosts_ado[0].agent.history
+            self._add_ado_to_graph(ado_history=ado_history, ado_id=ado_id)
 
     ###########################################################################
     # GenTrajectron ###########################################################
