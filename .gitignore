@@ -35,3 +35,6 @@ external/
 
 # Output files.
 outputs/
+
+# Documentation files.
+presentation/

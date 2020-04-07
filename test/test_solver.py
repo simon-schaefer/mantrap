@@ -265,7 +265,7 @@ def test_s_grad_solver():
     ado_trajectories = env.predict_w_trajectory(trajectory=x5_solution)
 
     for t in range(10):
-        for m in range(env.num_ado_ghosts):
+        for m in range(env.num_ghosts):
             assert torch.norm(x5_solution[t, 0:2] - ado_trajectories[m, :, t, 0:2]).item() >= constraint_min_distance
 
 
@@ -291,14 +291,14 @@ class ORCASimulation(GraphBasedSimulation):
         self._sim_time = self.sim_time + self.dt
 
         assert self._ego is None, "simulation merely should have ado agents"
-        assert all([ghost.agent.__class__ == IntegratorDTAgent for ghost in self.ado_ghosts])
+        assert all([ghost.agent.__class__ == IntegratorDTAgent for ghost in self.ghosts])
 
         controls = torch.zeros((self.num_ados, 2))
-        for ia, ghost in enumerate(self.ado_ghosts):
+        for ia, ghost in enumerate(self.ghosts):
             ado = ghost.agent  # uni-modal so ghosts = ados
             ado_kwargs = {"position": ado.position, "velocity": ado.velocity, "log": False}
             ado_env = ORCASimulation(IntegratorDTAgent, ego_kwargs=ado_kwargs)
-            for other in self.ado_ghosts[:ia] + self.ado_ghosts[ia + 1:]:  # all agent except current loop element
+            for other in self.ghosts[:ia] + self.ghosts[ia + 1:]:  # all agent except current loop element
                 other_ado = other.agent  # uni-modal so ghosts = ados
                 ado_env.add_ado(position=other_ado.position, velocity=other_ado.velocity, goal_position=None)
 
@@ -309,7 +309,7 @@ class ORCASimulation(GraphBasedSimulation):
 
         for j in range(self.num_ados):
             self._ado_ghosts[j].agent.update(controls[j, :], dt=self.dt)
-        return torch.stack([ghost.agent.state for ghost in self.ado_ghosts]), None
+        return torch.stack([ghost.agent.state for ghost in self.ghosts]), None
 
 
 def test_orca_single_agent():
@@ -323,12 +323,12 @@ def test_orca_single_agent():
     sim.add_ado(position=pos_init, velocity=vel_init, goal_position=goal_pos)
 
     assert sim.num_ados == 1
-    assert torch.all(torch.eq(sim.ado_ghosts[0].agent.position, pos_init))
-    assert torch.all(torch.eq(sim.ado_ghosts[0].agent.velocity, vel_init))
+    assert torch.all(torch.eq(sim.ghosts[0].agent.position, pos_init))
+    assert torch.all(torch.eq(sim.ghosts[0].agent.velocity, vel_init))
 
     pos = torch.zeros(pos_expected.shape)
 
-    pos[0, :] = sim.ado_ghosts[0].agent.position
+    pos[0, :] = sim.ghosts[0].agent.position
     for k in range(1, pos.shape[0]):
         state_k, _ = sim.step()
         pos[k, :] = state_k[0, :2]
@@ -375,8 +375,8 @@ def test_orca_two_agents():
     sim.add_ado(position=pos_init[1, :], velocity=vel_init[1, :], goal_position=goal_pos[1, :])
 
     pos = torch.zeros(pos_expected.shape)
-    pos[0, 0, :] = sim.ado_ghosts[0].agent.position
-    pos[1, 0, :] = sim.ado_ghosts[1].agent.position
+    pos[0, 0, :] = sim.ghosts[0].agent.position
+    pos[1, 0, :] = sim.ghosts[1].agent.position
     for k in range(1, pos.shape[1]):
         state_k, _ = sim.step()
         pos[:, k, :] = state_k[:, :2]

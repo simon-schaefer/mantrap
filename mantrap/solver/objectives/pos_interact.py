@@ -21,21 +21,21 @@ class InteractionPositionModule(ObjectiveModule):
     """
     def __init__(self, env: GraphBasedSimulation, **module_kwargs):
         super(InteractionPositionModule, self).__init__(**module_kwargs)
-        assert env.num_ado_ghosts > 0 and env.ego is not None
+        assert env.num_ghosts > 0 and env.ego is not None
 
         self._env = env
         self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)[:, :, :, 0:2]
 
     def _compute(self, x5: torch.Tensor) -> torch.Tensor:
-        graphs = self._env.build_connected_graph(ego_trajectory=x5, ego_grad=False, ado_grad=False)
+        graphs = self._env.build_connected_graph(trajectory=x5, ego_grad=False, ado_grad=False)
 
         objective = torch.zeros(1)
         for k in range(self.T):
-            for m in range(self._env.num_ado_ghosts):
-                ghost_id = self._env.ado_ghosts[m].id
+            for m in range(self._env.num_ghosts):
+                ghost_id = self._env.ghosts[m].id
                 m_ado, m_mode = self._env.index_ghost_id(ghost_id=ghost_id)
                 ado_position = graphs[f"{ghost_id}_{k}_position"]
                 ado_position_wo = self._ado_positions_wo[m_ado, m_mode, k, :]
-                objective += torch.norm(ado_position - ado_position_wo) * self._env.ado_ghosts[m].weight
+                objective += torch.norm(ado_position - ado_position_wo) * self._env.ghosts[m].weight
 
         return objective

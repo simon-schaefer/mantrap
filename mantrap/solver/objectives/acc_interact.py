@@ -23,7 +23,7 @@ class InteractionAccelerationModule(ObjectiveModule):
     """
     def __init__(self, env: GraphBasedSimulation, **module_kwargs):
         super(InteractionAccelerationModule, self).__init__(**module_kwargs)
-        assert env.num_ado_ghosts > 0 and env.ego is not None
+        assert env.num_ghosts > 0 and env.ego is not None
 
         self._env = env
         ado_states_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)
@@ -35,8 +35,8 @@ class InteractionAccelerationModule(ObjectiveModule):
 
         objective = torch.zeros(1)
         for k in range(1, self.T - 1):
-            for m in range(self._env.num_ado_ghosts):
-                ghost_id = self._env.ado_ghosts[m].id
+            for m in range(self._env.num_ghosts):
+                ghost_id = self._env.ghosts[m].id
                 m_ado, m_mode = self._env.index_ghost_id(ghost_id=ghost_id)
                 ado_acceleration = self._derivative_2.compute_single(
                     graphs[f"{ghost_id}_{k - 1}_position"],
@@ -44,6 +44,6 @@ class InteractionAccelerationModule(ObjectiveModule):
                     graphs[f"{ghost_id}_{k}_position"],
                 )
                 ado_acceleration_wo = self._ado_accelerations_wo[m_ado, m_mode, k, :]
-                objective += torch.norm(ado_acceleration - ado_acceleration_wo) * self._env.ado_ghosts[m].weight
+                objective += torch.norm(ado_acceleration - ado_acceleration_wo) * self._env.ghosts[m].weight
 
         return objective

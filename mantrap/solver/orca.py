@@ -56,10 +56,11 @@ class ORCASolver(Solver):
     # Initialization ##########################################################
     ###########################################################################
     def initialize(self, **solver_params):
-        assert self.T == 1
-        assert len(self._objective_modules) == len(self._constraint_modules) == 0
         assert self._env.ego.__class__ == IntegratorDTAgent
-        assert self.do_multiprocessing is False
+        assert len(self._objective_modules) == len(self._constraint_modules) == 0
+        logging.info(f"solver {self.name}: overwriting solver parameters to fit orca formulation")
+        self._solver_params["t_planning"] = 1
+        self._solver_params["multiprocessing"] = False
 
     def num_optimization_variables(self) -> int:
         return 2
@@ -71,8 +72,16 @@ class ORCASolver(Solver):
     def objective_defaults() -> List[Tuple[str, float]]:
         return []
 
+    @property
+    def objective_keys(self) -> List[str]:
+        return []
+
     @staticmethod
     def constraints_defaults() -> List[str]:
+        return []
+
+    @property
+    def constraint_keys(self) -> List[str]:
         return []
 
     ###########################################################################
@@ -191,7 +200,7 @@ class ORCASolver(Solver):
 
         # We only want to find a new velocity for the ego robot, therefore we merely determine constraints between
         # the ados in the scene and the ego, not inter-ado constraints (as we cannot control them anyway).
-        for ghost in env.ado_ghosts:
+        for ghost in env.ghosts:
             ado = ghost.agent  # uni-modal so ghosts = ados
             rel_pos = ado.position - env.ego.position
             rel_vel = env.ego.velocity - ado.velocity
@@ -249,3 +258,10 @@ class ORCASolver(Solver):
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         return torch.from_numpy(z).view(-1, 2)
+
+    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
+        return torch.tensor([1, 0]).view(1, 2)
+
+    @property
+    def cores(self) -> List[str]:
+        return []

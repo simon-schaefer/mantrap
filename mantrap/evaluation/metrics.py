@@ -86,7 +86,7 @@ def metric_ado_effort(**metric_kwargs) -> float:
     # Copy environment to not alter passed env object when resetting its state. Also check whether the initial
     # state in the environment and the ado trajectory tensor are equal.
     env = deepcopy(metric_kwargs["env"])
-    for j, ghost in enumerate(env.ado_ghosts):
+    for j, ghost in enumerate(env.ghosts):
         i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
         assert torch.all(torch.isclose(ado_traj[i_ado, i_mode, 0, :], ghost.agent.state_with_time))
 
@@ -131,11 +131,13 @@ def metric_directness(**metric_kwargs) -> float:
     t_horizon = ego_trajectory.shape[0]
 
     score = 0.0
+    t_horizon_until_goal = 0
     for t in range(t_horizon):
         vt = ego_trajectory[t, 2:4]
         st = (goal - ego_trajectory[t, 0:2])
         if torch.norm(vt) < 1e-6 or torch.norm(st) < 1e-6:
             continue
         score += (vt / torch.norm(vt)).matmul((st / torch.norm(st)))
+        t_horizon_until_goal += 1
 
-    return float(score) / t_horizon
+    return float(score) / t_horizon_until_goal

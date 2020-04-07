@@ -43,7 +43,7 @@ class SGradSolver(IPOPTSolver):
     ###########################################################################
     @staticmethod
     def objective_defaults() -> List[Tuple[str, float]]:
-        return [("goal", 1.0), ("interaction", 1.0)]
+        return [("goal", 1.0), ("interaction", 10.0)]
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################

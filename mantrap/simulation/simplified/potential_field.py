@@ -37,7 +37,6 @@ class PotentialFieldSimulation(SocialForcesSimulation):
         ado_kwargs["velocity"] = dict_value_or_default(ado_kwargs, key="velocity", default=torch.zeros(2))
         # enforce uni-modality of agent (simulation)
         ado_kwargs["num_modes"] = dict_value_or_default(ado_kwargs, key="num_modes", default=1)
-        assert ado_kwargs["num_modes"] == 1, "simulation merely supports uni-modal ados"
 
         super(PotentialFieldSimulation, self).add_ado(**ado_kwargs)
 
@@ -45,22 +44,22 @@ class PotentialFieldSimulation(SocialForcesSimulation):
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = self.write_state_to_graph(ego_state, **graph_kwargs)
         k = dict_value_or_default(graph_kwargs, key="k", default=0)
-        for ghost in self.ado_ghosts:
+        for ghost in self.ghosts:
             graph[f"{ghost.id}_{k}_goal"] = ghost.goal
 
         # Make graph with resulting force as an output.
-        for ghost in self.ado_ghosts:
+        for ghost in self.ghosts:
             gpos, gvel = graph[f"{ghost.id}_{k}_position"], graph[f"{ghost.id}_{k}_velocity"]
-            graph[f"{ghost.id}_{k}_force"] = torch.zeros(2)
+            graph[f"{ghost.id}_{k}_control"] = torch.zeros(2)
 
             if ego_state is not None:
                 ego_pos = graph[f"ego_{k}_position"]
                 delta = gpos - ego_pos
                 potential_force = torch.sign(delta) * torch.exp(- torch.abs(delta))
-                graph[f"{ghost.id}_{k}_force"] = torch.add(graph[f"{ghost.id}_{k}_force"], potential_force)
+                graph[f"{ghost.id}_{k}_control"] = torch.add(graph[f"{ghost.id}_{k}_control"], potential_force)
 
             # Summarize (standard) graph elements.
-            graph[f"{ghost.id}_{k}_output"] = torch.norm(graph[f"{ghost.id}_{k}_force"])
+            graph[f"{ghost.id}_{k}_output"] = torch.norm(graph[f"{ghost.id}_{k}_control"])
 
         return graph
 

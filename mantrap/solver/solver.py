@@ -114,7 +114,7 @@ class Solver:
         # Initialize trajectories with current state and simulation time.
         x5_opt[0] = self._env.ego.state_with_time
         self.log_append(x5_planned=self.env.ego.unroll_trajectory(torch.zeros((self.T, 2)), dt=self.env.dt), tag="opt")
-        for j, ghost in enumerate(self.env.ado_ghosts):
+        for j, ghost in enumerate(self.env.ghosts):
             i_ado, i_mode = self.env.index_ghost_id(ghost_id=ghost.id)
             ado_traj[i_ado, i_mode, 0, :] = ghost.agent.state_with_time
         self.log_append(ado_planned=self.env.predict_wo_ego(t_horizon=self.T + 1), tag="opt")
@@ -136,7 +136,7 @@ class Solver:
             self.log_append(ado_planned=ado_planned, tag="opt")
 
             # Forward simulate environment.
-            ado_states, ego_state = self._eval_env.step(ego_control=ego_controls_k[0, :])
+            ado_states, ego_state = self._eval_env.step(ego_control=ego_controls_k[0:1, :])
             self._env.step_reset(ego_state_next=ego_state, ado_states_next=ado_states)
             x5_opt[k + 1] = ego_state
             ado_traj[:, :, k + 1, :] = ado_states[:, :, 0, :]
@@ -154,6 +154,7 @@ class Solver:
             logging.info(f"solver {self.name} @k={k}: ego optimized path = {x5_opt_planned[:, 0:2].tolist()}")
 
         logging.info(f"solver {self.name}: logging and visualizing trajectory optimization")
+        self.env.detach()
         self.log_summarize()
         self.visualize_optimization()
         self.visualize_scenes()
@@ -301,14 +302,15 @@ class Solver:
 
         if self.verbose > -1:
             self._optimization_log = {}
-            for tag in self.cores:
-                for k in range(log_horizon):
-                    # Set default logging variables.
+            for k in range(log_horizon):
+                for tag in self.cores:
+                    # Set default logging variables for cores.
                     self._optimization_log.update({f"{tag}/{key}_{k}": [] for key in self.log_keys()})
-                    self._optimization_log.update({f"opt/{key}_{k}": [] for key in self.log_keys()})
                     # Set logging variables for each objective and constraint module.
                     self._optimization_log.update({f"{tag}/obj_{key}_{k}": [] for key in self.objective_keys})
                     self._optimization_log.update({f"{tag}/inf_{key}_{k}": [] for key in self.constraint_keys})
+                # Set default logging variables for opt.
+                self._optimization_log.update({f"opt/{key}_{k}": [] for key in self.log_keys()})
 
     def log_append(self, tag: str, **kwargs):
         if self.verbose > -1 and self.optimization_log is not None:
@@ -371,11 +373,13 @@ class Solver:
             assert self.optimization_log is not None
             output_directory_path = build_os_path(f"outputs/", make_dir=True, free=False)
 
+            # From optimization log extract the core (initial condition) which has resulted in the best objective
+            # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
+            # N=t_horizon times to be able to visualize the whole distribution at every time.
             obj_dict = {key: self.optimization_log[f"{self.core_opt}/obj_{key}"] for key in self.objective_keys}
-            obj_dict = {key: [obj_dict[key]] * self._iteration for key in self.objective_keys}
-
+            obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.objective_keys}
             inf_dict = {key: self.optimization_log[f"{self.core_opt}/inf_{key}"] for key in self.constraint_keys}
-            inf_dict = {key: [inf_dict[key]] * self._iteration for key in self.constraint_keys}
+            inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.constraint_keys}
 
             x5_trials = [self._optimization_log[f"{self.core_opt}/x5_planned_{k}"] for k in range(self._iteration)]
 
@@ -432,7 +436,7 @@ class Solver:
 
     @property
     def core_opt(self) -> str:
-        return self._core_opt
+        return self._core_opt if self._core_opt is not None else "opt"
 
     @property
     def do_multiprocessing(self) -> bool:

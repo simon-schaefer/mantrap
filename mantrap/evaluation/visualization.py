@@ -22,10 +22,10 @@ def visualize(
     single_opt: bool = False,
 ):
     assert len(ego_planned.shape) == 3
-    time_steps = ego_planned.shape[0]
-    assert len(ado_planned.shape) == 5 and ado_planned.shape[0] == time_steps
-    assert all([len(x) == time_steps for x in obj_dict.values()])
-    assert all([len(x) == time_steps for x in inf_dict.values()])
+    num_solver_calls = ego_planned.shape[0]
+    assert len(ado_planned.shape) == 5 and ado_planned.shape[0] == num_solver_calls
+    assert all([len(x) == num_solver_calls for x in obj_dict.values()])
+    assert all([len(x) == num_solver_calls for x in inf_dict.values()])
 
     fig, ax = plt.subplots(figsize=(15, 15), constrained_layout=True)
     grid = plt.GridSpec(2 + 3 + 2, 2, wspace=0.4, hspace=0.3, figure=fig)
@@ -76,7 +76,7 @@ def visualize(
         axs[0].set_title(f"step {k}")
         return axs
 
-    anim = FuncAnimation(fig, update, frames=time_steps, interval=300)
+    anim = FuncAnimation(fig, update, frames=num_solver_calls - 1, interval=300)
     anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
 
 
@@ -120,9 +120,9 @@ def draw_trajectories(
     sim_env.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, :, 0, :].unsqueeze(dim=2))
     ado_traj_wo = sim_env.predict_wo_ego(t_horizon=ego_traj.shape[0])
 
-    for i in range(env.num_ado_ghosts):
-        i_ado, i_mode = env.ghost_to_ado_index(i)
-        ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color
+    for ghost in env.ghosts:
+        i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
+        ado_id, ado_color = ghost.id, ghost.agent.color
         ado_pos = ado_traj[i_ado, i_mode, :, 0:2].detach().numpy()
         ado_pos_wo = ado_traj_wo[i_ado, i_mode, :, 0:2].detach().numpy()
 
@@ -144,9 +144,9 @@ def draw_velocities(ado_traj: torch.Tensor, ego_traj: torch.Tensor, env, ax: plt
     time_axis = np.linspace(env.sim_time, env.sim_time + ego_traj.shape[0] * env.dt, num=ego_traj.shape[0])
     ado_velocity_norm = np.linalg.norm(ado_traj[:, :, :, 2:4].detach().numpy(), axis=3)
     ego_velocity_norm = np.linalg.norm(ego_traj[:, 2:4].detach().numpy(), axis=1)
-    for i in range(env.num_ado_ghosts):
-        i_ado, i_mode = env.ghost_to_ado_index(i)
-        ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color
+    for ghost in env.ghosts:
+        i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
+        ado_id, ado_color = ghost.id, ghost.agent.color
         ax.plot(time_axis, ado_velocity_norm[i_ado, i_mode, :], color=ado_color, label=f"{ado_id}_current")
     ax.plot(time_axis, ego_velocity_norm, color=env.ego.color, label="ego_current")
     if k is not None:
@@ -163,9 +163,9 @@ def draw_ado_accelerations(ado_traj: torch.Tensor, env: GraphBasedSimulation, ax
     time_axis = np.linspace(env.sim_time, env.sim_time + ado_traj.shape[2] * env.dt, num=ado_traj.shape[2])
     dd = Derivative2(horizon=ado_traj.shape[2], dt=env.dt, velocity=True)
     ado_acceleration_norm = np.linalg.norm(dd.compute(ado_traj[:, :, :, 2:4]).detach().numpy(), axis=3)
-    for i in range(env.num_ado_ghosts):
-        i_ado, i_mode = env.ghost_to_ado_index(i)
-        ado_id, ado_color = env.ado_ghosts[i].id, env.ado_ghosts[i].agent.color
+    for ghost in env.ghosts:
+        i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
+        ado_id, ado_color = ghost.id, ghost.agent.color
         ax.plot(time_axis, ado_acceleration_norm[i_ado, i_mode, :], color=ado_color, label=f"{ado_id}_current")
     if k is not None:
         ax.axvline(x=time_axis[k], color=np.array([1, 0, 0]))

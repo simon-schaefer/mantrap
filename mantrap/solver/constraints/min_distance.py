@@ -33,15 +33,15 @@ class MinDistanceModule(ConstraintModule):
     def _compute(self, x5: torch.Tensor) -> torch.Tensor:
         horizon = x5.shape[0]
 
-        graphs = self._env.build_connected_graph(ego_trajectory=x5, ego_grad=False, ado_grad=False)
-        constraints = torch.zeros((self._env.num_ado_ghosts, horizon))
-        for m in range(self._env.num_ado_ghosts):
+        graphs = self._env.build_connected_graph(trajectory=x5, ego_grad=False, ado_grad=False)
+        constraints = torch.zeros((self._env.num_ghosts, horizon))
+        for m in range(self._env.num_ghosts):
             for k in range(horizon):
-                ado_position = graphs[f"{self._env.ado_ghosts[m].id}_{k}_position"]
+                ado_position = graphs[f"{self._env.ghosts[m].id}_{k}_position"]
                 ego_position = x5[k, 0:2]
                 constraints[m, k] = torch.norm(ado_position - ego_position)
         return constraints.flatten()
 
     @property
     def num_constraints(self) -> int:
-        return (self.T + 1) * self._env.num_ado_ghosts
+        return (self.T + 1) * self._env.num_ghosts

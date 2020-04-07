@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.agents import IntegratorDTAgent
+from mantrap.agents import DoubleIntegratorDTAgent, IntegratorDTAgent
 from mantrap.constants import sim_trajectron_model
 from mantrap.simulation.simulation import GraphBasedSimulation
 from mantrap.utility.io import build_os_path
@@ -16,18 +16,27 @@ from mantrap.utility.maths import Derivative2
 from mantrap.utility.shaping import check_ego_trajectory
 
 
-# TODO: online_trajectron.py:174 ==> no use of `std` as argument ??
 class Trajectron(GraphBasedSimulation):
+    """Trajectron-based simulation model (B. Ivanovic, T. Salzmann, M. Pavone).
 
-    def __init__(self, ego_type: Agent.__class__, ego_kwargs: Dict[str, Any], **sim_kwargs):
-        assert ego_type is not None
+    The Trajectron model requires to get some robot position. Therefore, in order to minimize the
+    impact of the ego robot on the trajectories (since the prediction should be not conditioned on the robot)
+    some pseudo trajectory is used, which is very far distant from the actual scene.
 
+    Within the trajectory optimisation the ado's trajectories conditioned on the robot's planned motion are
+    compared with their trajectories without taking any robot into account. So when both the conditioned and
+    un-conditioned model for these predictions would be used, and they would be behavioral different, it would
+    lead to some base difference (even if there is no robot affecting some ado at all) which might be larger in
+    scale than the difference the conditioning on the robot makes. Then minimizing the difference would miss the
+    goal of minimizing interaction.
+    """
+    def __init__(self, ego_type: Agent.__class__ = None, ego_kwargs: Dict[str, Any] = None, **sim_kwargs):
         self._config = self.load_and_check_configuration(config_path=build_os_path("config/trajectron.json"))
         super(Trajectron, self).__init__(ego_type, ego_kwargs, dt=self.config["dt"], **sim_kwargs)
 
         # For prediction un-conditioned on the ego (`predict_wo_ego()`) we need a pseudo-ego trajectory, since the
         # input dimensions for the trajectron have to stay the same.
-        self._pseudo_ego = ego_type(position=torch.tensor(self.axes[0]))
+        self._pseudo_ego = IntegratorDTAgent(position=torch.tensor(self.axes[0]))
 
         # Create default trajectron scene. The duration of the scene is not known a priori, however a large value
         # allows to simulate for a long time horizon later on.
@@ -41,49 +50,19 @@ class Trajectron(GraphBasedSimulation):
         self.trajectron = OnlineTrajectron(model_registrar, hyperparams=self.config, device="cpu")
 
         # Add robot to the scene as a first node.
+        if self.ego is not None:
+            ego_history, ego_id = self.ego.history, self.ego.id
+        else:
+            ego_history, ego_id = self._pseudo_ego.history, self._pseudo_ego.id
+
         from data import Node
-        node_data = self._create_node_data(state_history=self.ego.history)
-        node = Node(node_type=self._gt_env.NodeType.ROBOT, node_id=self.ego.id, data=node_data, is_robot=True)
+        node_data = self._create_node_data(state_history=ego_history)
+        node = Node(node_type=self._gt_env.NodeType.ROBOT, node_id=ego_id, data=node_data, is_robot=True)
         self._gt_scene.robot = node
         self._gt_scene.nodes.append(node)
+
+        # Create online simulation environment.
         self._online_env = self.create_online_env(env=self._gt_env, scene=self._gt_scene)
-
-    ###########################################################################
-    # Prediction ##############################################################
-    ###########################################################################
-    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        ego_trajectory = self.ego.unroll_trajectory(controls=controls, dt=self.dt)
-        return self.predict_w_trajectory(trajectory=ego_trajectory, return_more=return_more)
-
-    def predict_w_trajectory(self, trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        assert not return_more  # not implemented in the moment (!)
-        assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
-
-        dd = Derivative2(horizon=trajectory.shape[0], dt=self.dt, velocity=True)
-        trajectory_w_acc = torch.cat((trajectory[:, 0:4], dd.compute(trajectory[:, 2:4])), dim=1)
-        distribution, _ = self.trajectron.incremental_forward(
-            new_inputs_dict=self._gt_scene.get_clipped_pos_dict(0, self.config["state"]),
-            prediction_horizon=trajectory.shape[0] - 1,
-            num_samples=1,
-            full_dist=True,
-            robot_present_and_future=trajectory_w_acc
-        )
-        return distribution
-
-    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        """The Trajectron model requires to get some robot position. Therefore, in order to minimize the
-        impact of the ego robot on the trajectories (since the prediction should be not conditioned on the robot)
-        some pseudo trajectory is used, which is very far distant from the actual scene.
-
-        Within the trajectory optimisation the ado's trajectories conditioned on the robot's planned motion are
-        compared with their trajectories without taking any robot into account. So when both the conditioned and
-        un-conditioned model for these predictions would be used, and they would be behavioral different, it would
-        lead to some base difference (even if there is no robot affecting some ado at all) which might be larger in
-        scale than the difference the conditioning on the robot makes. Then minimizing the difference would miss the
-        goal of minimizing interaction.
-        """
-        pseudo_traj = self._pseudo_ego.unroll_trajectory(torch.ones((t_horizon, 2)) * 0.01, dt=self.dt)
-        return self.predict_w_trajectory(trajectory=pseudo_traj, return_more=return_more)
 
     ###########################################################################
     # Scene ###################################################################
@@ -92,15 +71,70 @@ class Trajectron(GraphBasedSimulation):
         super(Trajectron, self).add_ado(type=IntegratorDTAgent, **ado_kwargs)
         from data import Node
 
-        node_data = self._create_node_data(state_history=self.ados[-1].history)
-        node = Node(node_type=self._gt_env.NodeType.PEDESTRIAN, node_id=self.ados[-1].id, data=node_data)
+        # Add a ado to online environment. Since the model predicts over the full time horizon internally and all
+        # modes share the same state history, merely one ghost has to be added to the scene, representing all other
+        # modes of the added ado agent.
+        node_data = self._create_node_data(state_history=self.ghosts[-1].agent.history)
+        node = Node(node_type=self._gt_env.NodeType.PEDESTRIAN, node_id=self.ghosts[-1].id, data=node_data)
         self._gt_scene.nodes.append(node)
+
+        # Re-Create online environment with recently appended node.
         self._online_env = self.create_online_env(env=self._gt_env, scene=self._gt_scene)
+
+    @staticmethod
+    def ghost_id_from_node_id(node_id: str) -> str:
+        return node_id.split("/")[1]
 
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
-    def build_connected_graph(self, **kwargs) -> Dict[str, torch.Tensor]:
+    def _build_connected_graph(self, t_horizon: int, trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+        assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
+        t_horizon, t_start = trajectory.shape[0], self.sim_time
+
+        # Transcribe initial states in graph.
+        graph = self.write_state_to_graph(trajectory[0], ego_grad=True, ado_grad=False)
+
+        # Predict over full time-horizon at once and write resulting (simulated) ado trajectories to graph.
+        dd = Derivative2(horizon=t_horizon, dt=self.dt, velocity=True)
+        trajectory_w_acc = torch.cat((trajectory[:, 0:4], dd.compute(trajectory[:, 2:4])), dim=1)
+        distribution, _ = self.trajectron.incremental_forward(
+            new_inputs_dict=self._gt_scene.get_clipped_pos_dict(0, self.config["state"]),
+            prediction_horizon=trajectory.shape[0] - 1,
+            num_samples=1,
+            full_dist=True,
+            robot_present_and_future=trajectory_w_acc
+        )
+
+        # mus-shape: (num_ados, ..., t_horizon, num_modes, 2)
+        ado_planned = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
+        _, ado_planned[:, :, 0:1, :] = self.states()
+        for node, node_gmm in distribution.items():
+            ghost_id = self.ghost_id_from_node_id(node.__str__())
+            i_ado, _ = self.index_ghost_id(ghost_id)
+            ado_paths = node_gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :self.num_modes, :, 0:2]
+
+            ado_planned[i_ado, :, 1:, 0:2] = ado_paths
+            ado_planned[i_ado, :, 1:-1, 2:4] = (ado_paths[:, 1:, :] - ado_paths[:, 0:-1, :]) / self.dt
+            ado_planned[i_ado, :, :, 4] = torch.linspace(t_start, t_start + t_horizon * self.dt, steps=t_horizon)
+
+        for t in range(t_horizon):
+            graph[f"ego_{t}_position"] = trajectory[t, 0:2]
+            graph[f"ego_{t}_velocity"] = trajectory[t, 2:4]
+            for ghost in self.ghosts:
+                i_ado, i_mode = self.index_ghost_id(ghost_id=ghost.id)
+                graph[f"{ghost.id}_{t}_position"] = ado_planned[i_ado, i_mode, t, 0:2]
+                graph[f"{ghost.id}_{t}_velocity"] = ado_planned[i_ado, i_mode, t, 2:4]
+                graph[f"{ghost.id}_{t}_control"] = ado_planned[i_ado, i_mode, t, 2:4]  # single integrator ados (!)
+
+        return graph
+
+    def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
+        pseudo_traj = self._pseudo_ego.unroll_trajectory(torch.ones((t_horizon, 2)) * 0.01, dt=self.dt)
+        return self._build_connected_graph(t_horizon=t_horizon, trajectory=pseudo_traj, **kwargs)
+
+    def detach(self):
+        super(Trajectron, self).detach()
         raise NotImplementedError
 
     ###########################################################################
