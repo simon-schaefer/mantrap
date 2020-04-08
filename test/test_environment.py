@@ -16,13 +16,13 @@ from mantrap.utility.shaping import check_trajectories
 ###########################################################################
 # In order to test the functionality of the environment in a standardized way
 @pytest.mark.parametrize(
-    "simulation_class", (SocialForcesEnvironment, PotentialFieldEnvironment, Trajectron)
+    "environment_class", (SocialForcesEnvironment, PotentialFieldEnvironment, Trajectron)
 )
 class TestEnvironment:
 
     @staticmethod
-    def test_initialization(simulation_class: GraphBasedEnvironment.__class__):
-        env = simulation_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([4, 6])})
+    def test_initialization(environment_class: GraphBasedEnvironment.__class__):
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([4, 6])})
         assert torch.all(torch.eq(env.ego.position, torch.tensor([4, 6]).float()))
         assert env.num_ados == 0
         assert env.time == 0.0
@@ -32,11 +32,11 @@ class TestEnvironment:
         assert torch.all(torch.eq(env.ghosts[0].agent.velocity, torch.zeros(2)))
 
     @staticmethod
-    def test_step(simulation_class: GraphBasedEnvironment.__class__):
+    def test_step(environment_class: GraphBasedEnvironment.__class__):
         ado_init_position = torch.zeros(2)
         ado_init_velocity = torch.zeros(2)
         ego_init_position = torch.tensor([-4, 6])
-        env = simulation_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_init_position})
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_init_position})
 
         env.add_ado(position=ado_init_position, velocity=ado_init_velocity)
         assert env.num_ados == 1
@@ -59,8 +59,8 @@ class TestEnvironment:
             assert all(torch.eq(ego_t, ego_trajectory[t+1, :]))
 
     @staticmethod
-    def test_step_reset(simulation_class: GraphBasedEnvironment.__class__):
-        env = simulation_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-4, 6])})
+    def test_step_reset(environment_class: GraphBasedEnvironment.__class__):
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-4, 6])})
         env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), num_modes=1)
         env.add_ado(position=torch.ones(2), velocity=torch.zeros(2), num_modes=1)
 
@@ -73,11 +73,11 @@ class TestEnvironment:
             assert torch.all(torch.eq(env.ghosts[i].agent.state_with_time, ado_next_states[i]))
 
     @staticmethod
-    def test_prediction_trajectories_shape(simulation_class: GraphBasedEnvironment.__class__):
+    def test_prediction_trajectories_shape(environment_class: GraphBasedEnvironment.__class__):
         num_modes = 2
         t_horizon = 4
 
-        env = simulation_class()
+        env = environment_class()
         history = torch.stack(5 * [torch.tensor([1, 0, 0, 0, 0])])
         env.add_ado(goal=torch.ones(2), position=torch.tensor([-1, 0]), num_modes=num_modes, history=history)
         env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), num_modes=num_modes, history=history)
@@ -87,8 +87,8 @@ class TestEnvironment:
         assert check_trajectories(ado_trajectories, t_horizon=t_horizon, modes=num_modes, ados=2)
 
     @staticmethod
-    def test_build_connected_graph(simulation_class: GraphBasedEnvironment.__class__):
-        env = simulation_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
+    def test_build_connected_graph(environment_class: GraphBasedEnvironment.__class__):
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
         env.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
         env.add_ado(position=torch.tensor([5, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
         env.add_ado(position=torch.tensor([10, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
@@ -101,11 +101,11 @@ class TestEnvironment:
         assert all([f"ego_{k}_velocity" in graphs.keys() for k in range(prediction_horizon)])
 
     @staticmethod
-    def test_ego_graph_updates(simulation_class: GraphBasedEnvironment.__class__):
+    def test_ego_graph_updates(environment_class: GraphBasedEnvironment.__class__):
         position = torch.tensor([-5, 0])
         goal = torch.tensor([5, 0])
 
-        env = simulation_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": position, "velocity": torch.zeros(2)})
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": position, "velocity": torch.zeros(2)})
         path = straight_line(start_pos=position, end_pos=goal, steps=11)
         velocities = torch.zeros((11, 2))
 
@@ -114,8 +114,8 @@ class TestEnvironment:
             assert torch.all(torch.eq(path[k, :], graphs[f"ego_{k}_position"]))
 
     @staticmethod
-    def test_ghost_sorting(simulation_class: GraphBasedEnvironment.__class__):
-        env = simulation_class()
+    def test_ghost_sorting(environment_class: GraphBasedEnvironment.__class__):
+        env = environment_class()
         weights_initial = [0.08, 0.1, 0.8, 0.02]
         env.add_ado(position=torch.zeros(2), num_modes=4, weights=torch.tensor(weights_initial))
 
@@ -123,8 +123,8 @@ class TestEnvironment:
         assert ghost_weights == list(reversed(sorted(weights_initial)))  # sorted increasing values per default
 
     @staticmethod
-    def test_detaching(simulation_class: GraphBasedEnvironment.__class__):
-        env = simulation_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
+    def test_detaching(environment_class: GraphBasedEnvironment.__class__):
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
         env.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
 
         # Build computation graph to detach later on. Then check whether the graph has been been built by checking
@@ -143,7 +143,7 @@ class TestEnvironment:
         assert env.ghosts[0].agent.position.grad_fn is None
 
     @staticmethod
-    def test_copy(simulation_class: GraphBasedEnvironment.__class__):
+    def test_copy(environment_class: GraphBasedEnvironment.__class__):
         ego_init_pos = torch.tensor([-5, 0])
         ados_init_pos = torch.stack([torch.tensor([1.0, 0.0]), torch.tensor([-6, 2.5])])
         ados_init_vel = torch.stack([torch.tensor([4.2, -1]), torch.tensor([-7, -2.0])])
@@ -151,7 +151,7 @@ class TestEnvironment:
         num_modes = 2
 
         # Create example environment scene to  copy later on. Then copy the example environment.
-        env = simulation_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_init_pos})
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_init_pos})
         env.add_ado(position=ados_init_pos[0], velocity=ados_init_vel[0], goal=ados_goal[0], num_modes=num_modes)
         env.add_ado(position=ados_init_pos[1], velocity=ados_init_vel[1], goal=ados_goal[1], num_modes=num_modes)
         env_copy = env.copy()
@@ -193,7 +193,7 @@ class TestEnvironment:
 # Test - Social Forces Environment ########################################
 ###########################################################################
 @pytest.mark.parametrize("goal_position", [torch.tensor([2.0, 2.0]), torch.tensor([0.0, -2.0])])
-def test_sf_single_ado_prediction(goal_position: torch.Tensor):
+def test_social_forces_single_ado_prediction(goal_position: torch.Tensor):
     env = SocialForcesEnvironment()
     env.add_ado(goal=goal_position, position=torch.tensor([-1, -5]), velocity=torch.ones(2) * 0.8, num_modes=1)
 
@@ -202,7 +202,7 @@ def test_sf_single_ado_prediction(goal_position: torch.Tensor):
     assert torch.isclose(trajectory[-1][1], goal_position[1], atol=0.5)
 
 
-def test_sf_static_ado_pair_prediction():
+def test_social_forces_static_ado_pair_prediction():
     env = SocialForcesEnvironment()
     env.add_ado(goal=torch.zeros(2), position=torch.tensor([-1, 0]), velocity=torch.tensor([0.1, 0]), num_modes=1)
     env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), velocity=torch.tensor([-0.1, 0]), num_modes=1)
@@ -218,7 +218,7 @@ def test_sf_static_ado_pair_prediction():
     "pos, vel, num_modes, v0s",
     [(torch.tensor([-1, 0]), torch.tensor([0.1, 0.2]), 2, [DirecDelta(2.3), DirecDelta(1.5)])],
 )
-def test_sf_ado_ghosts_construction(pos: torch.Tensor, vel: torch.Tensor, num_modes: int, v0s: List[Distribution]):
+def test_social_forces_ghosts_init(pos: torch.Tensor, vel: torch.Tensor, num_modes: int, v0s: List[Distribution]):
     env = SocialForcesEnvironment()
     env.add_ado(goal=torch.zeros(2), position=pos, velocity=vel, num_modes=num_modes, v0s=v0s)
 
@@ -227,12 +227,9 @@ def test_sf_ado_ghosts_construction(pos: torch.Tensor, vel: torch.Tensor, num_mo
     assert len(env.ghosts) == num_modes
 
     assert all([type(v0) == DirecDelta for v0 in v0s])  # otherwise hard to compare due to sampling
-    sim_v0s = [ghost.v0 for ghost in env.ghosts]
-    sim_v0s_exp = [v0.mean for v0 in v0s]
-    assert set(sim_v0s) == set(sim_v0s_exp)
-
-    # sim_sigmas = [ghost.sigma for ghost in env.ado_ghosts]
-    # assert np.isclose(np.mean(sim_sigmas), sim_social_forces_defaults["sigma"], atol=0.5)  # Gaussian distributed
+    v0s = [ghost.v0 for ghost in env.ghosts]
+    v0s_exp = [v0.mean for v0 in v0s]
+    assert set(v0s) == set(v0s_exp)
 
 
 ###########################################################################
@@ -246,13 +243,13 @@ def test_sf_ado_ghosts_construction(pos: torch.Tensor, vel: torch.Tensor, num_mo
         (torch.tensor([0, 2]), torch.tensor([0, 4])),
     ],
 )
-def test_simplified_sf_simulation(pos_1: torch.Tensor, pos_2: torch.Tensor):
-    sim_1 = PotentialFieldEnvironment(IntegratorDTAgent, {"position": pos_1})
-    sim_2 = PotentialFieldEnvironment(IntegratorDTAgent, {"position": pos_2})
+def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
+    env_1 = PotentialFieldEnvironment(IntegratorDTAgent, {"position": pos_1})
+    env_2 = PotentialFieldEnvironment(IntegratorDTAgent, {"position": pos_2})
 
     forces = torch.zeros((2, 2))
     gradients = torch.zeros((2, 2))
-    for i, env in enumerate([sim_1, sim_2]):
+    for i, env in enumerate([env_1, env_2]):
         env.add_ado(position=torch.zeros(2))
         graph = env.build_graph(ego_state=env.ego.state)
         forces[i, :] = graph[f"{env.ghosts[0].id}_0_control"]
