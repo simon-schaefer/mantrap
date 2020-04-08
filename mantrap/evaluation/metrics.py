@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 import torch
 
 from mantrap.constants import agent_acc_max
@@ -85,7 +83,7 @@ def metric_ado_effort(**metric_kwargs) -> float:
 
     # Copy environment to not alter passed env object when resetting its state. Also check whether the initial
     # state in the environment and the ado trajectory tensor are equal.
-    env = deepcopy(metric_kwargs["env"])
+    env = metric_kwargs["env"].copy()
     for j, ghost in enumerate(env.ghosts):
         i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
         assert torch.all(torch.isclose(ado_traj[i_ado, i_mode, 0, :], ghost.agent.state_with_time))

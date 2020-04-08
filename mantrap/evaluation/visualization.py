@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Dict, List, Union
 
 from matplotlib.animation import FuncAnimation
@@ -6,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.maths import Derivative2
 from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, check_state
 
@@ -14,7 +13,7 @@ from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, ch
 def visualize(
     ego_planned: torch.Tensor,
     ado_planned: torch.Tensor,
-    env: GraphBasedSimulation,
+    env: GraphBasedEnvironment,
     obj_dict: Dict[str, List[torch.Tensor]],
     inf_dict: Dict[str, List[torch.Tensor]],
     file_path: str,
@@ -86,12 +85,12 @@ def visualize(
 def draw_trajectories(
     ego_traj: torch.Tensor,
     ado_traj: torch.Tensor,
-    env: GraphBasedSimulation,
+    env: GraphBasedEnvironment,
     ax: plt.Axes,
     ego_traj_trials: List[torch.Tensor] = None
 ):
     """Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as the
-    resulting ado trajectories based on some simulation."""
+    resulting ado trajectories based on some environment."""
 
     def draw_agent_representation(state: torch.Tensor, color: np.ndarray, name: Union[str, None]):
         """Add circle for agent and agent id description."""
@@ -116,9 +115,9 @@ def draw_trajectories(
             ax.plot(x5_trial_np[:, 0], x5_trial_np[:, 1], "--", color=env.ego.color, alpha=0.08)
 
     # Plot current and base resulting simulated ado trajectories in the scene.
-    sim_env = deepcopy(env)
-    sim_env.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, :, 0, :].unsqueeze(dim=2))
-    ado_traj_wo = sim_env.predict_wo_ego(t_horizon=ego_traj.shape[0])
+    vis_env = env.copy()
+    vis_env.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, :, 0, :].unsqueeze(dim=2))
+    ado_traj_wo = vis_env.predict_wo_ego(t_horizon=ego_traj.shape[0])
 
     for ghost in env.ghosts:
         i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
@@ -141,7 +140,7 @@ def draw_velocities(ado_traj: torch.Tensor, ego_traj: torch.Tensor, env, ax: plt
     """Plot agent velocities for resulting solution vs base-line ego trajectory for current optimization step."""
     assert check_ego_trajectory(ego_traj, pos_and_vel_only=True)
     assert check_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True, t_horizon=ego_traj.shape[0])
-    time_axis = np.linspace(env.sim_time, env.sim_time + ego_traj.shape[0] * env.dt, num=ego_traj.shape[0])
+    time_axis = np.linspace(env.time, env.time + ego_traj.shape[0] * env.dt, num=ego_traj.shape[0])
     ado_velocity_norm = np.linalg.norm(ado_traj[:, :, :, 2:4].detach().numpy(), axis=3)
     ego_velocity_norm = np.linalg.norm(ego_traj[:, 2:4].detach().numpy(), axis=1)
     for ghost in env.ghosts:
@@ -157,10 +156,10 @@ def draw_velocities(ado_traj: torch.Tensor, ego_traj: torch.Tensor, env, ax: plt
     return ax
 
 
-def draw_ado_accelerations(ado_traj: torch.Tensor, env: GraphBasedSimulation, ax: plt.Axes, k: Union[int, None] = 0):
+def draw_ado_accelerations(ado_traj: torch.Tensor, env: GraphBasedEnvironment, ax: plt.Axes, k: Union[int, None] = 0):
     """Plot agent accelerations for resulting solution vs base-line ego trajectory for current optimization step."""
     assert check_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True)
-    time_axis = np.linspace(env.sim_time, env.sim_time + ado_traj.shape[2] * env.dt, num=ado_traj.shape[2])
+    time_axis = np.linspace(env.time, env.time + ado_traj.shape[2] * env.dt, num=ado_traj.shape[2])
     dd = Derivative2(horizon=ado_traj.shape[2], dt=env.dt, velocity=True)
     ado_acceleration_norm = np.linalg.norm(dd.compute(ado_traj[:, :, :, 2:4]).detach().numpy(), axis=3)
     for ghost in env.ghosts:
@@ -175,10 +174,10 @@ def draw_ado_accelerations(ado_traj: torch.Tensor, env: GraphBasedSimulation, ax
     return ax
 
 
-def draw_ego_controls(ego_traj: torch.Tensor, env: GraphBasedSimulation, ax: plt.Axes, k: Union[int, None] = 0):
+def draw_ego_controls(ego_traj: torch.Tensor, env: GraphBasedEnvironment, ax: plt.Axes, k: Union[int, None] = 0):
     """Plot ego control inputs (depending on ego agent type)."""
     assert check_ego_trajectory(ego_traj, pos_and_vel_only=True)
-    time_axis = np.linspace(env.sim_time, env.sim_time + ego_traj.shape[0] * env.dt, num=ego_traj.shape[0])
+    time_axis = np.linspace(env.time, env.time + ego_traj.shape[0] * env.dt, num=ego_traj.shape[0])
     ego_controls_norm = np.linalg.norm(env.ego.roll_trajectory(trajectory=ego_traj, dt=env.dt).detach().numpy(), axis=1)
     ego_controls_norm = np.concatenate((ego_controls_norm, np.zeros(1)))  # controls = T - 1 so stretch them
     ax.plot(time_axis, ego_controls_norm, color=env.ego.color)
@@ -191,7 +190,7 @@ def draw_ego_controls(ego_traj: torch.Tensor, env: GraphBasedSimulation, ax: plt
 
 def draw_values(values: torch.Tensor, label: str, env, ax: plt.Axes, k: Union[int, None] = 0):
     assert len(values.shape) == 1  # one-dimensional vector (!)
-    time_axis = np.linspace(env.sim_time, env.sim_time + values.numel() * env.dt, num=values.numel())
+    time_axis = np.linspace(env.time, env.time + values.numel() * env.dt, num=values.numel())
     ax.plot(time_axis, np.log(np.asarray(values) + 1e-8), label=label)
     if k is not None:
         ax.axvline(x=time_axis[k], color=np.array([1, 0, 0]))

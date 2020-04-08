@@ -9,15 +9,15 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.agents import IntegratorDTAgent
-from mantrap.constants import sim_trajectron_model
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.constants import env_dt_default, env_trajectron_model
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import Derivative2
 from mantrap.utility.shaping import check_ego_trajectory
 
 
-class Trajectron(GraphBasedSimulation):
-    """Trajectron-based simulation model (B. Ivanovic, T. Salzmann, M. Pavone).
+class Trajectron(GraphBasedEnvironment):
+    """Trajectron-based environment model (B. Ivanovic, T. Salzmann, M. Pavone).
 
     The Trajectron model requires to get some robot position. Therefore, in order to minimize the
     impact of the ego robot on the trajectories (since the prediction should be not conditioned on the robot)
@@ -30,9 +30,19 @@ class Trajectron(GraphBasedSimulation):
     scale than the difference the conditioning on the robot makes. Then minimizing the difference would miss the
     goal of minimizing interaction.
     """
-    def __init__(self, ego_type: Agent.__class__ = None, ego_kwargs: Dict[str, Any] = None, **sim_kwargs):
+    def __init__(
+        self,
+        ego_type: Agent.__class__ = None,
+        ego_kwargs: Dict[str, Any] = None,
+        dt: float = env_dt_default,
+        **env_kwargs
+    ):
+        # Load trajectron configuration dictionary and check against inputs.
         self._config = self.load_and_check_configuration(config_path=build_os_path("config/trajectron.json"))
-        super(Trajectron, self).__init__(ego_type, ego_kwargs, dt=self.config["dt"], **sim_kwargs)
+        assert dt == self.config["dt"]
+
+        # Initialize environment mother class.
+        super(Trajectron, self).__init__(ego_type, ego_kwargs, dt=dt, **env_kwargs)
 
         # For prediction un-conditioned on the ego (`predict_wo_ego()`) we need a pseudo-ego trajectory, since the
         # input dimensions for the trajectron have to stay the same.
@@ -105,7 +115,7 @@ class Trajectron(GraphBasedSimulation):
     ###########################################################################
     def _build_connected_graph(self, t_horizon: int, trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
-        t_horizon, t_start = trajectory.shape[0], self.sim_time
+        t_horizon, t_start = trajectory.shape[0], self.time
 
         # Transcribe initial states in graph.
         graph = self.write_state_to_graph(trajectory[0], ego_grad=True, ado_grad=False)
@@ -219,8 +229,8 @@ class Trajectron(GraphBasedSimulation):
         from argument_parser import args
 
         # Load configuration files.
-        config = {"trajectron_model_path": build_os_path(f"config/trajectron_models/{sim_trajectron_model[0]}"),
-                  "trajectron_model_iteration": sim_trajectron_model[1]}
+        config = {"trajectron_model_path": build_os_path(f"config/trajectron_models/{env_trajectron_model[0]}"),
+                  "trajectron_model_iteration": env_trajectron_model[1]}
         with open(config_path) as trajectron_config_file:
             config.update(json.load(trajectron_config_file))
         with open(os.path.join(config["trajectron_model_path"], args.conf)) as model_config_file:

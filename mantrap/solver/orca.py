@@ -5,7 +5,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import torch
 
-from mantrap.constants import eps_numeric, agent_speed_max, orca_agent_radius, orca_agent_safe_dt
+from mantrap.constants import orca_eps_numeric, agent_speed_max, orca_agent_radius, orca_agent_safe_dt
 from mantrap.agents import IntegratorDTAgent
 from mantrap.solver.solver import Solver
 
@@ -122,7 +122,7 @@ class ORCASolver(Solver):
                 for j in range(0, i):
                     determinant = torch.det(torch.stack((constraints[i].direction, constraints[j].direction)))
 
-                    if torch.abs(determinant) < eps_numeric:
+                    if torch.abs(determinant) < orca_eps_numeric:
                         # Line i and line j point in the same direction.
                         if constraints[i].direction.dot(constraints[j].direction) > 0:
                             continue
@@ -167,7 +167,7 @@ class ORCASolver(Solver):
             numerator = torch.det(torch.stack((constraints[j].direction, constraints[i].point - constraints[j].point)))
 
             # Lines (constraint lines) i and j are (almost) parallel.
-            if torch.abs(denominator) < eps_numeric:
+            if torch.abs(denominator) < orca_eps_numeric:
                 if numerator < 0.0:
                     return None
                 continue

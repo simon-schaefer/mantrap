@@ -8,8 +8,8 @@ import torch
 
 from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.evaluation import evaluate_metrics
-from mantrap.simulation.simulation import GraphBasedSimulation
-from mantrap.simulation import PotentialFieldSimulation
+from mantrap.environment.environment import GraphBasedEnvironment
+from mantrap.environment import PotentialFieldEnvironment, Trajectron
 from mantrap.solver.solver import Solver
 from mantrap.solver import SGradSolver, MonteCarloTreeSearch
 from mantrap.utility.io import load_functions_from_module
@@ -45,8 +45,22 @@ def solver_mcts_t5() -> Tuple[Solver.__class__, Dict[str, Any]]:
 ###########################################################################
 # Scenarios ###############################################################
 ###########################################################################
-# TODO: Evaluation simulation integration
-def scenario_haruki() -> Tuple[GraphBasedSimulation.__class__, torch.Tensor]:
+# def scenario_haruki() -> Tuple[GraphBasedSimulation.__class__, torch.Tensor]:
+#     ego_position = torch.tensor([-7, 0])
+#     ego_velocity = torch.zeros(2)
+#     ego_goal = torch.tensor([7, -1])
+#     ado_positions = torch.stack((torch.tensor([-7, -1]), torch.tensor([7, 3]), torch.tensor([7, -2])))
+#     ado_goals = torch.stack((torch.tensor([0, 0]), torch.tensor([-7, 0]), torch.tensor([-7, 4])))
+#     ado_velocities = torch.stack((torch.tensor([1, 0]), torch.tensor([-1, 0]), torch.tensor([-1, 1])))
+#
+#     ego_kwargs = {"position": ego_position, "velocity": ego_velocity}
+#     env = PotentialFieldEnvironment(DoubleIntegratorDTAgent, ego_kwargs, scene_name="haruki")
+#     for position, ado_goal, velocity in zip(ado_positions, ado_goals, ado_velocities):
+#         env.add_ado(position=position, goal=ado_goal, velocity=velocity, num_modes=1)
+#     return env, ego_goal
+
+
+def scenario_haruki_trajectron() -> Tuple[GraphBasedEnvironment.__class__, torch.Tensor]:
     ego_position = torch.tensor([-7, 0])
     ego_velocity = torch.zeros(2)
     ego_goal = torch.tensor([7, -1])
@@ -55,9 +69,9 @@ def scenario_haruki() -> Tuple[GraphBasedSimulation.__class__, torch.Tensor]:
     ado_velocities = torch.stack((torch.tensor([1, 0]), torch.tensor([-1, 0]), torch.tensor([-1, 1])))
 
     ego_kwargs = {"position": ego_position, "velocity": ego_velocity}
-    env = PotentialFieldSimulation(DoubleIntegratorDTAgent, ego_kwargs, scene_name="haruki")
-    for position, ado_goal, velocity in zip(ado_positions, ado_goals, ado_velocities):
-        env.add_ado(position=position, goal=ado_goal, velocity=velocity, num_modes=1)
+    env = Trajectron(DoubleIntegratorDTAgent, ego_kwargs, scene_name="haruki_traj")
+    for position, velocity in zip(ado_positions, ado_velocities):
+        env.add_ado(position=position, velocity=velocity, num_modes=1)
     return env, ego_goal
 
 
@@ -86,7 +100,7 @@ if __name__ == '__main__':
     for (scenario_name, scenario_func), (solver_name, solver_func) in product(scenarios.items(), solvers.items()):
         name = f"{solver_name}:{scenario_name}"
 
-        # Initialise simulation environment and solver as described in functions.
+        # Initialise environment environment and solver as described in functions.
         logging.warning(f"Evaluation: solver {solver_name} in scenario {scenario_name}")
         sim, goal = scenario_func()
         solver_class, solver_kwargs = solver_func()

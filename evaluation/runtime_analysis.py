@@ -7,7 +7,7 @@ import torch
 
 from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import agent_speed_max
-from mantrap.simulation import PotentialFieldSimulation
+from mantrap.environment import PotentialFieldEnvironment
 from mantrap.solver import SGradSolver, IGradSolver
 from mantrap.utility.io import build_os_path, load_functions_from_module
 from mantrap.utility.primitives import straight_line
@@ -63,7 +63,7 @@ class RunTimeAnalysis:
             # Define function arguments. Pass every kind of argument that might be required, if not then it wont
             # use the argument anyways, without creating much of an overhead.
             function_kwargs = {}
-            sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([2.0, -5.0])})
+            sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([2.0, -5.0])})
             for _ in range(int(num_agents)):
                 ado_position = torch.from_numpy(np.random.uniform(-10, 10, size=2))
                 ado_velocity = torch.from_numpy(np.random.uniform(-0.5, 0.5, size=2)) * agent_speed_max

@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
+from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment
 from mantrap.solver.constraints import MaxSpeedModule, MinDistanceModule
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 from mantrap.solver.objectives import GoalModule, InteractionAccelerationModule, InteractionPositionModule
@@ -21,7 +21,7 @@ class TestObjectiveInteraction:
 
     @staticmethod
     def test_objective_far_and_near(module_class: ObjectiveModule.__class__):
-        sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         sim.add_ado(position=torch.zeros(2))
         x2_near = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=11)
         x4_near = sim.ego.expand_trajectory(x2_near, dt=sim.dt)
@@ -33,7 +33,7 @@ class TestObjectiveInteraction:
 
     @staticmethod
     def test_multimodal_support(module_class: ObjectiveModule.__class__):
-        sim = SocialForcesSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        sim = SocialForcesEnvironment(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         ado_pos, ado_vel, ado_goal = torch.zeros(2), torch.tensor([-1, 0]), torch.tensor([-5, 0])
         sim.add_ado(position=ado_pos, velocity=ado_vel, num_modes=2, weights=[0.1, 0.9], goal=ado_goal)
         x4 = sim.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=sim.dt)
@@ -43,7 +43,7 @@ class TestObjectiveInteraction:
 
     @staticmethod
     def test_output(module_class: ObjectiveModule.__class__):
-        sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         sim.add_ado(position=torch.zeros(2))
         x4 = sim.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=sim.dt)
         x4.requires_grad = True
@@ -54,7 +54,7 @@ class TestObjectiveInteraction:
 
     @staticmethod
     def test_runtime(module_class: ObjectiveModule.__class__):
-        for sim_class in [PotentialFieldSimulation, SocialForcesSimulation]:
+        for sim_class in [PotentialFieldEnvironment, SocialForcesEnvironment]:
             sim = sim_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
             sim.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=1)
             sim.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=1)
@@ -96,7 +96,7 @@ class TestConstraints:
 
     @staticmethod
     def test_runtime(module_class: ConstraintModule.__class__):
-        for sim_class in [PotentialFieldSimulation, SocialForcesSimulation]:
+        for sim_class in [PotentialFieldEnvironment, SocialForcesEnvironment]:
             sim = sim_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
             sim.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=1)
             sim.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=1)

@@ -1,6 +1,6 @@
 import torch
 
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 
 
@@ -17,9 +17,9 @@ class InteractionPositionModule(ObjectiveModule):
 
     .. math:: objective = \sum_{T} \sum_{ghosts} || pos_{t,i} - pos_{t,i}^{wo} ||_2
 
-    :param env: solver's simulation environment for predicting the behaviour without interaction.
+    :param env: solver's environment environment for predicting the behaviour without interaction.
     """
-    def __init__(self, env: GraphBasedSimulation, **module_kwargs):
+    def __init__(self, env: GraphBasedEnvironment, **module_kwargs):
         super(InteractionPositionModule, self).__init__(**module_kwargs)
         assert env.num_ghosts > 0 and env.ego is not None
 

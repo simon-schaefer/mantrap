@@ -3,7 +3,7 @@ from typing import Tuple
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.constants import agent_acc_max, sim_dt_default
+from mantrap.constants import agent_acc_max, env_dt_default
 from mantrap.utility.shaping import check_state
 from mantrap.utility.utility import build_state_vector
 
@@ -14,7 +14,7 @@ class DoubleIntegratorDTAgent(Agent):
     ):
         super(DoubleIntegratorDTAgent, self).__init__(position, velocity, history=history, **kwargs)
 
-    def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float = sim_dt_default) -> torch.Tensor:
+    def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float = env_dt_default) -> torch.Tensor:
         """
           .. math:: vel_{t+1} = vel_t + action * dt
           .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt + 0.5 * action * dt^2

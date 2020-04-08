@@ -6,16 +6,16 @@ import torch
 
 from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import (
-    sim_social_forces_defaults,
-    sim_social_forces_min_goal_distance,
-    sim_social_forces_max_interaction_distance,
+    env_social_forces_defaults,
+    env_social_forces_min_goal_distance,
+    env_social_forces_max_interaction_distance,
 )
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.maths import Distribution, Gaussian
 from mantrap.utility.io import dict_value_or_default
 
 
-class SocialForcesSimulation(GraphBasedSimulation):
+class SocialForcesEnvironment(GraphBasedEnvironment):
     """Social Forces Simulation.
     Pedestrian Dynamics based on to "Social Force Model for Pedestrian Dynamics" (D. Helbling, P. Molnar). The idea of
     Social Forces is to determine interaction forces by taking into account the following entities:
@@ -36,11 +36,11 @@ class SocialForcesSimulation(GraphBasedSimulation):
     .. math:: V_{aB} (x) = V0_a exp(−x / \sigma_a)
     .. math:: F_{interaction} = - grad_{r_{ab}} V_{aB}(||r_{ab}||)
 
-    To create multi-modality and stochastic effects several sets of simulation parameters can be assigned to the ado,
+    To create multi-modality and stochastic effects several sets of environment parameters can be assigned to the ado,
     each representing one of it's modes.
     """
     # Re-Definition of the Ghost object introducing further social-forces specific parameters such as a goal or
-    # agent-dependent simulation parameters v0, sigma and tau.
+    # agent-dependent environment parameters v0, sigma and tau.
     Ghost = namedtuple("Ghost", "agent goal v0 sigma tau weight id")
 
     ###########################################################################
@@ -61,11 +61,11 @@ class SocialForcesSimulation(GraphBasedSimulation):
         goal = goal.detach().float()
 
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces
-        # simulation are sampled from distributions, each for one mode. If not stated the default parameters are
+        # environment are sampled from distributions, each for one mode. If not stated the default parameters are
         # used as Gaussian distribution around the default value.
-        v0s_default = Gaussian(sim_social_forces_defaults["v0"], sim_social_forces_defaults["v0"] / 2)
+        v0s_default = Gaussian(env_social_forces_defaults["v0"], env_social_forces_defaults["v0"] / 2)
         v0s = v0s if v0s is not None else [v0s_default] * num_modes
-        sigma_default = Gaussian(sim_social_forces_defaults["sigma"], sim_social_forces_defaults["sigma"] / 2)
+        sigma_default = Gaussian(env_social_forces_defaults["sigma"], env_social_forces_defaults["sigma"] / 2)
         sigmas = sigmas if sigmas is not None else [sigma_default] * num_modes
         assert len(v0s) == len(sigmas)
 
@@ -76,11 +76,11 @@ class SocialForcesSimulation(GraphBasedSimulation):
             assert sigmas[i].__class__.__bases__[0] == Distribution
             v0 = abs(float(v0s[i].sample()))
             sigma = abs(float(sigmas[i].sample()))
-            tau = sim_social_forces_defaults["tau"]
+            tau = env_social_forces_defaults["tau"]
             args_list.append({"v0": v0, "sigma": sigma, "tau": tau, "goal": goal})
 
-        # Finally add ado ghosts to simulation.
-        super(SocialForcesSimulation, self).add_ado(
+        # Finally add ado ghosts to environment.
+        super(SocialForcesEnvironment, self).add_ado(
             type=DoubleIntegratorDTAgent,
             num_modes=num_modes,
             weights=weights,
@@ -135,7 +135,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
             # Destination force - Force pulling the ado to its assigned goal position.
             direction = torch.sub(graph[f"{ghost.id}_{k}_goal"], graph[f"{ghost.id}_{k}_position"])
             goal_distance = torch.norm(direction)
-            if goal_distance.data < sim_social_forces_min_goal_distance:
+            if goal_distance.data < env_social_forces_min_goal_distance:
                 destination_force = torch.zeros(2)
             else:
                 direction = torch.div(direction, goal_distance)
@@ -148,7 +148,7 @@ class SocialForcesSimulation(GraphBasedSimulation):
                 if ghost.agent.id == other.agent.id:  # ghosts from the same parent agent dont repulse each other
                     continue
                 distance = torch.sub(graph[f"{ghost.id}_{k}_position"], graph[f"{other.id}_{k}_position"])
-                if torch.norm(distance) > sim_social_forces_max_interaction_distance:
+                if torch.norm(distance) > env_social_forces_max_interaction_distance:
                     continue
                 else:
                     opos, ovel = graph[f"{other.id}_{k}_position"], graph[f"{other.id}_{k}_velocity"]
@@ -208,5 +208,5 @@ class SocialForcesSimulation(GraphBasedSimulation):
     # Simulation parameters ###################################################
     ###########################################################################
     @property
-    def simulation_name(self) -> str:
+    def environment_name(self) -> str:
         return "social_forces"

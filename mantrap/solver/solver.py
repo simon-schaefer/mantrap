@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from copy import deepcopy
 import logging
 import os
 from typing import Dict, List, Tuple, Union
@@ -9,7 +8,7 @@ import numpy as np
 import torch
 
 from mantrap.constants import solver_horizon
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 from mantrap.solver.constraints import CONSTRAINTS
 from mantrap.solver.objectives.objective_module import ObjectiveModule
@@ -36,24 +35,24 @@ class Solver:
     the scene actually changes from one time-step to another. If `eval_env = None` the planning and evaluation
     environment are the same.
 
-    :param sim: simulation environment the solver's forward simulations are based on.
+    :param env: environment the solver's forward simulations are based on.
     :param goal: goal state (position) of the robot (2).
     :param t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
     :param verbose: debugging flag (-1: nothing, 0: logging, 1: +printing, 2: +plot scenes, 3: +plot optimization).
     :param multiprocessing: use multiprocessing for optimization.
     :param objectives: List of objective module names and according weights.
     :param constraints: List of constraint module names.
-    :param eval_env: simulation environment that should be used for evaluation ("real" environment).
+    :param eval_env: environment that should be used for evaluation ("real" environment).
     :param config_name: name of solver configuration.
     """
     def __init__(
         self,
-        env: GraphBasedSimulation,
+        env: GraphBasedEnvironment,
         goal: torch.Tensor,
         t_planning: int = solver_horizon,
         objectives: List[Tuple[str, float]] = None,
         constraints: List[str] = None,
-        eval_env: GraphBasedSimulation = None,
+        eval_env: GraphBasedEnvironment = None,
         verbose: int = -1,
         multiprocessing: bool = True,
         config_name: str = "unknown",
@@ -63,8 +62,8 @@ class Solver:
         self._goal = goal.float()
 
         # Set planning and evaluation environment.
-        self._env = deepcopy(env)
-        self._eval_env = deepcopy(eval_env) if eval_env is not None else deepcopy(env)
+        self._env = env.copy()
+        self._eval_env = eval_env.copy() if eval_env is not None else env.copy()
         assert self._env.same_initial_conditions(other=self._eval_env)
 
         # Dictionary of solver parameters.
@@ -97,7 +96,7 @@ class Solver:
         assert self.num_optimization_variables() > 0
 
     def solve(self, time_steps: int, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Find the ego trajectory given the internal simulation with the current scene as initial condition.
+        """Find the ego trajectory given the internal environment with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
 
@@ -111,7 +110,7 @@ class Solver:
         ado_traj = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
         self.log_reset(log_horizon=time_steps)
 
-        # Initialize trajectories with current state and simulation time.
+        # Initialize trajectories with current state and environment time.
         x5_opt[0] = self._env.ego.state_with_time
         self.log_append(x5_planned=self.env.ego.unroll_trajectory(torch.zeros((self.T, 2)), dt=self.env.dt), tag="opt")
         for j, ghost in enumerate(self.env.ghosts):
@@ -268,11 +267,11 @@ class Solver:
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES.keys() for name, _ in modules]), "invalid objective module detected"
         assert all([0.0 <= weight for _, weight in modules]), "invalid solver module weight detected"
-        return {m: OBJECTIVES[m](horizon=self.T, weight=w, env=self._env, goal=self.goal) for m, w in modules}
+        return {m: OBJECTIVES[m](horizon=self.T, weight=w, sim=self._env, goal=self.goal) for m, w in modules}
 
     def _build_constraint_modules(self, modules: List[str]) -> Dict[str, ConstraintModule]:
         assert all([name in CONSTRAINTS.keys() for name in modules]), "invalid constraint module detected"
-        return {m: CONSTRAINTS[m](horizon=self.T, env=self._env) for m in modules}
+        return {m: CONSTRAINTS[m](horizon=self.T, sim=self._env) for m in modules}
 
     ###########################################################################
     # Visualization & Logging #################################################
@@ -392,15 +391,15 @@ class Solver:
     # Solver parameters #######################################################
     ###########################################################################
     @property
-    def env(self) -> GraphBasedSimulation:
+    def env(self) -> GraphBasedEnvironment:
         return self._env
 
     @env.setter
-    def env(self, env: GraphBasedSimulation):
+    def env(self, env: GraphBasedEnvironment):
         self._env = env
 
     @property
-    def eval_env(self) -> GraphBasedSimulation:
+    def eval_env(self) -> GraphBasedEnvironment:
         return self._eval_env
 
     @property

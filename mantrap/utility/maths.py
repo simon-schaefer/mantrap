@@ -105,6 +105,7 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100,
     # If x is singular (i.e. det(x) = 0) the matrix is not invertible, give an error, since permeating some points
     # slightly to be able to perform an interpolation, leads to misinformed gradients. The result of the interpolation
     # won't be very stable (!).
+    x = x + torch.eye(x.shape[0]) * 0.00001  # avoid singularities
     a = torch.inverse(x).matmul(y)
 
     x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)

@@ -7,8 +7,8 @@ import torch
 
 from mantrap.constants import agent_speed_max, constraint_min_distance
 from mantrap.agents import IntegratorDTAgent
-from mantrap.simulation import PotentialFieldSimulation, SocialForcesSimulation
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver import MonteCarloTreeSearch, SGradSolver, IGradSolver, ORCASolver
 from mantrap.solver.solver import Solver
 from mantrap.solver.ipopt_solver import IPOPTSolver
@@ -20,7 +20,7 @@ def scenario(solver_class: Solver.__class__, **solver_kwargs):
     ego_goal = torch.tensor([1, 1])
     ado_poses = [torch.tensor([3, 2])]
 
-    sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": ego_pos})
+    sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": ego_pos})
     for pos in ado_poses:
         sim.add_ado(position=pos)
     solver = solver_class(sim, goal=ego_goal, **solver_kwargs)
@@ -66,7 +66,7 @@ class ConstantSolver(Solver):
 
 
 def test_solve():
-    sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+    sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
     sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
     solver = ConstantSolver(sim, goal=torch.zeros(2), t_planning=10, objectives=[], constraints=[], verbose=0)
 
@@ -84,7 +84,7 @@ def test_solve():
     assert tuple(ado_traj_planned.shape) == (t_horizon_exp, 1, 1, solver.T + 1, 5)
     assert tuple(x5_opt_planned.shape) == (t_horizon_exp, solver.T + 1, 5)
 
-    # Test ego output trajectory, which can be determined independent from simulation since it basically is the
+    # Test ego output trajectory, which can be determined independent from environment since it basically is the
     # unrolled trajectory resulting from applying the same, known control action (determined in `ConstantSolver`)
     # again and again.
     x_path_exp = torch.tensor([-8.0 + 1.0 * sim.dt * k for k in range(t_horizon_exp)])
@@ -98,7 +98,7 @@ def test_solve():
     time_steps_exp = torch.tensor([k * sim.dt for k in range(t_horizon_exp)])
     assert torch.all(torch.isclose(x5_opt[:, -1], time_steps_exp))
 
-    # Test ego planned trajectories - independent on simulation engine. The ConstantSolver`s returned action
+    # Test ego planned trajectories - independent on environment engine. The ConstantSolver`s returned action
     # is always going straight with constant speed and direction, but just lasting for the first control step. Since
     # the ego is a single integrator agent, for the full remaining trajectory it stays at the point it went to
     # at the beginning (after the fist control loop).
@@ -108,14 +108,14 @@ def test_solve():
         time_steps_exp = torch.tensor([x5_opt[k, -1] + i * sim.dt for i in range(solver.T + 1)])
         assert torch.all(torch.isclose(x5_opt_planned[k, :, -1], time_steps_exp))
 
-    # Test ado planned trajectories - depending on simulation engine. Therefore only time-stamps can be tested.
+    # Test ado planned trajectories - depending on environment engine. Therefore only time-stamps can be tested.
     for k in range(t_horizon_exp):
         time_steps_exp = torch.tensor([x5_opt[k, -1] + i * sim.dt for i in range(solver.T + 1)])
         assert torch.all(torch.isclose(x5_opt_planned[k, :, -1], time_steps_exp))
 
 
 def test_eval_environment():
-    sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+    sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
     sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0.2]))
     sim.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]))
 
@@ -138,7 +138,7 @@ def test_eval_environment():
     # To test multi-modality but still have a deterministic mode collapse all weight is put on one mode.
     # However, since the agents themselves are the same, especially the ego agent, the ego trajectory should be the
     # same as in the first test ==> (only one mode since deterministic)
-    eval_sim = SocialForcesSimulation(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+    eval_sim = SocialForcesEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
     mode_kwargs = {"num_modes": 2, "weights": [1.0, 0.0]}
     eval_sim.add_ado(position=torch.zeros(2), velocity=torch.tensor([-1, 0.2]), goal=torch.ones(2) * 10, **mode_kwargs)
     eval_sim.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]), goal=torch.ones(2) * 10, **mode_kwargs)
@@ -164,7 +164,7 @@ class TestSolvers:
 
     @staticmethod
     def test_convergence(solver_class: Solver.__class__):
-        sim = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-agent_speed_max/2, 0])}, dt=1.0)
+        sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-agent_speed_max / 2, 0])}, dt=1.0)
         solver = solver_class(sim, goal=torch.zeros(2), t_planning=1, objectives=[("goal", 1.0)], constraints=[])
 
         z0 = solver.z0s_default(just_one=True)
@@ -251,7 +251,7 @@ class TestIPOPTSolvers:
 
 
 def test_s_grad_solver():
-    env = PotentialFieldSimulation(IntegratorDTAgent, {"position": torch.tensor([-5, 0.5])})
+    env = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-5, 0.5])})
     env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
     c_grad_solver = SGradSolver(env, goal=torch.tensor([5, 0]), t_planning=10, verbose=False)
 
@@ -272,7 +272,7 @@ def test_s_grad_solver():
 ###########################################################################
 # Test - ORCA Solver ######################################################
 ###########################################################################
-class ORCASimulation(GraphBasedSimulation):
+class ORCAEnvironment(GraphBasedEnvironment):
 
     orca_rad = 1.0
     orca_dt = 10.0
@@ -280,24 +280,24 @@ class ORCASimulation(GraphBasedSimulation):
     sim_speed_max = 4.0
 
     def __init__(self, ego_type=None, ego_kwargs=None, **kwargs):
-        super(ORCASimulation, self).__init__(ego_type, ego_kwargs, dt=self.sim_dt, **kwargs)
+        super(ORCAEnvironment, self).__init__(ego_type, ego_kwargs, dt=self.sim_dt, **kwargs)
         self._ado_goals = []
 
     def add_ado(self, goal_position: Union[torch.Tensor, None] = torch.zeros(2), **ado_kwargs):
-        super(ORCASimulation, self).add_ado(type=IntegratorDTAgent, log=False, num_modes=1, **ado_kwargs)
+        super(ORCAEnvironment, self).add_ado(type=IntegratorDTAgent, log=False, num_modes=1, **ado_kwargs)
         self._ado_goals.append(goal_position)
 
     def step(self, ego_policy: torch.Tensor = None) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
-        self._sim_time = self.sim_time + self.dt
+        self._sim_time = self.time + self.dt
 
-        assert self._ego is None, "simulation merely should have ado agents"
+        assert self._ego is None, "environment merely should have ado agents"
         assert all([ghost.agent.__class__ == IntegratorDTAgent for ghost in self.ghosts])
 
         controls = torch.zeros((self.num_ados, 2))
         for ia, ghost in enumerate(self.ghosts):
             ado = ghost.agent  # uni-modal so ghosts = ados
             ado_kwargs = {"position": ado.position, "velocity": ado.velocity, "log": False}
-            ado_env = ORCASimulation(IntegratorDTAgent, ego_kwargs=ado_kwargs)
+            ado_env = ORCAEnvironment(IntegratorDTAgent, ego_kwargs=ado_kwargs)
             for other in self.ghosts[:ia] + self.ghosts[ia + 1:]:  # all agent except current loop element
                 other_ado = other.agent  # uni-modal so ghosts = ados
                 ado_env.add_ado(position=other_ado.position, velocity=other_ado.velocity, goal_position=None)
@@ -319,7 +319,7 @@ def test_orca_single_agent():
 
     pos_expected = torch.tensor([[0, 0], [0.70710, 0.70710], [1.4142, 1.4142], [2.1213, 2.1213], [2.8284, 2.8284]])
 
-    sim = ORCASimulation()
+    sim = ORCAEnvironment()
     sim.add_ado(position=pos_init, velocity=vel_init, goal_position=goal_pos)
 
     assert sim.num_ados == 1
@@ -370,7 +370,7 @@ def test_orca_two_agents():
         ]
     )
 
-    sim = ORCASimulation()
+    sim = ORCAEnvironment()
     sim.add_ado(position=pos_init[0, :], velocity=vel_init[0, :], goal_position=goal_pos[0, :])
     sim.add_ado(position=pos_init[1, :], velocity=vel_init[1, :], goal_position=goal_pos[1, :])
 

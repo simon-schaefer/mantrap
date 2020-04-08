@@ -8,17 +8,17 @@ import numpy as np
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.constants import sim_x_axis_default, sim_y_axis_default, sim_dt_default
+from mantrap.constants import env_x_axis_default, env_y_axis_default, env_dt_default
 from mantrap.utility.io import dict_value_or_default
 from mantrap.utility.shaping import check_state, check_trajectories, check_controls, check_weights, check_ego_trajectory, check_ego_controls
 
 
-class GraphBasedSimulation:
-    """General simulation engine for obstacle-free, interaction-aware, probabilistic and multi-modal agent environments.
-    As used in a robotics use-case the simulation separates between the ego-agent (the robot) and ado-agents (other
+class GraphBasedEnvironment:
+    """General environment engine for obstacle-free, interaction-aware, probabilistic and multi-modal agent environments.
+    As used in a robotics use-case the environment separates between the ego-agent (the robot) and ado-agents (other
     agents in the scene which are not the robot).
 
-    In order to deal with multi-modality the simulation uses so called "ghosts", which are weighted representations
+    In order to deal with multi-modality the environment uses so called "ghosts", which are weighted representations
     of an agent. If for example an agent has two modes, two ghosts objects will be assigned to this agent, while being
     treated independently from each other (just not interacting with each other).
 
@@ -31,13 +31,13 @@ class GraphBasedSimulation:
     the ego or resets it directly to some given states.
 
     The simulated world is two-dimensional and defined in the area limited by the passed `x_axis` and `y_axis`. It has
-    a constant simulation time-step `dt`.
+    a constant environment time-step `dt`.
 
     :param ego_type: agent class of ego agent (should be agent child-class).
     :param ego_kwargs: initialization arguments of ego agent such as position, velocity, etc.
-    :param x_axis: simulation environment limitation in x-direction.
-    :param y_axis: simulation environment limitation in y-direction.
-    :param dt: simulation time-step [s].
+    :param x_axis: environment environment limitation in x-direction.
+    :param y_axis: environment environment limitation in y-direction.
+    :param dt: environment time-step [s].
     :param scene_name: configuration name of initialized environment (for logging purposes only).
     """
 
@@ -47,9 +47,9 @@ class GraphBasedSimulation:
         self,
         ego_type: Agent.__class__ = None,
         ego_kwargs: Dict[str, Any] = None,
-        x_axis: Tuple[float, float] = sim_x_axis_default,
-        y_axis: Tuple[float, float] = sim_y_axis_default,
-        dt: float = sim_dt_default,
+        x_axis: Tuple[float, float] = env_x_axis_default,
+        y_axis: Tuple[float, float] = env_y_axis_default,
+        dt: float = env_dt_default,
         scene_name: str = "unknown"
     ):
         assert x_axis[0] < x_axis[1], "x axis must be in form (x_min, x_max)"
@@ -64,29 +64,29 @@ class GraphBasedSimulation:
         self._x_axis = x_axis
         self._y_axis = y_axis
         self._dt = dt
-        self._sim_time = 0
+        self._time = 0
         self._scene_name = scene_name
 
     def step(self, ego_control: torch.Tensor) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
-        """Run simulation step (time-step = dt). Update state and history of ados and ego. Also reset simulation time
-        to sim_time_new = sim_time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
+        """Run environment step (time-step = dt). Update state and history of ados and ego. Also reset environment time
+        to time_new = time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
         one time-step at a time, not in general `t_horizon` steps, secondly, step() changes the actual agent states
-        in the simulation while predict() copies all agents and changes the states of these copies (so the actual
+        in the environment while predict() copies all agents and changes the states of these copies (so the actual
         agent states remain unchanged).
 
         :param ego_control: planned ego control input for current time step (1, 2).
         :returns: ado_states (num_ados, num_modes, 1, 5), ego_next_state (5) in next time step.
         """
         assert check_ego_controls(ego_control, t_horizon=1)
-        self._sim_time = self._sim_time + self.dt
+        self._time = self._time + self.dt
 
         # Unroll future ego trajectory, which is surely deterministic and certain due to the deterministic dynamics
         # assumption. Update ego based on the first action of the input ego policy.
         self._ego.update(ego_control.flatten(), dt=self.dt)
-        logging.info(f"sim {self.name} step @t={self.sim_time} [ego]: action={ego_control.tolist()}")
-        logging.info(f"sim {self.name} step @t={self.sim_time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
+        logging.info(f"env {self.name} step @t={self.time} [ego]: action={ego_control.tolist()}")
+        logging.info(f"env {self.name} step @t={self.time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
 
-        # Predict the next step in the environment by forward simulation.
+        # Predict the next step in the environment by forward environment.
         _, ado_controls, weights = self.predict_w_controls(controls=ego_control, return_more=True)
 
         # Update ados by forward simulate them and determining their most likely policies. Therefore predict the
@@ -109,21 +109,21 @@ class GraphBasedSimulation:
             i_ado = self.index_ado_id(ado_id=ado_id)
             self._ado_ghosts[j].agent.update(action=ado_controls[i_ado, sampled_modes[ado_id], 0, :], dt=self.dt)
             ado_states[i_ado, :, :, :] = self.ghosts[j].agent.state_with_time  # TODO: repetitive !
-            logging.info(f"sim {self.name} step @t={self.sim_time} [ado_{ado_id}]: state={ado_states[i_ado].tolist()}")
+            logging.info(f"env {self.name} step @t={self.time} [ado_{ado_id}]: state={ado_states[i_ado].tolist()}")
 
         # Detach agents from graph in order to keep independence between subsequent runs.
         self.detach()
         return ado_states.detach(), self.ego.state_with_time.detach()  # otherwise no scene independence (!)
 
     def step_reset(self, ego_state_next: Union[torch.Tensor, None], ado_states_next: Union[torch.Tensor, None]):
-        """Run simulation step (time-step = dt). Instead of predicting the behaviour of every agent in the scene, it
+        """Run environment step (time-step = dt). Instead of predicting the behaviour of every agent in the scene, it
         is given as an input and the agents are merely updated. All the ghosts (modes of an ado) will collapse to the
         same given state, since the update is deterministic.
 
         :param ego_state_next: ego state for next time step (5).
         :param ado_states_next: ado states for next time step (num_ados, num_modes, 1, 5).
         """
-        self._sim_time = self._sim_time + self.dt
+        self._time = self._time + self.dt
 
         # Reset ego agent (if there is an ego in the scene), otherwise just do not reset it.
         if ego_state_next is not None:
@@ -205,8 +205,8 @@ class GraphBasedSimulation:
         return ego_state, ado_states
 
     def add_ado(self, num_modes: int = 1, weights: List[float] = None, arg_list: List[Dict] = None, **ado_kwargs):
-        """Add (multi-modal) ado (i.e. non-robot) agent to simulation.
-        While the ego is added to the simulation during initialization, the ado agents have to be added afterwards,
+        """Add (multi-modal) ado (i.e. non-robot) agent to environment.
+        While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
         individually. To do so for each mode an agent is initialized using the passed initialization arguments and
         appended to the internal list of ghosts, while staying assignable to the original ado agent by id, i.e.
         ghost_id = ado_id + mode_index.
@@ -330,7 +330,7 @@ class GraphBasedSimulation:
         return graph
 
     def transcribe_graph(self, graph: Dict[str, torch.Tensor], t_horizon: int, returns: bool = False):
-        """Remodel simulation outputs, as they are all stored in the simulation graph. """
+        """Remodel environment outputs, as they are all stored in the environment graph. """
         controls = torch.zeros((self.num_ados, self.num_modes, t_horizon - 1, 2))
         trajectories = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
         weights = torch.zeros((self.num_ados, self.num_modes))
@@ -340,7 +340,7 @@ class GraphBasedSimulation:
             for k in range(t_horizon):
                 trajectories[i_ado, i_mode, k, 0:2] = graph[f"{ghost.id}_{k}_position"]
                 trajectories[i_ado, i_mode, k, 2:4] = graph[f"{ghost.id}_{k}_velocity"]
-                trajectories[i_ado, i_mode, k, -1] = self.sim_time + self.dt * k
+                trajectories[i_ado, i_mode, k, -1] = self.time + self.dt * k
                 if k < t_horizon - 1:
                     controls[i_ado, i_mode, k, :] = graph[f"{ghost.id}_{k}_control"]
             weights[i_ado, i_mode] = ghost.weight
@@ -365,37 +365,37 @@ class GraphBasedSimulation:
         from the PyTorch computation graph. Therefore re-initialize the objects such as the agents in the environment
         and reset their state to the internal current state.
         """
-        # Create environment copy of internal class, pass simulation parameters such as the forward integration
-        # time-step and initialize ego agent.
-        ego_type = None
-        ego_kwargs = None
-        if self.ego is not None:
-            ego_type = self.ego.__class__
-            position = self.ego.position
-            velocity = self.ego.velocity
-            history = self.ego.history
-            identifier = self.ego.id
-            ego_kwargs = {"position": position, "velocity": velocity, "history": history, "identifier": identifier}
+        with torch.no_grad():
+            # Create environment copy of internal class, pass environment parameters such as the forward integration
+            # time-step and initialize ego agent.
+            ego_type = None
+            ego_kwargs = None
+            if self.ego is not None:
+                ego_type = self.ego.__class__
+                position = self.ego.position
+                velocity = self.ego.velocity
+                history = self.ego.history
+                ego_kwargs = {"position": position, "velocity": velocity, "history": history}
 
-        (x_axis, y_axis), dt, name = self.axes, self.dt, self.scene_name
-        env_copy = self.__class__(ego_type, ego_kwargs, x_axis=x_axis, y_axis=y_axis, dt=dt, scene_name=name)
+            (x_axis, y_axis), dt, name = self.axes, self.dt, self.scene_name
+            env_copy = self.__class__(ego_type, ego_kwargs, x_axis=x_axis, y_axis=y_axis, dt=dt, scene_name=name)
 
-        # Add internal ado agents to newly created environment.
-        for i in range(self.num_ados):
-            ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
-            ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
-            env_copy.add_ado(
-                position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
-                velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
-                history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
-                weights=[ghost.weight for ghost in ghosts_ado],
-                num_modes=self.num_modes,
-                identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0]
-            )
+            # Add internal ado agents to newly created environment.
+            for i in range(self.num_ados):
+                ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
+                ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
+                env_copy.add_ado(
+                    position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
+                    velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
+                    history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
+                    weights=[ghost.weight for ghost in ghosts_ado],
+                    num_modes=self.num_modes,
+                    identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0]
+                )
         return env_copy
 
     def same_initial_conditions(self, other):
-        """Similar to __eq__() function, but not enforcing parameters of simulation to be completely equivalent,
+        """Similar to __eq__() function, but not enforcing parameters of environment to be completely equivalent,
         merely enforcing the initial conditions to be equal, such as states of agents in scene. Hence, all prediction
         depending parameters, namely the number of modes or agent's parameters dont have to be equal.
         """
@@ -460,15 +460,15 @@ class GraphBasedSimulation:
         return self._dt
 
     @property
-    def sim_time(self) -> float:
-        return round(self._sim_time, 2)
+    def time(self) -> float:
+        return round(self._time, 2)
 
     @property
     def axes(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         return self._x_axis, self._y_axis
 
     @property
-    def simulation_name(self) -> str:
+    def environment_name(self) -> str:
         return self.__class__.__name__.lower()
 
     @property
@@ -477,4 +477,4 @@ class GraphBasedSimulation:
 
     @property
     def name(self) -> str:
-        return self.simulation_name + "_" + self._scene_name
+        return self.environment_name + "_" + self._scene_name

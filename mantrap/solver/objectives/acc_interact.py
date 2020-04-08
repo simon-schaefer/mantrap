@@ -1,6 +1,6 @@
 import torch
 
-from mantrap.simulation.simulation import GraphBasedSimulation
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.utility.maths import Derivative2
 
@@ -19,9 +19,9 @@ class InteractionAccelerationModule(ObjectiveModule):
 
     .. math:: objective = \sum_{T} \sum_{ghosts} || acc_{t,i} - acc_{t,i}^{wo} ||_2
 
-    :param env: solver's simulation environment for predicting the behaviour without interaction.
+    :param env: environment for predicting the behaviour without interaction.
     """
-    def __init__(self, env: GraphBasedSimulation, **module_kwargs):
+    def __init__(self, env: GraphBasedEnvironment, **module_kwargs):
         super(InteractionAccelerationModule, self).__init__(**module_kwargs)
         assert env.num_ghosts > 0 and env.ego is not None
 
@@ -31,7 +31,7 @@ class InteractionAccelerationModule(ObjectiveModule):
         self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
 
     def _compute(self, x5: torch.Tensor) -> torch.Tensor:
-        graphs = self._env.build_connected_graph(ego_trajectory=x5, ego_grad=False)
+        graphs = self._env.build_connected_graph(trajectory=x5, ego_grad=False)
 
         objective = torch.zeros(1)
         for k in range(1, self.T - 1):

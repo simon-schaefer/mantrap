@@ -17,7 +17,7 @@ class MinDistanceModule(ConstraintModule):
     .. math:: || pos(t) - pos^{ado}_{0:2}(t) || > D
 
     :param horizon: planning time horizon in number of time-steps (>= 1).
-    :param env: environment object for forward simulation of scene.
+    :param env: environment object for forward environment of scene.
     """
     def __init__(self, horizon: int, **module_kwargs):
         self._env = None

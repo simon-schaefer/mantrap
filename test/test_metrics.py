@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.simulation import PotentialFieldSimulation
+from mantrap.environment import PotentialFieldEnvironment
 from mantrap.evaluation.metrics import metric_ado_effort, metric_directness, metric_ego_effort, metric_minimal_distance
 from mantrap.utility.primitives import straight_line
 
@@ -83,7 +83,7 @@ def test_directness(velocity_profiles: torch.Tensor, directness_score: float):
 
 
 def test_ado_effort():
-    env = PotentialFieldSimulation(DoubleIntegratorDTAgent, {"position": torch.tensor([5, 0])})
+    env = PotentialFieldEnvironment(DoubleIntegratorDTAgent, {"position": torch.tensor([5, 0])})
     env.add_ado(position=torch.zeros(2), velocity=torch.tensor([1, 0]))
     env.add_ado(position=torch.zeros(2), velocity=torch.tensor([0, 1]))
 

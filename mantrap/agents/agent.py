@@ -15,7 +15,7 @@ from mantrap.utility.utility import expand_state_vector
 class Agent:
     """
     General agent representation.
-    An agent, whether in simulation or real world, has a five-dimensional state vector and a state history, which are
+    An agent, whether in environment or real world, has a five-dimensional state vector and a state history, which are
     defined as follows:
 
     .. math:: s_t = (pos_x(t), pos_y(t), vel_x(t), vel_y(t), time)
