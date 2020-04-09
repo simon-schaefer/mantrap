@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from mantrap.constants import constraint_min_distance
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
@@ -23,9 +24,8 @@ class MinDistanceModule(ConstraintModule):
         self._env = None
         super(MinDistanceModule, self).__init__(horizon, **module_kwargs)
 
-    def initialize(self, **module_kwargs):
-        assert all([key in module_kwargs.keys() for key in ["env"]])
-        self._env = module_kwargs["env"]
+    def initialize(self, env: GraphBasedEnvironment, **unused):
+        self._env = env
 
     def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
         return np.ones(self.num_constraints) * constraint_min_distance, [None] * self.num_constraints

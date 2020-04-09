@@ -78,7 +78,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
 
         # Finally add ado ghosts to environment.
         super(SocialForcesEnvironment, self).add_ado(
-            type=DoubleIntegratorDTAgent,
+            ado_type=DoubleIntegratorDTAgent,
             num_modes=num_modes,
             weights=weights,
             arg_list=args_list,

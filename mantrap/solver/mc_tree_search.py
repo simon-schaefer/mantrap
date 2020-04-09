@@ -15,7 +15,7 @@ class MonteCarloTreeSearch(Solver):
     def optimize(
         self,
         z0: torch.Tensor,
-        tag: str,
+        tag: str = "core",
         max_iter: int = mcts_max_steps,
         max_cpu_time: float = mcts_max_cpu_time,
         **solver_kwargs

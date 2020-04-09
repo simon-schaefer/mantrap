@@ -81,7 +81,7 @@ class Trajectron(GraphBasedEnvironment):
         are initialized as a not really meaningful uniform distribution for now and then updated during the
         environment's prediction step.
         """
-        super(Trajectron, self).add_ado(type=IntegratorDTAgent, **ado_kwargs)
+        super(Trajectron, self).add_ado(ado_type=IntegratorDTAgent, **ado_kwargs)
 
         # Add a ado to Trajectron neural network model using reference ghost.
         ado_id, _ = self.split_ghost_id(ghost_id=self.ghosts[-1].id)

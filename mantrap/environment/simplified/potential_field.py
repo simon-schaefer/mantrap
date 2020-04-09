@@ -31,14 +31,16 @@ class PotentialFieldEnvironment(SocialForcesEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, **ado_kwargs):
-        # enforce static agent - no incentive to move (overwriting goal input !)
-        ado_kwargs["goal"] = ado_kwargs["position"]
-        ado_kwargs["velocity"] = dict_value_or_default(ado_kwargs, key="velocity", default=torch.zeros(2))
-        # enforce uni-modality of agent (environment)
-        ado_kwargs["num_modes"] = dict_value_or_default(ado_kwargs, key="num_modes", default=1)
-
-        super(PotentialFieldEnvironment, self).add_ado(**ado_kwargs)
+    def add_ado(
+        self,
+        goal: torch.Tensor = None,
+        position: torch.Tensor = torch.zeros(2),
+        velocity: torch.Tensor = torch.zeros(2),
+        **kwargs
+    ):
+        """Add another ado agent to the scene. Thereby set the goal to the initial position of the ado, in order to
+        enforce a static agent behaviour, by not giving an incentive to move. """
+        super(PotentialFieldEnvironment, self).add_ado(position=position, goal=position, velocity=velocity, **kwargs)
 
     def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).

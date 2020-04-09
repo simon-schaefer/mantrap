@@ -211,7 +211,7 @@ class Solver:
     def objective_defaults() -> List[Tuple[str, float]]:
         raise NotImplementedError
 
-    def objective(self, z: np.ndarray, tag: str) -> float:
+    def objective(self, z: np.ndarray, tag: str = "core") -> float:
         x5 = self.z_to_ego_trajectory(z)
         objective = np.sum([m.objective(x5) for m in self._objective_modules.values()])
 
@@ -236,7 +236,7 @@ class Solver:
     def constraints_defaults() -> List[str]:
         raise NotImplementedError
 
-    def constraints(self, z: np.ndarray, tag: str, return_violation: bool = False) -> np.ndarray:
+    def constraints(self, z: np.ndarray, tag: str = "core", return_violation: bool = False) -> np.ndarray:
         if self.is_unconstrained:
             return np.array([]) if not return_violation else (np.array([]), 0.0)
 
@@ -311,7 +311,7 @@ class Solver:
                 # Set default logging variables for opt.
                 self._optimization_log.update({f"opt/{key}_{k}": [] for key in self.log_keys()})
 
-    def log_append(self, tag: str, **kwargs):
+    def log_append(self, tag: str = "core", **kwargs):
         if self.verbose > -1 and self.optimization_log is not None:
             for key, value in kwargs.items():
                 x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()

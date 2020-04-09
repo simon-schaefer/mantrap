@@ -279,14 +279,14 @@ class ORCAEnvironment(GraphBasedEnvironment):
     sim_dt = 0.25
     sim_speed_max = 4.0
 
-    def __init__(self, ego_type=None, ego_kwargs=None, **kwargs):
-        kwargs["dt"] = self.sim_dt
-        super(ORCAEnvironment, self).__init__(ego_type, ego_kwargs, **kwargs)
+    def __init__(self, ego_type=None, ego_kwargs=None, dt: float = sim_dt, **kwargs):
+        super(ORCAEnvironment, self).__init__(ego_type, ego_kwargs, dt=self.sim_dt, **kwargs)
         self._ado_goals = []
+        self._sim_time = self.time
 
     def add_ado(self, goal_position: Union[torch.Tensor, None] = torch.zeros(2), num_modes: int = 1, **ado_kwargs):
         assert num_modes == 1
-        super(ORCAEnvironment, self).add_ado(type=IntegratorDTAgent, log=False, num_modes=num_modes, **ado_kwargs)
+        super(ORCAEnvironment, self).add_ado(ado_type=IntegratorDTAgent, log=False, num_modes=num_modes, **ado_kwargs)
         self._ado_goals.append(goal_position)
 
     def step(self, ego_policy: torch.Tensor = None) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:

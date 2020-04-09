@@ -14,7 +14,7 @@ class IPOPTSolver(Solver):
     def optimize(
         self,
         z0: torch.Tensor,
-        tag: str,
+        tag: str = "core",
         max_iter: int = ipopt_max_steps,
         max_cpu_time: float = ipopt_max_cpu_time,
         approx_jacobian: bool = False,
@@ -122,7 +122,7 @@ class IPOPTSolver(Solver):
 ###########################################################################
 class IPOPTProblem:
 
-    def __init__(self, problem: IPOPTSolver, tag: str):
+    def __init__(self, problem: IPOPTSolver, tag: str = "core"):
         self.problem = problem
         self.tag = tag
 

@@ -241,7 +241,14 @@ class GraphBasedEnvironment:
         ego_state = self.ego.state_with_time if self.ego is not None else None
         return ego_state, ado_states
 
-    def add_ado(self, num_modes: int = 1, weights: List[float] = None, arg_list: List[Dict] = None, **ado_kwargs):
+    def add_ado(
+        self,
+        ado_type: Agent.__class__ = None,
+        num_modes: int = 1,
+        weights: List[float] = None,
+        arg_list: List[Dict] = None,
+        **ado_kwargs
+    ):
         """Add (multi-modal) ado (i.e. non-robot) agent to environment.
         While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
         individually. To do so for each mode an agent is initialized using the passed initialization arguments and
@@ -250,12 +257,13 @@ class GraphBasedEnvironment:
         Thereby the ghosts are sorted with decreasing level of importance, i.e. decreasing weight, so that the first
         ghost in the list of added ghosts for this agent always is the most important one.
 
+        :param ado_type: agent class of creating ado (has to be subclass of Agent-class in agents/).
         :param num_modes: number of modes of multi-modal ado agent (>=1).
         :param weights: mode weight vector, default = uniform distribution.
         :param arg_list: initialization arguments for each mode.
         """
-        assert "type" in ado_kwargs.keys() and type(ado_kwargs["type"]) == Agent.__class__
-        ado = ado_kwargs["type"](**ado_kwargs)
+        assert ado_type is not None and type(ado_type) == Agent.__class__
+        ado = ado_type(**ado_kwargs)
         self._ado_ids.append(ado.id)
 
         # Append ado to internal list of ados and rebuilt the graph (could be also extended but small computational
