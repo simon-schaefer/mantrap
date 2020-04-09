@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -67,13 +67,23 @@ class Trajectron(GraphBasedEnvironment):
     # Scene ###################################################################
     ###########################################################################
     def add_ado(self, **ado_kwargs):
+        """Add a new ado and its mode to the scene.
+
+        For the Trajectron model the multi-modality evolves at the output, not the input. Therefore instead of
+        multiple ghosts of the same ado agent just the agent is added to the internal scene graph, as Pedestrian
+        node. However the representation of the agents and their modes in the base class intrinsically is multimodal,
+        by keeping the different modes as independent agents sharing the same history. Therefore a reference ghost
+        is chosen to pass these shared properties to  the Trajectron scene.
+
+        The weight vector for each mode is not constant, rather changing with every new scene and prediction. However,
+        in order to compute it for the current scene a forward pass would be required. Since the environment and
+        especially the mode's weights can be assumed to not be used without a precedent prediction step, the weights
+        are initialized as a not really meaningful uniform distribution for now and then updated during the
+        environment's prediction step.
+        """
         super(Trajectron, self).add_ado(type=IntegratorDTAgent, **ado_kwargs)
 
-        # For the Trajectron model the multi-modality evolves at the output, not the input. Therefore instead of
-        # multiple ghosts of the same ado agent just the agent is added to the internal scene graph, as Pedestrian
-        # node. However the representation of the agents and their modes in the base class intrinsically is multimodal,
-        # by keeping the different modes as independent agents sharing the same history. Therefore a reference ghost
-        # is chosen to pass these shared properties to  the Trajectron scene.
+        # Add a ado to Trajectron neural network model using reference ghost.
         ado_id, _ = self.split_ghost_id(ghost_id=self.ghosts[-1].id)
         ado_history = self.ghosts[-1].agent.history
         self._add_ado_to_graph(ado_history=ado_history, ado_id=ado_id)
@@ -115,12 +125,14 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     def _build_connected_graph(self, t_horizon: int, trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
-        t_horizon, t_start = trajectory.shape[0], self.time
+        t_horizon = trajectory.shape[0]
 
         # Transcribe initial states in graph.
         graph = self.write_state_to_graph(trajectory[0], ego_grad=True, ado_grad=False)
 
-        # Predict over full time-horizon at once and write resulting (simulated) ado trajectories to graph.
+        # Predict over full time-horizon at once and write resulting (simulated) ado trajectories to graph. By passing
+        # the robot's trajectory the distribution is conditioned on it.
+        # Using `full_dist = True` not just the mean of the resulting trajectory but also the covariances are returned.
         dd = Derivative2(horizon=t_horizon, dt=self.dt, velocity=True)
         trajectory_w_acc = torch.cat((trajectory[:, 0:4], dd.compute(trajectory[:, 2:4])), dim=1)
         distribution, _ = self.trajectron.incremental_forward(
@@ -131,32 +143,88 @@ class Trajectron(GraphBasedEnvironment):
             robot_present_and_future=trajectory_w_acc
         )
 
-        # mus-shape: (num_ados, ..., t_horizon, num_modes, 2)
+        # The obtained distribution is a dictionary mapping nodes to the representing Gaussian Mixture Model (GMM).
+        # Most importantly the GMM have a mean (mu) and log-covariance (log_sigma) for every of the 25 modes.
         ado_planned = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
+        ado_weights = torch.zeros((self.num_ados, self.num_modes))
         _, ado_planned[:, :, 0:1, :] = self.states()
         for node, node_gmm in distribution.items():
             ado_id = self.ado_id_from_node_id(node.__str__())
             i_ado = self.index_ado_id(ado_id)
-            ado_paths = node_gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :self.num_modes, :, 0:2]
+            ado_planned[i_ado], ado_weights[i_ado] = self.trajectory_from_distribution(
+                gmm=node_gmm, num_output_modes=self.num_modes, dt=self.dt, t_horizon=t_horizon, t_start=self.time
+            )
 
-            ado_planned[i_ado, :, 1:, 0:2] = ado_paths
-            ado_planned[i_ado, :, 1:-1, 2:4] = (ado_paths[:, 1:, :] - ado_paths[:, 0:-1, :]) / self.dt
-            ado_planned[i_ado, :, :, 4] = torch.linspace(t_start, t_start + t_horizon * self.dt, steps=t_horizon)
-
+        # Update the graph dictionary with the trajectory predictions that have  been derived before.
         for t in range(t_horizon):
             graph[f"ego_{t}_position"] = trajectory[t, 0:2]
             graph[f"ego_{t}_velocity"] = trajectory[t, 2:4]
-            for ghost in self.ghosts:
+            for i_ghost, ghost in enumerate(self.ghosts):
                 i_ado, i_mode = self.index_ghost_id(ghost_id=ghost.id)
+
                 graph[f"{ghost.id}_{t}_position"] = ado_planned[i_ado, i_mode, t, 0:2]
                 graph[f"{ghost.id}_{t}_velocity"] = ado_planned[i_ado, i_mode, t, 2:4]
                 graph[f"{ghost.id}_{t}_control"] = ado_planned[i_ado, i_mode, t, 2:4]  # single integrator ados (!)
 
+                # Adapt weight as determined from prediction.
+                self._ado_ghosts[i_ghost].weight = ado_weights[i_ado, i_mode]
         return graph
 
     def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
         pseudo_traj = self._pseudo_ego.unroll_trajectory(torch.ones((t_horizon, 2)) * 0.01, dt=self.dt)
         return self._build_connected_graph(t_horizon=t_horizon, trajectory=pseudo_traj, **kwargs)
+
+    @staticmethod
+    def trajectory_from_distribution(
+        gmm,
+        num_output_modes: int,
+        dt: float,
+        t_horizon: int,
+        t_start: float = 0.0,
+        return_more: bool = False
+    ) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, np.ndarray]]:
+        """Transform the Trajectron model GMM distribution to a trajectory.
+        The output of the Trajectron model is a Gaussian Mixture Model (GMM) with mean and log_variance (among several
+        other properties) for each of the 25 modes. Since `num_modes` < 25 in a first step the most important modes
+        will be selected, by using the inverse of the length of the variance vector, i.e.
+
+        .. math:: w = \sum_t^T \omega_t 1 / \sqrt{\sigma_{t,X}^2 + \sigma_{t,Y}^2}
+
+        The importance vector omega is introduced in order to encounter the importance of uncertainty with respect to
+        the evolution in time. A high uncertainty at the beginning of the trajectory is worse in terms of planning than
+        at its end. The importance vector is a simple linear function going from 1 to 0.2 uniformly over `t_horizon`.
+
+        mus.shape: (num_ados = 1, 1, t_horizon, num_modes, 2)
+        log_sigma.shape: (num_ados = 1, 1, t_horizon, num_modes, 2)
+        """
+        assert t_horizon >= 1
+        with torch.no_grad():
+            mus = gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
+            log_sigmas = gmm.log_sigmas.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
+
+            # Determine weight of every mode and get indices of `N = num_modes` highest weights. Since instead of
+            # the inverse of the norm of `log_sigmas` the norm is used directly, the lowest results correspond to the
+            # most important modes, i.e. highest weights.
+            log_sigmas_norm = torch.norm(log_sigmas, dim=2)
+            if t_horizon > 1:
+                importance = torch.linspace(1.0, 0.2, steps=t_horizon - 1)
+                weights_inv = torch.sum(torch.mul(log_sigmas_norm, importance), dim=1).numpy()
+            else:
+                weights_inv = log_sigmas_norm.view(-1,)
+
+            weights_indices = np.argpartition(weights_inv, kth=num_output_modes)[:num_output_modes]
+            weights_np = 1 / weights_inv[weights_indices]
+            weights_np = weights_np / np.linalg.norm(weights_np)  # normalization
+            weights = torch.from_numpy(weights_np)
+
+        # Write means of highest weight modes in output trajectory. While the means merely describe the positions
+        # (2D path points) the (mean) velocity can be determined by computing the finite time difference between
+        # subsequent path points, since the ados are assumed to be single integrators.
+        trajectory = torch.zeros((num_output_modes, t_horizon, 5))
+        trajectory[:, 1:, 0:2] = mus[weights_indices, :, :]
+        trajectory[:, 1:-1, 2:4] = (mus[weights_indices, 1:, :] - mus[weights_indices, 0:-1, :]) / dt
+        trajectory[:, :, 4] = torch.linspace(t_start, t_start + t_horizon * dt, steps=t_horizon)
+        return (trajectory, weights) if not return_more else (trajectory, weights, weights_indices)
 
     def detach(self):
         """Detaching the whole graph (which is the whole neural network) might be hard. Therefore just rebuilt it

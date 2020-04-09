@@ -1,5 +1,7 @@
+from collections import namedtuple
 from typing import List
 
+import numpy as np
 import pytest
 import torch
 
@@ -265,3 +267,31 @@ def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
         for k in [0, 1]:
             if pos[k] == 0:
                 assert forces[i, k] == gradients[i, k] == 0.0
+
+
+###########################################################################
+# Test - Trajectron Environment ###########################################
+###########################################################################
+def test_trajectron_mode_selection():
+    num_modes = 2
+
+    # Create distribution object similar to the Trajectron output.
+    GMM2D = namedtuple("GMM2D", "mus log_sigmas")
+    mus = torch.rand((1, 1, 1, num_modes * 2, 2))
+    log_sigmas = torch.stack((torch.linspace(10, 2, steps=num_modes * 2), torch.ones(num_modes * 2))).t()
+    log_sigmas = log_sigmas.view((1, 1, 1, num_modes * 2, 2))
+    gmm = GMM2D(mus=mus, log_sigmas=log_sigmas)
+
+    # Determine trajectory from distribution. The time horizon `t_horizon` is the prediction horizon of the
+    # simulation, however when predicting based on the applied controls of the ego then `t_horizon` is one step longer
+    # than the number of control inputs, since the current state is prepended to the trajectories. Similarly, the
+    # network prediction is one step longer, therefore we have to pass `t_horizon = 1 + 1 = 2` here.
+    _, _, weight_indices = Trajectron.trajectory_from_distribution(
+        gmm=gmm, num_output_modes=num_modes, dt=1.0, t_horizon=2, return_more=True
+    )
+
+    # Test the obtained weight indices by checking for the smallest element in the GMM's variances, which should be
+    # related to the first (highest weight) index.
+    log_sigmas = gmm.log_sigmas.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
+    log_sigmas_norm = torch.norm(log_sigmas, dim=2)
+    assert np.argmin(log_sigmas_norm) == weight_indices[0]
