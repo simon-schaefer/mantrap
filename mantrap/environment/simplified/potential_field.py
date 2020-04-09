@@ -17,18 +17,6 @@ class PotentialFieldEnvironment(SocialForcesEnvironment):
     """
 
     ###########################################################################
-    # Prediction ##############################################################
-    ###########################################################################
-    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        return super(PotentialFieldEnvironment, self).predict_w_controls(controls, return_more, **graph_kwargs)
-
-    def predict_w_trajectory(self, trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        return super(PotentialFieldEnvironment, self).predict_w_trajectory(trajectory, return_more, **graph_kwargs)
-
-    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
-        return super(PotentialFieldEnvironment, self).predict_wo_ego(t_horizon, return_more, **graph_kwargs)
-
-    ###########################################################################
     # Scene ###################################################################
     ###########################################################################
     def add_ado(

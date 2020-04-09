@@ -104,6 +104,9 @@ class GraphBasedEnvironment:
         self._time = 0
         self._scene_name = scene_name
 
+    ###########################################################################
+    # Simulation step #########################################################
+    ###########################################################################
     def step(self, ego_control: torch.Tensor) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
         """Run environment step (time-step = dt). Update state and history of ados and ego. Also reset environment time
         to time_new = time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
@@ -193,6 +196,8 @@ class GraphBasedEnvironment:
         """
         assert self.ego is not None
         assert check_ego_controls(controls)
+        assert self.sanity_check()
+
         ego_trajectory = self.ego.unroll_trajectory(controls=controls, dt=self.dt)
         graphs = self.build_connected_graph(ego_trajectory, ego_grad=False, **graph_kwargs)
         return self.transcribe_graph(graphs, t_horizon=controls.shape[0] + 1, returns=return_more)
@@ -209,6 +214,8 @@ class GraphBasedEnvironment:
         """
         assert self.ego is not None
         assert check_ego_trajectory(ego_trajectory=trajectory, pos_and_vel_only=True)
+        assert self.sanity_check()
+
         graphs = self.build_connected_graph(trajectory=trajectory, ego_grad=False, **graph_kwargs)
         return self.transcribe_graph(graphs, t_horizon=trajectory.shape[0], returns=return_more)
 
@@ -221,6 +228,9 @@ class GraphBasedEnvironment:
         :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
+        assert t_horizon > 0
+        assert self.sanity_check()
+
         graphs = self.build_connected_graph_wo_ego(t_horizon=t_horizon, **graph_kwargs)
         return self.transcribe_graph(graphs, t_horizon=t_horizon, returns=return_more)
 
@@ -455,6 +465,34 @@ class GraphBasedEnvironment:
             ghosts_equal[i] = ghosts_equal[i] and ghosts_imp[i].agent == other_imp[i].agent
         is_equal = is_equal and all(ghosts_equal)
         return is_equal
+
+    def sanity_check(self) -> bool:
+        """Check for the sanity of the scene and agents.
+        In order to check the sanity of the environment some general properties must hold, such as the number and order
+        of ghosts in the scene, which should be equivalent to the number of ados times the number of modes (since
+        the same number of modes for every ado is being enforced). Also all agents in the scene are checked for their
+        sanity.
+        """
+        assert self.num_ghosts == self.num_ados * self.num_modes
+
+        # Check sanity of all agents in the scene.
+        if self.ego is not None:
+            self.ego.sanity_check()
+        for ghost in self.ghosts:
+            ghost.agent.sanity_check()
+
+        # Check for the right order of ghosts, i.e. an order matching between ados and ghosts. Firstly, all ghosts
+        # which origin from the same ado must be subsequent and secondly, have the same ado id, which is the one
+        # at the kth place of the `ado_ids` array.
+        for i_ado, ado_id in enumerate(self.ado_ids):
+            weights_per_mode = np.zeros(self.num_modes)
+            for i_ghost, ghost in enumerate(self.ghosts[i_ado * self.num_modes:(i_ado + 1) * self.num_modes]):
+                ado_id_ghost, _ = self.split_ghost_id(ghost_id=ghost.id)
+                assert ado_id == ado_id_ghost
+                weights_per_mode[i_ghost] = ghost.weight
+            # Check whether ghost order is correct, from highest to smallest weight.
+            assert all([weights_per_mode[k] <= weights_per_mode[k - 1] for k in range(1, self.num_modes)])
+        return True
 
     ###########################################################################
     # Ado properties ##########################################################

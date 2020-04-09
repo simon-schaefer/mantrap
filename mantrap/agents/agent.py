@@ -223,6 +223,18 @@ class Agent:
         is_equal = is_equal and torch.all(torch.eq(self.history, other.history))
         return is_equal
 
+    def sanity_check(self) -> bool:
+        """Sanity check for agent.
+        In order to evaluate the sanity of the agent in the most general form, several internal states such as the
+        position and velocity are checked to be of the right type. Also the history should always reflect the
+        states until and including (!) the current state. """
+        assert self.position is not None
+        assert self.velocity is not None
+        assert self.history is not None
+
+        assert torch.all(torch.eq(self.history[-1, :], self.state_with_time))
+        return True
+
     ###########################################################################
     # State properties ########################################################
     ###########################################################################
