@@ -1,6 +1,5 @@
-from collections import namedtuple
 from copy import deepcopy
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import torch
 
@@ -39,9 +38,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
     To create multi-modality and stochastic effects several sets of environment parameters can be assigned to the ado,
     each representing one of it's modes.
     """
-    # Re-Definition of the Ghost object introducing further social-forces specific parameters such as a goal or
-    # agent-dependent environment parameters v0, sigma and tau.
-    Ghost = namedtuple("Ghost", "agent goal v0 sigma tau weight id")
+    # goal v0 sigma tau
 
     ###########################################################################
     # Scene ###################################################################
@@ -126,10 +123,11 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         graph = self.write_state_to_graph(ego_state, ado_grad=True, **graph_kwargs)
         k = dict_value_or_default(graph_kwargs, key="k", default=0)
         for ghost in self.ghosts:
-            graph[f"{ghost.id}_{k}_goal"] = ghost.goal
+            graph[f"{ghost.id}_{k}_goal"] = ghost.params["goal"]
 
         # Make graph with resulting force as an output.
         for ghost in self._ado_ghosts:
+            tau, v0, sigma = ghost.params["tau"], ghost.params["v0"], ghost.params["sigma"]
             gpos, gvel = graph[f"{ghost.id}_{k}_position"], graph[f"{ghost.id}_{k}_velocity"]
 
             # Destination force - Force pulling the ado to its assigned goal position.
@@ -140,7 +138,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
             else:
                 direction = torch.div(direction, goal_distance)
                 speed = torch.norm(graph[f"{ghost.id}_{k}_velocity"])
-                destination_force = torch.sub(direction * speed, graph[f"{ghost.id}_{k}_velocity"]) * 1 / ghost.tau
+                destination_force = torch.sub(direction * speed, graph[f"{ghost.id}_{k}_velocity"]) * 1 / tau
             graph[f"{ghost.id}_{k}_control"] = destination_force
 
             # Interactive force - Repulsive potential field by every other agent.
@@ -152,14 +150,14 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
                     continue
                 else:
                     opos, ovel = graph[f"{other.id}_{k}_position"], graph[f"{other.id}_{k}_velocity"]
-                    v_grad = _repulsive_force(gpos, opos, gvel, ovel, v_0=ghost.v0, sigma=ghost.sigma)
+                    v_grad = _repulsive_force(gpos, opos, gvel, ovel, v_0=v0, sigma=sigma)
                 v_grad = v_grad * other.weight  # weight force by probability of the modes
                 graph[f"{ghost.id}_{k}_control"] = torch.sub(graph[f"{ghost.id}_{k}_control"], v_grad)
 
             # Interactive force w.r.t. ego - Repulsive potential field.
             if ego_state is not None:
                 ego_pos, ego_vel = graph[f"ego_{k}_position"], graph[f"ego_{k}_velocity"]
-                v_grad = _repulsive_force(gpos, ego_pos, gvel, ego_vel, v_0=ghost.v0, sigma=ghost.sigma)
+                v_grad = _repulsive_force(gpos, ego_pos, gvel, ego_vel, v_0=v0, sigma=sigma)
                 graph[f"{ghost.id}_{k}_control"] = torch.sub(graph[f"{ghost.id}_{k}_control"], v_grad)
 
             # Summarize (standard) graph elements.
@@ -172,7 +170,14 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
     ###########################################################################
     # Simulation Graph over time-horizon ######################################
     ###########################################################################
-    def _build_connected_graph(self, t_horizon: int, trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+    def _build_connected_graph(
+        self,
+        t_horizon: int,
+        trajectory: Union[List[None], torch.Tensor],
+        **kwargs
+    ) -> Dict[str, torch.Tensor]:
+        # Since the ghosts are used for building the graph, and in during this process updated over the time horizon,
+        # they are (deep-)copied in order to be able to re-construct them afterwards.
         ado_ghosts_copy = deepcopy(self._ado_ghosts)
 
         # Build first graph for the next state, in case no forces are applied on the ego.

@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from collections import namedtuple
 from copy import deepcopy
 import logging
 from typing import Any, Dict, List, Tuple, Union
@@ -10,7 +9,9 @@ import torch
 from mantrap.agents.agent import Agent
 from mantrap.constants import env_x_axis_default, env_y_axis_default, env_dt_default
 from mantrap.utility.io import dict_value_or_default
-from mantrap.utility.shaping import check_state, check_trajectories, check_controls, check_weights, check_ego_trajectory, check_ego_controls
+from mantrap.utility.shaping import (
+    check_state, check_trajectories, check_controls, check_weights, check_ego_trajectory, check_ego_controls
+)
 
 
 class GraphBasedEnvironment:
@@ -41,7 +42,43 @@ class GraphBasedEnvironment:
     :param scene_name: configuration name of initialized environment (for logging purposes only).
     """
 
-    Ghost = namedtuple("Ghost", "agent weight id")
+    class Ghost:
+        """The Ghost class is a container for an object representing one mode of some ado agent.
+
+        A ghost is defined by its underlying agent (the actual ado), the mode's weight (importance) and its identifier,
+        which is constructed as defined in the `GraphBasedEnvironment::build_ghost_id` method. While it is widely
+        not constant, not permitting the underlying agent and identifier to change, its weight might change over
+        prediction time, e.g. due to a change in the environment scene.
+
+        Treating the modes as independent objects grants the chance to quickly iterate over all modes, easily include
+        the interaction between different permutations of modes and detaching from computation graphs.
+        """
+        def __init__(self, agent: Agent, weight: float, identifier: str, **params):
+            self._agent = agent
+            self._weight = weight
+            self._identifier = identifier
+            self._params = params
+
+        @property
+        def agent(self) -> Agent:
+            return self._agent
+
+        @property
+        def weight(self) -> float:
+            return self._weight
+
+        @weight.setter
+        def weight(self, weight_new: float):
+            assert 0 <= weight_new
+            self._weight = weight_new
+
+        @property
+        def id(self) -> str:
+            return self._identifier
+
+        @property
+        def params(self) -> Dict[str, float]:
+            return self._params
 
     def __init__(
         self,
@@ -172,7 +209,7 @@ class GraphBasedEnvironment:
         """
         assert self.ego is not None
         assert check_ego_trajectory(ego_trajectory=trajectory, pos_and_vel_only=True)
-        graphs = self.build_connected_graph(ego_trajectory=trajectory, ego_grad=False, **graph_kwargs)
+        graphs = self.build_connected_graph(trajectory=trajectory, ego_grad=False, **graph_kwargs)
         return self.transcribe_graph(graphs, t_horizon=trajectory.shape[0], returns=return_more)
 
     def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
@@ -240,7 +277,7 @@ class GraphBasedEnvironment:
         for i in range(num_modes):
             ado = deepcopy(ado)
             gid = self.build_ghost_id(ado_id=ado.id, mode_index=i)
-            self._ado_ghosts.append(self.Ghost(ado, weight=weights[i], id=gid, **arg_list[i]))  # required to be general
+            self._ado_ghosts.append(self.Ghost(ado, weight=weights[i], identifier=gid, **arg_list[i]))
 
     def ados_most_important_mode(self) -> List[Ghost]:
         """Return a list of the most important ghosts, i.e. the ones with the highest weight, for each ado, by
@@ -415,7 +452,7 @@ class GraphBasedEnvironment:
     # Ado properties ##########################################################
     ###########################################################################
     @property
-    def ado_colors(self) -> List[List[float]]:
+    def ado_colors(self) -> List[np.ndarray]:
         ados = self.ados_most_important_mode()
         return [ado.agent.color for ado in ados]
 

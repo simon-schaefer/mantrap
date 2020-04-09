@@ -267,11 +267,11 @@ class Solver:
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES.keys() for name, _ in modules]), "invalid objective module detected"
         assert all([0.0 <= weight for _, weight in modules]), "invalid solver module weight detected"
-        return {m: OBJECTIVES[m](horizon=self.T, weight=w, sim=self._env, goal=self.goal) for m, w in modules}
+        return {m: OBJECTIVES[m](horizon=self.T, weight=w, env=self._env, goal=self.goal) for m, w in modules}
 
     def _build_constraint_modules(self, modules: List[str]) -> Dict[str, ConstraintModule]:
         assert all([name in CONSTRAINTS.keys() for name in modules]), "invalid constraint module detected"
-        return {m: CONSTRAINTS[m](horizon=self.T, sim=self._env) for m in modules}
+        return {m: CONSTRAINTS[m](horizon=self.T, env=self._env) for m in modules}
 
     ###########################################################################
     # Visualization & Logging #################################################

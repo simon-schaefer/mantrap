@@ -45,7 +45,7 @@ class PotentialFieldEnvironment(SocialForcesEnvironment):
         graph = self.write_state_to_graph(ego_state, **graph_kwargs)
         k = dict_value_or_default(graph_kwargs, key="k", default=0)
         for ghost in self.ghosts:
-            graph[f"{ghost.id}_{k}_goal"] = ghost.goal
+            graph[f"{ghost.id}_{k}_goal"] = ghost.params["goal"]
 
         # Make graph with resulting force as an output.
         for ghost in self.ghosts:

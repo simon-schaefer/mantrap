@@ -138,4 +138,4 @@ def metric_directness(**metric_kwargs) -> float:
         score += (vt / torch.norm(vt)).matmul((st / torch.norm(st)))
         t_horizon_until_goal += 1
 
-    return float(score) / t_horizon_until_goal
+    return float(score) / t_horizon_until_goal if abs(score) > 1e-3 else 0.0

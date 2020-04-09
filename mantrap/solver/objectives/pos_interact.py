@@ -27,7 +27,7 @@ class InteractionPositionModule(ObjectiveModule):
         self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)[:, :, :, 0:2]
 
     def _compute(self, x5: torch.Tensor) -> torch.Tensor:
-        graphs = self._env.build_connected_graph(trajectory=x5, ego_grad=False, ado_grad=False)
+        graphs = self._env.build_connected_graph(trajectory=x5, ego_grad=False)
 
         objective = torch.zeros(1)
         for k in range(self.T):

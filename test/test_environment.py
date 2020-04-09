@@ -229,9 +229,9 @@ def test_social_forces_ghosts_init(pos: torch.Tensor, vel: torch.Tensor, num_mod
     assert len(env.ghosts) == num_modes
 
     assert all([type(v0) == DirecDelta for v0 in v0s])  # otherwise hard to compare due to sampling
-    v0s = [ghost.v0 for ghost in env.ghosts]
+    v0s_env = [ghost.params["v0"] for ghost in env.ghosts]
     v0s_exp = [v0.mean for v0 in v0s]
-    assert set(v0s) == set(v0s_exp)
+    assert set(v0s_env) == set(v0s_exp)
 
 
 ###########################################################################
