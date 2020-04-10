@@ -97,12 +97,16 @@ class GraphBasedEnvironment:
         self._ado_ghosts = []
         self._num_ado_modes = 0
         self._ado_ids = []
+        self._ado_ghost_ids = []  # quick access only
 
         self._x_axis = x_axis
         self._y_axis = y_axis
         self._dt = dt
         self._time = 0
         self._scene_name = scene_name
+
+        # Perform sanity check for environment and agents.
+        assert self.sanity_check()
 
     ###########################################################################
     # Simulation step #########################################################
@@ -244,10 +248,11 @@ class GraphBasedEnvironment:
         :returns: ego state vector including temporal dimension (5).
         :returns: ado state vectors including temporal dimension (num_ados, 5).
         """
-        ado_states = torch.zeros((self.num_ados, self.num_modes, 1, 5))
-        for ghost in self.ghosts:
-            i_ado, i_mode = self.index_ghost_id(ghost_id=ghost.id)
-            ado_states[i_ado, i_mode, 0, :] = ghost.agent.state_with_time
+        ado_states = torch.zeros((self.num_ados, 5))
+        for ado_id in self.ado_ids:
+            m_ado = self.index_ado_id(ado_id=ado_id)
+            m_ghost = self.convert_ado_id(ado_id=ado_id, mode_index=0)  # 0 independent from num_modes
+            ado_states[m_ado, :] = self.ghosts[m_ghost].agent.state_with_time
         ego_state = self.ego.state_with_time if self.ego is not None else None
         return ego_state, ado_states
 
@@ -296,6 +301,10 @@ class GraphBasedEnvironment:
             ado = deepcopy(ado)
             gid = self.build_ghost_id(ado_id=ado.id, mode_index=i)
             self._ado_ghosts.append(self.Ghost(ado, weight=weights[i], identifier=gid, **arg_list[i]))
+            self._ado_ghost_ids.append(gid)
+
+        # Perform sanity check for environment and agents.
+        assert self.sanity_check()
 
     def ados_most_important_mode(self) -> List[Ghost]:
         """Return a list of the most important ghosts, i.e. the ones with the highest weight, for each ado, by
@@ -333,7 +342,14 @@ class GraphBasedEnvironment:
     def index_ado_id(self, ado_id: str) -> int:
         return self.ado_ids.index(ado_id)
 
-    def index_ghost_id(self, ghost_id: str) -> Tuple[int, int]:
+    def index_ghost_id(self, ghost_id: str) -> int:
+        return self.ado_ids.index(ghost_id)
+
+    def convert_ado_id(self, ado_id: str, mode_index: int) -> int:
+        ado_index = self.index_ado_id(ado_id=ado_id)
+        return ado_index * self.num_modes + mode_index
+
+    def convert_ghost_id(self, ghost_id: str) -> Tuple[int, int]:
         ado_id, mode_index = self.split_ghost_id(ghost_id)
         return self.ado_ids.index(ado_id), mode_index
 
@@ -474,6 +490,8 @@ class GraphBasedEnvironment:
         sanity.
         """
         assert self.num_ghosts == self.num_ados * self.num_modes
+        assert self.num_ados == len(self.ado_ids)
+        assert self.num_ghosts == len(self.ghost_ids)
 
         # Check sanity of all agents in the scene.
         if self.ego is not None:
@@ -504,8 +522,11 @@ class GraphBasedEnvironment:
 
     @property
     def ado_ids(self) -> List[str]:
-        assert len(self.ghosts) == len(self._ado_ids) * self._num_ado_modes
         return self._ado_ids
+
+    @property
+    def num_ados(self) -> int:
+        return len(self.ado_ids)
 
     ###########################################################################
     # Ghost properties ########################################################
@@ -517,8 +538,8 @@ class GraphBasedEnvironment:
         return self._ado_ghosts
 
     @property
-    def num_ados(self) -> int:
-        return len(self.ado_ids)
+    def ghost_ids(self) -> List[str]:
+        return self._ado_ghost_ids
 
     @property
     def num_ghosts(self) -> int:

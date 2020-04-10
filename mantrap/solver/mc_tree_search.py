@@ -12,9 +12,10 @@ from mantrap.utility.primitives import square_primitives
 
 class MonteCarloTreeSearch(Solver):
 
-    def optimize(
+    def _optimize(
         self,
         z0: torch.Tensor,
+        ado_ids: List[str] = None,
         tag: str = "core",
         max_iter: int = mcts_max_steps,
         max_cpu_time: float = mcts_max_cpu_time,
@@ -30,12 +31,12 @@ class MonteCarloTreeSearch(Solver):
 
         # First of all evaluate the default trajectory as "baseline" for further trajectories.
         z_best = z0.detach().numpy()
-        obj_best, _ = self._evaluate(z=z_best, tag=tag)
+        obj_best, _ = self._evaluate(z=z_best, tag=tag, ado_ids=ado_ids)
 
         # Then start sampling (MCTS) loop for finding more optimal trajectories.
         while sampling_iteration < max_iter and (time.time() - sampling_start_time) < max_cpu_time:
             z_sample = np.random.uniform(lb, ub)
-            objective, constraint_violation = self._evaluate(z=z_sample, tag=tag)
+            objective, constraint_violation = self._evaluate(z=z_sample, tag=tag, ado_ids=ado_ids)
 
             if obj_best > objective and constraint_violation < solver_constraint_limit:
                 obj_best = objective
@@ -44,11 +45,11 @@ class MonteCarloTreeSearch(Solver):
 
         # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
         # be the best iteration (logging within objective and constraint function).
-        self._evaluate(z=z_best, tag=tag)
+        self._evaluate(z=z_best, tag=tag, ado_ids=ado_ids)
         return self.z_to_ego_controls(z=z_best), obj_best, self.optimization_log
 
-    def _evaluate(self, z: np.ndarray, tag: str) -> Tuple[float, float]:
-        objective = self.objective(z, tag=tag)
+    def _evaluate(self, z: np.ndarray, ado_ids: List[str], tag: str) -> Tuple[float, float]:
+        objective = self.objective(z, tag=tag, ado_ids=ado_ids)
         _, constraint_violation = self.constraints(z, return_violation=True, tag=tag)
         return objective, constraint_violation
 

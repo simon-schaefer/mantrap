@@ -32,6 +32,8 @@ ipopt_max_cpu_time = 1.0  # [s] maximal IPOPT solver CPU time.
 
 constraint_min_distance = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 
+filter_euclidean_radius = 7.0  # [m] attention radius of ego for planning
+
 orca_agent_radius = 1.0  # ado collision radius [m].
 orca_agent_safe_dt = 10.0  # safe time for agent [s].
 orca_eps_numeric = 0.0001

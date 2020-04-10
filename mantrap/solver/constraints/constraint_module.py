@@ -48,27 +48,29 @@ class ConstraintModule:
     def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
         raise NotImplementedError
 
-    def constraint(self, x5: torch.Tensor) -> np.ndarray:
+    def constraint(self, x5: torch.Tensor, ado_ids: List[str] = None) -> np.ndarray:
         """Determine constraint value for passed ego trajectory `x5` by calling the internal `compute()` method.
 
         :param x5: planned ego trajectory (t_horizon, 5).
+        :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True)
-        constraint = self._compute(x5)
+        assert check_ego_trajectory(x=x5, pos_and_vel_only=True)
+        constraint = self._compute(x5, ado_ids=ado_ids)
         return self._return_constraint(constraint.detach().numpy())
 
-    def jacobian(self, x5: torch.Tensor, grad_wrt: torch.Tensor = None) -> np.ndarray:
+    def jacobian(self, x5: torch.Tensor, grad_wrt: torch.Tensor = None, ado_ids: List[str] = None) -> np.ndarray:
         """Determine jacobian matrix for passed ego trajectory `x5`. Therefore determine the constraint values by
         calling the internal `compute()` method and en passant build a computation graph. Then using the pytorch
         autograd library compute the jacobian matrix through the previously built computation graph.
 
         :param x5: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
+        :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True)
+        assert check_ego_trajectory(x=x5, pos_and_vel_only=True)
         assert grad_wrt.requires_grad
 
-        constraints = self._compute(x5)
+        constraints = self._compute(x5, ado_ids=ado_ids)
         grad_size = int(grad_wrt.numel())
         jacobian = torch.zeros(constraints.numel() * grad_size)
         for i, x in enumerate(constraints):
@@ -77,7 +79,7 @@ class ConstraintModule:
         return jacobian.detach().numpy()
 
     @abstractmethod
-    def _compute(self, x5: torch.Tensor) -> torch.Tensor:
+    def _compute(self, x5: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
         raise NotImplementedError
 
     def compute_violation(self) -> float:
@@ -103,6 +105,7 @@ class ConstraintModule:
     ###########################################################################
     @property
     def inf_current(self) -> float:
+        """Current infeasibility value (amount of constraint violation)."""
         return self.compute_violation()
 
     @property

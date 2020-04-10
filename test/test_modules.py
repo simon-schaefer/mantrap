@@ -5,12 +5,19 @@ import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment
+from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment, Trajectron
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints import MaxSpeedModule, MinDistanceModule
 from mantrap.solver.constraints.constraint_module import ConstraintModule
+from mantrap.solver.filter import EuclideanModule, NoFilterModule
+from mantrap.solver.filter.filter_module import FilterModule
 from mantrap.solver.objectives import GoalModule, InteractionAccelerationModule, InteractionPositionModule
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.utility.primitives import straight_line
+
+
+TEST_ENVIRONMENTS = [PotentialFieldEnvironment, SocialForcesEnvironment]
+# TODO: TEST_ENVIRONMENTS = [PotentialFieldEnvironment, SocialForcesEnvironment, Trajectron]
 
 
 ###########################################################################
@@ -116,3 +123,26 @@ class TestConstraints:
 
             assert np.mean(constraint_run_times) < 0.02  # 50 Hz
             assert np.mean(jacobian_run_times) < 0.04  # 25 Hz
+
+
+###########################################################################
+# Filter ##################################################################
+###########################################################################
+@pytest.mark.parametrize("module_class", [EuclideanModule, NoFilterModule])
+class TestFilter:
+
+    @staticmethod
+    def test_runtime(module_class: FilterModule.__class__):
+        for sim_class in TEST_ENVIRONMENTS:
+            env = sim_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+            env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=2)
+            env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=2)
+
+            module = module_class()
+            filter_run_times = list()
+            for i in range(10):
+                start_time = time.time()
+                module.compute(scene_states=env.states())
+                filter_run_times.append(time.time() - start_time)
+
+            assert np.mean(filter_run_times) < 0.01  # 100 Hz

@@ -11,6 +11,8 @@ from mantrap.constants import solver_horizon
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 from mantrap.solver.constraints import CONSTRAINTS
+from mantrap.solver.filter.filter_module import FilterModule
+from mantrap.solver.filter import FILTER
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.solver.objectives import OBJECTIVES
 from mantrap.utility.io import build_os_path
@@ -42,6 +44,7 @@ class Solver:
     :param multiprocessing: use multiprocessing for optimization.
     :param objectives: List of objective module names and according weights.
     :param constraints: List of constraint module names.
+    :param filter: Filter module name (None = no filter).
     :param eval_env: environment that should be used for evaluation ("real" environment).
     :param config_name: name of solver configuration.
     """
@@ -52,6 +55,7 @@ class Solver:
         t_planning: int = solver_horizon,
         objectives: List[Tuple[str, float]] = None,
         constraints: List[str] = None,
+        filter: str = None,
         eval_env: GraphBasedEnvironment = None,
         verbose: int = -1,
         multiprocessing: bool = True,
@@ -79,6 +83,9 @@ class Solver:
         self._objective_modules = self._build_objective_modules(modules=objective_modules)
         constraint_modules = self.constraints_defaults() if constraints is None else constraints
         self._constraint_modules = self._build_constraint_modules(modules=constraint_modules)
+
+        # Filter module for "importance" selection of which ados to include into optimization.
+        self._filter_module = self._build_filter_module(module=filter)
 
         # Logging variables. Using default-dict(deque) whenever a new entry is created, it does not have to be checked
         # whether the related key is already existing, since if it is not existing, it is created with a queue as
@@ -182,8 +189,17 @@ class Solver:
         z_opt_best, self._core_opt = results[index_best][0], self.cores[index_best]
         return self.z_to_ego_controls(z_opt_best.detach().numpy())
 
-    @abstractmethod
     def optimize(self, z0: torch.Tensor, tag: str, **kwargs) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
+        # Filter the important ghost indices from the current scene state.
+        ado_indices = self._filter_module.compute(self.env.states())
+        ado_ids = [self.env.ado_ids[m] for m in ado_indices]
+        logging.debug(f"solver [{tag}]: important ado ids = {ado_ids}")
+
+        # Computation is done in `_optimize()` class that is implemented in child class.
+        return self._optimize(z0, ado_ids=ado_ids, tag=tag, **kwargs)
+
+    @abstractmethod
+    def _optimize(self, z0: torch.Tensor, tag: str, ado_ids: List[str], **kwargs):
         raise NotImplementedError
 
     ###########################################################################
@@ -211,9 +227,9 @@ class Solver:
     def objective_defaults() -> List[Tuple[str, float]]:
         raise NotImplementedError
 
-    def objective(self, z: np.ndarray, tag: str = "core") -> float:
+    def objective(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core") -> float:
         x5 = self.z_to_ego_trajectory(z)
-        objective = np.sum([m.objective(x5) for m in self._objective_modules.values()])
+        objective = np.sum([m.objective(x5, ado_ids=ado_ids) for m in self._objective_modules.values()])
 
         logging.debug(f"solver {self.name}:{tag} Objective function = {objective}")
         ado_planned = torch.zeros(0)  # pseudo for ado_planned (only required for plotting)
@@ -236,12 +252,14 @@ class Solver:
     def constraints_defaults() -> List[str]:
         raise NotImplementedError
 
-    def constraints(self, z: np.ndarray, tag: str = "core", return_violation: bool = False) -> np.ndarray:
+    def constraints(
+        self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core", return_violation: bool = False
+    ) -> np.ndarray:
         if self.is_unconstrained:
             return np.array([]) if not return_violation else (np.array([]), 0.0)
 
         x4 = self.z_to_ego_trajectory(z)
-        constraints = np.concatenate([m.constraint(x4) for m in self._constraint_modules.values()])
+        constraints = np.concatenate([m.constraint(x4, ado_ids=ado_ids) for m in self._constraint_modules.values()])
         violation = float(np.sum([m.compute_violation() for m in self._constraint_modules.values()]))
 
         logging.debug(f"solver {self.name}:{tag}: Constraints vector = {constraints}")
@@ -265,13 +283,18 @@ class Solver:
         raise NotImplementedError
 
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
-        assert all([name in OBJECTIVES.keys() for name, _ in modules]), "invalid objective module detected"
-        assert all([0.0 <= weight for _, weight in modules]), "invalid solver module weight detected"
+        assert all([name in OBJECTIVES.keys() for name, _ in modules])
+        assert all([0.0 <= weight for _, weight in modules])
         return {m: OBJECTIVES[m](horizon=self.T, weight=w, env=self._env, goal=self.goal) for m, w in modules}
 
     def _build_constraint_modules(self, modules: List[str]) -> Dict[str, ConstraintModule]:
-        assert all([name in CONSTRAINTS.keys() for name in modules]), "invalid constraint module detected"
+        assert all([name in CONSTRAINTS.keys() for name in modules])
         return {m: CONSTRAINTS[m](horizon=self.T, env=self._env) for m in modules}
+
+    @staticmethod
+    def _build_filter_module(module: str) -> FilterModule:
+        assert module is None or module in FILTER.keys()
+        return FILTER[module]() if module is not None else FILTER["none"]()
 
     ###########################################################################
     # Visualization & Logging #################################################

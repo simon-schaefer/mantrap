@@ -143,11 +143,16 @@ class Trajectron(GraphBasedEnvironment):
             robot_present_and_future=trajectory_w_acc
         )
 
-        # The obtained distribution is a dictionary mapping nodes to the representing Gaussian Mixture Model (GMM).
-        # Most importantly the GMM have a mean (mu) and log-covariance (log_sigma) for every of the 25 modes.
+        # Build the state at the current time-step, by using the `environment::states()` method. However, since the
+        # state at the current time-step is deterministic, the output vector has to be stretched to the number of
+        # modes (while having the same state for modes that are originated from the same ado).
         ado_planned = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
         ado_weights = torch.zeros((self.num_ados, self.num_modes))
-        _, ado_planned[:, :, 0:1, :] = self.states()
+        _, ado_states = self.states()
+        ado_planned[:, :, 0, :] = ado_states.view(self.num_ados, 1, 5).repeat(1, self.num_modes, 1)
+
+        # The obtained distribution is a dictionary mapping nodes to the representing Gaussian Mixture Model (GMM).
+        # Most importantly the GMM have a mean (mu) and log-covariance (log_sigma) for every of the 25 modes.
         for node, node_gmm in distribution.items():
             ado_id = self.ado_id_from_node_id(node.__str__())
             i_ado = self.index_ado_id(ado_id)

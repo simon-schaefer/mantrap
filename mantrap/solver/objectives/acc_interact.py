@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 
 from mantrap.environment.environment import GraphBasedEnvironment
@@ -30,20 +32,22 @@ class InteractionAccelerationModule(ObjectiveModule):
         self._derivative_2 = Derivative2(horizon=self.T + 1, dt=self._env.dt, num_axes=2)
         self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
 
-    def _compute(self, x5: torch.Tensor) -> torch.Tensor:
+    def _compute(self, x5: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+        ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
+
         graphs = self._env.build_connected_graph(trajectory=x5, ego_grad=False)
 
         objective = torch.zeros(1)
-        for k in range(1, self.T - 1):
-            for m in range(self._env.num_ghosts):
-                ghost_id = self._env.ghosts[m].id
-                m_ado, m_mode = self._env.index_ghost_id(ghost_id=ghost_id)
-                ado_acceleration = self._derivative_2.compute_single(
-                    graphs[f"{ghost_id}_{k - 1}_position"],
-                    graphs[f"{ghost_id}_{k}_position"],
-                    graphs[f"{ghost_id}_{k}_position"],
-                )
-                ado_acceleration_wo = self._ado_accelerations_wo[m_ado, m_mode, k, :]
-                objective += torch.norm(ado_acceleration - ado_acceleration_wo) * self._env.ghosts[m].weight
+        for ado_id in ado_ids:
+            for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
+                for t in range(1, self.T - 1):
+                    i_ado, i_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
+                    ado_acceleration = self._derivative_2.compute_single(
+                        graphs[f"{ghost.id}_{t - 1}_position"],
+                        graphs[f"{ghost.id}_{t}_position"],
+                        graphs[f"{ghost.id}_{t}_position"],
+                    )
+                    ado_acceleration_wo = self._ado_accelerations_wo[i_ado, i_mode, t, :]
+                    objective += torch.norm(ado_acceleration - ado_acceleration_wo) * ghost.weight
 
         return objective

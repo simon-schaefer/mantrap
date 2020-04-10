@@ -52,6 +52,9 @@ class ORCASolver(Solver):
         # Logging.
         return self.z_to_ego_controls(z=velocity_new.detach().numpy(), return_leaf=False)
 
+    def _optimize(self, z0: torch.Tensor, tag: str, ado_ids: List[str], **kwargs):
+        raise NotImplementedError
+
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################

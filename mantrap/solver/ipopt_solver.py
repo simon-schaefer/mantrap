@@ -11,9 +11,10 @@ from mantrap.solver.solver import Solver
 
 class IPOPTSolver(Solver):
 
-    def optimize(
+    def _optimize(
         self,
         z0: torch.Tensor,
+        ado_ids: List[str] = None,
         tag: str = "core",
         max_iter: int = ipopt_max_steps,
         max_cpu_time: float = ipopt_max_cpu_time,
@@ -39,7 +40,7 @@ class IPOPTSolver(Solver):
         assert len(z0_flat) == len(lb) == len(ub), f"initial value z0 should be {len(lb)} long"
 
         # Create ipopt problem with specific tag.
-        problem = IPOPTProblem(self, tag=tag)
+        problem = IPOPTProblem(self, ado_ids=ado_ids, tag=tag)
 
         # Use definition above to create IPOPT problem.
         nlp = ipopt.problem(n=len(z0_flat), m=len(cl), problem_obj=problem, lb=lb, ub=ub, cl=cl, cu=cu)
@@ -67,9 +68,10 @@ class IPOPTSolver(Solver):
     ###########################################################################
     # Optimization formulation - Objective ####################################s
     ###########################################################################
-    def gradient(self, z: np.ndarray, tag: str = "core") -> np.ndarray:
+    def gradient(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core") -> np.ndarray:
         x4, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        gradient = np.sum([m.gradient(x4, grad_wrt=grad_wrt) for m in self._objective_modules.values()], axis=0)
+        gradient = [m.gradient(x4, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._objective_modules.values()]
+        gradient = np.sum(gradient, axis=0)
 
         logging.debug(f"Gradient function = {gradient}")
         self.log_append(grad_overall=gradient, tag=tag)
@@ -79,12 +81,13 @@ class IPOPTSolver(Solver):
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
-    def jacobian(self, z: np.ndarray, tag: str = "core") -> np.ndarray:
+    def jacobian(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core") -> np.ndarray:
         if self.is_unconstrained:
             return np.array([])
 
         x4, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        jacobian = np.concatenate([m.jacobian(x4, grad_wrt=grad_wrt) for m in self._constraint_modules.values()])
+        jacobian = [m.jacobian(x4, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._constraint_modules.values()]
+        jacobian = np.concatenate(jacobian)
 
         logging.debug(f"Constraint jacobian function computed")
         return jacobian
@@ -122,21 +125,22 @@ class IPOPTSolver(Solver):
 ###########################################################################
 class IPOPTProblem:
 
-    def __init__(self, problem: IPOPTSolver, tag: str = "core"):
+    def __init__(self, problem: IPOPTSolver, ado_ids: List[str], tag: str = "core"):
         self.problem = problem
         self.tag = tag
+        self.ado_ids = ado_ids
 
     def objective(self, z: np.ndarray) -> float:
-        return self.problem.objective(z, tag=self.tag)
+        return self.problem.objective(z, tag=self.tag, ado_ids=self.ado_ids)
 
     def gradient(self, z: np.ndarray,) -> np.ndarray:
-        return self.problem.gradient(z, tag=self.tag)
+        return self.problem.gradient(z, tag=self.tag, ado_ids=self.ado_ids)
 
     def constraints(self, z: np.ndarray) -> np.ndarray:
-        return self.problem.constraints(z, tag=self.tag)
+        return self.problem.constraints(z, tag=self.tag, ado_ids=self.ado_ids)
 
     def jacobian(self, z: np.ndarray) -> np.ndarray:
-        return self.problem.jacobian(z, tag=self.tag)
+        return self.problem.jacobian(z, tag=self.tag, ado_ids=self.ado_ids)
 
     def intermediate(self, alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args):
         pass

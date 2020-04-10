@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import logging
+from typing import List
 
 import numpy as np
 import torch
@@ -32,32 +33,34 @@ class ObjectiveModule:
     ###########################################################################
     # Optimization Formulation ################################################
     ###########################################################################
-    def objective(self, x5: torch.Tensor) -> float:
+    def objective(self, x5: torch.Tensor, ado_ids: List[str] = None) -> float:
         """Determine objective value for passed ego trajectory `x5` by calling the internal `compute()` method.
 
         :param x5: planned ego trajectory (t_horizon, 5).
+        :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True, t_horizon=self.T + 1)
-        obj_value = self._compute(x5)
+        assert check_ego_trajectory(x=x5, pos_and_vel_only=True, t_horizon=self.T + 1)
+        obj_value = self._compute(x5, ado_ids=ado_ids)
         return self._return_objective(float(obj_value.item()))
 
-    def gradient(self, x5: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
+    def gradient(self, x5: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: List[str] = None) -> np.ndarray:
         """Determine gradient vector for passed ego trajectory `x5`. Therefore determine the objective value by
         calling the internal `compute()` method and en passant build a computation graph. Then using the pytorch
         autograd library compute the gradient vector through the previously built computation graph.
 
         :param x5: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
+        :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(ego_trajectory=x5, pos_and_vel_only=True, t_horizon=self.T + 1)
+        assert check_ego_trajectory(x=x5, pos_and_vel_only=True, t_horizon=self.T + 1)
         assert grad_wrt.requires_grad
 
-        objective = self._compute(x5)
+        objective = self._compute(x5, ado_ids=ado_ids)
         gradient = torch.autograd.grad(objective, grad_wrt, retain_graph=True)[0].flatten().detach().numpy()
         return self._return_gradient(gradient)
 
     @abstractmethod
-    def _compute(self, x4: torch.Tensor) -> torch.Tensor:
+    def _compute(self, x4: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
         raise NotImplementedError
 
     ###########################################################################
@@ -73,6 +76,9 @@ class ObjectiveModule:
         self._grad_current = self.weight * gradient
         return self._grad_current
 
+    ###########################################################################
+    # Objective Properties ####################################################
+    ###########################################################################
     @property
     def obj_current(self) -> float:
         return self._obj_current
