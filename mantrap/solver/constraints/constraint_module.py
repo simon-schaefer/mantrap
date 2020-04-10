@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import logging
 from typing import List, Tuple, Union
 
@@ -8,7 +8,7 @@ import torch
 from mantrap.utility.shaping import check_ego_trajectory
 
 
-class ConstraintModule:
+class ConstraintModule(ABC):
     """General constraint class.
 
     For an unified and general implementation of the constraint function modules this superclass implements methods
@@ -48,29 +48,29 @@ class ConstraintModule:
     def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
         raise NotImplementedError
 
-    def constraint(self, x5: torch.Tensor, ado_ids: List[str] = None) -> np.ndarray:
-        """Determine constraint value for passed ego trajectory `x5` by calling the internal `compute()` method.
+    def constraint(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> np.ndarray:
+        """Determine constraint value for passed ego trajectory by calling the internal `compute()` method.
 
-        :param x5: planned ego trajectory (t_horizon, 5).
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(x=x5, pos_and_vel_only=True)
-        constraint = self._compute(x5, ado_ids=ado_ids)
+        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True)
+        constraint = self._compute(ego_trajectory, ado_ids=ado_ids)
         return self._return_constraint(constraint.detach().numpy())
 
-    def jacobian(self, x5: torch.Tensor, grad_wrt: torch.Tensor = None, ado_ids: List[str] = None) -> np.ndarray:
-        """Determine jacobian matrix for passed ego trajectory `x5`. Therefore determine the constraint values by
+    def jacobian(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor = None, ado_ids: List[str] = None) -> np.ndarray:
+        """Determine jacobian matrix for passed ego trajectory. Therefore determine the constraint values by
         calling the internal `compute()` method and en passant build a computation graph. Then using the pytorch
         autograd library compute the jacobian matrix through the previously built computation graph.
 
-        :param x5: planned ego trajectory (t_horizon, 5).
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(x=x5, pos_and_vel_only=True)
+        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True)
         assert grad_wrt.requires_grad
 
-        constraints = self._compute(x5, ado_ids=ado_ids)
+        constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
         grad_size = int(grad_wrt.numel())
         jacobian = torch.zeros(constraints.numel() * grad_size)
         for i, x in enumerate(constraints):
@@ -79,7 +79,7 @@ class ConstraintModule:
         return jacobian.detach().numpy()
 
     @abstractmethod
-    def _compute(self, x5: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
         raise NotImplementedError
 
     def compute_violation(self) -> float:

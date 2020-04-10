@@ -1,5 +1,6 @@
 import logging
-from typing import Dict, Tuple
+from abc import ABC
+from typing import Dict, List, Tuple
 
 import ipopt
 import numpy as np
@@ -9,7 +10,7 @@ from mantrap.constants import ipopt_max_steps, ipopt_max_cpu_time
 from mantrap.solver.solver import Solver
 
 
-class IPOPTSolver(Solver):
+class IPOPTSolver(Solver, ABC):
 
     def _optimize(
         self,
@@ -69,8 +70,8 @@ class IPOPTSolver(Solver):
     # Optimization formulation - Objective ####################################s
     ###########################################################################
     def gradient(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core") -> np.ndarray:
-        x4, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        gradient = [m.gradient(x4, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._objective_modules.values()]
+        ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
+        gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._objective_modules.values()]
         gradient = np.sum(gradient, axis=0)
 
         logging.debug(f"Gradient function = {gradient}")
@@ -85,8 +86,8 @@ class IPOPTSolver(Solver):
         if self.is_unconstrained:
             return np.array([])
 
-        x4, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        jacobian = [m.jacobian(x4, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._constraint_modules.values()]
+        ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
+        jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._constraint_modules.values()]
         jacobian = np.concatenate(jacobian)
 
         logging.debug(f"Constraint jacobian function computed")

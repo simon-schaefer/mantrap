@@ -4,7 +4,7 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.constants import agent_speed_max, env_dt_default
-from mantrap.utility.shaping import check_state
+from mantrap.utility.shaping import check_ego_action, check_ego_state
 from mantrap.utility.utility import build_state_vector
 
 
@@ -19,7 +19,7 @@ class IntegratorDTAgent(Agent):
         .. math:: vel_{t+1} = action
         .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt
         """
-        assert check_state(state, enforce_temporal=False)
+        assert check_ego_state(state, enforce_temporal=False)
         assert action.size() == torch.Size([2])
 
         velocity_new = action.float()
@@ -30,10 +30,12 @@ class IntegratorDTAgent(Agent):
         """
         .. math:: action = (pos_t - pos_{t-1}) / dt
         """
-        assert check_state(state, enforce_temporal=False)
-        assert check_state(state_previous, enforce_temporal=False)
+        assert check_ego_state(state, enforce_temporal=False)
+        assert check_ego_state(state_previous, enforce_temporal=False)
 
-        return (state[0:2] - state_previous[0:2]) / dt
+        action = (state[0:2] - state_previous[0:2]) / dt
+        assert check_ego_action(x=action)
+        return action
 
     def control_limits(self) -> Tuple[float, float]:
         """

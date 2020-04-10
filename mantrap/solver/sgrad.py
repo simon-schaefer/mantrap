@@ -23,14 +23,14 @@ class SGradSolver(IPOPTSolver):
         pass
 
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
-        x20s = square_primitives(start=self.env.ego.position, end=self.goal, dt=self.env.dt, steps=self.T + 1)
+        ego_path_init = square_primitives(start=self.env.ego.position, end=self.goal, dt=self.env.dt, steps=self.T + 1)
 
-        u0s = torch.zeros((x20s.shape[0], self.T, 2))
-        for i, x20 in enumerate(x20s):
-            x40 = self.env.ego.expand_trajectory(path=x20, dt=self.env.dt)
-            u0s[i] = self.env.ego.roll_trajectory(trajectory=x40, dt=self.env.dt)
+        ego_controls_init = torch.zeros((ego_path_init.shape[0], self.T, 2))
+        for i, ego_path in enumerate(ego_path_init):
+            ego_trajectory_init = self.env.ego.expand_trajectory(path=ego_path, dt=self.env.dt)
+            ego_controls_init[i] = self.env.ego.roll_trajectory(trajectory=ego_trajectory_init, dt=self.env.dt)
 
-        return u0s if not just_one else u0s[1].reshape(self.T, 2)
+        return ego_controls_init if not just_one else ego_controls_init[1].reshape(self.T, 2)
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
@@ -56,17 +56,19 @@ class SGradSolver(IPOPTSolver):
     # Utility #################################################################
     ###########################################################################
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        u2 = torch.from_numpy(z).view(self.T, 2)
-        u2.requires_grad = True
-        x5 = self.env.ego.unroll_trajectory(controls=u2, dt=self.env.dt)
-        assert check_ego_trajectory(x5, t_horizon=self.T + 1, pos_and_vel_only=True)
-        return x5 if not return_leaf else (x5, u2)
+        ego_controls = torch.from_numpy(z).view(self.T, 2)
+        ego_controls.requires_grad = True
+        ego_trajectory = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt)
+
+        assert check_ego_trajectory(ego_trajectory, t_horizon=self.T + 1, pos_and_vel_only=True)
+        return ego_trajectory if not return_leaf else (ego_trajectory, ego_controls)
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        u2 = torch.from_numpy(z).view(self.T, 2)
-        u2.requires_grad = True
-        assert check_ego_controls(u2, t_horizon=self.T)
-        return u2 if not return_leaf else (u2, u2)
+        ego_controls = torch.from_numpy(z).view(self.T, 2)
+        ego_controls.requires_grad = True
+
+        assert check_ego_controls(ego_controls, t_horizon=self.T)
+        return ego_controls if not return_leaf else (ego_controls, ego_controls)
 
     ###########################################################################
     # Logging parameters ######################################################

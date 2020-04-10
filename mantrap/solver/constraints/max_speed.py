@@ -23,8 +23,8 @@ class MaxSpeedModule(ConstraintModule):
     def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
         return np.ones(self.num_constraints) * (-agent_speed_max), np.ones(self.num_constraints) * agent_speed_max
 
-    def _compute(self, x5: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
-        return x5[:, 2:4].flatten()
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+        return ego_trajectory[:, 2:4].flatten()
 
     @property
     def num_constraints(self) -> int:

@@ -4,7 +4,7 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.constants import agent_acc_max, env_dt_default
-from mantrap.utility.shaping import check_state
+from mantrap.utility.shaping import check_ego_action, check_ego_state
 from mantrap.utility.utility import build_state_vector
 
 
@@ -19,7 +19,7 @@ class DoubleIntegratorDTAgent(Agent):
           .. math:: vel_{t+1} = vel_t + action * dt
           .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt + 0.5 * action * dt^2
           """
-        assert check_state(state, enforce_temporal=False), "state should be two-dimensional (x, y, theta, vx, vy)"
+        assert check_ego_state(state, enforce_temporal=False), "state should be two-dimensional (x, y, theta, vx, vy)"
         assert action.size() == torch.Size([2]), "action must be two-dimensional (vx, vy)"
         action = action.float()
 
@@ -31,10 +31,12 @@ class DoubleIntegratorDTAgent(Agent):
         """
         .. math:: action = (vel_t - vel_{t-1}) / dt
         """
-        assert check_state(state, enforce_temporal=False)
-        assert check_state(state_previous, enforce_temporal=False)
+        assert check_ego_state(state, enforce_temporal=False)
+        assert check_ego_state(state_previous, enforce_temporal=False)
 
-        return (state[2:4] - state_previous[2:4]) / dt
+        action = (state[2:4] - state_previous[2:4]) / dt
+        assert check_ego_action(x=action)
+        return action
 
     def control_limits(self) -> Tuple[float, float]:
         """

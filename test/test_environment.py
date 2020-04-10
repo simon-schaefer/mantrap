@@ -10,7 +10,7 @@ from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment, Trajectron
 from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.primitives import straight_line
-from mantrap.utility.shaping import check_trajectories
+from mantrap.utility.shaping import check_ado_trajectories
 
 
 ###########################################################################
@@ -86,7 +86,7 @@ class TestEnvironment:
 
         ado_trajectories = env.predict_wo_ego(t_horizon=t_horizon)
         print(ado_trajectories.shape)
-        assert check_trajectories(ado_trajectories, t_horizon=t_horizon, modes=num_modes, ados=2)
+        assert check_ado_trajectories(ado_trajectories, t_horizon=t_horizon, modes=num_modes, ados=2)
 
     @staticmethod
     def test_build_connected_graph(environment_class: GraphBasedEnvironment.__class__):
@@ -97,7 +97,7 @@ class TestEnvironment:
 
         prediction_horizon = 10
         trajectory = torch.zeros((prediction_horizon, 4))  # does not matter here anyway
-        graphs = env.build_connected_graph(trajectory=trajectory)
+        graphs = env.build_connected_graph(ego_trajectory=trajectory)
 
         assert all([f"ego_{k}_position" in graphs.keys() for k in range(prediction_horizon)])
         assert all([f"ego_{k}_velocity" in graphs.keys() for k in range(prediction_horizon)])
@@ -111,7 +111,7 @@ class TestEnvironment:
         path = straight_line(start_pos=position, end_pos=goal, steps=11)
         velocities = torch.zeros((11, 2))
 
-        graphs = env.build_connected_graph(trajectory=torch.cat((path, velocities), dim=1))
+        graphs = env.build_connected_graph(ego_trajectory=torch.cat((path, velocities), dim=1))
         for k in range(path.shape[0]):
             assert torch.all(torch.eq(path[k, :], graphs[f"ego_{k}_position"]))
 
@@ -133,7 +133,7 @@ class TestEnvironment:
         # for gradient availability.
         ego_control = torch.ones((1, 2))
         ego_control.requires_grad = True
-        _, ado_controls, weights = env.predict_w_controls(controls=ego_control, return_more=True)
+        _, ado_controls, weights = env.predict_w_controls(ego_controls=ego_control, return_more=True)
         for j in range(env.num_ghosts):
             ado_id, _ = env.split_ghost_id(ghost_id=env.ghosts[j].id)
             i_ado = env.index_ado_id(ado_id=ado_id)
@@ -178,8 +178,8 @@ class TestEnvironment:
 
         # Test whether predictions are equal in both environments.
         ego_controls = torch.rand((5, 2))
-        traj_original = env.predict_w_controls(controls=ego_controls)
-        traj_copy = env.predict_w_controls(controls=ego_controls)
+        traj_original = env.predict_w_controls(ego_controls=ego_controls)
+        traj_copy = env.predict_w_controls(ego_controls=ego_controls)
         assert torch.all(torch.eq(traj_original, traj_copy))
 
         # Test broken link between `env` and `env_copy`, i.e. when I change env_copy, then the original environment

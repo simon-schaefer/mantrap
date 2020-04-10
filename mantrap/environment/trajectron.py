@@ -123,21 +123,21 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
-    def _build_connected_graph(self, t_horizon: int, trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
-        assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
-        t_horizon = trajectory.shape[0]
+    def _build_connected_graph(self, t_horizon: int, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+        assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+        t_horizon = ego_trajectory.shape[0]
 
         # Transcribe initial states in graph.
-        graph = self.write_state_to_graph(trajectory[0], ego_grad=True, ado_grad=False)
+        graph = self.write_state_to_graph(ego_trajectory[0], ego_grad=True, ado_grad=False)
 
         # Predict over full time-horizon at once and write resulting (simulated) ado trajectories to graph. By passing
         # the robot's trajectory the distribution is conditioned on it.
         # Using `full_dist = True` not just the mean of the resulting trajectory but also the covariances are returned.
         dd = Derivative2(horizon=t_horizon, dt=self.dt, velocity=True)
-        trajectory_w_acc = torch.cat((trajectory[:, 0:4], dd.compute(trajectory[:, 2:4])), dim=1)
+        trajectory_w_acc = torch.cat((ego_trajectory[:, 0:4], dd.compute(ego_trajectory[:, 2:4])), dim=1)
         distribution, _ = self.trajectron.incremental_forward(
             new_inputs_dict=self._gt_scene.get_clipped_pos_dict(0, self.config["state"]),
-            prediction_horizon=trajectory.shape[0] - 1,
+            prediction_horizon=ego_trajectory.shape[0] - 1,
             num_samples=1,
             full_dist=True,
             robot_present_and_future=trajectory_w_acc
@@ -155,29 +155,29 @@ class Trajectron(GraphBasedEnvironment):
         # Most importantly the GMM have a mean (mu) and log-covariance (log_sigma) for every of the 25 modes.
         for node, node_gmm in distribution.items():
             ado_id = self.ado_id_from_node_id(node.__str__())
-            i_ado = self.index_ado_id(ado_id)
-            ado_planned[i_ado], ado_weights[i_ado] = self.trajectory_from_distribution(
+            m_ado = self.index_ado_id(ado_id)
+            ado_planned[m_ado], ado_weights[m_ado] = self.trajectory_from_distribution(
                 gmm=node_gmm, num_output_modes=self.num_modes, dt=self.dt, t_horizon=t_horizon, t_start=self.time
             )
 
         # Update the graph dictionary with the trajectory predictions that have  been derived before.
         for t in range(t_horizon):
-            graph[f"ego_{t}_position"] = trajectory[t, 0:2]
-            graph[f"ego_{t}_velocity"] = trajectory[t, 2:4]
-            for i_ghost, ghost in enumerate(self.ghosts):
-                i_ado, i_mode = self.index_ghost_id(ghost_id=ghost.id)
+            graph[f"ego_{t}_position"] = ego_trajectory[t, 0:2]
+            graph[f"ego_{t}_velocity"] = ego_trajectory[t, 2:4]
+            for m_ghost, ghost in enumerate(self.ghosts):
+                m_ado, m_mode = self.convert_ghost_id(ghost_id=ghost.id)
 
-                graph[f"{ghost.id}_{t}_position"] = ado_planned[i_ado, i_mode, t, 0:2]
-                graph[f"{ghost.id}_{t}_velocity"] = ado_planned[i_ado, i_mode, t, 2:4]
-                graph[f"{ghost.id}_{t}_control"] = ado_planned[i_ado, i_mode, t, 2:4]  # single integrator ados (!)
+                graph[f"{ghost.id}_{t}_position"] = ado_planned[m_ado, m_mode, t, 0:2]
+                graph[f"{ghost.id}_{t}_velocity"] = ado_planned[m_ado, m_mode, t, 2:4]
+                graph[f"{ghost.id}_{t}_control"] = ado_planned[m_ado, m_mode, t, 2:4]  # single integrator ados (!)
 
                 # Adapt weight as determined from prediction.
-                self._ado_ghosts[i_ghost].weight = ado_weights[i_ado, i_mode]
+                self._ado_ghosts[m_ghost].weight = ado_weights[m_ado, m_mode]
         return graph
 
     def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
         pseudo_traj = self._pseudo_ego.unroll_trajectory(torch.ones((t_horizon, 2)) * 0.01, dt=self.dt)
-        return self._build_connected_graph(t_horizon=t_horizon, trajectory=pseudo_traj, **kwargs)
+        return self._build_connected_graph(t_horizon=t_horizon, ego_trajectory=pseudo_traj, **kwargs)
 
     @staticmethod
     def trajectory_from_distribution(

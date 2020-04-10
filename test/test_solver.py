@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pytest
@@ -12,7 +12,7 @@ from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver import MonteCarloTreeSearch, SGradSolver, IGradSolver, ORCASolver
 from mantrap.solver.solver import Solver
 from mantrap.solver.ipopt_solver import IPOPTSolver
-from mantrap.utility.shaping import check_ego_trajectory, check_trajectories
+from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories
 
 
 def scenario(solver_class: Solver.__class__, **solver_kwargs):
@@ -38,6 +38,9 @@ class ConstantSolver(Solver):
     def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
         return self.z0s_default()
 
+    def _optimize(self, z0: torch.Tensor, tag: str, ghost_ids: List[str], **kwargs):
+        raise NotImplementedError
+
     def initialize(self, **solver_params):
         pass
 
@@ -48,6 +51,12 @@ class ConstantSolver(Solver):
         controls = torch.zeros((self.T, 2))
         controls[0, 0] = 1.0
         return controls
+
+    def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        raise NotImplementedError
+
+    def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        raise NotImplementedError
 
     ###########################################################################
     # Logging parameters ######################################################
@@ -73,45 +82,45 @@ def test_solve():
     assert solver.T == 10
     assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
 
-    x5_opt, ado_traj = solver.solve(100)
-    ado_traj_planned = solver.optimization_log["opt/ado_planned"]
-    x5_opt_planned = solver.optimization_log["opt/x5_planned"]
+    ego_trajectory_opt, ado_traj = solver.solve(100)
+    ado_planned = solver.optimization_log["opt/ado_planned"]
+    ego_opt_planned = solver.optimization_log["opt/ego_planned"]
 
     # Test output shapes.
     t_horizon_exp = int(8 / sim.dt)  # distance ego position and goal = 8 / velocity 1.0 = 8.0 s
-    assert check_ego_trajectory(x5_opt, t_horizon=t_horizon_exp)
-    assert check_trajectories(ado_traj, t_horizon=t_horizon_exp, ados=sim.num_ados, modes=1)
-    assert tuple(ado_traj_planned.shape) == (t_horizon_exp, 1, 1, solver.T + 1, 5)
-    assert tuple(x5_opt_planned.shape) == (t_horizon_exp, solver.T + 1, 5)
+    assert check_ego_trajectory(ego_trajectory_opt, t_horizon=t_horizon_exp)
+    assert check_ado_trajectories(ado_traj, t_horizon=t_horizon_exp, ados=sim.num_ados, modes=1)
+    assert tuple(ado_planned.shape) == (t_horizon_exp, 1, 1, solver.T + 1, 5)
+    assert tuple(ego_opt_planned.shape) == (t_horizon_exp, solver.T + 1, 5)
 
     # Test ego output trajectory, which can be determined independent from environment since it basically is the
     # unrolled trajectory resulting from applying the same, known control action (determined in `ConstantSolver`)
     # again and again.
     x_path_exp = torch.tensor([-8.0 + 1.0 * sim.dt * k for k in range(t_horizon_exp)])
-    assert torch.all(torch.isclose(x5_opt[:, 0], x_path_exp, atol=1e-3))
-    assert torch.all(torch.eq(x5_opt[:, 1], torch.zeros(t_horizon_exp)))
+    assert torch.all(torch.isclose(ego_trajectory_opt[:, 0], x_path_exp, atol=1e-3))
+    assert torch.all(torch.eq(ego_trajectory_opt[:, 1], torch.zeros(t_horizon_exp)))
 
-    assert torch.isclose(x5_opt[0,  2], torch.zeros(1))
-    assert torch.all(torch.isclose(x5_opt[1:, 2], torch.ones(t_horizon_exp - 1)))
-    assert torch.all(torch.eq(x5_opt[:, 3], torch.zeros(t_horizon_exp)))
+    assert torch.isclose(ego_trajectory_opt[0,  2], torch.zeros(1))
+    assert torch.all(torch.isclose(ego_trajectory_opt[1:, 2], torch.ones(t_horizon_exp - 1)))
+    assert torch.all(torch.eq(ego_trajectory_opt[:, 3], torch.zeros(t_horizon_exp)))
 
     time_steps_exp = torch.tensor([k * sim.dt for k in range(t_horizon_exp)])
-    assert torch.all(torch.isclose(x5_opt[:, -1], time_steps_exp))
+    assert torch.all(torch.isclose(ego_trajectory_opt[:, -1], time_steps_exp))
 
     # Test ego planned trajectories - independent on environment engine. The ConstantSolver`s returned action
     # is always going straight with constant speed and direction, but just lasting for the first control step. Since
     # the ego is a single integrator agent, for the full remaining trajectory it stays at the point it went to
     # at the beginning (after the fist control loop).
     for k in range(t_horizon_exp - 1):
-        assert torch.all(torch.isclose(x5_opt_planned[k, 1:, 0], torch.ones(solver.T) * (x5_opt[k + 1, 0])))
-        assert torch.all(torch.eq(x5_opt_planned[k, :, 1], torch.zeros(solver.T + 1)))
-        time_steps_exp = torch.tensor([x5_opt[k, -1] + i * sim.dt for i in range(solver.T + 1)])
-        assert torch.all(torch.isclose(x5_opt_planned[k, :, -1], time_steps_exp))
+        assert torch.all(torch.isclose(ego_opt_planned[k, 1:, 0], torch.ones(solver.T) * (ego_trajectory_opt[k + 1, 0])))
+        assert torch.all(torch.eq(ego_opt_planned[k, :, 1], torch.zeros(solver.T + 1)))
+        time_steps_exp = torch.tensor([ego_trajectory_opt[k, -1] + i * sim.dt for i in range(solver.T + 1)])
+        assert torch.all(torch.isclose(ego_opt_planned[k, :, -1], time_steps_exp))
 
     # Test ado planned trajectories - depending on environment engine. Therefore only time-stamps can be tested.
     for k in range(t_horizon_exp):
-        time_steps_exp = torch.tensor([x5_opt[k, -1] + i * sim.dt for i in range(solver.T + 1)])
-        assert torch.all(torch.isclose(x5_opt_planned[k, :, -1], time_steps_exp))
+        time_steps_exp = torch.tensor([ego_trajectory_opt[k, -1] + i * sim.dt for i in range(solver.T + 1)])
+        assert torch.all(torch.isclose(ego_opt_planned[k, :, -1], time_steps_exp))
 
 
 def test_eval_environment():
@@ -123,14 +132,14 @@ def test_eval_environment():
     # is the unrolled trajectory by applying the same controls again and again.
     time_steps = 5
     ego_controls = torch.tensor([1, 0] * time_steps).view(-1, 2)
-    x5_opt_exp = sim.ego.unroll_trajectory(controls=ego_controls, dt=sim.dt)
-    ado_trajectories_exp_sim = sim.predict_w_controls(controls=ego_controls)
+    ego_trajectory_opt_exp = sim.ego.unroll_trajectory(controls=ego_controls, dt=sim.dt)
+    ado_trajectories_exp_sim = sim.predict_w_controls(ego_controls=ego_controls)
 
     # First dont pass evaluation environment, then it planning and evaluation environment should be equal.
     # Ado Trajectories -> just the actual positions (first entry of planning trajectory at every time-step)
     solver = ConstantSolver(sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
-    x5_opt, ado_trajectories = solver.solve(time_steps=time_steps)
-    assert torch.all(torch.isclose(x5_opt, x5_opt_exp))
+    ego_trajectory_opt, ado_trajectories = solver.solve(time_steps=time_steps)
+    assert torch.all(torch.isclose(ego_trajectory_opt, ego_trajectory_opt_exp))
     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_sim, atol=0.1))
 
     # Second pass evaluation environment. Since the environment updates should be performed using the evaluation
@@ -142,10 +151,10 @@ def test_eval_environment():
     mode_kwargs = {"num_modes": 2, "weights": [1.0, 0.0]}
     eval_sim.add_ado(position=torch.zeros(2), velocity=torch.tensor([-1, 0.2]), goal=torch.ones(2) * 10, **mode_kwargs)
     eval_sim.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]), goal=torch.ones(2) * 10, **mode_kwargs)
-    ado_trajectories_exp_eval = eval_sim.predict_w_controls(controls=ego_controls)[:, :1, :, :]  # first mode only
+    ado_trajectories_exp_eval = eval_sim.predict_w_controls(ego_controls=ego_controls)[:, :1, :, :]  # first mode only
     solver = ConstantSolver(sim, eval_env=eval_sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
-    x5_opt, ado_trajectories = solver.solve(time_steps=time_steps)
-    assert torch.all(torch.isclose(x5_opt, x5_opt_exp))
+    ego_trajectory_opt, ado_trajectories = solver.solve(time_steps=time_steps)
+    assert torch.all(torch.isclose(ego_trajectory_opt, ego_trajectory_opt_exp))
     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_eval, atol=0.1))
 
 
@@ -170,11 +179,11 @@ class TestSolvers:
         z0 = solver.z0s_default(just_one=True)
         z_opt, _, _ = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0, max_iter=1000)
         ego_controls = solver.z_to_ego_controls(z=z_opt.detach().numpy())
-        x5_opt = solver.env.ego.unroll_trajectory(controls=ego_controls, dt=solver.env.dt)
+        ego_trajectory_opt = solver.env.ego.unroll_trajectory(controls=ego_controls, dt=solver.env.dt)
 
-        assert torch.all(torch.isclose(x5_opt[0, :], sim.ego.state_with_time))
+        assert torch.all(torch.isclose(ego_trajectory_opt[0, :], sim.ego.state_with_time))
         for k in range(1, solver.T):
-            assert torch.all(torch.isclose(x5_opt[k, 0:2], solver.goal, atol=0.5))
+            assert torch.all(torch.isclose(ego_trajectory_opt[k, 0:2], solver.goal, atol=0.5))
 
     @staticmethod
     def test_formulation(solver_class: Solver.__class__):
@@ -256,17 +265,17 @@ def test_s_grad_solver():
     c_grad_solver = SGradSolver(env, goal=torch.tensor([5, 0]), t_planning=10, verbose=False)
 
     from mantrap.utility.primitives import square_primitives
-    x0 = square_primitives(start=env.ego.position, end=c_grad_solver.goal, dt=env.dt, steps=11)[1]
-    x40 = env.ego.expand_trajectory(x0, dt=env.dt)
-    u0 = env.ego.roll_trajectory(x40, dt=env.dt)
+    ego_path_init = square_primitives(start=env.ego.position, end=c_grad_solver.goal, dt=env.dt, steps=11)[1]
+    ego_trajectory_init = env.ego.expand_trajectory(ego_path_init, dt=env.dt)
+    ego_controls_init = env.ego.roll_trajectory(ego_trajectory_init, dt=env.dt)
 
-    z_solution, _, _ = c_grad_solver.optimize(z0=u0, tag="core0", max_cpu_time=5.0)
-    x5_solution = c_grad_solver.z_to_ego_trajectory(z=z_solution.detach().numpy())
-    ado_trajectories = env.predict_w_trajectory(trajectory=x5_solution)
+    z_solution, _, _ = c_grad_solver.optimize(z0=ego_controls_init, tag="core0", max_cpu_time=5.0)
+    ego_trajectory_opt = c_grad_solver.z_to_ego_trajectory(z=z_solution.detach().numpy())
+    ado_trajectories = env.predict_w_trajectory(ego_trajectory=ego_trajectory_opt)
 
     for t in range(10):
         for m in range(env.num_ghosts):
-            assert torch.norm(x5_solution[t, 0:2] - ado_trajectories[m, :, t, 0:2]).item() >= constraint_min_distance
+            assert torch.norm(ego_trajectory_opt[t, 0:2] - ado_trajectories[m, :, t, 0:2]).item() >= constraint_min_distance
 
 
 ###########################################################################
@@ -312,6 +321,12 @@ class ORCAEnvironment(GraphBasedEnvironment):
         for j in range(self.num_ados):
             self._ado_ghosts[j].agent.update(controls[j, :], dt=self.dt)
         return torch.stack([ghost.agent.state for ghost in self.ghosts]), None
+
+    def _build_connected_graph(self, t_horizon: int, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+        raise NotImplementedError
+
+    def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
+        raise NotImplementedError
 
 
 def test_orca_single_agent():

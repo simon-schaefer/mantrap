@@ -4,7 +4,7 @@ from mantrap.constants import agent_acc_max
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.maths import Derivative2
 from mantrap.utility.primitives import straight_line
-from mantrap.utility.shaping import check_ego_trajectory, check_trajectories
+from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories
 
 
 def metric_minimal_distance(
@@ -26,7 +26,7 @@ def metric_minimal_distance(
     ado_trajectories = ado_trajectories.detach()
     horizon = ego_trajectory.shape[0]
     num_ados = ado_trajectories.shape[0]
-    assert check_trajectories(ado_trajectories, t_horizon=horizon, pos_only=True, modes=1)
+    assert check_ado_trajectories(ado_trajectories, t_horizon=horizon, pos_only=True, modes=1)
 
     minimal_distance = float("Inf")
     for t in range(1, horizon):
@@ -81,24 +81,24 @@ def metric_ado_effort(env: GraphBasedEnvironment, ado_trajectories: torch.Tensor
     ado_traj = ado_trajectories.detach()
     t_horizon = ado_traj.shape[2]
     num_ados = ado_traj.shape[0]
-    assert check_trajectories(ado_traj, modes=1)  # deterministic (!)
+    assert check_ado_trajectories(ado_traj, modes=1)  # deterministic (!)
 
     # Copy environment to not alter passed env object when resetting its state. Also check whether the initial
     # state in the environment and the ado trajectory tensor are equal.
     env_metric = env.copy()
-    for j, ghost in enumerate(env_metric.ghosts):
-        i_ado, i_mode = env_metric.index_ghost_id(ghost_id=ghost.id)
-        assert torch.all(torch.isclose(ado_traj[i_ado, i_mode, 0, :], ghost.agent.state_with_time))
+    for ghost in env_metric.ghosts:
+        m_ado, m_mode = env_metric.convert_ghost_id(ghost_id=ghost.id)
+        assert torch.all(torch.isclose(ado_traj[m_ado, m_mode, 0, :], ghost.agent.state_with_time))
 
     effort_score = 0.0
     for m in range(num_ados):
         for t in range(1, t_horizon):
             # Reset environment to last ado states.
-            env_metric.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, :, t - 1, :].unsqueeze(dim=2))
+            env_metric.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, 0, t - 1, :])
 
             # Predicting ado trajectories without interaction for current state.
             ado_traj_wo = env_metric.predict_wo_ego(t_horizon=2).detach()
-            assert check_trajectories(ado_traj_wo, ados=num_ados, t_horizon=2)
+            assert check_ado_trajectories(ado_traj_wo, ados=num_ados, t_horizon=2)
 
             # Determine acceleration difference between actual and without scene w.r.t. ados.
             dt = float(ado_traj[m, :, t, -1] - ado_traj[m, :, t - 1, -1])

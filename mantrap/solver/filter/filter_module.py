@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 import logging
-from typing import Tuple
 
 import numpy as np
 import torch
+
+from mantrap.utility.shaping import check_ego_state, check_ado_states
 
 
 class FilterModule(ABC):
@@ -20,12 +21,15 @@ class FilterModule(ABC):
     ###########################################################################
     # Filter Formulation ######################################################
     ###########################################################################
-    def compute(self, scene_states: Tuple[torch.Tensor, torch.Tensor]) -> np.ndarray:
-        filtered_indices = self._compute(scene_states)
+    def compute(self, ego_state: torch.Tensor, ado_states: torch.Tensor) -> np.ndarray:
+        assert check_ego_state(x=ego_state, enforce_temporal=False)
+        assert check_ado_states(x=ado_states, enforce_temporal=False)
+
+        filtered_indices = self._compute(ego_state=ego_state, ado_states=ado_states)
         return self._return_filtered(filtered_indices)
 
     @abstractmethod
-    def _compute(self, scene_states: Tuple[torch.Tensor, torch.Tensor]) -> np.ndarray:
+    def _compute(self, ego_state: torch.Tensor, ado_states: torch.Tensor) -> np.ndarray:
         raise NotImplementedError
 
     ###########################################################################

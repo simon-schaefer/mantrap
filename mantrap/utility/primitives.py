@@ -2,7 +2,6 @@ import numpy as np
 import scipy.interpolate
 import torch
 
-from mantrap.constants import agent_speed_max
 from mantrap.utility.shaping import check_ego_path
 
 

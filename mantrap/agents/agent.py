@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import logging
 import random
 import string
@@ -8,13 +8,13 @@ import numpy as np
 import torch
 
 from mantrap.constants import agent_speed_max
-from mantrap.utility.shaping import check_ego_path, check_ego_controls, check_ego_trajectory, check_state
+from mantrap.utility.shaping import check_ego_path, check_ego_action, check_ego_controls, check_ego_trajectory, check_ego_state
 from mantrap.utility.utility import expand_state_vector
 
 
-class Agent:
-    """
-    General agent representation.
+class Agent(ABC):
+    """ General agent representation.
+
     An agent, whether in environment or real world, has a five-dimensional state vector and a state history, which are
     defined as follows:
 
@@ -70,7 +70,9 @@ class Agent:
         :param action: control input (size depending on agent type).
         :param dt: forward integration time step [s].
         """
-        assert dt > 0.0, "time-step must be larger than 0"
+        assert check_ego_action(x=action)
+        assert dt > 0.0
+
         state_new = self.dynamics(self.state, action, dt=dt)
         self._position = state_new[0:2]
         self._velocity = state_new[2:4]
@@ -85,6 +87,9 @@ class Agent:
         state_new = expand_state_vector(self.state, time=self._history[-1, -1].item() + dt).unsqueeze(0)
         self._history = torch.cat((self._history, state_new), dim=0)
 
+        # Perform sanity check for agent properties.
+        assert self.sanity_check()
+
     def reset(self, state: torch.Tensor, history: torch.Tensor = None):
         """Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent's
         history to the new state (i.e. append it to the already existing history) if history is given as None or set
@@ -93,11 +98,14 @@ class Agent:
         :param state: new state (4 or 5).
         :param history: new state history (N, 5).
         """
-        assert check_state(state, enforce_temporal=True), "state has to be at least 5-dimensional"
+        assert check_ego_state(state, enforce_temporal=True), "state has to be at least 5-dimensional"
 
         self._position = state[0:2]
         self._velocity = state[2:4]
         self._history = torch.cat((self._history, state.unsqueeze(0)), dim=0) if history is None else history
+
+        # Perform sanity check for agent properties.
+        assert self.sanity_check()
 
     def unroll_trajectory(self, controls: torch.Tensor, dt: float) -> torch.Tensor:
         """Build the trajectory from some controls and current state, by iteratively applying the model dynamics.
@@ -107,7 +115,9 @@ class Agent:
         :param dt: time interval [s].
         :return: resulting trajectory (no uncertainty in dynamics assumption !), (N, 4).
         """
-        assert dt > 0.0, "time-step must be larger than 0"
+        assert check_ego_controls(x=controls)
+        assert dt > 0.0
+
         if len(controls.shape) == 1:  # singe action as policy
             controls = controls.unsqueeze(dim=0)
 
@@ -131,8 +141,8 @@ class Agent:
         :param dt: time interval [s].
         :return: inferred controls (no uncertainty in dynamics assumption !), (N, input_size).
         """
-        assert dt > 0.0, "time-step must be larger than 0"
         assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
+        assert dt > 0.0
 
         # every control input follows from robot's dynamics recursion, basically assuming no model uncertainty.
         controls = torch.zeros((trajectory.shape[0] - 1, 2))  # assuming input_size = 2
@@ -151,6 +161,7 @@ class Agent:
         :returns trajectory: temporally-expanded path (N, 5).s
         """
         assert check_ego_path(path)
+        assert dt > 0.0
 
         t_horizon = path.shape[0]
         t_start = float(self.state_with_time[-1])
@@ -160,7 +171,7 @@ class Agent:
         trajectory[:-1, 2:4] = (trajectory[1:, 0:2] - trajectory[0:-1, 0:2]) / dt
         trajectory[:, 4] = torch.linspace(t_start, t_start + t_horizon * dt, steps=t_horizon)
 
-        assert check_ego_trajectory(trajectory, t_horizon=t_horizon, pos_and_vel_only=True)
+        assert check_ego_trajectory(trajectory, t_horizon=t_horizon)
         return trajectory
 
     @abstractmethod
@@ -232,6 +243,8 @@ class Agent:
         assert self.velocity is not None
         assert self.history is not None
 
+        assert check_ego_state(x=self.state_with_time, enforce_temporal=True)
+        assert check_ego_trajectory(x=self.history)
         assert torch.all(torch.eq(self.history[-1, :], self.state_with_time))
         return True
 

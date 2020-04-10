@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 import torch
 
@@ -13,9 +11,8 @@ class NoFilterModule(FilterModule):
     This module is created for easier treating of the exception of not applying a filter (filter = None).
     """
 
-    def _compute(self, scene_states: Tuple[torch.Tensor, torch.Tensor]) -> np.ndarray:
+    def _compute(self, ego_state: torch.Tensor, ado_states: torch.Tensor) -> np.ndarray:
         with torch.no_grad():
-            _, ados_states = scene_states
-            assert check_ado_states(ados_states, enforce_temporal=False)
-            num_ados, _ = ados_states.shape
+            assert check_ado_states(ado_states, enforce_temporal=False)
+            num_ados, _ = ado_states.shape
         return np.arange(start=0, stop=num_ados, step=1)

@@ -107,8 +107,7 @@ if __name__ == '__main__':
         solver = solver_class(sim, goal=goal, verbose=2, multiprocessing=True, **solver_kwargs)
 
         # Solve posed problem, until goal has been reached.
-        config_kwargs = {"time_steps": 10, "max_cpu_time": 0.5}
-        x_opt, ado_traj = solver.solve(**config_kwargs)
+        ego_trajectory_opt, ado_traj = solver.solve(time_steps=5, max_cpu_time=1.0)
 
         # Log and visualise results for later comparison.
         results[name] = evaluate_metrics(ego_trajectory=x_opt, ado_trajectories=ado_traj, env=sim, goal=goal)

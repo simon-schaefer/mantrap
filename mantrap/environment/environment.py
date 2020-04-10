@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from copy import deepcopy
 import logging
 from typing import Any, Dict, List, Tuple, Union
@@ -10,11 +10,17 @@ from mantrap.agents.agent import Agent
 from mantrap.constants import env_x_axis_default, env_y_axis_default, env_dt_default
 from mantrap.utility.io import dict_value_or_default
 from mantrap.utility.shaping import (
-    check_state, check_trajectories, check_controls, check_weights, check_ego_trajectory, check_ego_controls
+    check_ego_controls,
+    check_ego_state,
+    check_ego_trajectory,
+    check_ado_controls,
+    check_ado_states,
+    check_ado_trajectories,
+    check_weights,
 )
 
 
-class GraphBasedEnvironment:
+class GraphBasedEnvironment(ABC):
     """General environment engine for obstacle-free, interaction-aware, probabilistic and multi-modal agent environments.
     As used in a robotics use-case the environment separates between the ego-agent (the robot) and ado-agents (other
     agents in the scene which are not the robot).
@@ -131,7 +137,7 @@ class GraphBasedEnvironment:
         logging.info(f"env {self.name} step @t={self.time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
 
         # Predict the next step in the environment by forward environment.
-        _, ado_controls, weights = self.predict_w_controls(controls=ego_control, return_more=True)
+        _, ado_controls, weights = self.predict_w_controls(ego_controls=ego_control, return_more=True)
 
         # Update ados by forward simulate them and determining their most likely policies. Therefore predict the
         # ado states at the next time step as well as the probabilities (weights) of them occurring. Then sample one
@@ -139,7 +145,7 @@ class GraphBasedEnvironment:
         # The base state should be the same between all modes, therefore update all mode states according to the
         # one sampled mode policy.
         weights = weights / torch.sum(weights, dim=1)[:, np.newaxis]
-        ado_states = torch.zeros((self.num_ados, 1, 1, 5))  # deterministic update (!)
+        ado_states = torch.zeros((self.num_ados, 5))  # deterministic update (!)
         sampled_modes = {}
         for ado_id in self.ado_ids:
             i_ado = self.index_ado_id(ado_id=ado_id)
@@ -152,11 +158,15 @@ class GraphBasedEnvironment:
             ado_id, _ = self.split_ghost_id(ghost_id=self.ghosts[j].id)
             i_ado = self.index_ado_id(ado_id=ado_id)
             self._ado_ghosts[j].agent.update(action=ado_controls[i_ado, sampled_modes[ado_id], 0, :], dt=self.dt)
-            ado_states[i_ado, :, :, :] = self.ghosts[j].agent.state_with_time  # TODO: repetitive !
+            ado_states[i_ado, :] = self.ghosts[j].agent.state_with_time  # TODO: repetitive !
             logging.info(f"env {self.name} step @t={self.time} [ado_{ado_id}]: state={ado_states[i_ado].tolist()}")
 
-        # Detach agents from graph in order to keep independence between subsequent runs.
+        # Detach agents from graph in order to keep independence between subsequent runs. Afterwards perform sanity
+        # check for environment and agents.
         self.detach()
+        assert self.sanity_check()
+
+        assert check_ado_states(x=ado_states, num_ados=self.num_ados, enforce_temporal=True)
         return ado_states.detach(), self.ego.state_with_time.detach()  # otherwise no scene independence (!)
 
     def step_reset(self, ego_state_next: Union[torch.Tensor, None], ado_states_next: Union[torch.Tensor, None]):
@@ -171,57 +181,59 @@ class GraphBasedEnvironment:
 
         # Reset ego agent (if there is an ego in the scene), otherwise just do not reset it.
         if ego_state_next is not None:
-            assert check_state(ego_state_next, enforce_temporal=True)
+            assert check_ego_state(ego_state_next, enforce_temporal=True)
             self._ego.reset(state=ego_state_next, history=None)  # new state is appended
 
         # Reset ado agents, each mode similarly, if `ado_states_next` is None just do not reset them. When resetting
         # with `history=None` the new state is appended automatically.
         if ado_states_next is not None:
-            assert check_trajectories(ado_states_next, ados=self.num_ados, t_horizon=1, modes=1)
+            assert check_ado_states(ado_states_next, num_ados=self.num_ados)
             for j in range(self.num_ghosts):
-                i_ado, _ = self.index_ghost_id(ghost_id=self.ghosts[j].id)
+                i_ado, _ = self.convert_ghost_id(ghost_id=self.ghosts[j].id)
                 self._ado_ghosts[j].agent.reset(ado_states_next[i_ado, 0, 0, :], history=None)
 
-        # Detach agents from graph in order to keep independence between subsequent runs.
+        # Detach agents from graph in order to keep independence between subsequent runs. Afterwards perform sanity
+        # check for environment and agents.
         self.detach()
+        assert self.sanity_check()
 
     ###########################################################################
     # Prediction ##############################################################
     ###########################################################################
-    def predict_w_controls(self, controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+    def predict_w_controls(self, ego_controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados with each other and between the ados and the ego. The implementation therefore is specific
         to each child-class.
 
-        :param controls: ego control input (pred_horizon, 2).
+        :param ego_controls: ego control input (pred_horizon, 2).
         :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
         assert self.ego is not None
-        assert check_ego_controls(controls)
+        assert check_ego_controls(ego_controls)
         assert self.sanity_check()
 
-        ego_trajectory = self.ego.unroll_trajectory(controls=controls, dt=self.dt)
+        ego_trajectory = self.ego.unroll_trajectory(controls=ego_controls, dt=self.dt)
         graphs = self.build_connected_graph(ego_trajectory, ego_grad=False, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=controls.shape[0] + 1, returns=return_more)
+        return self.transcribe_graph(graphs, t_horizon=ego_controls.shape[0] + 1, returns=return_more)
 
-    def predict_w_trajectory(self, trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+    def predict_w_trajectory(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados with each other and between the ados and the ego. The implementation therefore is specific
         to each child-class.
 
-        :param trajectory: ego trajectory (pred_horizon, 4).
+        :param ego_trajectory: ego trajectory (pred_horizon, 4).
         :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
         assert self.ego is not None
-        assert check_ego_trajectory(ego_trajectory=trajectory, pos_and_vel_only=True)
+        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True)
         assert self.sanity_check()
 
-        graphs = self.build_connected_graph(trajectory=trajectory, ego_grad=False, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=trajectory.shape[0], returns=return_more)
+        graphs = self.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False, **graph_kwargs)
+        return self.transcribe_graph(graphs, t_horizon=ego_trajectory.shape[0], returns=return_more)
 
     def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
@@ -254,6 +266,9 @@ class GraphBasedEnvironment:
             m_ghost = self.convert_ado_id(ado_id=ado_id, mode_index=0)  # 0 independent from num_modes
             ado_states[m_ado, :] = self.ghosts[m_ghost].agent.state_with_time
         ego_state = self.ego.state_with_time if self.ego is not None else None
+
+        assert check_ego_state(x=ego_state, enforce_temporal=True)
+        assert check_ado_states(x=ado_states, enforce_temporal=True, num_ados=self.num_ados)
         return ego_state, ado_states
 
     def add_ado(
@@ -356,7 +371,7 @@ class GraphBasedEnvironment:
     ###########################################################################
     # Simulation graph ########################################################
     ###########################################################################
-    def build_connected_graph(self, trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+    def build_connected_graph(self, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
         the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
         using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
@@ -366,11 +381,11 @@ class GraphBasedEnvironment:
         using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
         terms of computational effort and space, however end-to-end-differentiable.
         """
-        assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
-        return self._build_connected_graph(t_horizon=trajectory.shape[0], trajectory=trajectory, **kwargs)
+        assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+        return self._build_connected_graph(t_horizon=ego_trajectory.shape[0], ego_trajectory=ego_trajectory, **kwargs)
 
     @abstractmethod
-    def _build_connected_graph(self, t_horizon: int, trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+    def _build_connected_graph(self, t_horizon: int, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         raise NotImplementedError
 
     @abstractmethod
@@ -384,6 +399,7 @@ class GraphBasedEnvironment:
         graph = {}
 
         if ego_state is not None:
+            assert check_ego_state(x=ego_state, enforce_temporal=False)
             graph[f"ego_{k}_position"] = ego_state[0:2]
             graph[f"ego_{k}_velocity"] = ego_state[2:4]
 
@@ -406,19 +422,19 @@ class GraphBasedEnvironment:
         trajectories = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
         weights = torch.zeros((self.num_ados, self.num_modes))
 
-        for j, ghost in enumerate(self.ghosts):
-            i_ado, i_mode = self.index_ghost_id(ghost_id=ghost.id)
-            for k in range(t_horizon):
-                trajectories[i_ado, i_mode, k, 0:2] = graph[f"{ghost.id}_{k}_position"]
-                trajectories[i_ado, i_mode, k, 2:4] = graph[f"{ghost.id}_{k}_velocity"]
-                trajectories[i_ado, i_mode, k, -1] = self.time + self.dt * k
-                if k < t_horizon - 1:
-                    controls[i_ado, i_mode, k, :] = graph[f"{ghost.id}_{k}_control"]
-            weights[i_ado, i_mode] = ghost.weight
+        for ghost in self.ghosts:
+            m_ado, m_mode = self.convert_ghost_id(ghost_id=ghost.id)
+            for t in range(t_horizon):
+                trajectories[m_ado, m_mode, t, 0:2] = graph[f"{ghost.id}_{t}_position"]
+                trajectories[m_ado, m_mode, t, 2:4] = graph[f"{ghost.id}_{t}_velocity"]
+                trajectories[m_ado, m_mode, t, -1] = self.time + self.dt * t
+                if t < t_horizon - 1:
+                    controls[m_ado, m_mode, t, :] = graph[f"{ghost.id}_{t}_control"]
+            weights[m_ado, m_mode] = ghost.weight
 
-        assert check_controls(controls, num_ados=self.num_ados, num_modes=self.num_modes, t_horizon=t_horizon - 1)
+        assert check_ado_controls(controls, num_ados=self.num_ados, num_modes=self.num_modes, t_horizon=t_horizon - 1)
         assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_modes)
-        assert check_trajectories(trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_modes)
+        assert check_ado_trajectories(trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_modes)
         return trajectories if not returns else (trajectories, controls, weights)
 
     def detach(self):
@@ -463,6 +479,7 @@ class GraphBasedEnvironment:
                     num_modes=self.num_modes,
                     identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0]
                 )
+
         return env_copy
 
     def same_initial_conditions(self, other):
@@ -502,12 +519,12 @@ class GraphBasedEnvironment:
         # Check for the right order of ghosts, i.e. an order matching between ados and ghosts. Firstly, all ghosts
         # which origin from the same ado must be subsequent and secondly, have the same ado id, which is the one
         # at the kth place of the `ado_ids` array.
-        for i_ado, ado_id in enumerate(self.ado_ids):
+        for m_ado, ado_id in enumerate(self.ado_ids):
             weights_per_mode = np.zeros(self.num_modes)
-            for i_ghost, ghost in enumerate(self.ghosts[i_ado * self.num_modes:(i_ado + 1) * self.num_modes]):
+            for m_ghost, ghost in enumerate(self.ghosts[m_ado * self.num_modes:(m_ado + 1) * self.num_modes]):
                 ado_id_ghost, _ = self.split_ghost_id(ghost_id=ghost.id)
                 assert ado_id == ado_id_ghost
-                weights_per_mode[i_ghost] = ghost.weight
+                weights_per_mode[m_ghost] = ghost.weight
             # Check whether ghost order is correct, from highest to smallest weight.
             assert all([weights_per_mode[k] <= weights_per_mode[k - 1] for k in range(1, self.num_modes)])
         return True

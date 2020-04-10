@@ -7,7 +7,7 @@ import torch
 
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.maths import Derivative2
-from mantrap.utility.shaping import check_ego_trajectory, check_trajectories, check_state
+from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories, check_ego_state
 
 
 def visualize(
@@ -94,7 +94,7 @@ def draw_trajectories(
 
     def draw_agent_representation(state: torch.Tensor, color: np.ndarray, name: Union[str, None]):
         """Add circle for agent and agent id description."""
-        assert check_state(state, enforce_temporal=False), "state vector is invalid"
+        assert check_ego_state(state, enforce_temporal=False), "state vector is invalid"
         state = state.detach().numpy()
         ado_circle = plt.Circle(state[0:2], 0.2, color=color, clip_on=True)
         ax.add_artist(ado_circle)
@@ -102,7 +102,7 @@ def draw_trajectories(
             ax.text(state[0], state[1], name, fontsize=8)
 
     assert check_ego_trajectory(ego_traj, pos_and_vel_only=True)
-    assert check_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True, t_horizon=ego_traj.shape[0])
+    assert check_ado_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True, t_horizon=ego_traj.shape[0])
 
     ego_trajectory_np = ego_traj.detach().numpy()
     ax.plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label="ego")
@@ -110,17 +110,17 @@ def draw_trajectories(
 
     # Plot trial trajectories during optimisation process.
     if ego_traj_trials is not None:
-        for x5_trial in ego_traj_trials:
-            x5_trial_np = x5_trial.detach().numpy()
-            ax.plot(x5_trial_np[:, 0], x5_trial_np[:, 1], "--", color=env.ego.color, alpha=0.08)
+        for ego_traj_trial in ego_traj_trials:
+            ego_traj_trial_np = ego_traj_trial.detach().numpy()
+            ax.plot(ego_traj_trial_np[:, 0], ego_traj_trial_np[:, 1], "--", color=env.ego.color, alpha=0.08)
 
     # Plot current and base resulting simulated ado trajectories in the scene.
     vis_env = env.copy()
-    vis_env.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, :, 0, :].unsqueeze(dim=2))
+    vis_env.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, 0, 0, :])
     ado_traj_wo = vis_env.predict_wo_ego(t_horizon=ego_traj.shape[0])
 
     for ghost in env.ghosts:
-        i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
+        i_ado, i_mode = env.convert_ghost_id(ghost_id=ghost.id)
         ado_id, ado_color = ghost.id, ghost.agent.color
         ado_pos = ado_traj[i_ado, i_mode, :, 0:2].detach().numpy()
         ado_pos_wo = ado_traj_wo[i_ado, i_mode, :, 0:2].detach().numpy()
@@ -139,12 +139,12 @@ def draw_trajectories(
 def draw_velocities(ado_traj: torch.Tensor, ego_traj: torch.Tensor, env, ax: plt.Axes, k: Union[int, None] = 0):
     """Plot agent velocities for resulting solution vs base-line ego trajectory for current optimization step."""
     assert check_ego_trajectory(ego_traj, pos_and_vel_only=True)
-    assert check_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True, t_horizon=ego_traj.shape[0])
+    assert check_ado_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True, t_horizon=ego_traj.shape[0])
     time_axis = np.linspace(env.time, env.time + ego_traj.shape[0] * env.dt, num=ego_traj.shape[0])
     ado_velocity_norm = np.linalg.norm(ado_traj[:, :, :, 2:4].detach().numpy(), axis=3)
     ego_velocity_norm = np.linalg.norm(ego_traj[:, 2:4].detach().numpy(), axis=1)
     for ghost in env.ghosts:
-        i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
+        i_ado, i_mode = env.convert_ghost_id(ghost_id=ghost.id)
         ado_id, ado_color = ghost.id, ghost.agent.color
         ax.plot(time_axis, ado_velocity_norm[i_ado, i_mode, :], color=ado_color, label=f"{ado_id}_current")
     ax.plot(time_axis, ego_velocity_norm, color=env.ego.color, label="ego_current")
@@ -158,12 +158,12 @@ def draw_velocities(ado_traj: torch.Tensor, ego_traj: torch.Tensor, env, ax: plt
 
 def draw_ado_accelerations(ado_traj: torch.Tensor, env: GraphBasedEnvironment, ax: plt.Axes, k: Union[int, None] = 0):
     """Plot agent accelerations for resulting solution vs base-line ego trajectory for current optimization step."""
-    assert check_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True)
+    assert check_ado_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True)
     time_axis = np.linspace(env.time, env.time + ado_traj.shape[2] * env.dt, num=ado_traj.shape[2])
     dd = Derivative2(horizon=ado_traj.shape[2], dt=env.dt, velocity=True)
     ado_acceleration_norm = np.linalg.norm(dd.compute(ado_traj[:, :, :, 2:4]).detach().numpy(), axis=3)
     for ghost in env.ghosts:
-        i_ado, i_mode = env.index_ghost_id(ghost_id=ghost.id)
+        i_ado, i_mode = env.convert_ghost_id(ghost_id=ghost.id)
         ado_id, ado_color = ghost.id, ghost.agent.color
         ax.plot(time_axis, ado_acceleration_norm[i_ado, i_mode, :], color=ado_color, label=f"{ado_id}_current")
     if k is not None:

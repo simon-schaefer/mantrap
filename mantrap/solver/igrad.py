@@ -27,8 +27,13 @@ class IGradSolver(IPOPTSolver):
             self._solver_params["num_control_points"] = 2
 
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
-        x20s = square_primitives(self.env.ego.position, self.goal, dt=self.env.dt, steps=self.num_control_points + 2)
-        return x20s[:, 1:-1, :] if not just_one else x20s[1, 1:-1, :]
+        ego_path_init = square_primitives(
+            start=self.env.ego.position,
+            end=self.goal,
+            dt=self.env.dt,
+            steps=self.num_control_points + 2
+        )
+        return ego_path_init[:, 1:-1, :] if not just_one else ego_path_init[1, 1:-1, :]
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
@@ -61,16 +66,17 @@ class IGradSolver(IPOPTSolver):
         end_point = self._goal.unsqueeze(0)
         control_points = torch.cat((start_point, mid, end_point))
         path = lagrange_interpolation(control_points, num_samples=self.T + 1, deg=self.num_control_points + 2)
+        ego_trajectory = self.env.ego.expand_trajectory(path, dt=self.env.dt)
 
-        x5 = self.env.ego.expand_trajectory(path, dt=self.env.dt)
-        assert check_ego_trajectory(x5, t_horizon=self.T + 1, pos_and_vel_only=True)
-        return x5 if not return_leaf else (x5, mid)
+        assert check_ego_trajectory(ego_trajectory, t_horizon=self.T + 1, pos_and_vel_only=True)
+        return ego_trajectory if not return_leaf else (ego_trajectory, mid)
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        x5, mid = self.z_to_ego_trajectory(z, return_leaf=True)
-        u2 = self.env.ego.roll_trajectory(trajectory=x5, dt=self.env.dt)
-        assert check_ego_controls(u2, t_horizon=self.T)
-        return u2 if not return_leaf else (u2, mid)
+        ego_trajectory, mid = self.z_to_ego_trajectory(z, return_leaf=True)
+        ego_controls = self.env.ego.roll_trajectory(trajectory=ego_trajectory, dt=self.env.dt)
+
+        assert check_ego_controls(ego_controls, t_horizon=self.T)
+        return ego_controls if not return_leaf else (ego_controls, mid)
 
     @property
     def num_control_points(self) -> int:

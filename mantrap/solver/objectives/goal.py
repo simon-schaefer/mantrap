@@ -25,8 +25,8 @@ class GoalModule(ObjectiveModule):
         self._distribution = torch.linspace(0, 1, steps=self.T + 1) ** 3
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
 
-    def _compute(self, x5: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
-        goal_distances = torch.norm(x5[:, 0:2] - self._goal, dim=1)
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+        goal_distances = torch.norm(ego_trajectory[:, 0:2] - self._goal, dim=1)
         return goal_distances.dot(self._distribution)
 
     @property

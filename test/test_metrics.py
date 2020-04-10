@@ -57,9 +57,9 @@ def test_minimal_distance_interpolation():
 )
 def test_ego_effort(controls: torch.Tensor, effort_score: float):
     ego = DoubleIntegratorDTAgent(position=torch.zeros(2))
-    x5 = ego.unroll_trajectory(controls=controls, dt=1.0)
+    ego_trajectory = ego.unroll_trajectory(controls=controls, dt=1.0)
 
-    metric_score = metric_ego_effort(ego_trajectory=x5, max_acceleration=2.0)
+    metric_score = metric_ego_effort(ego_trajectory=ego_trajectory, max_acceleration=2.0)
     assert np.isclose(metric_score, effort_score)
 
 
@@ -75,10 +75,10 @@ def test_ego_effort(controls: torch.Tensor, effort_score: float):
 )
 def test_directness(velocity_profiles: torch.Tensor, directness_score: float):
     start, goal = torch.zeros(2), torch.tensor([10.0, 0.0])
-    x5 = torch.zeros((velocity_profiles.shape[0], 5))
-    x5[:, 2:4] = velocity_profiles  # the remaining data is not used anyways (just checked for shape sanity)
+    ego_trajectory = torch.zeros((velocity_profiles.shape[0], 5))
+    ego_trajectory[:, 2:4] = velocity_profiles  # the remaining data is not used anyways (just checked for shape sanity)
 
-    metric_score = metric_directness(ego_trajectory=x5, goal=goal)
+    metric_score = metric_directness(ego_trajectory=ego_trajectory, goal=goal)
     assert np.isclose(metric_score, directness_score)
 
 
@@ -93,7 +93,7 @@ def test_ado_effort():
     assert np.isclose(metric_score, 0.0)
 
     # Otherwise it is very hard to predict the exact score, but we know it should be non-zero and positive.
-    ado_traj = env.predict_w_controls(controls=torch.ones(5, 2))
+    ado_traj = env.predict_w_controls(ego_controls=torch.ones(5, 2))
     metric_score = metric_ado_effort(ado_trajectories=ado_traj, env=env)
     assert metric_score > 0.0
 
@@ -104,7 +104,7 @@ def test_ado_effort():
     # score w.r.t. only the first part and for the combined ado trajectory should be the same.
     env_test = deepcopy(env)
 
-    ado_traj_1 = env.predict_w_controls(controls=torch.ones(3, 2)).detach()
+    ado_traj_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
     metric_score_1 = metric_ado_effort(ado_trajectories=ado_traj_1, env=env)
 
     env_test.step_reset(ego_state_next=None, ado_states_next=ado_traj_1[:, :, -1, :].unsqueeze(dim=2))

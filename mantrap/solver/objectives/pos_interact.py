@@ -28,10 +28,10 @@ class InteractionPositionModule(ObjectiveModule):
         self._env = env
         self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)[:, :, :, 0:2]
 
-    def _compute(self, x5: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
 
-        graphs = self._env.build_connected_graph(trajectory=x5, ego_grad=False)
+        graphs = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
 
         objective = torch.zeros(1)
         for ado_id in ado_ids:

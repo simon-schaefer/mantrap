@@ -173,7 +173,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
     def _build_connected_graph(
         self,
         t_horizon: int,
-        trajectory: Union[List[None], torch.Tensor],
+        ego_trajectory: Union[List[None], torch.Tensor],
         **kwargs
     ) -> Dict[str, torch.Tensor]:
         # Since the ghosts are used for building the graph, and in during this process updated over the time horizon,
@@ -181,33 +181,33 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         ado_ghosts_copy = deepcopy(self._ado_ghosts)
 
         # Build first graph for the next state, in case no forces are applied on the ego.
-        graphs = self.build_graph(ego_state=trajectory[0], k=0, **kwargs)
+        graphs = self.build_graph(ego_state=ego_trajectory[0], k=0, **kwargs)
 
         # Build the graph iteratively for the whole prediction horizon.
         # Social forces assumes all agents to be controlled by some force vector, i.e. to be double integrators.
         assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in self._ado_ghosts])
-        for k in range(1, t_horizon):
-            for ig, ghost in enumerate(self._ado_ghosts):
-                self._ado_ghosts[ig].agent.update(graphs[f"{ghost.id}_{k - 1}_control"], dt=self.dt)
+        for t in range(1, t_horizon):
+            for m_ghost, ghost in enumerate(self._ado_ghosts):
+                self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost.id}_{t - 1}_control"], dt=self.dt)
 
             # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are
             # used for the ego motion, as guesses for the final trajectory i.e. starting points for optimization.
-            graph_k = self.build_graph(trajectory[k], k=k, **kwargs)
+            graph_k = self.build_graph(ego_trajectory[t], k=t, **kwargs)
             graphs.update(graph_k)
 
         # Update graph for a last time using the forces determined in the previous step.
-        for ig in range(self.num_ghosts):
-            ghost_id = self.ghosts[ig].id
-            self._ado_ghosts[ig].agent.update(graphs[f"{ghost_id}_{t_horizon - 1}_control"], dt=self.dt)
-            graphs[f"{ghost_id}_{t_horizon}_position"] = self.ghosts[ig].agent.position
-            graphs[f"{ghost_id}_{t_horizon}_velocity"] = self.ghosts[ig].agent.velocity
+        for m_ghost in range(self.num_ghosts):
+            ghost_id = self.ghosts[m_ghost].id
+            self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost_id}_{t_horizon - 1}_control"], dt=self.dt)
+            graphs[f"{ghost_id}_{t_horizon}_position"] = self.ghosts[m_ghost].agent.position
+            graphs[f"{ghost_id}_{t_horizon}_velocity"] = self.ghosts[m_ghost].agent.velocity
 
         # Reset ado ghosts to previous states.
         self._ado_ghosts = ado_ghosts_copy
         return graphs
 
     def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
-        return self._build_connected_graph(t_horizon=t_horizon, trajectory=[None] * t_horizon, **kwargs)
+        return self._build_connected_graph(t_horizon=t_horizon, ego_trajectory=[None] * t_horizon, **kwargs)
 
     ###########################################################################
     # Simulation parameters ###################################################
