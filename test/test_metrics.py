@@ -107,7 +107,7 @@ def test_ado_effort():
     ado_traj_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
     metric_score_1 = metric_ado_effort(ado_trajectories=ado_traj_1, env=env)
 
-    env_test.step_reset(ego_state_next=None, ado_states_next=ado_traj_1[:, :, -1, :].unsqueeze(dim=2))
+    env_test.step_reset(ego_state_next=None, ado_states_next=ado_traj_1[:, 0, -1, :])
     ado_traj_2 = env_test.predict_wo_ego(t_horizon=4).detach()
     ado_traj_12 = torch.cat((ado_traj_1, ado_traj_2), dim=2)
     ado_traj_12[:, :, :, -1] = torch.linspace(0, 7 * env.dt, steps=8)

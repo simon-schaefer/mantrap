@@ -117,7 +117,11 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
 
             # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
             # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
-            return torch.autograd.grad(v, relative_distance, create_graph=True)[0]
+            force = torch.autograd.grad(v, relative_distance, create_graph=True)[0]
+            if torch.any(torch.isnan(force)):  # TODO: why is nan rarely occurring here and how to deal with that ?
+                return torch.zeros(2)
+            else:
+                return force
 
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = self.write_state_to_graph(ego_state, ado_grad=True, **graph_kwargs)
@@ -188,7 +192,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in self._ado_ghosts])
         for t in range(1, t_horizon):
             for m_ghost, ghost in enumerate(self._ado_ghosts):
-                self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost.id}_{t - 1}_control"], dt=self.dt)
+                self._ado_ghosts[m_ghost].agent.update(action=graphs[f"{ghost.id}_{t - 1}_control"], dt=self.dt)
 
             # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are
             # used for the ego motion, as guesses for the final trajectory i.e. starting points for optimization.

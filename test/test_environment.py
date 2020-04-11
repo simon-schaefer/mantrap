@@ -10,7 +10,7 @@ from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment, Trajectron
 from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.primitives import straight_line
-from mantrap.utility.shaping import check_ado_trajectories
+from mantrap.utility.shaping import check_ado_trajectories, check_ado_states, check_ego_state
 
 
 ###########################################################################
@@ -53,7 +53,7 @@ class TestEnvironment:
 
             # Check dimensions of outputted ado and ego states.
             assert ado_t.numel() == 5
-            assert ado_t.shape == (1, 1, 1, 5)
+            assert ado_t.shape == (1, 5)
             assert ego_t.numel() == 5
 
             # While the exact value of the ado agent's states depends on the environment dynamics used, all of them
@@ -67,7 +67,7 @@ class TestEnvironment:
         env.add_ado(position=torch.ones(2), velocity=torch.zeros(2), num_modes=1)
 
         ego_next_state = torch.rand(5)
-        ado_next_states = torch.rand(env.num_ados, 1, 1, 5)
+        ado_next_states = torch.rand(env.num_ados, 5)
         env.step_reset(ego_state_next=ego_next_state, ado_states_next=ado_next_states)
 
         assert torch.all(torch.eq(env.ego.state_with_time, ego_next_state))
@@ -85,7 +85,6 @@ class TestEnvironment:
         env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), num_modes=num_modes, history=history)
 
         ado_trajectories = env.predict_wo_ego(t_horizon=t_horizon)
-        print(ado_trajectories.shape)
         assert check_ado_trajectories(ado_trajectories, t_horizon=t_horizon, modes=num_modes, ados=2)
 
     @staticmethod
@@ -106,12 +105,13 @@ class TestEnvironment:
     def test_ego_graph_updates(environment_class: GraphBasedEnvironment.__class__):
         position = torch.tensor([-5, 0])
         goal = torch.tensor([5, 0])
-
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": position, "velocity": torch.zeros(2)})
         path = straight_line(start_pos=position, end_pos=goal, steps=11)
-        velocities = torch.zeros((11, 2))
 
-        graphs = env.build_connected_graph(ego_trajectory=torch.cat((path, velocities), dim=1))
+        ego_kwargs = {"position": position, "velocity": torch.zeros(2)}
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs=ego_kwargs)
+        env.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.zeros(2))
+
+        graphs = env.build_connected_graph(ego_trajectory=torch.cat((path, torch.zeros((11, 2))), dim=1))
         for k in range(path.shape[0]):
             assert torch.all(torch.eq(path[k, :], graphs[f"ego_{k}_position"]))
 
@@ -189,6 +189,27 @@ class TestEnvironment:
         ego_state_copy,  ado_states_copy = env_copy.states()
         assert not torch.all(torch.eq(ego_state_original, ego_state_copy))
         assert not torch.all(torch.eq(ado_states_original, ado_states_copy))
+
+    @staticmethod
+    def test_states(environment_class: GraphBasedEnvironment.__class__):
+        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
+        env.add_ado(position=torch.tensor([3, 0]), velocity=-torch.ones(2), goal=torch.tensor([-4, 0]), num_modes=2)
+        env.add_ado(position=torch.tensor([-4, 2]), velocity=torch.ones(2), goal=torch.tensor([-4, 0]), num_modes=2)
+
+        ego_state, ado_states = env.states()
+        assert check_ego_state(x=ego_state, enforce_temporal=True)
+        assert check_ado_states(x=ado_states, enforce_temporal=True)
+
+        # The first entry of every predicted trajectory should be the current state, check that.
+        ado_trajectories = env.predict_wo_ego(t_horizon=2)
+        for m_mode in range(env.num_modes):
+            assert torch.all(torch.eq(ado_states, ado_trajectories[:, m_mode, 0, :]))
+
+        # Test that the states are the same as the states of actual agents.
+        assert torch.all(torch.eq(ego_state, env.ego.state_with_time))
+        for ghost in env.ghosts:
+            m_ado, _ = env.convert_ghost_id(ghost_id=ghost.id)
+            assert torch.all(torch.eq(ado_states[m_ado, :], ghost.agent.state_with_time))
 
 
 ###########################################################################
@@ -287,7 +308,7 @@ def test_trajectron_mode_selection():
     # than the number of control inputs, since the current state is prepended to the trajectories. Similarly, the
     # network prediction is one step longer, therefore we have to pass `t_horizon = 1 + 1 = 2` here.
     _, _, weight_indices = Trajectron.trajectory_from_distribution(
-        gmm=gmm, num_output_modes=num_modes, dt=1.0, t_horizon=2, return_more=True
+        gmm=gmm, num_output_modes=num_modes, dt=1.0, t_horizon=2, return_more=True, ado_state=torch.zeros(5)
     )
 
     # Test the obtained weight indices by checking for the smallest element in the GMM's variances, which should be

@@ -13,7 +13,7 @@ from mantrap.constants import env_dt_default, env_trajectron_model
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import Derivative2
-from mantrap.utility.shaping import check_ego_trajectory
+from mantrap.utility.shaping import check_ego_state, check_ego_trajectory
 
 
 class Trajectron(GraphBasedEnvironment):
@@ -125,6 +125,7 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     def _build_connected_graph(self, t_horizon: int, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+        assert self.num_ados > 0  # trajectron conditioned on ados and ego, so both must be in the scene (!)
         t_horizon = ego_trajectory.shape[0]
 
         # Transcribe initial states in graph.
@@ -137,7 +138,7 @@ class Trajectron(GraphBasedEnvironment):
         trajectory_w_acc = torch.cat((ego_trajectory[:, 0:4], dd.compute(ego_trajectory[:, 2:4])), dim=1)
         distribution, _ = self.trajectron.incremental_forward(
             new_inputs_dict=self._gt_scene.get_clipped_pos_dict(0, self.config["state"]),
-            prediction_horizon=ego_trajectory.shape[0] - 1,
+            prediction_horizon=t_horizon - 1,
             num_samples=1,
             full_dist=True,
             robot_present_and_future=trajectory_w_acc
@@ -148,16 +149,15 @@ class Trajectron(GraphBasedEnvironment):
         # modes (while having the same state for modes that are originated from the same ado).
         ado_planned = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
         ado_weights = torch.zeros((self.num_ados, self.num_modes))
-        _, ado_states = self.states()
-        ado_planned[:, :, 0, :] = ado_states.view(self.num_ados, 1, 5).repeat(1, self.num_modes, 1)
 
         # The obtained distribution is a dictionary mapping nodes to the representing Gaussian Mixture Model (GMM).
         # Most importantly the GMM have a mean (mu) and log-covariance (log_sigma) for every of the 25 modes.
+        _, ado_states = self.states()
         for node, node_gmm in distribution.items():
             ado_id = self.ado_id_from_node_id(node.__str__())
             m_ado = self.index_ado_id(ado_id)
             ado_planned[m_ado], ado_weights[m_ado] = self.trajectory_from_distribution(
-                gmm=node_gmm, num_output_modes=self.num_modes, dt=self.dt, t_horizon=t_horizon, t_start=self.time
+                node_gmm, num_output_modes=self.num_modes, dt=self.dt, t_horizon=t_horizon, ado_state=ado_states[m_ado]
             )
 
         # Update the graph dictionary with the trajectory predictions that have  been derived before.
@@ -182,10 +182,10 @@ class Trajectron(GraphBasedEnvironment):
     @staticmethod
     def trajectory_from_distribution(
         gmm,
+        ado_state: torch.Tensor,
         num_output_modes: int,
         dt: float,
         t_horizon: int,
-        t_start: float = 0.0,
         return_more: bool = False
     ) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, np.ndarray]]:
         """Transform the Trajectron model GMM distribution to a trajectory.
@@ -203,6 +203,9 @@ class Trajectron(GraphBasedEnvironment):
         log_sigma.shape: (num_ados = 1, 1, t_horizon, num_modes, 2)
         """
         assert t_horizon >= 1
+        assert check_ego_state(x=ado_state, enforce_temporal=True)  # technically ado state, but indexed
+        t_start = float(ado_state[-1])
+
         with torch.no_grad():
             mus = gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
             log_sigmas = gmm.log_sigmas.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
@@ -226,6 +229,7 @@ class Trajectron(GraphBasedEnvironment):
         # (2D path points) the (mean) velocity can be determined by computing the finite time difference between
         # subsequent path points, since the ados are assumed to be single integrators.
         trajectory = torch.zeros((num_output_modes, t_horizon, 5))
+        trajectory[:, 0, :] = ado_state.view(1, 5).repeat(num_output_modes, 1)
         trajectory[:, 1:, 0:2] = mus[weights_indices, :, :]
         trajectory[:, 1:-1, 2:4] = (mus[weights_indices, 1:, :] - mus[weights_indices, 0:-1, :]) / dt
         trajectory[:, :, 4] = torch.linspace(t_start, t_start + t_horizon * dt, steps=t_horizon)

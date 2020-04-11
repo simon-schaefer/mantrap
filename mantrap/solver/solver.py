@@ -145,7 +145,7 @@ class Solver(ABC):
             ado_states, ego_state = self._eval_env.step(ego_control=ego_controls_k[0:1, :])
             self._env.step_reset(ego_state_next=ego_state, ado_states_next=ado_states)
             ego_trajectory_opt[k + 1] = ego_state
-            ado_traj[:, :, k + 1, :] = ado_states[:, :, 0, :]
+            ado_traj[:, :, k + 1, :] = ado_states
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).

@@ -187,10 +187,10 @@ class GraphBasedEnvironment(ABC):
         # Reset ado agents, each mode similarly, if `ado_states_next` is None just do not reset them. When resetting
         # with `history=None` the new state is appended automatically.
         if ado_states_next is not None:
-            assert check_ado_states(ado_states_next, num_ados=self.num_ados)
-            for j in range(self.num_ghosts):
-                i_ado, _ = self.convert_ghost_id(ghost_id=self.ghosts[j].id)
-                self._ado_ghosts[j].agent.reset(ado_states_next[i_ado, 0, 0, :], history=None)
+            assert check_ado_states(ado_states_next, num_ados=self.num_ados, enforce_temporal=True)
+            for m_ghost in range(self.num_ghosts):
+                m_ado, _ = self.convert_ghost_id(ghost_id=self.ghosts[m_ghost].id)
+                self._ado_ghosts[m_ghost].agent.reset(ado_states_next[m_ado, :], history=None)
 
         # Detach agents from graph in order to keep independence between subsequent runs. Afterwards perform sanity
         # check for environment and agents.
@@ -267,7 +267,8 @@ class GraphBasedEnvironment(ABC):
             ado_states[m_ado, :] = self.ghosts[m_ghost].agent.state_with_time
         ego_state = self.ego.state_with_time if self.ego is not None else None
 
-        assert check_ego_state(x=ego_state, enforce_temporal=True)
+        if ego_state is not None:
+            assert check_ego_state(x=ego_state, enforce_temporal=True)
         assert check_ado_states(x=ado_states, enforce_temporal=True, num_ados=self.num_ados)
         return ego_state, ado_states
 
@@ -358,7 +359,7 @@ class GraphBasedEnvironment(ABC):
         return self.ado_ids.index(ado_id)
 
     def index_ghost_id(self, ghost_id: str) -> int:
-        return self.ado_ids.index(ghost_id)
+        return self.ghost_ids.index(ghost_id)
 
     def convert_ado_id(self, ado_id: str, mode_index: int) -> int:
         ado_index = self.index_ado_id(ado_id=ado_id)

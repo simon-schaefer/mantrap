@@ -124,20 +124,20 @@ def test_solve():
 
 
 def test_eval_environment():
-    sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
-    sim.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0.2]))
-    sim.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]))
+    env = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+    env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0.2]))
+    env.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]))
 
     # Since the determine ego controls are predictable in the constant solver, the output ego trajectory basically
     # is the unrolled trajectory by applying the same controls again and again.
     time_steps = 5
     ego_controls = torch.tensor([1, 0] * time_steps).view(-1, 2)
-    ego_trajectory_opt_exp = sim.ego.unroll_trajectory(controls=ego_controls, dt=sim.dt)
-    ado_trajectories_exp_sim = sim.predict_w_controls(ego_controls=ego_controls)
+    ego_trajectory_opt_exp = env.ego.unroll_trajectory(controls=ego_controls, dt=env.dt)
+    ado_trajectories_exp_sim = env.predict_w_controls(ego_controls=ego_controls)
 
     # First dont pass evaluation environment, then it planning and evaluation environment should be equal.
     # Ado Trajectories -> just the actual positions (first entry of planning trajectory at every time-step)
-    solver = ConstantSolver(sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
+    solver = ConstantSolver(env, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
     ego_trajectory_opt, ado_trajectories = solver.solve(time_steps=time_steps)
     assert torch.all(torch.isclose(ego_trajectory_opt, ego_trajectory_opt_exp))
     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_sim, atol=0.1))
@@ -147,12 +147,12 @@ def test_eval_environment():
     # To test multi-modality but still have a deterministic mode collapse all weight is put on one mode.
     # However, since the agents themselves are the same, especially the ego agent, the ego trajectory should be the
     # same as in the first test ==> (only one mode since deterministic)
-    eval_sim = SocialForcesEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+    eval_env = SocialForcesEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
     mode_kwargs = {"num_modes": 2, "weights": [1.0, 0.0]}
-    eval_sim.add_ado(position=torch.zeros(2), velocity=torch.tensor([-1, 0.2]), goal=torch.ones(2) * 10, **mode_kwargs)
-    eval_sim.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]), goal=torch.ones(2) * 10, **mode_kwargs)
-    ado_trajectories_exp_eval = eval_sim.predict_w_controls(ego_controls=ego_controls)[:, :1, :, :]  # first mode only
-    solver = ConstantSolver(sim, eval_env=eval_sim, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
+    eval_env.add_ado(position=torch.zeros(2), velocity=torch.tensor([-1, 0.2]), goal=torch.ones(2) * 10, **mode_kwargs)
+    eval_env.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]), goal=torch.ones(2) * 10, **mode_kwargs)
+    ado_trajectories_exp_eval = eval_env.predict_w_controls(ego_controls=ego_controls)[:, :1, :, :]  # first mode only
+    solver = ConstantSolver(env, eval_env=eval_env, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
     ego_trajectory_opt, ado_trajectories = solver.solve(time_steps=time_steps)
     assert torch.all(torch.isclose(ego_trajectory_opt, ego_trajectory_opt_exp))
     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_eval, atol=0.1))
