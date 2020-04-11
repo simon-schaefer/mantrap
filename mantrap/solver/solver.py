@@ -7,7 +7,7 @@ import joblib
 import numpy as np
 import torch
 
-from mantrap.constants import solver_horizon
+from mantrap.constants import solver_horizon, visualization_directory
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 from mantrap.solver.constraints import CONSTRAINTS
@@ -75,6 +75,7 @@ class Solver(ABC):
         self._solver_params["t_planning"] = t_planning
         self._solver_params["verbose"] = verbose
         self._solver_params["multiprocessing"] = multiprocessing
+        self._solver_params["config_name"] = config_name
 
         # The objective and constraint functions (and their gradients) are packed into objectives, for a more compact
         # representation, the ease of switching between different objective functions and to simplify logging and
@@ -94,7 +95,6 @@ class Solver(ABC):
         self._optimization_log = None
         self._iteration = None
         self._core_opt = None
-        self._config_name = config_name
 
         # Initialize child class.
         self.initialize(**solver_params)
@@ -162,8 +162,8 @@ class Solver(ABC):
         logging.info(f"solver {self.name}: logging and visualizing trajectory optimization")
         self.env.detach()
         self.log_summarize()
-        self.visualize_optimization()
-        self.visualize_scenes()
+        self.visualize_optimization(enforce=False)
+        self.visualize_scenes(enforce=False, interactive=False)
         logging.info(f"solver {self.name}: finishing up optimization process")
         return ego_trajectory_opt, ado_traj
 
@@ -363,13 +363,17 @@ class Solver(ABC):
                 for key in (objective_keys + constraint_keys):
                     self._optimization_log[f"{key}_{k}"] = torch.stack(self._optimization_log[f"{key}_{k}"])
 
-    def visualize_optimization(self):
+    def visualize_optimization(self, enforce: bool = False):
         """Visualize optimization iterations by plotting the planned ego trajectory for every optimization step as
-        well as the values of objective and infeasibility (constraint violation), iff verbose > 2."""
-        if self.verbose > 2:
+        well as the values of objective and infeasibility (constraint violation), if verbose > 2 or
+        if `enforce = True`."""
+        if self.verbose > 2 or enforce:
             from mantrap.evaluation.visualization import visualize
             assert self.optimization_log is not None
-            output_directory_path = build_os_path(f"outputs/", make_dir=True, free=False)
+
+            # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly.
+            # However due to the iterative structure of this function this is not really possible.
+            output_path = build_os_path(visualization_directory, make_dir=True, free=False)
 
             tags = np.unique([key.split("/")[0] for key in self.optimization_log.keys() if key.split("/")[0] != "opt"])
             for tag in tags:
@@ -383,17 +387,25 @@ class Solver(ABC):
                     ego_planned = torch.stack(self.optimization_log[f"{tag}/ego_planned_{k}"])
                     ado_planned = torch.stack(self.optimization_log[f"{tag}/ado_planned_{k}"])
 
-                    visualize(ego_planned=ego_planned, ado_planned=ado_planned, ego_trials=None,
+                    visualize(ego_planned=ego_planned, ado_planned=ado_planned, ego_trials=None, plot_path_only=False,
                               obj_dict=obj_dict, inf_dict=inf_dict, env=self.env, single_opt=True,
-                              file_path=os.path.join(output_directory_path, f"{self.name}:{self.env.name}:{tag}_{k}"))
+                              file_path=os.path.join(output_path, f"{self.name}:{self.env.name}:{tag}_{k}"))
 
-    def visualize_scenes(self):
+    def visualize_scenes(self, enforce: bool = False, interactive: bool = False):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
-        trajectories conditioned on the planned ego trajectory), iff verbose > 1."""
-        if self.verbose > 1:
+        trajectories conditioned on the planned ego trajectory), if verbose > 1 or if `enforce = True`. """
+        if self.verbose > 1 or enforce:
             from mantrap.evaluation.visualization import visualize
             assert self.optimization_log is not None
-            output_directory_path = build_os_path(f"outputs/", make_dir=True, free=False)
+
+            # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
+            # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
+            # to None (interactive mode) or to an actual path (storing mode).
+            if not interactive:
+                output_path = build_os_path(visualization_directory, make_dir=True, free=False)
+                output_path = os.path.join(output_path, f"{self.name}:{self.env.name}:opt")
+            else:
+                output_path = None
 
             # From optimization log extract the core (initial condition) which has resulted in the best objective
             # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
@@ -405,10 +417,12 @@ class Solver(ABC):
 
             ego_trials = [self._optimization_log[f"{self.core_opt}/ego_planned_{k}"] for k in range(self._iteration)]
 
-            visualize(ego_planned=self.optimization_log["opt/ego_planned"],
-                      ado_planned=self.optimization_log["opt/ado_planned"],
-                      ego_trials=ego_trials, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
-                      file_path=os.path.join(output_directory_path, f"{self.name}:{self.env.name}:opt"))
+            return visualize(
+                ego_planned=self.optimization_log["opt/ego_planned"],
+                ado_planned=self.optimization_log["opt/ado_planned"],
+                ego_trials=ego_trials, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
+                plot_path_only=False, file_path=output_path
+            )
 
     ###########################################################################
     # Solver parameters #######################################################
@@ -480,5 +494,9 @@ class Solver(ABC):
         return self.__class__.__name__.lower()
 
     @property
+    def config_name(self) -> str:
+        return self._solver_params["config_params"]
+
+    @property
     def name(self) -> str:
-        return self.solver_name + "_" + self._config_name
+        return self.solver_name + "_" + self.config_name

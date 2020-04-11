@@ -46,3 +46,4 @@ mcts_max_cpu_time = 1.0  # [s] maximal sampling CPU time.
 #######################################
 visualization_agent_radius = 0.1
 visualization_preview_horizon = 10
+visualization_directory = "outputs/"

@@ -46,7 +46,7 @@ class Trajectron(GraphBasedEnvironment):
 
         # For prediction un-conditioned on the ego (`predict_wo_ego()`) we need a pseudo-ego trajectory, since the
         # input dimensions for the trajectron have to stay the same.
-        self._pseudo_ego = IntegratorDTAgent(position=torch.tensor(self.axes[0]))
+        self._pseudo_ego = IntegratorDTAgent(position=torch.tensor([self.axes[0][0], self.axes[1][0]]))
 
         # Create default trajectron scene. The duration of the scene is not known a priori, however a large value
         # allows to simulate for a long time horizon later on.

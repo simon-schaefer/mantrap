@@ -169,7 +169,7 @@ class Agent(ABC):
 
         trajectory[:, 0:2] = path
         trajectory[:-1, 2:4] = (trajectory[1:, 0:2] - trajectory[0:-1, 0:2]) / dt
-        trajectory[:, 4] = torch.linspace(t_start, t_start + t_horizon * dt, steps=t_horizon)
+        trajectory[:, 4] = torch.linspace(t_start, t_start + (t_horizon - 1) * dt, steps=t_horizon)
 
         assert check_ego_trajectory(trajectory, t_horizon=t_horizon)
         return trajectory

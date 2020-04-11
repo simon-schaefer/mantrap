@@ -1,4 +1,5 @@
 Cython
+jupyter
 matplotlib
 numpy
 pytest

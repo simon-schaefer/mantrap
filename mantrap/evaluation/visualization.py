@@ -14,34 +14,42 @@ def visualize(
     ego_planned: torch.Tensor,
     ado_planned: torch.Tensor,
     env: GraphBasedEnvironment,
-    obj_dict: Dict[str, List[torch.Tensor]],
-    inf_dict: Dict[str, List[torch.Tensor]],
-    file_path: str,
+    file_path: str = None,
+    obj_dict: Dict[str, List[torch.Tensor]] = None,
+    inf_dict: Dict[str, List[torch.Tensor]] = None,
     ego_trials: List[List[torch.Tensor]] = None,
     single_opt: bool = False,
+    plot_path_only: bool = False
 ):
     assert len(ego_planned.shape) == 3
-    num_solver_calls = ego_planned.shape[0]
-    assert len(ado_planned.shape) == 5 and ado_planned.shape[0] == num_solver_calls
-    assert all([len(x) == num_solver_calls for x in obj_dict.values()])
-    assert all([len(x) == num_solver_calls for x in inf_dict.values()])
+    num_env_steps = ego_planned.shape[0]
+    assert num_env_steps > 1
+    assert len(ado_planned.shape) == 5 and ado_planned.shape[0] == num_env_steps
+    num_vertical_plots = 2  # paths (2)
+    if not plot_path_only:
+        num_vertical_plots += 3  # velocities, accelerations, controls (3)
+        if obj_dict is not None and inf_dict is not None and not plot_path_only:
+            assert all([len(x) == num_env_steps for x in obj_dict.values()])
+            assert all([len(x) == num_env_steps for x in inf_dict.values()])
+            num_vertical_plots += 2  # objective and constraints (2)
 
-    fig, ax = plt.subplots(figsize=(15, 15), constrained_layout=True)
-    grid = plt.GridSpec(2 + 3 + 2, 2, wspace=0.4, hspace=0.3, figure=fig)
+    fig, ax = plt.subplots(figsize=(10, 10), constrained_layout=True)
+
+    grid = plt.GridSpec(num_vertical_plots, 2, wspace=0.4, hspace=0.3, figure=fig)
     plt.axis("off")
 
     axs = list()
     # Trajectory plot.
-    axs.append(fig.add_subplot(grid[:3, :]))
-    # Velocity  plot.
-    axs.append(fig.add_subplot(grid[3 + 0, :]))
-    # Acceleration plot.
-    axs.append(fig.add_subplot(grid[3 + 1, :]))
-    # Control input plot.
-    axs.append(fig.add_subplot(grid[3 + 2, :]))
-    # Objective & Constraint plot.
-    axs.append(fig.add_subplot(grid[3 + 3, 0]))
-    axs.append(fig.add_subplot(grid[3 + 3, 1]))
+    axs.append(fig.add_subplot(grid[:2, :]))
+    # Velocity, acceleration and control plot.
+    if not plot_path_only:
+        axs.append(fig.add_subplot(grid[2 + 0, :]))
+        axs.append(fig.add_subplot(grid[2 + 1, :]))
+        axs.append(fig.add_subplot(grid[2 + 2, :]))
+        # Objective & Constraint plot.
+        if obj_dict is not None and inf_dict is not None:
+            axs.append(fig.add_subplot(grid[3 + 3, 0]))
+            axs.append(fig.add_subplot(grid[3 + 3, 1]))
 
     def update(k):
         ego_trajectory = ego_planned[:, 0, :].detach()
@@ -61,22 +69,32 @@ def visualize(
             axs[i].cla()
 
         axs[0] = draw_trajectories(ego_planned_k, ado_planned_k, env=env, ego_traj_trials=ego_trials_k, ax=axs[0])
-        axs[1] = draw_velocities(ado_trajectory, ego_traj=ego_trajectory, env=env, k=k_, ax=axs[1])
-        axs[2] = draw_ado_accelerations(ado_trajectory, env=env, k=k_, ax=axs[2])
-        axs[3] = draw_ego_controls(ego_trajectory, env=env, k=k_, ax=axs[3])
 
-        for key, values in obj_dict.items():
-            data = values[k] if not single_opt else values[:k]
-            axs[4] = draw_values(data, label=key, env=env, ax=axs[4], k=k_)
-        for key, values in inf_dict.items():
-            data = values[k] if not single_opt else values[:k]
-            axs[5] = draw_values(data, label=key, env=env, ax=axs[5], k=k_)
+        if not plot_path_only:
+            axs[1] = draw_velocities(ado_trajectory, ego_traj=ego_trajectory, env=env, k=k_, ax=axs[1])
+            axs[2] = draw_ado_accelerations(ado_trajectory, env=env, k=k_, ax=axs[2])
+            axs[3] = draw_ego_controls(ego_trajectory, env=env, k=k_, ax=axs[3])
+
+            if obj_dict is not None and inf_dict is not None:
+                for key, values in obj_dict.items():
+                    data = values[k] if not single_opt else values[:k]
+                    axs[4] = draw_values(data, label=key, env=env, ax=axs[4], k=k_)
+                for key, values in inf_dict.items():
+                    data = values[k] if not single_opt else values[:k]
+                    axs[5] = draw_values(data, label=key, env=env, ax=axs[5], k=k_)
 
         axs[0].set_title(f"step {k}")
         return axs
 
-    anim = FuncAnimation(fig, update, frames=num_solver_calls - 1, interval=300)
-    anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
+    anim = FuncAnimation(fig, update, frames=num_env_steps - 1, interval=300)
+
+    # In interactive mode (when file_path is not set), return the video itself, otherwise save the video at
+    # the given directory as a ".gif"-file.
+    if file_path is None:
+        return anim.to_html5_video()
+    else:
+        anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
+        return True
 
 
 # ##########################################################################

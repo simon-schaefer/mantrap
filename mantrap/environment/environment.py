@@ -1,14 +1,15 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 import logging
+import os
 from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.constants import env_x_axis_default, env_y_axis_default, env_dt_default
-from mantrap.utility.io import dict_value_or_default
+from mantrap.constants import env_x_axis_default, env_y_axis_default, env_dt_default, visualization_directory
+from mantrap.utility.io import build_os_path, dict_value_or_default
 from mantrap.utility.shaping import (
     check_ego_controls,
     check_ego_state,
@@ -45,7 +46,8 @@ class GraphBasedEnvironment(ABC):
     :param x_axis: environment environment limitation in x-direction.
     :param y_axis: environment environment limitation in y-direction.
     :param dt: environment time-step [s].
-    :param scene_name: configuration name of initialized environment (for logging purposes only).
+    :param verbose: debugging flag (-1: nothing, 0: logging, 1: +printing, 2: +plot scenes, 3: +plot optimization).
+    :param config_name: configuration name of initialized environment (for logging purposes only).
     """
 
     class Ghost:
@@ -93,7 +95,8 @@ class GraphBasedEnvironment(ABC):
         x_axis: Tuple[float, float] = env_x_axis_default,
         y_axis: Tuple[float, float] = env_y_axis_default,
         dt: float = env_dt_default,
-        scene_name: str = "unknown"
+        verbose: int = -1,
+        config_name: str = "unknown"
     ):
         assert x_axis[0] < x_axis[1], "x axis must be in form (x_min, x_max)"
         assert y_axis[0] < y_axis[1], "y axis must be in form (y_min, y_max)"
@@ -105,11 +108,14 @@ class GraphBasedEnvironment(ABC):
         self._ado_ids = []
         self._ado_ghost_ids = []  # quick access only
 
-        self._x_axis = x_axis
-        self._y_axis = y_axis
+        # Dictionary of environment parameters.
+        self._env_params = dict()
+        self._env_params["x_axis"] = x_axis
+        self._env_params["y_axis"] = y_axis
+        self._env_params["config_name"] = config_name
+        self._env_params["verbose"] = verbose
         self._dt = dt
         self._time = 0
-        self._scene_name = scene_name
 
         # Perform sanity check for environment and agents.
         assert self.sanity_check()
@@ -299,8 +305,8 @@ class GraphBasedEnvironment(ABC):
 
         # Append ado to internal list of ados and rebuilt the graph (could be also extended but small computational
         # to actually rebuild it).
-        assert self._x_axis[0] <= ado.position[0] <= self._x_axis[1], "ado x position must be in scene"
-        assert self._y_axis[0] <= ado.position[1] <= self._y_axis[1], "ado y position must be in scene"
+        assert self.axes[0][0] <= ado.position[0] <= self.axes[0][1]
+        assert self.axes[1][0] <= ado.position[1] <= self.axes[1][1]
         if self._num_ado_modes == 0:
             self._num_ado_modes = num_modes
         assert num_modes == self.num_modes  # all ados should have same number of modes
@@ -465,8 +471,7 @@ class GraphBasedEnvironment(ABC):
                 history = self.ego.history
                 ego_kwargs = {"position": position, "velocity": velocity, "history": history}
 
-            (x_axis, y_axis), dt, name = self.axes, self.dt, self.scene_name
-            env_copy = self.__class__(ego_type, ego_kwargs, x_axis=x_axis, y_axis=y_axis, dt=dt, scene_name=name)
+            env_copy = self.__class__(ego_type, ego_kwargs, dt=self.dt, **self._env_params)
 
             # Add internal ado agents to newly created environment.
             for i in range(self.num_ados):
@@ -531,6 +536,49 @@ class GraphBasedEnvironment(ABC):
         return True
 
     ###########################################################################
+    # Visualization & Logging #################################################
+    ###########################################################################
+    def visualize_prediction(self, ego_trajectory: torch.Tensor, enforce: bool = False, interactive: bool = False):
+        """Visualize the predictions for the scene based on the given ego trajectory.
+
+        In order to be use the general `visualize()` function defined in the `mantrap.evaluation` - package the ego
+        and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
+        visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
+        plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
+        trajectory is repeated to the whole time horizon.
+        """
+        if self.verbose > 1 or enforce:
+            from mantrap.evaluation.visualization import visualize
+            assert check_ego_trajectory(x=ego_trajectory)
+            t_horizon = ego_trajectory.shape[0]
+
+            # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
+            # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
+            # to None (interactive mode) or to an actual path (storing mode).
+            if not interactive:
+                output_path = build_os_path(visualization_directory, make_dir=True, free=False)
+                output_path = os.path.join(output_path, f"{self.name}_prediction")
+            else:
+                output_path = None
+
+            # Predict the ado behaviour conditioned on the given ego trajectory.
+            ado_trajectories = self.predict_w_trajectory(ego_trajectory=ego_trajectory)
+
+            # Stretch the ego and ado trajectories as described above.
+            ego_stretched = torch.zeros((t_horizon, t_horizon, 5))
+            ado_stretched = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
+            for t in range(t_horizon):
+                ego_stretched[t, :(t_horizon - t), :] = ego_trajectory[t:t_horizon, :]
+                ego_stretched[t, (t_horizon - t):, :] = ego_trajectory[-1, :]
+                ado_stretched[t, :, :, :(t_horizon - t), :] = ado_trajectories[:, :, t:t_horizon, :]
+                ado_stretched[t, :, :, (t_horizon - t):, :] = ado_trajectories[:, :, -1, :].unsqueeze(dim=2)
+
+            return visualize(
+                ego_planned=ego_stretched,  ado_planned=ado_stretched, plot_path_only=True,
+                ego_trials=None, obj_dict=None, inf_dict=None, env=self, file_path=output_path
+            )
+
+    ###########################################################################
     # Ado properties ##########################################################
     ###########################################################################
     @property
@@ -587,16 +635,20 @@ class GraphBasedEnvironment(ABC):
 
     @property
     def axes(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-        return self._x_axis, self._y_axis
+        return self._env_params["x_axis"], self._env_params["y_axis"]
+
+    @property
+    def verbose(self) -> int:
+        return self._env_params["verbose"]
 
     @property
     def environment_name(self) -> str:
         return self.__class__.__name__.lower()
 
     @property
-    def scene_name(self) -> str:
-        return self._scene_name
+    def config_name(self) -> str:
+        return self._env_params["config_name"]
 
     @property
     def name(self) -> str:
-        return self.environment_name + "_" + self._scene_name
+        return self.environment_name + "_" + self.config_name

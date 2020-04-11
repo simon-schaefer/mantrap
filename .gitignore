@@ -37,4 +37,4 @@ external/
 outputs/
 
 # Documentation files.
-presentation/
+*.pptx

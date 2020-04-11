@@ -24,9 +24,9 @@ from mantrap.utility.primitives import straight_line
         (InteractionPositionModule, PotentialFieldEnvironment),
         (InteractionPositionModule, SocialForcesEnvironment),
         (InteractionPositionModule, Trajectron),
-        #(InteractionAccelerationModule, PotentialFieldEnvironment),
-        #(InteractionAccelerationModule, SocialForcesEnvironment),
-        #(InteractionAccelerationModule, Trajectron)
+        (InteractionAccelerationModule, PotentialFieldEnvironment),
+        (InteractionAccelerationModule, SocialForcesEnvironment),
+        (InteractionAccelerationModule, Trajectron)
     ]
 )
 class TestObjectiveInteraction:
@@ -109,10 +109,10 @@ def test_objective_goal_distribution():
     "module_class, env_class", [
         (MaxSpeedModule, PotentialFieldEnvironment),
         (MaxSpeedModule, SocialForcesEnvironment),
-        #(MaxSpeedModule, Trajectron),
+        (MaxSpeedModule, Trajectron),
         (MinDistanceModule, PotentialFieldEnvironment),
         (MinDistanceModule, SocialForcesEnvironment),
-        #(MinDistanceModule, Trajectron)
+        (MinDistanceModule, Trajectron)
     ]
 )
 class TestConstraints:
