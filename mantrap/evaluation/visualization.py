@@ -33,7 +33,7 @@ def visualize(
             assert all([len(x) == num_env_steps for x in inf_dict.values()])
             num_vertical_plots += 2  # objective and constraints (2)
 
-    fig, ax = plt.subplots(figsize=(10, 10), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(8, 8), constrained_layout=True)
 
     grid = plt.GridSpec(num_vertical_plots, 2, wspace=0.4, hspace=0.3, figure=fig)
     plt.axis("off")
@@ -101,8 +101,8 @@ def visualize(
 # Atomic plotting functions ################################################
 # ##########################################################################
 def draw_trajectories(
-    ego_traj: torch.Tensor,
-    ado_traj: torch.Tensor,
+    ego_trajectory: torch.Tensor,
+    ado_trajectories: torch.Tensor,
     env: GraphBasedEnvironment,
     ax: plt.Axes,
     ego_traj_trials: List[torch.Tensor] = None
@@ -111,20 +111,25 @@ def draw_trajectories(
     resulting ado trajectories based on some environment."""
 
     def draw_agent_representation(state: torch.Tensor, color: np.ndarray, name: Union[str, None]):
-        """Add circle for agent and agent id description."""
+        """Add circle for agent and agent id description. If the state (position) is outside of the scene, just
+        do not plot it, return directly instead."""
         assert check_ego_state(state, enforce_temporal=False), "state vector is invalid"
+
+        if not (env.axes[0][0] < state[0] < env.axes[0][1]) or not (env.axes[1][0] < state[1] < env.axes[1][1]):
+            return
         state = state.detach().numpy()
         ado_circle = plt.Circle(state[0:2], 0.2, color=color, clip_on=True)
         ax.add_artist(ado_circle)
         if id is not None:
             ax.text(state[0], state[1], name, fontsize=8)
 
-    assert check_ego_trajectory(ego_traj, pos_and_vel_only=True)
-    assert check_ado_trajectories(ado_traj, ados=env.num_ados, pos_and_vel_only=True, t_horizon=ego_traj.shape[0])
+    assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+    t_horizon = ego_trajectory.shape[0]
+    assert check_ado_trajectories(ado_trajectories, ados=env.num_ados, pos_and_vel_only=True, t_horizon=t_horizon)
 
-    ego_trajectory_np = ego_traj.detach().numpy()
+    ego_trajectory_np = ego_trajectory.detach().numpy()
     ax.plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label="ego")
-    draw_agent_representation(ego_traj[0, :], env.ego.color, "ego")
+    draw_agent_representation(ego_trajectory[0, :], env.ego.color, "ego")
 
     # Plot trial trajectories during optimisation process.
     if ego_traj_trials is not None:
@@ -134,19 +139,19 @@ def draw_trajectories(
 
     # Plot current and base resulting simulated ado trajectories in the scene.
     vis_env = env.copy()
-    vis_env.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, 0, 0, :])
-    ado_traj_wo = vis_env.predict_wo_ego(t_horizon=ego_traj.shape[0])
-
+    vis_env.step_reset(ego_state_next=None, ado_states_next=ado_trajectories[:, 0, 0, :])
+    ado_trajectories_wo = vis_env.predict_wo_ego(t_horizon=t_horizon)
     for ghost in env.ghosts:
         i_ado, i_mode = env.convert_ghost_id(ghost_id=ghost.id)
         ado_id, ado_color = ghost.id, ghost.agent.color
-        ado_pos = ado_traj[i_ado, i_mode, :, 0:2].detach().numpy()
-        ado_pos_wo = ado_traj_wo[i_ado, i_mode, :, 0:2].detach().numpy()
+        ado_pos = ado_trajectories[i_ado, i_mode, :, 0:2].detach().numpy()
+        ado_pos_wo = ado_trajectories_wo[i_ado, i_mode, :, 0:2].detach().numpy()
 
         ax.plot(ado_pos[:, 0], ado_pos[:, 1], "-*", color=ado_color, label=f"{ado_id}")
-        draw_agent_representation(ado_traj[i_ado, i_mode, 0, :], ado_color, ado_id)
+        draw_agent_representation(ado_trajectories[i_ado, i_mode, 0, :], ado_color, ado_id)
         ax.plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "--", color=ado_color, label=f"{ado_id}_wo")
 
+    # Set axes limitations for x- and y-axis and add legend and grid to visualization.
     ax.set_xlim(*env.axes[0])
     ax.set_ylim(*env.axes[1])
     ax.grid()

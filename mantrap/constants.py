@@ -16,7 +16,7 @@ env_social_forces_defaults = {
     "v0": 4.0,  # [m2s-2] repulsive field constant.
     "sigma": 0.9,  # [m] repulsive field exponent constant.
 }
-env_social_forces_min_goal_distance = 0.1  # [m] minimal distance to goal to have non-zero goal traction force.
+env_social_forces_min_goal_distance = 0.2  # [m] minimal distance to goal to have non-zero goal traction force.
 env_social_forces_max_interaction_distance = 2.0  # [m] maximal distance between agents for interaction force.
 
 env_trajectron_model = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.

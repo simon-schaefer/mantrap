@@ -79,7 +79,7 @@ class Agent(ABC):
 
         # maximal speed constraint.
         if self.speed > agent_speed_max:
-            logging.info(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {agent_speed_max}")
+            logging.warning(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {agent_speed_max}")
             assert not torch.isinf(self.speed), "speed is infinite, physical break"
             self._velocity = self._velocity / self.speed * agent_speed_max
 

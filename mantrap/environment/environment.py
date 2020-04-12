@@ -425,24 +425,29 @@ class GraphBasedEnvironment(ABC):
 
     def transcribe_graph(self, graph: Dict[str, torch.Tensor], t_horizon: int, returns: bool = False):
         """Remodel environment outputs, as they are all stored in the environment graph. """
-        controls = torch.zeros((self.num_ados, self.num_modes, t_horizon - 1, 2))
-        trajectories = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
+        ado_controls = torch.zeros((self.num_ados, self.num_modes, t_horizon - 1, 2))
+        ado_trajectories = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
         weights = torch.zeros((self.num_ados, self.num_modes))
 
         for ghost in self.ghosts:
             m_ado, m_mode = self.convert_ghost_id(ghost_id=ghost.id)
             for t in range(t_horizon):
-                trajectories[m_ado, m_mode, t, 0:2] = graph[f"{ghost.id}_{t}_position"]
-                trajectories[m_ado, m_mode, t, 2:4] = graph[f"{ghost.id}_{t}_velocity"]
-                trajectories[m_ado, m_mode, t, -1] = self.time + self.dt * t
+                ado_trajectories[m_ado, m_mode, t, 0:2] = graph[f"{ghost.id}_{t}_position"]
+                ado_trajectories[m_ado, m_mode, t, 2:4] = graph[f"{ghost.id}_{t}_velocity"]
+                ado_trajectories[m_ado, m_mode, t, -1] = self.time + self.dt * t
                 if t < t_horizon - 1:
-                    controls[m_ado, m_mode, t, :] = graph[f"{ghost.id}_{t}_control"]
+                    ado_controls[m_ado, m_mode, t, :] = graph[f"{ghost.id}_{t}_control"]
             weights[m_ado, m_mode] = ghost.weight
 
-        assert check_ado_controls(controls, num_ados=self.num_ados, num_modes=self.num_modes, t_horizon=t_horizon - 1)
+        # Check output shapes. Besides, since all modes originate in the same ado, their first state (t = t0) should
+        # be equivalent, namely the current environment's state, since it is deterministic.
+        assert check_ado_controls(ado_controls, num_ados=self.num_ados, num_modes=self.num_modes, t_horizon=t_horizon-1)
         assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_modes)
-        assert check_ado_trajectories(trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_modes)
-        return trajectories if not returns else (trajectories, controls, weights)
+        assert check_ado_trajectories(ado_trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_modes)
+        for ghost in self.ghosts:
+            m_ado, m_mode = self.convert_ghost_id(ghost_id=ghost.id)
+            assert torch.all(torch.eq(ado_trajectories[m_ado, m_mode, 0, :], ado_trajectories[m_ado, 0, 0, :]))
+        return ado_trajectories if not returns else (ado_trajectories, ado_controls, weights)
 
     def detach(self):
         """Detach all internal agents (ego and all ado ghosts) from computation graph. This is sometimes required to
@@ -454,7 +459,7 @@ class GraphBasedEnvironment(ABC):
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def copy(self):
+    def copy(self) -> 'GraphBasedEnvironment':
         """Create copy of environment. However just using deepcopy is not supported for tensors that are not detached
         from the PyTorch computation graph. Therefore re-initialize the objects such as the agents in the environment
         and reset their state to the internal current state.
@@ -474,21 +479,27 @@ class GraphBasedEnvironment(ABC):
             env_copy = self.__class__(ego_type, ego_kwargs, dt=self.dt, **self._env_params)
 
             # Add internal ado agents to newly created environment.
-            for i in range(self.num_ados):
-                ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
-                ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
-                env_copy.add_ado(
-                    position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
-                    velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
-                    history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
-                    weights=[ghost.weight for ghost in ghosts_ado],
-                    num_modes=self.num_modes,
-                    identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0]
-                )
+            env_copy = self._copy_ados(copy=env_copy)
 
+        assert self.same_initial_conditions(other=env_copy)
+        assert env_copy.sanity_check()
         return env_copy
 
-    def same_initial_conditions(self, other):
+    def _copy_ados(self, copy: 'GraphBasedEnvironment') -> 'GraphBasedEnvironment':
+        for i in range(self.num_ados):
+            ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
+            ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
+            copy.add_ado(
+                position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
+                velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
+                history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
+                weights=[ghost.weight for ghost in ghosts_ado],
+                num_modes=self.num_modes,
+                identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
+            )
+        return copy
+
+    def same_initial_conditions(self, other: 'GraphBasedEnvironment'):
         """Similar to __eq__() function, but not enforcing parameters of environment to be completely equivalent,
         merely enforcing the initial conditions to be equal, such as states of agents in scene. Hence, all prediction
         depending parameters, namely the number of modes or agent's parameters dont have to be equal.
@@ -547,6 +558,7 @@ class GraphBasedEnvironment(ABC):
         plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
         trajectory is repeated to the whole time horizon.
         """
+        assert self.ego is not None
         if self.verbose > 1 or enforce:
             from mantrap.evaluation.visualization import visualize
             assert check_ego_trajectory(x=ego_trajectory)

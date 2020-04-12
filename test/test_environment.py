@@ -171,6 +171,7 @@ class TestEnvironment:
             assert env.ghosts[i].agent == env_copy.ghosts[i].agent
             assert env.ghosts[i].weight == env_copy.ghosts[i].weight
             assert env.ghosts[i].id == env_copy.ghosts[i].id
+            assert env.ghosts[i].params == env_copy.ghosts[i].params
         ego_state_original, ado_states_original = env.states()
         ego_state_copy,  ado_states_copy = env_copy.states()
         assert torch.all(torch.eq(ego_state_original, ego_state_copy))

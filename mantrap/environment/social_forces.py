@@ -38,7 +38,6 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
     To create multi-modality and stochastic effects several sets of environment parameters can be assigned to the ado,
     each representing one of it's modes.
     """
-    # goal v0 sigma tau
 
     ###########################################################################
     # Scene ###################################################################
@@ -47,8 +46,8 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         self,
         num_modes: int = 1,
         goal: torch.Tensor = torch.zeros(2),
-        v0s: List[Distribution] = None,
-        sigmas: List[Distribution] = None,
+        v0s: Union[List[Distribution], List[float]] = None,
+        sigmas: Union[List[Distribution], List[float]] = None,
         weights: List[float] = None,
         **ado_kwargs,
     ):
@@ -66,13 +65,20 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         sigmas = sigmas if sigmas is not None else [sigma_default] * num_modes
         assert len(v0s) == len(sigmas)
 
-        # For each mode sample new parameters from the previously defined distribution.
+        # For each mode sample new parameters from the previously defined distribution. If no distribution is defined,
+        # but a list of floating point values is passed directly, just use them.
         args_list = []
         for i in range(num_modes):
-            assert v0s[i].__class__.__bases__[0] == Distribution
-            assert sigmas[i].__class__.__bases__[0] == Distribution
-            v0 = abs(float(v0s[i].sample()))
-            sigma = abs(float(sigmas[i].sample()))
+            if type(v0s[i]) == float:
+                assert type(sigmas[i]) == float
+                v0 = v0s[i]
+                sigma = sigmas[i]
+            elif v0s[i].__class__.__bases__[0] == Distribution:
+                assert sigmas[i].__class__.__bases__[0] == Distribution
+                v0 = abs(float(v0s[i].sample()))
+                sigma = abs(float(sigmas[i].sample()))
+            else:
+                raise ValueError
             tau = env_social_forces_defaults["tau"]
             args_list.append({"v0": v0, "sigma": sigma, "tau": tau, "goal": goal})
 
@@ -96,8 +102,8 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
             beta_position: torch.Tensor,
             alpha_velocity: torch.Tensor,
             beta_velocity: torch.Tensor,
-            v_0: float,
-            sigma: float,
+            p_v_0: float,
+            p_sigma: float,
         ) -> torch.Tensor:
 
             # Relative properties and their norms.
@@ -113,7 +119,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
             b1 = torch.add(norm_relative_distance, norm_diff_position)
             b2 = self.dt * norm_relative_velocity
             b = 0.5 * torch.sqrt(torch.sub(torch.pow(b1, 2), torch.pow(b2, 2)))
-            v = v_0 * torch.exp(-b / sigma)
+            v = p_v_0 * torch.exp(-b / p_sigma)
 
             # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
             # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
@@ -146,7 +152,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
             graph[f"{ghost.id}_{k}_control"] = destination_force
 
             # Interactive force - Repulsive potential field by every other agent.
-            for other in self._ado_ghosts:
+            for other in self.ghosts:
                 if ghost.agent.id == other.agent.id:  # ghosts from the same parent agent dont repulse each other
                     continue
                 distance = torch.sub(graph[f"{ghost.id}_{k}_position"], graph[f"{other.id}_{k}_position"])
@@ -154,14 +160,14 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
                     continue
                 else:
                     opos, ovel = graph[f"{other.id}_{k}_position"], graph[f"{other.id}_{k}_velocity"]
-                    v_grad = _repulsive_force(gpos, opos, gvel, ovel, v_0=v0, sigma=sigma)
+                    v_grad = _repulsive_force(gpos, opos, gvel, ovel, p_v_0=v0, p_sigma=sigma)
                 v_grad = v_grad * other.weight  # weight force by probability of the modes
                 graph[f"{ghost.id}_{k}_control"] = torch.sub(graph[f"{ghost.id}_{k}_control"], v_grad)
 
             # Interactive force w.r.t. ego - Repulsive potential field.
             if ego_state is not None:
                 ego_pos, ego_vel = graph[f"ego_{k}_position"], graph[f"ego_{k}_velocity"]
-                v_grad = _repulsive_force(gpos, ego_pos, gvel, ego_vel, v_0=v0, sigma=sigma)
+                v_grad = _repulsive_force(gpos, ego_pos, gvel, ego_vel, p_v_0=v0, p_sigma=sigma)
                 graph[f"{ghost.id}_{k}_control"] = torch.sub(graph[f"{ghost.id}_{k}_control"], v_grad)
 
             # Summarize (standard) graph elements.
@@ -212,6 +218,26 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
 
     def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
         return self._build_connected_graph(t_horizon=t_horizon, ego_trajectory=[None] * t_horizon, **kwargs)
+
+    ###########################################################################
+    # Operators ###############################################################
+    ###########################################################################
+    def _copy_ados(self, copy: 'GraphBasedEnvironment') -> 'GraphBasedEnvironment':
+        for i in range(self.num_ados):
+            ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
+            ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
+            copy.add_ado(
+                position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
+                velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
+                history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
+                weights=[ghost.weight for ghost in ghosts_ado],
+                num_modes=self.num_modes,
+                identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
+                goal=ghosts_ado[0].params["goal"],
+                v0s=[ghost.params["v0"] for ghost in ghosts_ado],
+                sigmas=[ghost.params["sigma"] for ghost in ghosts_ado],
+            )
+        return copy
 
     ###########################################################################
     # Simulation parameters ###################################################

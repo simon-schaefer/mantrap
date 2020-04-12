@@ -117,7 +117,10 @@ class Trajectron(GraphBasedEnvironment):
         self._online_env = self.create_online_env(env=self._gt_env, scene=self._gt_scene)
 
     @staticmethod
-    def ado_id_from_node_id(node_id: str) -> str:
+    def agent_id_from_node_id(node_id: str) -> str:
+        """In Trajectron nodes have an identifier structure as follows "node_type/node_id". As initialized the node_id
+        is identical to the internal node_id while is node type is e.g. "ROBOT" or "PEDESTRIAN". However it is not
+        assumed that the node_type has to be robot or pedestrian, since it does not change the structure. """
         return node_id.split("/")[1]
 
     ###########################################################################
@@ -134,10 +137,19 @@ class Trajectron(GraphBasedEnvironment):
         # Predict over full time-horizon at once and write resulting (simulated) ado trajectories to graph. By passing
         # the robot's trajectory the distribution is conditioned on it.
         # Using `full_dist = True` not just the mean of the resulting trajectory but also the covariances are returned.
+        ego_state, ado_states = self.states()
+        node_state_dict = {}
+        for node in self._gt_scene.nodes:
+            agent_id = self.agent_id_from_node_id(node.__str__())
+            if agent_id == "ego":
+                node_state_dict[node] = ego_state[0:2]
+            else:
+                m_ado = self.index_ado_id(agent_id)
+                node_state_dict[node] = ado_states[m_ado, 0:2]
         dd = Derivative2(horizon=t_horizon, dt=self.dt, velocity=True)
         trajectory_w_acc = torch.cat((ego_trajectory[:, 0:4], dd.compute(ego_trajectory[:, 2:4])), dim=1)
         distribution, _ = self.trajectron.incremental_forward(
-            new_inputs_dict=self._gt_scene.get_clipped_pos_dict(0, self.config["state"]),
+            new_inputs_dict=node_state_dict,
             prediction_horizon=t_horizon - 1,
             num_samples=1,
             full_dist=True,
@@ -154,8 +166,8 @@ class Trajectron(GraphBasedEnvironment):
         # Most importantly the GMM have a mean (mu) and log-covariance (log_sigma) for every of the 25 modes.
         _, ado_states = self.states()
         for node, node_gmm in distribution.items():
-            ado_id = self.ado_id_from_node_id(node.__str__())
-            m_ado = self.index_ado_id(ado_id)
+            agent_id = self.agent_id_from_node_id(node.__str__())
+            m_ado = self.index_ado_id(agent_id)
             ado_planned[m_ado], ado_weights[m_ado] = self.trajectory_from_distribution(
                 node_gmm, num_output_modes=self.num_modes, dt=self.dt, t_horizon=t_horizon, ado_state=ado_states[m_ado]
             )
