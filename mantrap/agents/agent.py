@@ -7,9 +7,8 @@ from typing import Tuple
 import numpy as np
 import torch
 
-from mantrap.constants import agent_speed_max
+from mantrap.constants import AGENT_SPEED_MAX
 from mantrap.utility.shaping import check_ego_path, check_ego_action, check_ego_controls, check_ego_trajectory, check_ego_state
-from mantrap.utility.utility import expand_state_vector
 
 
 class Agent(ABC):
@@ -51,7 +50,7 @@ class Agent(ABC):
         self._velocity = velocity.float()
 
         # Initialize (and/or append) history vector.
-        self._history = expand_state_vector(self.state, time=time).view(1, 5).float()
+        self._history = self.expand_state_vector(self.state, time=time).view(1, 5).float()
         if history is not None:
             assert history.shape[1] == 5
             self._history = torch.cat((history.float(), self._history), dim=0)
@@ -78,13 +77,13 @@ class Agent(ABC):
         self._velocity = state_new[2:4]
 
         # maximal speed constraint.
-        if self.speed > agent_speed_max:
-            logging.warning(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {agent_speed_max}")
+        if self.speed > AGENT_SPEED_MAX:
+            logging.warning(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {AGENT_SPEED_MAX}")
             assert not torch.isinf(self.speed), "speed is infinite, physical break"
-            self._velocity = self._velocity / self.speed * agent_speed_max
+            self._velocity = self._velocity / self.speed * AGENT_SPEED_MAX
 
         # append history with new state.
-        state_new = expand_state_vector(self.state, time=self._history[-1, -1].item() + dt).unsqueeze(0)
+        state_new = self.expand_state_vector(self.state, time=self._history[-1, -1].item() + dt).unsqueeze(0)
         self._history = torch.cat((self._history, state_new), dim=0)
 
         # Perform sanity check for agent properties.
@@ -218,6 +217,28 @@ class Agent(ABC):
         self._position = self._position.detach()
         self._velocity = self._velocity.detach()
         self._history = self._history.detach()
+
+    ###########################################################################
+    # Utility #################################################################
+    ###########################################################################
+    @staticmethod
+    def build_state_vector(position: torch.Tensor, velocity: torch.Tensor) -> torch.Tensor:
+        """Stack position, orientation and velocity vector to build a full state vector,
+        either np array or torch tensor. """
+        assert type(position) == type(velocity)
+
+        state = torch.cat((position, velocity))
+        assert check_ego_state(state, enforce_temporal=False)
+        return state
+
+    @staticmethod
+    def expand_state_vector(state_4: torch.Tensor, time: float) -> torch.Tensor:
+        """Expand 4 dimensional (x, y, vx, vy) state vector by time information. """
+        assert state_4.size() == torch.Size([4])
+
+        state = torch.cat((state_4, torch.ones(1) * time))
+        assert check_ego_state(state, enforce_temporal=True)
+        return state
 
     ###########################################################################
     # Operators ###############################################################

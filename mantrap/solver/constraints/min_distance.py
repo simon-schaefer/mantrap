@@ -3,7 +3,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import torch
 
-from mantrap.constants import constraint_min_distance
+from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 
@@ -28,7 +28,7 @@ class MinDistanceModule(ConstraintModule):
         self._env = env
 
     def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
-        return np.ones(self.num_constraints) * constraint_min_distance, [None] * self.num_constraints
+        return np.ones(self.num_constraints) * CONSTRAINT_MIN_L2_DISTANCE, [None] * self.num_constraints
 
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
@@ -42,7 +42,7 @@ class MinDistanceModule(ConstraintModule):
             for m_ghost, ghost in enumerate(ghosts):
                 for t in range(horizon):
                     m = m_ado * len(ghosts) + m_ghost
-                    ado_position = graphs[f"{ghost.id}_{t}_position"]
+                    ado_position = graphs[f"{ghost.id}_{t}_{GK_POSITION}"]
                     ego_position = ego_trajectory[t, 0:2]
                     constraints[m, t] = torch.norm(ado_position - ego_position)
         return constraints.flatten()

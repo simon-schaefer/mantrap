@@ -9,7 +9,7 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.agents import IntegratorDTAgent
-from mantrap.constants import env_dt_default, env_trajectron_model
+from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import Derivative2
@@ -34,7 +34,7 @@ class Trajectron(GraphBasedEnvironment):
         self,
         ego_type: Agent.__class__ = None,
         ego_kwargs: Dict[str, Any] = None,
-        dt: float = env_dt_default,
+        dt: float = ENV_DT_DEFAULT,
         **env_kwargs
     ):
         # Load trajectron configuration dictionary and check against inputs.
@@ -141,7 +141,7 @@ class Trajectron(GraphBasedEnvironment):
         node_state_dict = {}
         for node in self._gt_scene.nodes:
             agent_id = self.agent_id_from_node_id(node.__str__())
-            if agent_id == "ego":
+            if agent_id == ID_EGO:
                 node_state_dict[node] = ego_state[0:2]
             else:
                 m_ado = self.index_ado_id(agent_id)
@@ -174,14 +174,14 @@ class Trajectron(GraphBasedEnvironment):
 
         # Update the graph dictionary with the trajectory predictions that have  been derived before.
         for t in range(t_horizon):
-            graph[f"ego_{t}_position"] = ego_trajectory[t, 0:2]
-            graph[f"ego_{t}_velocity"] = ego_trajectory[t, 2:4]
+            graph[f"{ID_EGO}_{t}_{GK_POSITION}"] = ego_trajectory[t, 0:2]
+            graph[f"{ID_EGO}_{t}_{GK_VELOCITY}"] = ego_trajectory[t, 2:4]
             for m_ghost, ghost in enumerate(self.ghosts):
                 m_ado, m_mode = self.convert_ghost_id(ghost_id=ghost.id)
 
-                graph[f"{ghost.id}_{t}_position"] = ado_planned[m_ado, m_mode, t, 0:2]
-                graph[f"{ghost.id}_{t}_velocity"] = ado_planned[m_ado, m_mode, t, 2:4]
-                graph[f"{ghost.id}_{t}_control"] = ado_planned[m_ado, m_mode, t, 2:4]  # single integrator ados (!)
+                graph[f"{ghost.id}_{t}_{GK_POSITION}"] = ado_planned[m_ado, m_mode, t, 0:2]
+                graph[f"{ghost.id}_{t}_{GK_VELOCITY}"] = ado_planned[m_ado, m_mode, t, 2:4]
+                graph[f"{ghost.id}_{t}_{GK_CONTROL}"] = ado_planned[m_ado, m_mode, t, 2:4]  # single integrator ados !
 
                 # Adapt weight as determined from prediction.
                 self._ado_ghosts[m_ghost].weight = ado_weights[m_ado, m_mode]
@@ -318,8 +318,8 @@ class Trajectron(GraphBasedEnvironment):
         from argument_parser import args
 
         # Load configuration files.
-        config = {"trajectron_model_path": build_os_path(f"config/trajectron_models/{env_trajectron_model[0]}"),
-                  "trajectron_model_iteration": env_trajectron_model[1]}
+        config = {"trajectron_model_path": build_os_path(f"config/trajectron_models/{ENV_TRAJECTRON_MODEL[0]}"),
+                  "trajectron_model_iteration": ENV_TRAJECTRON_MODEL[1]}
         with open(config_path) as trajectron_config_file:
             config.update(json.load(trajectron_config_file))
         with open(os.path.join(config["trajectron_model_path"], args.conf)) as model_config_file:

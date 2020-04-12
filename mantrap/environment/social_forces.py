@@ -4,33 +4,28 @@ from typing import Dict, List, Union
 import torch
 
 from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.constants import (
-    env_social_forces_defaults,
-    env_social_forces_min_goal_distance,
-    env_social_forces_max_interaction_distance,
-)
+from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.maths import Distribution, Gaussian
-from mantrap.utility.io import dict_value_or_default
 
 
 class SocialForcesEnvironment(GraphBasedEnvironment):
     """Social Forces Simulation.
-    Pedestrian Dynamics based on to "Social Force Model for Pedestrian Dynamics" (D. Helbling, P. Molnar). The idea of
-    Social Forces is to determine interaction forces by taking into account the following entities:
+    Pedestrian Dynamics based on to "Social Force Model for Pedestrian Dynamics" (D. Helbling, P. Molnar). The idea
+    of Social Forces is to determine interaction forces by taking into account the following entities:
 
     *Goal force*:
     Each ado has a specific goal state/position in mind, to which it moves to. The goal pulling force
-    is modelled as correction term between the direction vector of the current velocity and the goal direction (vector
-    between current position and goal).
+    is modelled as correction term between the direction vector of the current velocity and the goal direction
+    (vector between current position and goal).
 
     .. math:: F_{goal} = 1 / tau_{a} (v_a^0 e_a - v_a)
 
     *Interaction force*:
     For modelling interaction between multiple agents such as avoiding collisions each agent
     has an with increasing distance exponentially decaying repulsion field. Together with the scalar product of the
-    velocity of each agent pair (in order to not alter close but non interfering agents, e.g. moving parallel to each
-    other) the interaction term is constructed.
+    velocity of each agent pair (in order to not alter close but non interfering agents, e.g. moving parallel to
+    each other) the interaction term is constructed.
 
     .. math:: V_{aB} (x) = V0_a exp(−x / \sigma_a)
     .. math:: F_{interaction} = - grad_{r_{ab}} V_{aB}(||r_{ab}||)
@@ -53,15 +48,15 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
     ):
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
-        assert goal.size() == torch.Size([2]), "goal position must be two-dimensional (x, y)"
+        assert goal.size() == torch.Size([2])
         goal = goal.detach().float()
 
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces
         # environment are sampled from distributions, each for one mode. If not stated the default parameters are
         # used as Gaussian distribution around the default value.
-        v0s_default = Gaussian(env_social_forces_defaults["v0"], env_social_forces_defaults["v0"] / 2)
+        v0s_default = Gaussian(ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0], ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0] / 2)
         v0s = v0s if v0s is not None else [v0s_default] * num_modes
-        sigma_default = Gaussian(env_social_forces_defaults["sigma"], env_social_forces_defaults["sigma"] / 2)
+        sigma_default = Gaussian(ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_SIGMA], ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_SIGMA] / 2)
         sigmas = sigmas if sigmas is not None else [sigma_default] * num_modes
         assert len(v0s) == len(sigmas)
 
@@ -79,8 +74,8 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
                 sigma = abs(float(sigmas[i].sample()))
             else:
                 raise ValueError
-            tau = env_social_forces_defaults["tau"]
-            args_list.append({"v0": v0, "sigma": sigma, "tau": tau, "goal": goal})
+            tau = ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_TAU]
+            args_list.append({PARAMS_V0: v0, PARAMS_SIGMA: sigma, PARAMS_TAU: tau, PARAMS_GOAL: goal})
 
         # Finally add ado ghosts to environment.
         super(SocialForcesEnvironment, self).add_ado(
@@ -94,7 +89,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
-    def build_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
+    def build_graph(self, ego_state: torch.Tensor = None, k: int = 0, **graph_kwargs) -> Dict[str, torch.Tensor]:
 
         # Repulsive force introduced by every other agent (depending on relative position and (!) velocity).
         def _repulsive_force(
@@ -130,51 +125,53 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
                 return force
 
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
-        graph = self.write_state_to_graph(ego_state, ado_grad=True, **graph_kwargs)
-        k = dict_value_or_default(graph_kwargs, key="k", default=0)
+        graph = self.write_state_to_graph(ego_state, ado_grad=True, k=k, **graph_kwargs)
         for ghost in self.ghosts:
-            graph[f"{ghost.id}_{k}_goal"] = ghost.params["goal"]
+            graph[f"{ghost.id}_{k}_{GK_GOAL}"] = ghost.params[PARAMS_GOAL]
 
         # Make graph with resulting force as an output.
         for ghost in self._ado_ghosts:
-            tau, v0, sigma = ghost.params["tau"], ghost.params["v0"], ghost.params["sigma"]
-            gpos, gvel = graph[f"{ghost.id}_{k}_position"], graph[f"{ghost.id}_{k}_velocity"]
+            tau, v0, sigma = ghost.params[PARAMS_TAU], ghost.params[PARAMS_TAU], ghost.params[PARAMS_SIGMA]
+            gpos = graph[f"{ghost.id}_{k}_{GK_POSITION}"]
+            gvel = graph[f"{ghost.id}_{k}_{GK_VELOCITY}"]
 
             # Destination force - Force pulling the ado to its assigned goal position.
-            direction = torch.sub(graph[f"{ghost.id}_{k}_goal"], graph[f"{ghost.id}_{k}_position"])
+            direction = torch.sub(graph[f"{ghost.id}_{k}_{GK_GOAL}"], graph[f"{ghost.id}_{k}_{GK_POSITION}"])
             goal_distance = torch.norm(direction)
-            if goal_distance.data < env_social_forces_min_goal_distance:
+            if goal_distance.data < ENV_SOCIAL_FORCES_MIN_GOAL_DISTANCE:
                 destination_force = torch.zeros(2)
             else:
                 direction = torch.div(direction, goal_distance)
-                speed = torch.norm(graph[f"{ghost.id}_{k}_velocity"])
-                destination_force = torch.sub(direction * speed, graph[f"{ghost.id}_{k}_velocity"]) * 1 / tau
-            graph[f"{ghost.id}_{k}_control"] = destination_force
+                speed = torch.norm(graph[f"{ghost.id}_{k}_{GK_VELOCITY}"])
+                destination_force = torch.sub(direction * speed, graph[f"{ghost.id}_{k}_{GK_VELOCITY}"]) * 1 / tau
+            graph[f"{ghost.id}_{k}_{GK_CONTROL}"] = destination_force
 
             # Interactive force - Repulsive potential field by every other agent.
             for other in self.ghosts:
                 if ghost.agent.id == other.agent.id:  # ghosts from the same parent agent dont repulse each other
                     continue
-                distance = torch.sub(graph[f"{ghost.id}_{k}_position"], graph[f"{other.id}_{k}_position"])
-                if torch.norm(distance) > env_social_forces_max_interaction_distance:
+                distance = torch.sub(graph[f"{ghost.id}_{k}_{GK_POSITION}"], graph[f"{other.id}_{k}_{GK_POSITION}"])
+                if torch.norm(distance) > ENV_SOCIAL_FORCES_MAX_INTERACTION_DISTANCE:
                     continue
                 else:
-                    opos, ovel = graph[f"{other.id}_{k}_position"], graph[f"{other.id}_{k}_velocity"]
+                    opos = graph[f"{other.id}_{k}_{GK_POSITION}"]
+                    ovel = graph[f"{other.id}_{k}_{GK_VELOCITY}"]
                     v_grad = _repulsive_force(gpos, opos, gvel, ovel, p_v_0=v0, p_sigma=sigma)
                 v_grad = v_grad * other.weight  # weight force by probability of the modes
-                graph[f"{ghost.id}_{k}_control"] = torch.sub(graph[f"{ghost.id}_{k}_control"], v_grad)
+                graph[f"{ghost.id}_{k}_{GK_CONTROL}"] = torch.sub(graph[f"{ghost.id}_{k}_{GK_CONTROL}"], v_grad)
 
             # Interactive force w.r.t. ego - Repulsive potential field.
             if ego_state is not None:
-                ego_pos, ego_vel = graph[f"ego_{k}_position"], graph[f"ego_{k}_velocity"]
+                ego_pos = graph[f"ego_{k}_{GK_POSITION}"]
+                ego_vel = graph[f"ego_{k}_{GK_VELOCITY}"]
                 v_grad = _repulsive_force(gpos, ego_pos, gvel, ego_vel, p_v_0=v0, p_sigma=sigma)
-                graph[f"{ghost.id}_{k}_control"] = torch.sub(graph[f"{ghost.id}_{k}_control"], v_grad)
+                graph[f"{ghost.id}_{k}_{GK_CONTROL}"] = torch.sub(graph[f"{ghost.id}_{k}_{GK_CONTROL}"], v_grad)
 
             # Summarize (standard) graph elements.
-            graph[f"{ghost.id}_{k}_output"] = torch.norm(graph[f"{ghost.id}_{k}_control"])
+            graph[f"{ghost.id}_{k}_{GK_OUTPUT}"] = torch.norm(graph[f"{ghost.id}_{k}_{GK_CONTROL}"])
 
         # Check healthiness of graph by looking for specific keys in the graph that are required.
-        assert all([f"{ghost.id}_{k}_output" for ghost in self._ado_ghosts])
+        assert all([f"{ghost.id}_{k}_{GK_OUTPUT}" for ghost in self._ado_ghosts])
         return graph
 
     ###########################################################################
@@ -198,7 +195,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in self._ado_ghosts])
         for t in range(1, t_horizon):
             for m_ghost, ghost in enumerate(self._ado_ghosts):
-                self._ado_ghosts[m_ghost].agent.update(action=graphs[f"{ghost.id}_{t - 1}_control"], dt=self.dt)
+                self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost.id}_{t - 1}_{GK_CONTROL}"], dt=self.dt)
 
             # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are
             # used for the ego motion, as guesses for the final trajectory i.e. starting points for optimization.
@@ -208,9 +205,9 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         # Update graph for a last time using the forces determined in the previous step.
         for m_ghost in range(self.num_ghosts):
             ghost_id = self.ghosts[m_ghost].id
-            self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost_id}_{t_horizon - 1}_control"], dt=self.dt)
-            graphs[f"{ghost_id}_{t_horizon}_position"] = self.ghosts[m_ghost].agent.position
-            graphs[f"{ghost_id}_{t_horizon}_velocity"] = self.ghosts[m_ghost].agent.velocity
+            self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost_id}_{t_horizon - 1}_{GK_CONTROL}"], dt=self.dt)
+            graphs[f"{ghost_id}_{t_horizon}_{GK_POSITION}"] = self.ghosts[m_ghost].agent.position
+            graphs[f"{ghost_id}_{t_horizon}_{GK_VELOCITY}"] = self.ghosts[m_ghost].agent.velocity
 
         # Reset ado ghosts to previous states.
         self._ado_ghosts = ado_ghosts_copy
@@ -233,9 +230,9 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
                 weights=[ghost.weight for ghost in ghosts_ado],
                 num_modes=self.num_modes,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
-                goal=ghosts_ado[0].params["goal"],
-                v0s=[ghost.params["v0"] for ghost in ghosts_ado],
-                sigmas=[ghost.params["sigma"] for ghost in ghosts_ado],
+                goal=ghosts_ado[0].params[PARAMS_GOAL],
+                v0s=[ghost.params[PARAMS_V0] for ghost in ghosts_ado],
+                sigmas=[ghost.params[PARAMS_SIGMA] for ghost in ghosts_ado],
             )
         return copy
 

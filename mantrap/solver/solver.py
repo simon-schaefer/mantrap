@@ -5,9 +5,10 @@ from typing import Dict, List, Tuple, Union
 
 import joblib
 import numpy as np
+import pandas
 import torch
 
-from mantrap.constants import solver_horizon, visualization_directory
+from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 from mantrap.solver.constraints import CONSTRAINTS
@@ -52,14 +53,14 @@ class Solver(ABC):
         self,
         env: GraphBasedEnvironment,
         goal: torch.Tensor,
-        t_planning: int = solver_horizon,
+        t_planning: int = SOLVER_HORIZON_DEFAULT,
         objectives: List[Tuple[str, float]] = None,
         constraints: List[str] = None,
         filter_module: str = None,
         eval_env: GraphBasedEnvironment = None,
         verbose: int = -1,
         multiprocessing: bool = True,
-        config_name: str = "unknown",
+        config_name: str = CONFIG_UNKNOWN,
         **solver_params
     ):
         assert goal.size() == torch.Size([2])
@@ -72,10 +73,10 @@ class Solver(ABC):
 
         # Dictionary of solver parameters.
         self._solver_params = solver_params
-        self._solver_params["t_planning"] = t_planning
-        self._solver_params["verbose"] = verbose
-        self._solver_params["multiprocessing"] = multiprocessing
-        self._solver_params["config_name"] = config_name
+        self._solver_params[PARAMS_T_PLANNING] = t_planning
+        self._solver_params[PARAMS_VERBOSE] = verbose
+        self._solver_params[PARAMS_MULTIPROCESSING] = multiprocessing
+        self._solver_params[PARAMS_CONFIG] = config_name
 
         # The objective and constraint functions (and their gradients) are packed into objectives, for a more compact
         # representation, the ease of switching between different objective functions and to simplify logging and
@@ -92,7 +93,7 @@ class Solver(ABC):
         # whether the related key is already existing, since if it is not existing, it is created with a queue as
         # starting value, to which the new entry is appended. With an appending complexity O(1) instead of O(N) the
         # deque is way more efficient than the list type for storing simple floating point numbers in a sequence.
-        self._optimization_log = None
+        self._log = None
         self._iteration = None
         self._core_opt = None
 
@@ -114,16 +115,18 @@ class Solver(ABC):
         :return: derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
         """
         ego_trajectory_opt = torch.zeros((time_steps + 1, 5))
-        ado_traj = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
+        ado_trajectories = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
         self.log_reset(log_horizon=time_steps)
 
         # Initialize trajectories with current state and environment time.
         ego_trajectory_opt[0] = self._env.ego.state_with_time
-        self.log_append(ego_planned=self.env.ego.unroll_trajectory(torch.zeros((self.T, 2)), dt=self.env.dt), tag="opt")
         for ghost in self.env.ghosts:
             m_ado, m_mode = self.env.convert_ghost_id(ghost_id=ghost.id)
-            ado_traj[m_ado, m_mode, 0, :] = ghost.agent.state_with_time
-        self.log_append(ado_planned=self.env.predict_wo_ego(t_horizon=self.T + 1), tag="opt")
+            ado_trajectories[m_ado, 0, 0, :] = ghost.agent.state_with_time
+        for z0, tag in zip(self.z0s_default(), self.cores):
+            self.objective(z=z0.detach().numpy(), tag=tag)
+            self.constraints(z=z0.detach().numpy(), tag=tag)
+        self.intermediate_log(ego_controls_k=torch.zeros((self.T, 2)))
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
@@ -132,40 +135,30 @@ class Solver(ABC):
 
             # Solve optimisation problem.
             ego_controls_k = self.determine_ego_controls(**solver_kwargs)
-            assert check_ego_controls(ego_controls_k, t_horizon=self.T)
             logging.info(f"solver {self.name} @k={k}: finishing optimization")
-
-            # For logging purposes unroll and predict the scene for the derived ego controls.
-            ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
-            self.log_append(ego_planned=ego_opt_planned, tag="opt")
-            ado_planned = self._env.predict_w_controls(ego_controls=ego_controls_k)
-            self.log_append(ado_planned=ado_planned, tag="opt")
 
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_control=ego_controls_k[0:1, :])
             self._env.step_reset(ego_state_next=ego_state, ado_states_next=ado_states)
             ego_trajectory_opt[k + 1] = ego_state
-            ado_traj[:, :, k + 1, :] = ado_states
+            ado_trajectories[:, 0, k + 1, :] = ado_states
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
             if torch.norm(ego_state[0:2] - self._goal) < 0.1:
                 ego_trajectory_opt = ego_trajectory_opt[:k + 1, :].detach()
-                ado_traj = ado_traj[:, :, :k + 1, :].detach()
+                ado_trajectories = ado_trajectories[:, :, :k + 1, :].detach()
                 break
 
             # Logging.
-            self.intermediate_log()
-            logging.info(f"solver {self.name} @k={k}: ego optimized controls = {ego_controls_k.tolist()}")
-            logging.info(f"solver {self.name} @k={k}: ego optimized path = {ego_opt_planned[:, 0:2].tolist()}")
+            self.intermediate_log(ego_controls_k=ego_controls_k)
 
         logging.info(f"solver {self.name}: logging and visualizing trajectory optimization")
         self.env.detach()
         self.log_summarize()
-        self.visualize_optimization(enforce=False)
         self.visualize_scenes(enforce=False, interactive=False)
         logging.info(f"solver {self.name}: finishing up optimization process")
-        return ego_trajectory_opt, ado_traj
+        return ego_trajectory_opt, ado_trajectories
 
     def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
         """Determine the ego control inputs for the internally stated problem and the current state of the environment.
@@ -179,15 +172,21 @@ class Solver(ABC):
         if self.do_multiprocessing:
             results = joblib.Parallel(n_jobs=8)(joblib.delayed(self.optimize)
                                                 (z0, tag, **solver_kwargs) for z0, tag in initial_values)
-            for i, (_, _, optimization_log) in enumerate(results):
-                self._optimization_log.update({key: x for key, x in optimization_log.items() if self.cores[i] in key})
         else:
             results = [self.optimize(z0, tag, **solver_kwargs) for z0, tag in initial_values]
+
+        # Update optimization logging values for optimization results.
+        for i, (_, _, optimization_log) in enumerate(results):
+            self._log.update({key: x for key, x in optimization_log.items() if self.cores[i] in key})
 
         # Return controls with minimal objective function result.
         index_best = int(np.argmin([obj for _, obj, _ in results]))
         z_opt_best, self._core_opt = results[index_best][0], self.cores[index_best]
-        return self.z_to_ego_controls(z_opt_best.detach().numpy())
+
+        # Convert the resulting optimization variable to control inputs.
+        ego_controls = self.z_to_ego_controls(z_opt_best.detach().numpy())
+        assert check_ego_controls(ego_controls, t_horizon=self.T)
+        return ego_controls
 
     def optimize(self, z0: torch.Tensor, tag: str, **kwargs) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
         # Filter the important ghost indices from the current scene state.
@@ -220,40 +219,44 @@ class Solver(ABC):
     def num_optimization_variables(self) -> int:
         raise NotImplementedError
 
-    ###########################################################################
-    # Problem formulation - Objective #########################################
-    ###########################################################################
-    @staticmethod
-    def objective_defaults() -> List[Tuple[str, float]]:
-        raise NotImplementedError
+    @property
+    def is_unconstrained(self) -> bool:
+        return len(self._constraint_modules.keys()) == 0
 
-    def objective(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core") -> float:
-        ego_trajectory = self.z_to_ego_trajectory(z)
-        objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids) for m in self._objective_modules.values()])
-
-        logging.debug(f"solver {self.name}:{tag} Objective function = {objective}")
-        ado_planned = torch.zeros(0)  # pseudo for ado_planned (only required for plotting)
-        if self.verbose > 2:
-            ado_planned = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
-        self.log_append(ego_planned=ego_trajectory, obj_overall=objective, ado_planned=ado_planned, tag=tag)
-        self.log_append(**{f"obj_{key}": mod.obj_current for key, mod in self._objective_modules.items()}, tag=tag)
-        return float(objective)
-
-    ###########################################################################
-    # Problem formulation - Constraints #######################################
-    ###########################################################################
     def optimization_variable_bounds(self) -> Tuple[List, List]:
         limits = self._env.ego.control_limits()
         lb = (np.ones(2 * self.num_optimization_variables()) * limits[0]).tolist()
         ub = (np.ones(2 * self.num_optimization_variables()) * limits[1]).tolist()
         return lb, ub
 
+    ###########################################################################
+    # Problem formulation - Objective #########################################
+    ###########################################################################
+    def objective(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = TAG_DEFAULT) -> float:
+        ego_trajectory = self.z_to_ego_trajectory(z)
+        objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids) for m in self._objective_modules.values()])
+
+        logging.debug(f"solver {self.name}:{tag} Objective function = {objective}")
+        ado_planned = ado_planned_wo = torch.zeros(0)  # pseudo for ado_planned (only required for plotting)
+
+        if self.verbose > 2:
+            ado_planned = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
+            ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_trajectory.shape[0])
+        self.log_append(ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo, tag=tag)
+        self.log_append(obj_overall=objective, tag=tag)
+        module_log = {f"{LK_OBJECTIVE}_{key}": mod.obj_current for key, mod in self._objective_modules.items()}
+        self.log_append(**module_log, tag=tag)
+        return float(objective)
+
     @staticmethod
-    def constraints_defaults() -> List[str]:
+    def objective_defaults() -> List[Tuple[str, float]]:
         raise NotImplementedError
 
+    ###########################################################################
+    # Problem formulation - Constraints #######################################
+    ###########################################################################
     def constraints(
-        self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core", return_violation: bool = False
+        self, z: np.ndarray, ado_ids: List[str] = None, tag: str = TAG_DEFAULT, return_violation: bool = False
     ) -> np.ndarray:
         if self.is_unconstrained:
             return np.array([]) if not return_violation else (np.array([]), 0.0)
@@ -264,12 +267,13 @@ class Solver(ABC):
 
         logging.debug(f"solver {self.name}:{tag}: Constraints vector = {constraints}")
         self.log_append(inf_overall=violation, tag=tag)
-        self.log_append(**{f"inf_{key}": mod.inf_current for key, mod in self._constraint_modules.items()}, tag=tag)
+        module_log = {f"{LK_CONSTRAINT}_{key}": mod.inf_current for key, mod in self._constraint_modules.items()}
+        self.log_append(**module_log, tag=tag)
         return constraints if not return_violation else (constraints, violation)
 
-    @property
-    def is_unconstrained(self) -> bool:
-        return len(self._constraint_modules.keys()) == 0
+    @staticmethod
+    def constraints_defaults() -> List[str]:
+        raise NotImplementedError
 
     ###########################################################################
     # Utility #################################################################
@@ -294,51 +298,66 @@ class Solver(ABC):
     @staticmethod
     def _build_filter_module(module: str) -> FilterModule:
         assert module is None or module in FILTER.keys()
-        return FILTER[module]() if module is not None else FILTER["none"]()
+        return FILTER[module]() if module is not None else FILTER[FILTER_NO_FILTER]()
 
     ###########################################################################
-    # Visualization & Logging #################################################
+    # Logging #################################################################
     ###########################################################################
-    def intermediate_log(self):
-        if self.verbose > 0 and self.optimization_log is not None:
+    def intermediate_log(self, ego_controls_k: torch.Tensor):
+        if self.verbose > -1 and self.log is not None:
+            # For logging purposes unroll and predict the scene for the derived ego controls.
+            ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
+            self.log_append(ego_planned=ego_opt_planned, tag=LK_OPTIMAL)
+            ado_planned = self._env.predict_w_controls(ego_controls=ego_controls_k)
+            self.log_append(ado_planned=ado_planned, tag=LK_OPTIMAL)
+            ado_planned_wo = self._env.predict_wo_ego(t_horizon=ego_controls_k.shape[0] + 1)
+            self.log_append(ado_planned_wo=ado_planned_wo, tag=LK_OPTIMAL)
+
+            # Log the results of objective and constraint evaluations in the different computation cores.
+            k = self._iteration
             for tag in self.cores:
-                k = self._iteration
 
                 # Log first and last (considered as best) objective value.
-                log = {key: self.optimization_log[f"{tag}/obj_{key}_{k}"] for key in self.objective_keys}
+                log = {key: self.log[f"{tag}/{LK_OBJECTIVE}_{key}_{k}"] for key in self.objective_keys}
                 log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.objective_keys}
                 logging.info(f"solver [{tag}] - objectives: {log}")
 
                 # Log first and last (considered as best) infeasibility value.
-                log = {key: self.optimization_log[f"{tag}/inf_{key}_{k}"] for key in self.constraint_modules}
+                log = {key: self.log[f"{tag}/{LK_CONSTRAINT}_{key}_{k}"] for key in self.constraint_modules}
                 log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.constraint_modules}
                 logging.info(f"solver [{tag}] - infeasibility: {log}")
 
+            logging.info(f"solver {self.name} @k={k}: ego optimized controls = {ego_controls_k.tolist()}")
+            logging.info(f"solver {self.name} @k={k}: ego optimized path = {ego_opt_planned[:, 0:2].tolist()}")
+
     @staticmethod
     def log_keys() -> List[str]:
-        return ["ego_planned", "ado_planned"]
+        return ["ego_planned", "ado_planned", "ado_planned_wo"]
+
+    def log_keys_performance(self) -> List[str]:
+        objective_keys = [f"{tag}/{LK_OBJECTIVE}_{key}" for key in self.objective_keys for tag in self.cores]
+        constraint_keys = [f"{tag}/{LK_CONSTRAINT}_{key}" for key in self.constraint_keys for tag in self.cores]
+        return objective_keys + constraint_keys
+
+    def log_keys_all(self) -> List[str]:
+        log_tag_keys = [f"{tag}/{key}" for key in self.log_keys() for tag in self.cores]
+        log_opt_keys = [f"{LK_OPTIMAL}/{key}" for key in self.log_keys()]
+        return self.log_keys_performance() + log_tag_keys + log_opt_keys
 
     def log_reset(self, log_horizon: int):
         # Reset iteration counter.
         self._iteration = 0
 
+        # Reset optimization log by re-creating dictionary with entries all keys in the planning horizon. During
+        # optimization new values are then added to these created lists.
         if self.verbose > -1:
-            self._optimization_log = {}
-            for k in range(log_horizon):
-                for tag in self.cores:
-                    # Set default logging variables for cores.
-                    self._optimization_log.update({f"{tag}/{key}_{k}": [] for key in self.log_keys()})
-                    # Set logging variables for each objective and constraint module.
-                    self._optimization_log.update({f"{tag}/obj_{key}_{k}": [] for key in self.objective_keys})
-                    self._optimization_log.update({f"{tag}/inf_{key}_{k}": [] for key in self.constraint_keys})
-                # Set default logging variables for opt.
-                self._optimization_log.update({f"opt/{key}_{k}": [] for key in self.log_keys()})
+            self._log = {f"{tag}_{k}": [] for k in range(log_horizon) for tag in self.log_keys_all()}
 
-    def log_append(self, tag: str = "core", **kwargs):
-        if self.verbose > -1 and self.optimization_log is not None:
+    def log_append(self, tag: str = TAG_DEFAULT, **kwargs):
+        if self.verbose > -1 and self.log is not None:
             for key, value in kwargs.items():
                 x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()
-                self._optimization_log[f"{tag}/{key}_{self._iteration}"].append(x)
+                self._log[f"{tag}/{key}_{self._iteration}"].append(x)
 
     def log_summarize(self):
         """Summarize optimisation-step dictionaries to a single tensor per logging key, e.g. collapse all objective
@@ -348,80 +367,60 @@ class Solver(ABC):
         e.g. the last value of the objective tensor `obj_overall` should be the smallest one. However it is hard to
         validate for the general logging key, therefore it is up to the user to implement it correctly.
         """
-        if self.verbose > -1 and self.optimization_log is not None:
-            objective_keys = [f"{tag}/obj_{key}" for key in self.objective_keys for tag in self.cores]
-            constraint_keys = [f"{tag}/inf_{key}" for key in self.constraint_keys for tag in self.cores]
-            log_tag_keys = [f"{tag}/{key}" for key in self.log_keys() for tag in self.cores]
-            log_opt_keys = [f"opt/{key}" for key in self.log_keys()]
+        if self.verbose > -1 and self.log is not None:
+            # Stack always the last values in the step-dictionaries (lists of logging values for each optimization
+            # step), since it is assumed to be the most optimal one (e.g. for IPOPT).
+            for key in self.log_keys_all():
+                assert all([f"{key}_{k}" in self.log.keys() for k in range(self._iteration + 1)])
+                assert all([len(self.log[f"{key}_{k}"]) > 0 for k in range(self._iteration + 1)])
+                summary = [self.log[f"{key}_{k}"][-1] for k in range(self._iteration + 1)]
+                self._log[key] = torch.stack(summary)
 
-            for key in (objective_keys + constraint_keys + log_tag_keys + log_opt_keys):
-                summary = [self.optimization_log[f"{key}_{k}"][-1] for k in range(self._iteration + 1)]
-                self._optimization_log[key] = torch.stack(summary)
+            # Save the optimization performance for every optimization step into logging file. Since the
+            # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
+            # first using the `map(dtype, list)` function.
+            output_path = build_os_path(VISUALIZATION_DIRECTORY, make_dir=True, free=False)
+            output_path = os.path.join(output_path, f"{self.name}:{self.env.name}:logging.csv")
+            csv_log_k_keys = [f"{key}_{k}" for key in self.log_keys_performance() for k in range(self._iteration + 1)]
+            csv_log_k_keys += self.log_keys_performance()
+            csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys}
+            pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
 
-            # Restructure 1-size tensor to actual vectors (objective and constraint).
-            for k in range(self._iteration):
-                for key in (objective_keys + constraint_keys):
-                    self._optimization_log[f"{key}_{k}"] = torch.stack(self._optimization_log[f"{key}_{k}"])
-
-    def visualize_optimization(self, enforce: bool = False):
-        """Visualize optimization iterations by plotting the planned ego trajectory for every optimization step as
-        well as the values of objective and infeasibility (constraint violation), if verbose > 2 or
-        if `enforce = True`."""
-        if self.verbose > 2 or enforce:
-            from mantrap.evaluation.visualization import visualize
-            assert self.optimization_log is not None
-
-            # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly.
-            # However due to the iterative structure of this function this is not really possible.
-            output_path = build_os_path(visualization_directory, make_dir=True, free=False)
-
-            tags = np.unique([key.split("/")[0] for key in self.optimization_log.keys() if key.split("/")[0] != "opt"])
-            for tag in tags:
-                for k in range(self._iteration):
-                    obj_dict, inf_dict = {}, {}
-                    for key in self.objective_keys:
-                        obj_dict[key] = self.optimization_log[f"{tag}/obj_{key}_{k}"]
-                    for key in self.constraint_keys:
-                        inf_dict[key] = self.optimization_log[f"{tag}/inf_{key}_{k}"]
-
-                    ego_planned = torch.stack(self.optimization_log[f"{tag}/ego_planned_{k}"])
-                    ado_planned = torch.stack(self.optimization_log[f"{tag}/ado_planned_{k}"])
-
-                    visualize(ego_planned=ego_planned, ado_planned=ado_planned, ego_trials=None, plot_path_only=False,
-                              obj_dict=obj_dict, inf_dict=inf_dict, env=self.env, single_opt=True,
-                              file_path=os.path.join(output_path, f"{self.name}:{self.env.name}:{tag}_{k}"))
-
-    def visualize_scenes(self, enforce: bool = False, interactive: bool = False):
+    ###########################################################################
+    # Visualization ###########################################################
+    ###########################################################################
+    def visualize_scenes(self, enforce: bool = False, interactive: bool = False, plot_path_only: bool = False):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory), if verbose > 1 or if `enforce = True`. """
         if self.verbose > 1 or enforce:
             from mantrap.evaluation.visualization import visualize
-            assert self.optimization_log is not None
+            assert self.log is not None
 
             # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
             # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
             # to None (interactive mode) or to an actual path (storing mode).
             if not interactive:
-                output_path = build_os_path(visualization_directory, make_dir=True, free=False)
-                output_path = os.path.join(output_path, f"{self.name}:{self.env.name}:opt")
+                output_path = build_os_path(VISUALIZATION_DIRECTORY, make_dir=True, free=False)
+                output_path = os.path.join(output_path, f"{self.name}:{self.env.name}:{LK_OPTIMAL}")
             else:
                 output_path = None
 
             # From optimization log extract the core (initial condition) which has resulted in the best objective
             # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
             # N=t_horizon times to be able to visualize the whole distribution at every time.
-            obj_dict = {key: self.optimization_log[f"{self.core_opt}/obj_{key}"] for key in self.objective_keys}
+            obj_dict = {key: self.log[f"{self.core_opt}/{LK_OBJECTIVE}_{key}"] for key in self.objective_keys}
             obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.objective_keys}
-            inf_dict = {key: self.optimization_log[f"{self.core_opt}/inf_{key}"] for key in self.constraint_keys}
+            inf_dict = {key: self.log[f"{self.core_opt}/{LK_CONSTRAINT}_{key}"] for key in self.constraint_keys}
             inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.constraint_keys}
 
-            ego_trials = [self._optimization_log[f"{self.core_opt}/ego_planned_{k}"] for k in range(self._iteration)]
+            ego_trials = [self._log[f"{self.core_opt}/ego_planned_{k}"] for k in range(self._iteration)]
 
             return visualize(
-                ego_planned=self.optimization_log["opt/ego_planned"],
-                ado_planned=self.optimization_log["opt/ado_planned"],
+                ego_planned=self.log[f"{LK_OPTIMAL}/ego_planned"],
+                ado_planned=self.log[f"{LK_OPTIMAL}/ado_planned"],
+                ado_planned_wo=self.log[f"{LK_OPTIMAL}/ado_planned_wo"],
                 ego_trials=ego_trials, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
-                plot_path_only=False, file_path=output_path
+                plot_path_only=plot_path_only, file_path=output_path
             )
 
     ###########################################################################
@@ -445,7 +444,7 @@ class Solver(ABC):
 
     @property
     def T(self) -> int:
-        return self._solver_params["t_planning"]
+        return self._solver_params[PARAMS_T_PLANNING]
 
     @property
     def objective_modules(self) -> Dict[str, ObjectiveModule]:
@@ -453,7 +452,7 @@ class Solver(ABC):
 
     @property
     def objective_keys(self) -> List[str]:
-        return ["overall"] + list(self.objective_modules.keys())
+        return [LK_OVERALL_PERFORMANCE] + list(self.objective_modules.keys())
 
     @property
     def constraint_modules(self) -> Dict[str, ConstraintModule]:
@@ -461,7 +460,7 @@ class Solver(ABC):
 
     @property
     def constraint_keys(self) -> List[str]:
-        return ["overall"] + list(self.constraint_modules.keys())
+        return [LK_OVERALL_PERFORMANCE] + list(self.constraint_modules.keys())
 
     ###########################################################################
     # Utility parameters ######################################################
@@ -472,22 +471,22 @@ class Solver(ABC):
 
     @property
     def core_opt(self) -> str:
-        return self._core_opt if self._core_opt is not None else "opt"
+        return self._core_opt if self._core_opt is not None else LK_OPTIMAL
 
     @property
     def do_multiprocessing(self) -> bool:
-        return self._solver_params["multiprocessing"]
+        return self._solver_params[PARAMS_MULTIPROCESSING]
 
     ###########################################################################
     # Logging parameters ######################################################
     ###########################################################################
     @property
-    def optimization_log(self) -> Dict[str, Union[torch.Tensor, List[torch.Tensor]]]:
-        return self._optimization_log
+    def log(self) -> Dict[str, Union[torch.Tensor, List[torch.Tensor]]]:
+        return self._log
 
     @property
     def verbose(self) -> bool:
-        return self._solver_params["verbose"]
+        return self._solver_params[PARAMS_VERBOSE]
 
     @property
     def solver_name(self) -> str:
@@ -495,7 +494,7 @@ class Solver(ABC):
 
     @property
     def config_name(self) -> str:
-        return self._solver_params["config_params"]
+        return self._solver_params[PARAMS_CONFIG]
 
     @property
     def name(self) -> str:

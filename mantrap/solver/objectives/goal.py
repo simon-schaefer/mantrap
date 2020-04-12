@@ -35,5 +35,5 @@ class GoalModule(ObjectiveModule):
 
     @importance_distribution.setter
     def importance_distribution(self, weights: torch.Tensor):
-        assert weights.numel() == self.T + 1, "distribution has invalid length"
+        assert weights.numel() == self.T + 1
         self._distribution = weights

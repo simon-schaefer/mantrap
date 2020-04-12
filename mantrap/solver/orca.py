@@ -5,7 +5,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import torch
 
-from mantrap.constants import orca_eps_numeric, agent_speed_max, orca_agent_radius, orca_agent_safe_dt
+from mantrap.constants import *
 from mantrap.agents import IntegratorDTAgent
 from mantrap.solver.solver import Solver
 
@@ -32,14 +32,14 @@ class ORCASolver(Solver):
 
     def determine_ego_controls(
         self,
-        agent_radius: float = orca_agent_radius,
-        safe_dt: float = orca_agent_safe_dt,
-        speed_max: float = agent_speed_max,
+        agent_radius: float = ORCA_AGENT_RADIUS,
+        safe_dt: float = ORCA_AGENT_SAFE_DT,
+        speed_max: float = AGENT_SPEED_MAX,
         **solver_kwargs
     ) -> Union[torch.Tensor, None]:
         # Find line constraints.
         constraints = self._line_constraints(self._env, agent_radius=agent_radius, agent_safe_dt=safe_dt)
-        logging.info(f"ORCA constraints for ego [{self._env.ego.id}]: {constraints}")
+        logging.info(f"ORCA constraints for [{self.env.ego.id}]: {constraints}")
 
         # Find new velocity based on line constraints. Preferred velocity would be the going from the current position
         # to the goal with maximal speed.
@@ -59,11 +59,11 @@ class ORCASolver(Solver):
     # Initialization ##########################################################
     ###########################################################################
     def initialize(self, **solver_params):
-        assert self._env.ego.__class__ == IntegratorDTAgent
+        assert self.env.ego.__class__ == IntegratorDTAgent
         assert len(self._objective_modules) == len(self._constraint_modules) == 0
         logging.info(f"solver {self.name}: overwriting solver parameters to fit orca formulation")
-        self._solver_params["t_planning"] = 1
-        self._solver_params["multiprocessing"] = False
+        self._solver_params[PARAMS_T_PLANNING] = 1
+        self._solver_params[PARAMS_MULTIPROCESSING] = False
 
     def num_optimization_variables(self) -> int:
         return 2
@@ -125,7 +125,7 @@ class ORCASolver(Solver):
                 for j in range(0, i):
                     determinant = torch.det(torch.stack((constraints[i].direction, constraints[j].direction)))
 
-                    if torch.abs(determinant) < orca_eps_numeric:
+                    if torch.abs(determinant) < ORCA_EPS_NUMERIC:
                         # Line i and line j point in the same direction.
                         if constraints[i].direction.dot(constraints[j].direction) > 0:
                             continue
@@ -170,7 +170,7 @@ class ORCASolver(Solver):
             numerator = torch.det(torch.stack((constraints[j].direction, constraints[i].point - constraints[j].point)))
 
             # Lines (constraint lines) i and j are (almost) parallel.
-            if torch.abs(denominator) < orca_eps_numeric:
+            if torch.abs(denominator) < ORCA_EPS_NUMERIC:
                 if numerator < 0.0:
                     return None
                 continue

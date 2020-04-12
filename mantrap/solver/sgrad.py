@@ -3,6 +3,7 @@ from typing import List, Tuple
 import numpy as np
 import torch
 
+from mantrap.constants import *
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.primitives import square_primitives
 from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
@@ -43,14 +44,14 @@ class SGradSolver(IPOPTSolver):
     ###########################################################################
     @staticmethod
     def objective_defaults() -> List[Tuple[str, float]]:
-        return [("goal", 1.0), ("interaction", 10.0)]
+        return [(OBJECTIVE_GOAL, 1.0), (OBJECTIVE_INTERACTION, 10.0)]
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
     @staticmethod
     def constraints_defaults() -> List[str]:
-        return ["max_speed", "min_distance"]
+        return [CONSTRAINT_MAX_SPEED, CONSTRAINT_MIN_DISTANCE]
 
     ###########################################################################
     # Utility #################################################################

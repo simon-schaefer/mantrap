@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.constants import agent_speed_max
+from mantrap.constants import AGENT_SPEED_MAX
 from mantrap.environment import PotentialFieldEnvironment
 from mantrap.solver import SGradSolver, IGradSolver
 from mantrap.utility.io import build_os_path, load_functions_from_module
@@ -66,7 +66,7 @@ class RunTimeAnalysis:
             sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([2.0, -5.0])})
             for _ in range(int(num_agents)):
                 ado_position = torch.from_numpy(np.random.uniform(-10, 10, size=2))
-                ado_velocity = torch.from_numpy(np.random.uniform(-0.5, 0.5, size=2)) * agent_speed_max
+                ado_velocity = torch.from_numpy(np.random.uniform(-0.5, 0.5, size=2)) * AGENT_SPEED_MAX
                 sim.add_ado(position=ado_position, velocity=ado_velocity)
             function_kwargs["sim"] = sim
             function_kwargs["goal"] = torch.tensor([4, 4])

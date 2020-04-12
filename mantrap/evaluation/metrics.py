@@ -1,6 +1,6 @@
 import torch
 
-from mantrap.constants import agent_acc_max
+from mantrap.constants import AGENT_ACC_MAX
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.maths import Derivative2
 from mantrap.utility.primitives import straight_line
@@ -42,7 +42,7 @@ def metric_minimal_distance(
     return float(minimal_distance)
 
 
-def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = agent_acc_max, **unused) -> float:
+def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = AGENT_ACC_MAX, **unused) -> float:
     """Determine the ego's control effort (acceleration).
 
     For calculating the control effort of the ego agent approximate the acceleration by assuming the acceleration

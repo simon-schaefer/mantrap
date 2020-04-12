@@ -8,8 +8,8 @@ import numpy as np
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.constants import env_x_axis_default, env_y_axis_default, env_dt_default, visualization_directory
-from mantrap.utility.io import build_os_path, dict_value_or_default
+from mantrap.constants import *
+from mantrap.utility.io import build_os_path
 from mantrap.utility.shaping import (
     check_ego_controls,
     check_ego_state,
@@ -22,9 +22,9 @@ from mantrap.utility.shaping import (
 
 
 class GraphBasedEnvironment(ABC):
-    """General environment engine for obstacle-free, interaction-aware, probabilistic and multi-modal agent environments.
-    As used in a robotics use-case the environment separates between the ego-agent (the robot) and ado-agents (other
-    agents in the scene which are not the robot).
+    """General environment engine for obstacle-free, interaction-aware, probabilistic and multi-modal agent
+    environments. As used in a robotics use-case the environment separates between the ego-agent (the robot) and
+    ado-agents (other agents in the scene which are not the robot).
 
     In order to deal with multi-modality the environment uses so called "ghosts", which are weighted representations
     of an agent. If for example an agent has two modes, two ghosts objects will be assigned to this agent, while being
@@ -92,17 +92,17 @@ class GraphBasedEnvironment(ABC):
         self,
         ego_type: Agent.__class__ = None,
         ego_kwargs: Dict[str, Any] = None,
-        x_axis: Tuple[float, float] = env_x_axis_default,
-        y_axis: Tuple[float, float] = env_y_axis_default,
-        dt: float = env_dt_default,
+        x_axis: Tuple[float, float] = ENV_X_AXIS_DEFAULT,
+        y_axis: Tuple[float, float] = ENV_Y_AXIS_DEFAULT,
+        dt: float = ENV_DT_DEFAULT,
         verbose: int = -1,
-        config_name: str = "unknown"
+        config_name: str = CONFIG_UNKNOWN
     ):
         assert x_axis[0] < x_axis[1], "x axis must be in form (x_min, x_max)"
         assert y_axis[0] < y_axis[1], "y axis must be in form (y_min, y_max)"
         assert dt > 0.0, "time-step must be larger than 0"
 
-        self._ego = ego_type(**ego_kwargs, identifier="ego") if ego_type is not None else None
+        self._ego = ego_type(**ego_kwargs, identifier=ID_EGO) if ego_type is not None else None
         self._ado_ghosts = []
         self._num_ado_modes = 0
         self._ado_ids = []
@@ -110,10 +110,10 @@ class GraphBasedEnvironment(ABC):
 
         # Dictionary of environment parameters.
         self._env_params = dict()
-        self._env_params["x_axis"] = x_axis
-        self._env_params["y_axis"] = y_axis
-        self._env_params["config_name"] = config_name
-        self._env_params["verbose"] = verbose
+        self._env_params[PARAMS_X_AXIS] = x_axis
+        self._env_params[PARAMS_Y_AXIS] = y_axis
+        self._env_params[PARAMS_CONFIG] = config_name
+        self._env_params[PARAMS_VERBOSE] = verbose
         self._dt = dt
         self._time = 0
 
@@ -399,27 +399,26 @@ class GraphBasedEnvironment(ABC):
     def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
         raise NotImplementedError
 
-    def write_state_to_graph(self, ego_state: torch.Tensor = None, **graph_kwargs) -> Dict[str, torch.Tensor]:
-        k = dict_value_or_default(graph_kwargs, key="k", default=0)
-        ado_grad = dict_value_or_default(graph_kwargs, key="ado_grad", default=False)
-        ego_grad = dict_value_or_default(graph_kwargs, key="ego_grad", default=True)
+    def write_state_to_graph(
+        self, ego_state: torch.Tensor = None, k: int = 0, ado_grad: bool = False, ego_grad: bool = True
+    ) -> Dict[str, torch.Tensor]:
         graph = {}
 
         if ego_state is not None:
             assert check_ego_state(x=ego_state, enforce_temporal=False)
-            graph[f"ego_{k}_position"] = ego_state[0:2]
-            graph[f"ego_{k}_velocity"] = ego_state[2:4]
+            graph[f"{ID_EGO}_{k}_{GK_POSITION}"] = ego_state[0:2]
+            graph[f"{ID_EGO}_{k}_{GK_POSITION}"] = ego_state[2:4]
 
-            if ego_grad and not graph[f"ego_{k}_position"].requires_grad:  # if require_grad has been set already ...
-                graph[f"ego_{k}_position"].requires_grad = True
-                graph[f"ego_{k}_velocity"].requires_grad = True
+            if ego_grad and not graph[f"{ID_EGO}_{k}_{GK_POSITION}"].requires_grad:  # if require_grad is set
+                graph[f"{ID_EGO}_{k}_{GK_POSITION}"].requires_grad = True
+                graph[f"{ID_EGO}_{k}_{GK_VELOCITY}"].requires_grad = True
 
         for ghost in self.ghosts:
-            graph[f"{ghost.id}_{k}_position"] = ghost.agent.position
-            graph[f"{ghost.id}_{k}_velocity"] = ghost.agent.velocity
-            if ado_grad and graph[f"{ghost.id}_{k}_position"].requires_grad is not True:
-                graph[f"{ghost.id}_{k}_position"].requires_grad = True
-                graph[f"{ghost.id}_{k}_velocity"].requires_grad = True
+            graph[f"{ghost.id}_{k}_{GK_POSITION}"] = ghost.agent.position
+            graph[f"{ghost.id}_{k}_{GK_VELOCITY}"] = ghost.agent.velocity
+            if ado_grad and graph[f"{ghost.id}_{k}_{GK_POSITION}"].requires_grad is not True:
+                graph[f"{ghost.id}_{k}_{GK_POSITION}"].requires_grad = True
+                graph[f"{ghost.id}_{k}_{GK_VELOCITY}"].requires_grad = True
 
         return graph
 
@@ -432,11 +431,11 @@ class GraphBasedEnvironment(ABC):
         for ghost in self.ghosts:
             m_ado, m_mode = self.convert_ghost_id(ghost_id=ghost.id)
             for t in range(t_horizon):
-                ado_trajectories[m_ado, m_mode, t, 0:2] = graph[f"{ghost.id}_{t}_position"]
-                ado_trajectories[m_ado, m_mode, t, 2:4] = graph[f"{ghost.id}_{t}_velocity"]
+                ado_trajectories[m_ado, m_mode, t, 0:2] = graph[f"{ghost.id}_{t}_{GK_POSITION}"]
+                ado_trajectories[m_ado, m_mode, t, 2:4] = graph[f"{ghost.id}_{t}_{GK_VELOCITY}"]
                 ado_trajectories[m_ado, m_mode, t, -1] = self.time + self.dt * t
                 if t < t_horizon - 1:
-                    ado_controls[m_ado, m_mode, t, :] = graph[f"{ghost.id}_{t}_control"]
+                    ado_controls[m_ado, m_mode, t, :] = graph[f"{ghost.id}_{t}_{GK_CONTROL}"]
             weights[m_ado, m_mode] = ghost.weight
 
         # Check output shapes. Besides, since all modes originate in the same ado, their first state (t = t0) should
@@ -547,7 +546,7 @@ class GraphBasedEnvironment(ABC):
         return True
 
     ###########################################################################
-    # Visualization & Logging #################################################
+    # Visualization ###########################################################
     ###########################################################################
     def visualize_prediction(self, ego_trajectory: torch.Tensor, enforce: bool = False, interactive: bool = False):
         """Visualize the predictions for the scene based on the given ego trajectory.
@@ -568,26 +567,34 @@ class GraphBasedEnvironment(ABC):
             # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
             # to None (interactive mode) or to an actual path (storing mode).
             if not interactive:
-                output_path = build_os_path(visualization_directory, make_dir=True, free=False)
+                output_path = build_os_path(VISUALIZATION_DIRECTORY, make_dir=True, free=False)
                 output_path = os.path.join(output_path, f"{self.name}_prediction")
             else:
                 output_path = None
 
             # Predict the ado behaviour conditioned on the given ego trajectory.
             ado_trajectories = self.predict_w_trajectory(ego_trajectory=ego_trajectory)
+            ado_trajectories_wo = self.predict_wo_ego(t_horizon=t_horizon)
 
             # Stretch the ego and ado trajectories as described above.
             ego_stretched = torch.zeros((t_horizon, t_horizon, 5))
             ado_stretched = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
+            ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
             for t in range(t_horizon):
                 ego_stretched[t, :(t_horizon - t), :] = ego_trajectory[t:t_horizon, :]
                 ego_stretched[t, (t_horizon - t):, :] = ego_trajectory[-1, :]
                 ado_stretched[t, :, :, :(t_horizon - t), :] = ado_trajectories[:, :, t:t_horizon, :]
                 ado_stretched[t, :, :, (t_horizon - t):, :] = ado_trajectories[:, :, -1, :].unsqueeze(dim=2)
+                ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
+                ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
 
             return visualize(
-                ego_planned=ego_stretched,  ado_planned=ado_stretched, plot_path_only=True,
-                ego_trials=None, obj_dict=None, inf_dict=None, env=self, file_path=output_path
+                ego_planned=ego_stretched,
+                ado_planned=ado_stretched,
+                ado_planned_wo=ado_stretched_wo,
+                plot_path_only=True,
+                env=self,
+                file_path=output_path
             )
 
     ###########################################################################
@@ -647,11 +654,11 @@ class GraphBasedEnvironment(ABC):
 
     @property
     def axes(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-        return self._env_params["x_axis"], self._env_params["y_axis"]
+        return self._env_params[PARAMS_X_AXIS], self._env_params[PARAMS_Y_AXIS]
 
     @property
     def verbose(self) -> int:
-        return self._env_params["verbose"]
+        return self._env_params[PARAMS_VERBOSE]
 
     @property
     def environment_name(self) -> str:
@@ -659,7 +666,7 @@ class GraphBasedEnvironment(ABC):
 
     @property
     def config_name(self) -> str:
-        return self._env_params["config_name"]
+        return self._env_params[PARAMS_CONFIG]
 
     @property
     def name(self) -> str:

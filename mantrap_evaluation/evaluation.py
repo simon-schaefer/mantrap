@@ -50,15 +50,15 @@ if __name__ == '__main__':
 
         # Initialise environment environment and solver as described in functions.
         logging.warning(f"Evaluation: solver {solver_name} in scenario {scenario_name}")
-        sim, goal = scenario_func()
+        env, goal = scenario_func()
         solver_class, solver_kwargs = solver_func()
-        solver = solver_class(sim, goal=goal, verbose=2, multiprocessing=False, **solver_kwargs)
+        solver = solver_class(env, goal=goal, verbose=2, multiprocessing=False, **solver_kwargs)
 
         # Solve posed problem, until goal has been reached.
         ego_trajectory_opt, ado_traj = solver.solve(time_steps=5, max_cpu_time=1.0)
 
         # Log and visualise results for later comparison.
-        results[name] = evaluate_metrics(ego_trajectory=ego_trajectory_opt, ado_trajectories=ado_traj, env=sim, goal=goal)
+        results[name] = evaluate_metrics(ego_trajectory=ego_trajectory_opt, ado_trajectories=ado_traj, env=env, goal=goal)
         logging.warning(f"Evaluation ==> {results[name]}")
 
     logging.warning("Evaluation results:")

@@ -6,7 +6,7 @@ import ipopt
 import numpy as np
 import torch
 
-from mantrap.constants import ipopt_max_steps, ipopt_max_cpu_time
+from mantrap.constants import *
 from mantrap.solver.solver import Solver
 
 
@@ -16,9 +16,9 @@ class IPOPTSolver(Solver, ABC):
         self,
         z0: torch.Tensor,
         ado_ids: List[str] = None,
-        tag: str = "core",
-        max_iter: int = ipopt_max_steps,
-        max_cpu_time: float = ipopt_max_cpu_time,
+        tag: str = "opt",
+        max_iter: int = IPOPT_MAX_STEPS_DEFAULT,
+        max_cpu_time: float = IPOPT_MAX_CPU_TIME_DEFAULT,
         approx_jacobian: bool = False,
         approx_hessian: bool = True,
         check_derivative: bool = False,
@@ -64,25 +64,26 @@ class IPOPTSolver(Solver, ABC):
         z_opt, info = nlp.solve(z0_flat)
         z2_opt = torch.from_numpy(z_opt).view(-1, 2)
         objective_opt = self.objective(z_opt, tag=tag)
-        return z2_opt, objective_opt, self.optimization_log
+        return z2_opt, objective_opt, self.log
 
     ###########################################################################
     # Optimization formulation - Objective ####################################s
     ###########################################################################
-    def gradient(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core") -> np.ndarray:
+    def gradient(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = TAG_DEFAULT) -> np.ndarray:
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
         gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._objective_modules.values()]
         gradient = np.sum(gradient, axis=0)
 
         logging.debug(f"Gradient function = {gradient}")
         self.log_append(grad_overall=gradient, tag=tag)
-        self.log_append(**{f"grad_{key}": mod.grad_current for key, mod in self._objective_modules.items()}, tag=tag)
+        module_log = {f"{LK_GRADIENT}_{key}": mod.grad_current for key, mod in self._objective_modules.items()}
+        self.log_append(**module_log, tag=tag)
         return gradient
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
-    def jacobian(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = "core") -> np.ndarray:
+    def jacobian(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = TAG_DEFAULT) -> np.ndarray:
         if self.is_unconstrained:
             return np.array([])
 
@@ -106,19 +107,19 @@ class IPOPTSolver(Solver, ABC):
         super(IPOPTSolver, self).log_reset(log_horizon)
         for tag in self.cores:
             for k in range(log_horizon):
-                self._optimization_log.update({f"{tag}/grad_{key}_{k}": [] for key in self.objective_keys})
+                self._log.update({f"{tag}/{LK_GRADIENT}_{key}_{k}": [] for key in self.objective_keys})
 
-    def log_summarize(self, tag: str = "core"):
+    def log_summarize(self, tag: str = TAG_DEFAULT):
         super(IPOPTSolver, self).log_summarize()
 
-        gradient_keys = [f"{tag}/grad_{key}" for key in self.objective_keys for tag in self.cores]
+        gradient_keys = [f"{tag}/{LK_GRADIENT}_{key}" for key in self.objective_keys for tag in self.cores]
         for key in gradient_keys:
             # Summarize best gradient values to one website.
-            summary = [self._optimization_log[f"{key}_{k}"][-1] for k in range(self._iteration)]
-            self._optimization_log[key] = torch.stack(summary)
+            summary = [self._log[f"{key}_{k}"][-1] for k in range(self._iteration)]
+            self._log[key] = torch.stack(summary)
             # Restructure 1-size tensor to actual vectors (objective and constraint).
             for k in range(self._iteration):
-                self._optimization_log[f"{key}_{k}"] = torch.stack(self._optimization_log[f"{key}_{k}"])
+                self._log[f"{key}_{k}"] = torch.stack(self._log[f"{key}_{k}"])
 
 
 ###########################################################################
@@ -126,7 +127,7 @@ class IPOPTSolver(Solver, ABC):
 ###########################################################################
 class IPOPTProblem:
 
-    def __init__(self, problem: IPOPTSolver, ado_ids: List[str], tag: str = "core"):
+    def __init__(self, problem: IPOPTSolver, ado_ids: List[str], tag: str = TAG_DEFAULT):
         self.problem = problem
         self.tag = tag
         self.ado_ids = ado_ids

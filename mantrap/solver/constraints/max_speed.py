@@ -3,7 +3,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import torch
 
-from mantrap.constants import agent_speed_max
+from mantrap.constants import AGENT_SPEED_MAX
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
@@ -21,7 +21,7 @@ class MaxSpeedModule(ConstraintModule):
         pass
 
     def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
-        return np.ones(self.num_constraints) * (-agent_speed_max), np.ones(self.num_constraints) * agent_speed_max
+        return np.ones(self.num_constraints) * (-AGENT_SPEED_MAX), np.ones(self.num_constraints) * AGENT_SPEED_MAX
 
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
         return ego_trajectory[:, 2:4].flatten()

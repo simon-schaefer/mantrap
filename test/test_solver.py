@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import torch
 
-from mantrap.constants import agent_speed_max, constraint_min_distance
+from mantrap.constants import AGENT_SPEED_MAX, CONSTRAINT_MIN_L2_DISTANCE
 from mantrap.agents import IntegratorDTAgent
 from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment
 from mantrap.environment.environment import GraphBasedEnvironment
@@ -83,8 +83,8 @@ def test_solve():
     assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
 
     ego_trajectory_opt, ado_traj = solver.solve(100)
-    ado_planned = solver.optimization_log["opt/ado_planned"]
-    ego_opt_planned = solver.optimization_log["opt/ego_planned"]
+    ado_planned = solver.log["opt/ado_planned"]
+    ego_opt_planned = solver.log["opt/ego_planned"]
 
     # Test output shapes.
     t_horizon_exp = int(8 / sim.dt)  # distance ego position and goal = 8 / velocity 1.0 = 8.0 s
@@ -173,7 +173,7 @@ class TestSolvers:
 
     @staticmethod
     def test_convergence(solver_class: Solver.__class__):
-        sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-agent_speed_max / 2, 0])}, dt=1.0)
+        sim = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-AGENT_SPEED_MAX / 2, 0])}, dt=1.0)
         solver = solver_class(sim, goal=torch.zeros(2), t_planning=1, objectives=[("goal", 1.0)], constraints=[])
 
         z0 = solver.z0s_default(just_one=True)
@@ -275,7 +275,7 @@ def test_s_grad_solver():
 
     for t in range(10):
         for m in range(env.num_ghosts):
-            assert torch.norm(ego_trajectory_opt[t, 0:2] - ado_trajectories[m, :, t, 0:2]).item() >= constraint_min_distance
+            assert torch.norm(ego_trajectory_opt[t, 0:2] - ado_trajectories[m, :, t, 0:2]).item() >= CONSTRAINT_MIN_L2_DISTANCE
 
 
 ###########################################################################

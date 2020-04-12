@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from mantrap.constants import filter_euclidean_radius
+from mantrap.constants import FILTER_EUCLIDEAN_RADIUS
 from mantrap.solver.filter.filter_module import FilterModule
 from mantrap.utility.shaping import check_ego_state, check_ado_states
 
@@ -26,7 +26,7 @@ class EuclideanModule(FilterModule):
 
         with torch.no_grad():
             euclidean_distances = torch.norm(ado_states[:, 0:2] - ego_state[0:2], dim=1)
-            in_attention = (euclidean_distances < filter_euclidean_radius).numpy()
+            in_attention = (euclidean_distances < FILTER_EUCLIDEAN_RADIUS).numpy()
             in_indices = np.nonzero(in_attention)[0]
 
         return in_indices

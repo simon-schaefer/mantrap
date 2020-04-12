@@ -2,6 +2,7 @@ from typing import List
 
 import torch
 
+from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.utility.maths import Derivative2
@@ -43,9 +44,9 @@ class InteractionAccelerationModule(ObjectiveModule):
                 for t in range(1, self.T - 1):
                     i_ado, i_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
                     ado_acceleration = self._derivative_2.compute_single(
-                        graphs[f"{ghost.id}_{t - 1}_position"],
-                        graphs[f"{ghost.id}_{t}_position"],
-                        graphs[f"{ghost.id}_{t}_position"],
+                        graphs[f"{ghost.id}_{t - 1}_{GK_POSITION}"],
+                        graphs[f"{ghost.id}_{t}_{GK_POSITION}"],
+                        graphs[f"{ghost.id}_{t}_{GK_POSITION}"],
                     )
                     ado_acceleration_wo = self._ado_accelerations_wo[i_ado, i_mode, t, :]
                     objective += torch.norm(ado_acceleration - ado_acceleration_wo) * ghost.weight

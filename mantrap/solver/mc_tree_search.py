@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import torch
 
-from mantrap.constants import mcts_max_cpu_time, mcts_max_steps, solver_constraint_limit
+from mantrap.constants import *
 from mantrap.solver.solver import Solver
 from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
 from mantrap.utility.primitives import square_primitives
@@ -16,9 +16,9 @@ class MonteCarloTreeSearch(Solver):
         self,
         z0: torch.Tensor,
         ado_ids: List[str] = None,
-        tag: str = "core",
-        max_iter: int = mcts_max_steps,
-        max_cpu_time: float = mcts_max_cpu_time,
+        tag: str = TAG_DEFAULT,
+        max_iter: int = MCTS_MAX_STEPS,
+        max_cpu_time: float = MCTS_MAX_CPU_TIME,
         **solver_kwargs
     ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
         # Find variable bounds for random sampling during search.
@@ -38,7 +38,7 @@ class MonteCarloTreeSearch(Solver):
             z_sample = np.random.uniform(lb, ub)
             objective, constraint_violation = self._evaluate(z=z_sample, tag=tag, ado_ids=ado_ids)
 
-            if obj_best > objective and constraint_violation < solver_constraint_limit:
+            if obj_best > objective and constraint_violation < SOLVER_CONSTRAINT_LIMIT:
                 obj_best = objective
                 z_best = z_sample
             sampling_iteration += 1
@@ -46,7 +46,7 @@ class MonteCarloTreeSearch(Solver):
         # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
         # be the best iteration (logging within objective and constraint function).
         self._evaluate(z=z_best, tag=tag, ado_ids=ado_ids)
-        return self.z_to_ego_controls(z=z_best), obj_best, self.optimization_log
+        return self.z_to_ego_controls(z=z_best), obj_best, self.log
 
     def _evaluate(self, z: np.ndarray, ado_ids: List[str], tag: str) -> Tuple[float, float]:
         objective = self.objective(z, tag=tag, ado_ids=ado_ids)
@@ -80,14 +80,14 @@ class MonteCarloTreeSearch(Solver):
     ###########################################################################
     @staticmethod
     def objective_defaults() -> List[Tuple[str, float]]:
-        return [("goal", 1.0), ("interaction", 1.0)]
+        return [(OBJECTIVE_GOAL, 1.0), (OBJECTIVE_INTERACTION, 1.0)]
 
     ###########################################################################
     # Problem formulation - Constraints #######################################
     ###########################################################################
     @staticmethod
     def constraints_defaults() -> List[str]:
-        return ["max_speed", "min_distance"]
+        return [CONSTRAINT_MAX_SPEED, CONSTRAINT_MIN_DISTANCE]
 
     ###########################################################################
     # Utility #################################################################

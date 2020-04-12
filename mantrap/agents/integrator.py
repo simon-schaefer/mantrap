@@ -3,10 +3,8 @@ from typing import Tuple
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.constants import agent_speed_max, env_dt_default
+from mantrap.constants import AGENT_SPEED_MAX, ENV_DT_DEFAULT
 from mantrap.utility.shaping import check_ego_action, check_ego_state
-from mantrap.utility.utility import build_state_vector
-
 
 class IntegratorDTAgent(Agent):
     def __init__(
@@ -14,7 +12,7 @@ class IntegratorDTAgent(Agent):
     ):
         super(IntegratorDTAgent, self).__init__(position, velocity, history=history, **kwargs)
 
-    def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float = env_dt_default) -> torch.Tensor:
+    def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float = ENV_DT_DEFAULT) -> torch.Tensor:
         """
         .. math:: vel_{t+1} = action
         .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt
@@ -24,7 +22,7 @@ class IntegratorDTAgent(Agent):
 
         velocity_new = action.float()
         position_new = (state[0:2] + velocity_new * dt).float()
-        return build_state_vector(position_new, velocity_new)
+        return self.build_state_vector(position_new, velocity_new)
 
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
         """
@@ -41,4 +39,4 @@ class IntegratorDTAgent(Agent):
         """
         .. math:: [- v_{max}, v_{max}]
         """
-        return -agent_speed_max, agent_speed_max
+        return -AGENT_SPEED_MAX, AGENT_SPEED_MAX

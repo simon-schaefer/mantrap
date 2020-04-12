@@ -1,9 +1,8 @@
 import importlib
 import inspect
 import glob
-import logging
 import os
-from typing import Any, Callable, Dict
+from typing import Callable, Dict
 
 
 def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> str:
@@ -26,19 +25,6 @@ def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> 
     return path
 
 
-def no_pytest() -> bool:
-    return "PYTEST_CURRENT_TEST" not in os.environ
-
-
-def remove_bytes_from_logging(fn):
-    """Remove weird IPOPT callbacks logging output (byte strings) from log."""
-    def remove_bytes(*args):
-        if type(args[1]) == logging.LogRecord and type(args[1].msg) == bytes:  #
-            return
-        return fn(*args)
-    return remove_bytes
-
-
 def load_functions_from_module(module: str, prefix: str = None) -> Dict[str, Callable]:
     """Using importlib and inspect libraries load all functions (with prefix) from given module."""
     function_dict = {}
@@ -53,7 +39,3 @@ def load_functions_from_module(module: str, prefix: str = None) -> Dict[str, Cal
         else:
             function_dict[function_name] = function_tuple[1]
     return function_dict
-
-
-def dict_value_or_default(dictionary: Dict[str, Any], key: str, default: Any) -> Any:
-    return dictionary[key] if key in dictionary.keys() else default

@@ -2,6 +2,7 @@ from typing import List
 
 import torch
 
+from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 
@@ -38,7 +39,7 @@ class InteractionPositionModule(ObjectiveModule):
             for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
                 for t in range(1, self.T - 1):
                     m_ado, m_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
-                    ado_position = graphs[f"{ghost.id}_{t}_position"]
+                    ado_position = graphs[f"{ghost.id}_{t}_{GK_POSITION}"]
                     ado_position_wo = self._ado_positions_wo[m_ado, m_mode, t, :]
                     objective += torch.norm(ado_position - ado_position_wo) * ghost.weight
 

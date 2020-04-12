@@ -3,6 +3,7 @@ from typing import List, Tuple
 import numpy as np
 import torch
 
+from mantrap.constants import *
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.maths import lagrange_interpolation
 from mantrap.utility.primitives import square_primitives
@@ -23,8 +24,8 @@ class IGradSolver(IPOPTSolver):
     def initialize(self, **solver_params):
         # Number of control points determines the number of points used for interpolation, next to the initial
         # and terminal (goal) point. This is equivalent to the number of optimization variables (x2 -> 2D).
-        if "num_control_points" not in solver_params.keys():
-            self._solver_params["num_control_points"] = 2
+        if PARAMS_NUM_CONTROL_POINTS not in solver_params.keys():
+            self._solver_params[PARAMS_NUM_CONTROL_POINTS] = 2
 
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
         ego_path_init = square_primitives(
@@ -46,14 +47,14 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
     @staticmethod
     def objective_defaults() -> List[Tuple[str, float]]:
-        return [("interaction", 1.0)]
+        return [(OBJECTIVE_INTERACTION, 1.0)]
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
     @staticmethod
     def constraints_defaults() -> List[str]:
-        return ["max_speed"]
+        return [CONSTRAINT_MAX_SPEED]
 
     ###########################################################################
     # Utility #################################################################
@@ -80,7 +81,7 @@ class IGradSolver(IPOPTSolver):
 
     @property
     def num_control_points(self) -> int:
-        return self._solver_params["num_control_points"]
+        return self._solver_params[PARAMS_NUM_CONTROL_POINTS]
 
     ###########################################################################
     # Logging parameters ######################################################
