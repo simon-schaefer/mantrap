@@ -7,9 +7,10 @@ mantrap
    :caption: Contents:
 
    agents.rst
-   simulation.rst
+   environment.rst
    solver.rst
    constraints.rst
    objectives.rst
+   filter.rst
    evaluation.rst
    visualisation.rst
