@@ -407,7 +407,7 @@ class GraphBasedEnvironment(ABC):
         if ego_state is not None:
             assert check_ego_state(x=ego_state, enforce_temporal=False)
             graph[f"{ID_EGO}_{k}_{GK_POSITION}"] = ego_state[0:2]
-            graph[f"{ID_EGO}_{k}_{GK_POSITION}"] = ego_state[2:4]
+            graph[f"{ID_EGO}_{k}_{GK_VELOCITY}"] = ego_state[2:4]
 
             if ego_grad and not graph[f"{ID_EGO}_{k}_{GK_POSITION}"].requires_grad:  # if require_grad is set
                 graph[f"{ID_EGO}_{k}_{GK_POSITION}"].requires_grad = True
