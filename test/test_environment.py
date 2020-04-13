@@ -6,6 +6,7 @@ import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
+from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment, Trajectron
 from mantrap.utility.maths import Distribution, DirecDelta
@@ -98,8 +99,7 @@ class TestEnvironment:
         trajectory = torch.zeros((prediction_horizon, 4))  # does not matter here anyway
         graphs = env.build_connected_graph(ego_trajectory=trajectory)
 
-        assert all([f"ego_{k}_position" in graphs.keys() for k in range(prediction_horizon)])
-        assert all([f"ego_{k}_velocity" in graphs.keys() for k in range(prediction_horizon)])
+        assert env.check_graph(graph=graphs, include_ego=True, t_horizon=prediction_horizon)
 
     @staticmethod
     def test_ego_graph_updates(environment_class: GraphBasedEnvironment.__class__):
@@ -113,7 +113,7 @@ class TestEnvironment:
 
         graphs = env.build_connected_graph(ego_trajectory=torch.cat((path, torch.zeros((11, 2))), dim=1))
         for k in range(path.shape[0]):
-            assert torch.all(torch.eq(path[k, :], graphs[f"ego_{k}_position"]))
+            assert torch.all(torch.eq(path[k, :], graphs[f"{ID_EGO}_{k}_{GK_POSITION}"]))
 
     @staticmethod
     def test_ghost_sorting(environment_class: GraphBasedEnvironment.__class__):
@@ -276,9 +276,10 @@ def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
     for i, env in enumerate([env_1, env_2]):
         env.add_ado(position=torch.zeros(2))
         graph = env.build_graph(ego_state=env.ego.state)
-        forces[i, :] = graph[f"{env.ghosts[0].id}_0_control"]
-        ado_force_norm = graph[f"{env.ghosts[0].id}_0_output"]
-        gradients[i, :] = torch.autograd.grad(ado_force_norm, graph["ego_0_position"], retain_graph=True)[0].detach()
+        forces[i, :] = graph[f"{env.ghosts[0].id}_0_{GK_CONTROL}"]
+        ado_force_norm_0 = graph[f"{env.ghosts[0].id}_0_{GK_OUTPUT}"]
+        ego_position_0 = graph[f"{ID_EGO}_0_{GK_POSITION}"]
+        gradients[i, :] = torch.autograd.grad(ado_force_norm_0, ego_position_0, retain_graph=True)[0].detach()
 
     # The force is distance based, so more distant agents should affect a smaller force.
     assert torch.norm(forces[0, :]) > torch.norm(forces[1, :])

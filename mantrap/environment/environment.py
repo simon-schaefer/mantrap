@@ -88,6 +88,9 @@ class GraphBasedEnvironment(ABC):
         def params(self) -> Dict[str, float]:
             return self._params
 
+    ###########################################################################
+    # Initialization ##########################################################
+    ###########################################################################
     def __init__(
         self,
         ego_type: Agent.__class__ = None,
@@ -222,7 +225,7 @@ class GraphBasedEnvironment(ABC):
 
         ego_trajectory = self.ego.unroll_trajectory(controls=ego_controls, dt=self.dt)
         graphs = self.build_connected_graph(ego_trajectory, ego_grad=False, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=ego_controls.shape[0] + 1, returns=return_more)
+        return self.transcribe_graph(graphs, t_horizon=ego_controls.shape[0] + 1, return_more=return_more)
 
     def predict_w_trajectory(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
@@ -239,7 +242,7 @@ class GraphBasedEnvironment(ABC):
         assert self.sanity_check()
 
         graphs = self.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=ego_trajectory.shape[0], returns=return_more)
+        return self.transcribe_graph(graphs, t_horizon=ego_trajectory.shape[0], return_more=return_more)
 
     def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
@@ -254,7 +257,7 @@ class GraphBasedEnvironment(ABC):
         assert self.sanity_check()
 
         graphs = self.build_connected_graph_wo_ego(t_horizon=t_horizon, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=t_horizon, returns=return_more)
+        return self.transcribe_graph(graphs, t_horizon=t_horizon, return_more=return_more)
 
     ###########################################################################
     # Scene ###################################################################
@@ -387,21 +390,99 @@ class GraphBasedEnvironment(ABC):
         For building the graph the graphs for each single time-step is built independently while being connected
         using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
         terms of computational effort and space, however end-to-end-differentiable.
+
+        Build the graph conditioned on some `ego_trajectory`, which is assumed to be fix while the ados in the scene
+        behave accordingly, i.e. in reaction to the ego's trajectory. The resulting graph will then contain states
+        and controls for every agent in the scene for t in [0, t_horizon], which t_horizon = length of ego trajectory.
+
+        :param ego_trajectory: ego's trajectory (t_horizon, 5).
+        :kwargs: additional graph building arguments.
+        :return: dictionary over every state of every agent in the scene for t in [0, t_horizon].
         """
         assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        return self._build_connected_graph(t_horizon=ego_trajectory.shape[0], ego_trajectory=ego_trajectory, **kwargs)
+        assert self.ego is not None
+        graph = self._build_connected_graph(ego_trajectory=ego_trajectory, **kwargs)
+        assert self.check_graph(graph, t_horizon=ego_trajectory.shape[0], include_ego=True)
+        return graph
 
     @abstractmethod
-    def _build_connected_graph(self, t_horizon: int, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+    def _build_connected_graph(self, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+        """Build a connected graph based on the ego's trajectory.
+
+        The graph should span over the time-horizon of the length of the ego's trajectory and contain the state
+        (position, velocity) and "controls" of every ghost in the scene as well as the ego's states itself. When
+        possible the graph should be differentiable, such that finding some gradient between the outputted ado
+        states and the inputted ego trajectory is determinable.
+
+        :param ego_trajectory: ego's trajectory (t_horizon, 5).
+        :return: dictionary over every state of every agent in the scene for t in [0, t_horizon].
+        """
         raise NotImplementedError
 
-    @abstractmethod
     def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
+        """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
+        the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
+        using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
+        graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.
+
+        For building the graph the graphs for each single time-step is built independently while being connected
+        using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
+        terms of computational effort and space, however end-to-end-differentiable.
+
+        Build the graph as if no ego robot would be in the scene, whether or not an ego agent is defined internally.
+        Therefore, merely the time-horizon for the predictions (= number of prediction time-steps) is passed.
+
+        :param t_horizon: number of prediction time-steps.
+        :kwargs: additional graph building arguments.
+        :return: dictionary over every state and control of every ado in the scene for t in [0, t_horizon].
+        """
+        assert t_horizon > 0
+        graph = self._build_connected_graph_wo_ego(t_horizon=t_horizon, **kwargs)
+        assert self.check_graph(graph, t_horizon=t_horizon, include_ego=False)
+        return graph
+
+    @abstractmethod
+    def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
+        """Build a connected graph over `t_horizon` time-steps for ados only.
+
+        The graph should span over the time-horizon of the inputted number of time-steps and contain the state
+        (position, velocity) and "controls" of every ghost in the scene as well as the ego's states itself. When
+        possible the graph should be differentiable, such that finding some gradient between the outputted ado
+        states and the inputted ego trajectory is determinable.
+
+        :param t_horizon: number of prediction time-steps.
+        :return: dictionary over every state of every ado in the scene for t in [0, t_horizon].
+        """
         raise NotImplementedError
+
+    def check_graph(self, graph: Dict[str, torch.Tensor], t_horizon: int, include_ego: bool = True) -> bool:
+        """Check connected graph keys for completeness. The graph is connected for several (discrete) time-steps,
+        from 0 to `t_horizon` and should contain a state and control for every agent in the scene for these
+        points in time. As the graph is assumed to be complete in keys, a non-complete graph cannot be used for
+        further computation.
+        """
+        for ghost_id in self.ghost_ids:
+            assert all([f"{ghost_id}_{k}_{GK_POSITION}" in graph.keys() for k in range(t_horizon)])
+            assert all([f"{ghost_id}_{k}_{GK_VELOCITY}" in graph.keys() for k in range(t_horizon)])
+            assert all([f"{ghost_id}_{k}_{GK_CONTROL}" in graph.keys() for k in range(t_horizon)])
+
+        if include_ego:
+            assert all([f"{ID_EGO}_{k}_{GK_POSITION}" in graph.keys() for k in range(t_horizon)])
+            assert all([f"{ID_EGO}_{k}_{GK_VELOCITY}" in graph.keys() for k in range(t_horizon)])
+
+        return True
 
     def write_state_to_graph(
         self, ego_state: torch.Tensor = None, k: int = 0, ado_grad: bool = False, ego_grad: bool = True
     ) -> Dict[str, torch.Tensor]:
+        """Given some state for the ego (and the internal state of every ghost in the scene), initialize a graph
+        and write these states into it. A graph is a dictionary of tensors for this current state.
+
+        :param ego_state: current state of ego robot (might deviate from internal state) (5).
+        :param k: time-step count for graph key description.
+        :param ado_grad: flag whether the ado-related tensors should originate a gradient-chain.
+        :param ego_grad: flag whether the ego-related tensors should originate a gradient-chain.
+        """
         graph = {}
 
         if ego_state is not None:
@@ -422,8 +503,16 @@ class GraphBasedEnvironment(ABC):
 
         return graph
 
-    def transcribe_graph(self, graph: Dict[str, torch.Tensor], t_horizon: int, returns: bool = False):
-        """Remodel environment outputs, as they are all stored in the environment graph. """
+    def transcribe_graph(self, graph: Dict[str, torch.Tensor], t_horizon: int, return_more: bool = False):
+        """Transcribe states stored in a graph into trajectories and controls.
+
+        A connected graph contains the states and controls of every agent in the scene (ego & ados) for every
+        t in [0, t_horizon]. Read these states and controls to build a trajectory for the ados in the scene.
+
+        :param graph: connected input graph.
+        :param t_horizon: time-horizon to build trajectory (number of discrete time-steps).
+        :param return_more: return ado-trajectory, -controls and -weights or trajectory only.
+        """
         ado_controls = torch.zeros((self.num_ados, self.num_modes, t_horizon - 1, 2))
         ado_trajectories = torch.zeros((self.num_ados, self.num_modes, t_horizon, 5))
         weights = torch.zeros((self.num_ados, self.num_modes))
@@ -440,13 +529,14 @@ class GraphBasedEnvironment(ABC):
 
         # Check output shapes. Besides, since all modes originate in the same ado, their first state (t = t0) should
         # be equivalent, namely the current environment's state, since it is deterministic.
-        assert check_ado_controls(ado_controls, num_ados=self.num_ados, num_modes=self.num_modes, t_horizon=t_horizon-1)
-        assert check_weights(weights, num_ados=self.num_ados, num_modes=self.num_modes)
-        assert check_ado_trajectories(ado_trajectories, self.num_ados, t_horizon=t_horizon, modes=self.num_modes)
+        num_modes, num_ados = self.num_modes, self.num_ados
+        assert check_ado_controls(ado_controls, num_ados=num_ados, num_modes=num_modes, t_horizon=t_horizon-1)
+        assert check_weights(weights, num_ados=num_ados, num_modes=num_modes)
+        assert check_ado_trajectories(ado_trajectories, ados=num_ados, t_horizon=t_horizon, modes=num_modes)
         for ghost in self.ghosts:
             m_ado, m_mode = self.convert_ghost_id(ghost_id=ghost.id)
             assert torch.all(torch.eq(ado_trajectories[m_ado, m_mode, 0, :], ado_trajectories[m_ado, 0, 0, :]))
-        return ado_trajectories if not returns else (ado_trajectories, ado_controls, weights)
+        return ado_trajectories if not return_more else (ado_trajectories, ado_controls, weights)
 
     def detach(self):
         """Detach all internal agents (ego and all ado ghosts) from computation graph. This is sometimes required to

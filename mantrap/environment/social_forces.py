@@ -7,6 +7,7 @@ from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.maths import Distribution, Gaussian
+from mantrap.utility.shaping import check_ego_trajectory
 
 
 class SocialForcesEnvironment(GraphBasedEnvironment):
@@ -177,12 +178,23 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
     ###########################################################################
     # Simulation Graph over time-horizon ######################################
     ###########################################################################
-    def _build_connected_graph(
-        self,
-        t_horizon: int,
-        ego_trajectory: Union[List[None], torch.Tensor],
-        **kwargs
-    ) -> Dict[str, torch.Tensor]:
+    def _build_connected_graph(self, ego_trajectory: Union[List, torch.Tensor], **kwargs) -> Dict[str, torch.Tensor]:
+        """Build a connected graph based on the ego's trajectory.
+
+        The graph should span over the time-horizon of the length of the ego's trajectory and contain the state
+        (position, velocity) and "controls" of every ghost in the scene as well as the ego's states itself. When
+        possible the graph should be differentiable, such that finding some gradient between the outputted ado
+        states and the inputted ego trajectory is determinable.
+
+        Since the Social Forces simulation is not conditioned on the ego's presence a list of None can be passed,
+        in order to build a graph without an ego in the scene.
+
+        :param ego_trajectory: ego's trajectory (t_horizon, 5) or list of None if no ego in the scene.
+        :return: dictionary over every state of every agent in the scene for t in [0, t_horizon].
+        """
+        if not all([x is None for x in ego_trajectory]):
+            assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+
         # Since the ghosts are used for building the graph, and in during this process updated over the time horizon,
         # they are (deep-)copied in order to be able to re-construct them afterwards.
         ado_ghosts_copy = deepcopy(self._ado_ghosts)
@@ -193,6 +205,7 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         # Build the graph iteratively for the whole prediction horizon.
         # Social forces assumes all agents to be controlled by some force vector, i.e. to be double integrators.
         assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in self._ado_ghosts])
+        t_horizon = ego_trajectory.shape[0]
         for t in range(1, t_horizon):
             for m_ghost, ghost in enumerate(self._ado_ghosts):
                 self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost.id}_{t - 1}_{GK_CONTROL}"], dt=self.dt)
@@ -213,7 +226,21 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
         self._ado_ghosts = ado_ghosts_copy
         return graphs
 
-    def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
+    def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
+        """Build a connected graph over `t_horizon` time-steps for ados only.
+
+        The graph should span over the time-horizon of the inputted number of time-steps and contain the state
+        (position, velocity) and "controls" of every ghost in the scene as well as the ego's states itself. When
+        possible the graph should be differentiable, such that finding some gradient between the outputted ado
+        states and the inputted ego trajectory is determinable.
+
+        Since the Social Forces simulation is not conditioned on having an ego agent in the scene, the same method
+        can be used as for building the graph with an ego, just having "None"-ego-states instead of a "proper"
+        trajectory.
+
+        :param t_horizon: number of prediction time-steps.
+        :return: dictionary over every state of every ado in the scene for t in [0, t_horizon].
+        """
         return self._build_connected_graph(t_horizon=t_horizon, ego_trajectory=[None] * t_horizon, **kwargs)
 
     ###########################################################################

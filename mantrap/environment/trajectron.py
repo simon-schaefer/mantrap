@@ -126,7 +126,22 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
-    def _build_connected_graph(self, t_horizon: int, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+    def _build_connected_graph(self, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+        """Build a connected graph based on the ego's trajectory.
+
+        The graph should span over the time-horizon of the length of the ego's trajectory and contain the state
+        (position, velocity) and "controls" of every ghost in the scene as well as the ego's states itself. When
+        possible the graph should be differentiable, such that finding some gradient between the outputted ado
+        states and the inputted ego trajectory is determinable.
+
+        The Trajectron model directly predicts the whole path of every ado in the scene, conditioned on the
+        ego's trajectory. Thereby it assumes every single point of the path to be modelled by a GMM (Gaussian Mixture
+        Model). While the mean positions of the N most important modes are used to build the ado's trajectory, their
+        uncertainty (`log_sigmas`) are used to determine the weight and thereby the choice of these modes.
+
+        :param ego_trajectory: ego's trajectory (t_horizon, 5).
+        :return: dictionary over every state of every agent in the scene for t in [0, t_horizon].
+        """
         assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         assert self.num_ados > 0  # trajectron conditioned on ados and ego, so both must be in the scene (!)
         t_horizon = ego_trajectory.shape[0]
@@ -187,7 +202,21 @@ class Trajectron(GraphBasedEnvironment):
                 self._ado_ghosts[m_ghost].weight = ado_weights[m_ado, m_mode]
         return graph
 
-    def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
+    def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
+        """Build a connected graph over `t_horizon` time-steps for ados only.
+
+        The graph should span over the time-horizon of the inputted number of time-steps and contain the state
+        (position, velocity) and "controls" of every ghost in the scene as well as the ego's states itself. When
+        possible the graph should be differentiable, such that finding some gradient between the outputted ado
+        states and the inputted ego trajectory is determinable.
+
+        The Trajectron model is conditioned on some ego trajectory. Therefore in order to "simulate" the behaviour
+        of the agents in the scene if no ego would be there, a "pseudo"-ego-trajectory is built, by shifting it
+        to the borders of the environment and having nearly zero velocity.
+
+        :param t_horizon: number of prediction time-steps.
+        :return: dictionary over every state of every ado in the scene for t in [0, t_horizon].
+        """
         pseudo_traj = self._pseudo_ego.unroll_trajectory(torch.ones((t_horizon, 2)) * 0.01, dt=self.dt)
         return self._build_connected_graph(t_horizon=t_horizon, ego_trajectory=pseudo_traj, **kwargs)
 
