@@ -46,7 +46,8 @@ class Trajectron(GraphBasedEnvironment):
 
         # For prediction un-conditioned on the ego (`predict_wo_ego()`) we need a pseudo-ego trajectory, since the
         # input dimensions for the trajectron have to stay the same.
-        self._pseudo_ego = IntegratorDTAgent(position=torch.tensor([self.axes[0][0], self.axes[1][0]]))
+        self._pseudo_ego = IntegratorDTAgent(position=torch.tensor([self.axes[0][0], self.axes[1][0]]),
+                                             velocity=torch.zeros(2))
 
         # Create default trajectron scene. The duration of the scene is not known a priori, however a large value
         # allows to simulate for a long time horizon later on.
@@ -66,7 +67,7 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, **ado_kwargs):
+    def add_ado(self, **ado_kwargs) -> Agent:
         """Add a new ado and its mode to the scene.
 
         For the Trajectron model the multi-modality evolves at the output, not the input. Therefore instead of
@@ -81,12 +82,13 @@ class Trajectron(GraphBasedEnvironment):
         are initialized as a not really meaningful uniform distribution for now and then updated during the
         environment's prediction step.
         """
-        super(Trajectron, self).add_ado(ado_type=IntegratorDTAgent, **ado_kwargs)
+        ado = super(Trajectron, self).add_ado(ado_type=IntegratorDTAgent, **ado_kwargs)
 
         # Add a ado to Trajectron neural network model using reference ghost.
         ado_id, _ = self.split_ghost_id(ghost_id=self.ghosts[-1].id)
         ado_history = self.ghosts[-1].agent.history
         self._add_ado_to_graph(ado_history=ado_history, ado_id=ado_id)
+        return ado
 
     def _add_ado_to_graph(self, ado_history: torch.Tensor, ado_id: str):
         from data import Node
@@ -109,7 +111,7 @@ class Trajectron(GraphBasedEnvironment):
         # requires this ego. Therefore we have to add a robot to the scene, might it be an actual ego robot or (if
         # no ego is in the scene) some pseudo robot very far away from the other agents in the scene.
         node_data = self._create_node_data(state_history=ego.history)
-        node = Node(node_type=self._gt_env.NodeType.ROBOT, node_id=ego.id, data=node_data, is_robot=True)
+        node = Node(node_type=self._gt_env.NodeType.ROBOT, node_id=ID_EGO, data=node_data, is_robot=True)
         self._gt_scene.robot = node
         self._gt_scene.nodes.append(node)
 
@@ -152,15 +154,15 @@ class Trajectron(GraphBasedEnvironment):
         # Predict over full time-horizon at once and write resulting (simulated) ado trajectories to graph. By passing
         # the robot's trajectory the distribution is conditioned on it.
         # Using `full_dist = True` not just the mean of the resulting trajectory but also the covariances are returned.
-        ego_state, ado_states = self.states()
+        _, ado_states = self.states()
         node_state_dict = {}
         for node in self._gt_scene.nodes:
             agent_id = self.agent_id_from_node_id(node.__str__())
             if agent_id == ID_EGO:
-                node_state_dict[node] = ego_state[0:2]
+                node_state_dict[node] = ego_trajectory[0, 0:2].detach()  # first state of trajectory is current state!
             else:
                 m_ado = self.index_ado_id(agent_id)
-                node_state_dict[node] = ado_states[m_ado, 0:2]
+                node_state_dict[node] = ado_states[m_ado, 0:2].detach()
         dd = Derivative2(horizon=t_horizon, dt=self.dt, velocity=True)
         trajectory_w_acc = torch.cat((ego_trajectory[:, 0:4], dd.compute(ego_trajectory[:, 2:4])), dim=1)
         distribution, _ = self.trajectron.incremental_forward(
@@ -388,3 +390,18 @@ class Trajectron(GraphBasedEnvironment):
     @property
     def config(self) -> Dict[str, Any]:
         return self._config
+
+    ###########################################################################
+    # Simulation parameters ###################################################
+    ###########################################################################
+    @property
+    def environment_name(self) -> str:
+        return "trajectron"
+
+    @property
+    def is_multi_modality(self) -> bool:
+        return True
+
+    @property
+    def is_deterministic(self) -> bool:
+        return False

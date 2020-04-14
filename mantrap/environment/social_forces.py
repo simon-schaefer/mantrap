@@ -2,6 +2,7 @@ from typing import Dict, List, Union
 
 import torch
 
+from mantrap.agents.agent import Agent
 from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
@@ -45,7 +46,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
         sigmas: Union[List[Distribution], List[float]] = None,
         weights: List[float] = None,
         **ado_kwargs,
-    ):
+    ) -> Agent:
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
         assert goal.size() == torch.Size([2])
@@ -78,7 +79,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
             args_list.append({PARAMS_V0: v0, PARAMS_SIGMA: sigma, PARAMS_TAU: tau, PARAMS_GOAL: goal})
 
         # Finally add ado ghosts to environment.
-        super(SocialForcesEnvironment, self).add_ado(
+        return super(SocialForcesEnvironment, self).add_ado(
             ado_type=DoubleIntegratorDTAgent,
             num_modes=num_modes,
             weights=weights,
@@ -138,7 +139,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
             # Destination force - Force pulling the ado to its assigned goal position.
             direction = torch.sub(graph_k[f"{ghost.id}_{k}_{GK_GOAL}"], graph_k[f"{ghost.id}_{k}_{GK_POSITION}"])
             goal_distance = torch.norm(direction)
-            if goal_distance.data < ENV_SOCIAL_FORCES_MIN_GOAL_DISTANCE:
+            if goal_distance.item() < ENV_SOCIAL_FORCES_MAX_GOAL_DISTANCE:
                 destination_force = torch.zeros(2)
             else:
                 direction = torch.div(direction, goal_distance)
@@ -177,11 +178,11 @@ class SocialForcesEnvironment(IterativeEnvironment):
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def _copy_ados(self, copy: 'GraphBasedEnvironment') -> 'GraphBasedEnvironment':
+    def _copy_ados(self, env_copy: 'GraphBasedEnvironment') -> 'GraphBasedEnvironment':
         for i in range(self.num_ados):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
-            copy.add_ado(
+            env_copy.add_ado(
                 position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
@@ -192,11 +193,19 @@ class SocialForcesEnvironment(IterativeEnvironment):
                 v0s=[ghost.params[PARAMS_V0] for ghost in ghosts_ado],
                 sigmas=[ghost.params[PARAMS_SIGMA] for ghost in ghosts_ado],
             )
-        return copy
+        return env_copy
 
     ###########################################################################
-    # Simulation parameters ###################################################
+    # Simulation properties ###################################################
     ###########################################################################
     @property
     def environment_name(self) -> str:
         return "social_forces"
+
+    @property
+    def is_multi_modality(self) -> bool:
+        return True
+
+    @property
+    def is_deterministic(self) -> bool:
+        return True

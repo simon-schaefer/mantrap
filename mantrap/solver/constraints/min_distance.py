@@ -35,14 +35,14 @@ class MinDistanceModule(ConstraintModule):
         num_constraints_per_step = len(ado_ids) * self._env.num_modes
         horizon = ego_trajectory.shape[0]
 
-        graphs = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
+        graph = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
         constraints = torch.zeros((num_constraints_per_step, horizon))
         for m_ado, ado_id in enumerate(ado_ids):
             ghosts = self._env.ghosts_by_ado_id(ado_id=ado_id)
             for m_ghost, ghost in enumerate(ghosts):
                 for t in range(horizon):
                     m = m_ado * len(ghosts) + m_ghost
-                    ado_position = graphs[f"{ghost.id}_{t}_{GK_POSITION}"]
+                    ado_position = graph[f"{ghost.id}_{t}_{GK_POSITION}"]
                     ego_position = ego_trajectory[t, 0:2]
                     constraints[m, t] = torch.norm(ado_position - ego_position)
         return constraints.flatten()

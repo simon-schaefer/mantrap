@@ -8,8 +8,7 @@ import torch
 from mantrap.constants import AGENT_SPEED_MAX, CONSTRAINT_MIN_L2_DISTANCE
 from mantrap.agents import IntegratorDTAgent
 from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment
-from mantrap.environment.environment import GraphBasedEnvironment
-from mantrap.solver import MonteCarloTreeSearch, SGradSolver, IGradSolver, ORCASolver
+from mantrap.solver import MonteCarloTreeSearch, SGradSolver, IGradSolver
 from mantrap.solver.solver import Solver
 from mantrap.solver.ipopt_solver import IPOPTSolver
 from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories
@@ -275,127 +274,5 @@ def test_s_grad_solver():
 
     for t in range(10):
         for m in range(env.num_ghosts):
-            assert torch.norm(ego_trajectory_opt[t, 0:2] - ado_trajectories[m, :, t, 0:2]).item() >= CONSTRAINT_MIN_L2_DISTANCE
-
-
-###########################################################################
-# Test - ORCA Solver ######################################################
-###########################################################################
-class ORCAEnvironment(GraphBasedEnvironment):
-
-    orca_rad = 1.0
-    orca_dt = 10.0
-    sim_dt = 0.25
-    sim_speed_max = 4.0
-
-    def __init__(self, ego_type=None, ego_kwargs=None, dt: float = sim_dt, **kwargs):
-        super(ORCAEnvironment, self).__init__(ego_type, ego_kwargs, dt=self.sim_dt, **kwargs)
-        self._ado_goals = []
-        self._sim_time = self.time
-
-    def add_ado(self, goal_position: Union[torch.Tensor, None] = torch.zeros(2), num_modes: int = 1, **ado_kwargs):
-        assert num_modes == 1
-        super(ORCAEnvironment, self).add_ado(ado_type=IntegratorDTAgent, log=False, num_modes=num_modes, **ado_kwargs)
-        self._ado_goals.append(goal_position)
-
-    def step(self, ego_policy: torch.Tensor = None) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
-        self._sim_time = self.time + self.dt
-
-        assert self._ego is None, "environment merely should have ado agents"
-        assert all([ghost.agent.__class__ == IntegratorDTAgent for ghost in self.ghosts])
-
-        controls = torch.zeros((self.num_ados, 2))
-        for ia, ghost in enumerate(self.ghosts):
-            ado = ghost.agent  # uni-modal so ghosts = ados
-            ado_kwargs = {"position": ado.position, "velocity": ado.velocity, "log": False}
-            ado_env = ORCAEnvironment(IntegratorDTAgent, ego_kwargs=ado_kwargs)
-            for other in self.ghosts[:ia] + self.ghosts[ia + 1:]:  # all agent except current loop element
-                other_ado = other.agent  # uni-modal so ghosts = ados
-                ado_env.add_ado(position=other_ado.position, velocity=other_ado.velocity, goal_position=None)
-
-            ado_solver = ORCASolver(ado_env, goal=self._ado_goals[ia], t_planning=1, multiprocessing=False)
-            controls[ia, :] = ado_solver.determine_ego_controls(
-                speed_max=self.sim_speed_max, agent_radius=self.orca_rad, safe_dt=self.orca_dt
-            )
-
-        for j in range(self.num_ados):
-            self._ado_ghosts[j].agent.update(controls[j, :], dt=self.dt)
-        return torch.stack([ghost.agent.state for ghost in self.ghosts]), None
-
-    def _build_connected_graph(self, t_horizon: int, ego_trajectory: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
-        raise NotImplementedError
-
-    def build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
-        raise NotImplementedError
-
-
-def test_orca_single_agent():
-    pos_init = torch.zeros(2)
-    vel_init = torch.zeros(2)
-    goal_pos = torch.ones(2) * 4
-
-    pos_expected = torch.tensor([[0, 0], [0.70710, 0.70710], [1.4142, 1.4142], [2.1213, 2.1213], [2.8284, 2.8284]])
-
-    sim = ORCAEnvironment()
-    sim.add_ado(position=pos_init, velocity=vel_init, goal_position=goal_pos)
-
-    assert sim.num_ados == 1
-    assert torch.all(torch.eq(sim.ghosts[0].agent.position, pos_init))
-    assert torch.all(torch.eq(sim.ghosts[0].agent.velocity, vel_init))
-
-    pos = torch.zeros(pos_expected.shape)
-
-    pos[0, :] = sim.ghosts[0].agent.position
-    for k in range(1, pos.shape[0]):
-        state_k, _ = sim.step()
-        pos[k, :] = state_k[0, :2]
-
-    assert torch.isclose(torch.norm(pos - pos_expected), torch.zeros(1), atol=0.1)
-
-
-def test_orca_two_agents():
-    pos_init = torch.tensor([[-5, 0.1], [5, -0.1]])
-    vel_init = torch.zeros((2, 2))
-    goal_pos = torch.tensor([[5, 0], [-5, 0]])
-
-    pos_expected = torch.tensor(
-        [
-            [
-                [-5, 0.1],
-                [-4.8998, 0.107995],
-                [-4.63883, 0.451667],
-                [-3.65957, 0.568928],
-                [-2.68357, 0.6858],
-                [-1.7121, 0.802128],
-                [-0.747214, 0.917669],
-                [0.207704, 1.03202],
-                [1.18529, 0.821493],
-                [2.16288, 0.61097],
-            ],
-            [
-                [5, -0.1],
-                [4.8998, -0.107995],
-                [4.63883, -0.451667],
-                [3.65957, -0.568928],
-                [2.68357, -0.6858],
-                [1.7121, -0.802128],
-                [0.747214, -0.917669],
-                [-0.207704, -1.03202],
-                [-1.18529, -0.821493],
-                [-2.16288, -0.61097],
-            ],
-        ]
-    )
-
-    sim = ORCAEnvironment()
-    sim.add_ado(position=pos_init[0, :], velocity=vel_init[0, :], goal_position=goal_pos[0, :])
-    sim.add_ado(position=pos_init[1, :], velocity=vel_init[1, :], goal_position=goal_pos[1, :])
-
-    pos = torch.zeros(pos_expected.shape)
-    pos[0, 0, :] = sim.ghosts[0].agent.position
-    pos[1, 0, :] = sim.ghosts[1].agent.position
-    for k in range(1, pos.shape[1]):
-        state_k, _ = sim.step()
-        pos[:, k, :] = state_k[:, :2]
-
-    assert torch.isclose(torch.norm(pos - pos_expected), torch.zeros(1), atol=0.1)
+            distance = ego_trajectory_opt[t, 0:2] - ado_trajectories[m, :, t, 0:2]
+            assert torch.norm(distance).item() >= CONSTRAINT_MIN_L2_DISTANCE

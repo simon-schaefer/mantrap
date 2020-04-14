@@ -36,7 +36,7 @@ class InteractionAccelerationModule(ObjectiveModule):
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
 
-        graphs = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
+        graph = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
 
         objective = torch.zeros(1)
         for ado_id in ado_ids:
@@ -44,9 +44,9 @@ class InteractionAccelerationModule(ObjectiveModule):
                 for t in range(1, self.T - 1):
                     i_ado, i_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
                     ado_acceleration = self._derivative_2.compute_single(
-                        graphs[f"{ghost.id}_{t - 1}_{GK_POSITION}"],
-                        graphs[f"{ghost.id}_{t}_{GK_POSITION}"],
-                        graphs[f"{ghost.id}_{t}_{GK_POSITION}"],
+                        graph[f"{ghost.id}_{t - 1}_{GK_POSITION}"],
+                        graph[f"{ghost.id}_{t}_{GK_POSITION}"],
+                        graph[f"{ghost.id}_{t}_{GK_POSITION}"],
                     )
                     ado_acceleration_wo = self._ado_accelerations_wo[i_ado, i_mode, t, :]
                     objective += torch.norm(ado_acceleration - ado_acceleration_wo) * ghost.weight

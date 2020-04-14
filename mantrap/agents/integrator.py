@@ -6,9 +6,13 @@ from mantrap.agents.agent import Agent
 from mantrap.constants import AGENT_SPEED_MAX, ENV_DT_DEFAULT
 from mantrap.utility.shaping import check_ego_action, check_ego_state
 
+
 class IntegratorDTAgent(Agent):
     def __init__(
-        self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2), history: torch.Tensor = None, **kwargs
+        self,
+        position: torch.Tensor,
+        velocity: torch.Tensor = torch.zeros(2),
+        history: torch.Tensor = None, **kwargs
     ):
         super(IntegratorDTAgent, self).__init__(position, velocity, history=history, **kwargs)
 

@@ -2,6 +2,7 @@ from typing import Dict
 
 import torch
 
+from mantrap.agents.agent import Agent
 from mantrap.constants import *
 from mantrap.environment import SocialForcesEnvironment
 
@@ -25,11 +26,14 @@ class PotentialFieldEnvironment(SocialForcesEnvironment):
         position: torch.Tensor = torch.zeros(2),
         velocity: torch.Tensor = torch.zeros(2),
         **kwargs
-    ):
+    ) -> Agent:
         """Add another ado agent to the scene. Thereby set the goal to the initial position of the ado, in order to
         enforce a static agent behaviour, by not giving an incentive to move. """
-        super(PotentialFieldEnvironment, self).add_ado(position=position, goal=position, velocity=velocity, **kwargs)
+        return super(PotentialFieldEnvironment, self).add_ado(position=position, goal=position, velocity=velocity, **kwargs)
 
+    ###########################################################################
+    # Simulation Graph ########################################################
+    ###########################################################################
     def build_graph(self, ego_state: torch.Tensor = None, k: int = 0,  **graph_kwargs) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = self.write_state_to_graph(ego_state, k=k, **graph_kwargs)
@@ -58,3 +62,11 @@ class PotentialFieldEnvironment(SocialForcesEnvironment):
     @property
     def environment_name(self) -> str:
         return "potential_field"
+
+    @property
+    def is_multi_modality(self) -> bool:
+        return False
+
+    @property
+    def is_deterministic(self) -> bool:
+        return True

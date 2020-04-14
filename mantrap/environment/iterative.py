@@ -46,30 +46,30 @@ class IterativeEnvironment(GraphBasedEnvironment, ABC):
         ado_ghosts_copy = deepcopy(self._ado_ghosts)
 
         # Build first graph for the next state, in case no forces are applied on the ego.
-        graphs = self.build_graph(ego_state=ego_trajectory[0], k=0, **kwargs)
+        graph = self.build_graph(ego_state=ego_trajectory[0], k=0, **kwargs)
 
         # Build the graph iteratively for the whole prediction horizon.
         # Social forces assumes all agents to be controlled by some force vector, i.e. to be double integrators.
         t_horizon = len(ego_trajectory)  # works for list and torch.Tensor (= .shape[0])
         for t in range(1, t_horizon):
             for m_ghost, ghost in enumerate(self._ado_ghosts):
-                self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost.id}_{t - 1}_{GK_CONTROL}"], dt=self.dt)
+                self._ado_ghosts[m_ghost].agent.update(graph[f"{ghost.id}_{t - 1}_{GK_CONTROL}"], dt=self.dt)
 
             # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are
             # used for the ego motion, as guesses for the final trajectory i.e. starting points for optimization.
             graph_k = self.build_graph(ego_trajectory[t], k=t, **kwargs)
-            graphs.update(graph_k)
+            graph.update(graph_k)
 
         # Update graph for a last time using the forces determined in the previous step.
         for m_ghost in range(self.num_ghosts):
             ghost_id = self.ghosts[m_ghost].id
-            self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost_id}_{t_horizon - 1}_{GK_CONTROL}"], dt=self.dt)
-            graphs[f"{ghost_id}_{t_horizon}_{GK_POSITION}"] = self.ghosts[m_ghost].agent.position
-            graphs[f"{ghost_id}_{t_horizon}_{GK_VELOCITY}"] = self.ghosts[m_ghost].agent.velocity
+            self._ado_ghosts[m_ghost].agent.update(graph[f"{ghost_id}_{t_horizon - 1}_{GK_CONTROL}"], dt=self.dt)
+            graph[f"{ghost_id}_{t_horizon}_{GK_POSITION}"] = self.ghosts[m_ghost].agent.position
+            graph[f"{ghost_id}_{t_horizon}_{GK_VELOCITY}"] = self.ghosts[m_ghost].agent.velocity
 
         # Reset ado ghosts to previous states.
         self._ado_ghosts = ado_ghosts_copy
-        return graphs
+        return graph
 
     def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
         """Build a connected graph over `t_horizon` time-steps for ados only.
@@ -86,4 +86,4 @@ class IterativeEnvironment(GraphBasedEnvironment, ABC):
         :param t_horizon: number of prediction time-steps.
         :return: dictionary over every state of every ado in the scene for t in [0, t_horizon].
         """
-        return self._build_connected_graph(t_horizon=t_horizon, ego_trajectory=[None] * t_horizon, **kwargs)
+        return self._build_connected_graph(ego_trajectory=[None] * t_horizon, **kwargs)

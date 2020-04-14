@@ -153,13 +153,15 @@ class GraphBasedEnvironment(ABC):
         # mode (given these weights) and update the ados as that sampled mode.
         # The base state should be the same between all modes, therefore update all mode states according to the
         # one sampled mode policy.
-        weights = weights / torch.sum(weights, dim=1)[:, np.newaxis]
+        weights = weights.detach().numpy()
         ado_states = torch.zeros((self.num_ados, 5))  # deterministic update (!)
         sampled_modes = {}
         for ado_id in self.ado_ids:
             i_ado = self.index_ado_id(ado_id=ado_id)
-            assert weights[i_ado, :].numel() == self.num_modes
-            sampled_modes[ado_id] = np.random.choice(range(self.num_modes), p=weights[i_ado, :])
+            assert weights[i_ado, :].size == self.num_modes
+            weights_normed = weights[i_ado, :] / weights[i_ado, :].sum()  # normalize probability
+            choices = np.arange(start=0, stop=self.num_modes)
+            sampled_modes[ado_id] = np.random.choice(choices, p=weights_normed)
 
         # Now update the internal ghost representations accordingly, every ghost originating from the ado should now
         # be "synchronized", i.e. have the same current state.
@@ -209,7 +211,7 @@ class GraphBasedEnvironment(ABC):
     ###########################################################################
     # Prediction ##############################################################
     ###########################################################################
-    def predict_w_controls(self, ego_controls: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+    def predict_w_controls(self, ego_controls: torch.Tensor, return_more: bool = False, **kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados with each other and between the ados and the ego. The implementation therefore is specific
@@ -217,6 +219,7 @@ class GraphBasedEnvironment(ABC):
 
         :param ego_controls: ego control input (pred_horizon, 2).
         :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :param kwargs: additional arguments for graph construction.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
         assert self.ego is not None
@@ -224,10 +227,10 @@ class GraphBasedEnvironment(ABC):
         assert self.sanity_check()
 
         ego_trajectory = self.ego.unroll_trajectory(controls=ego_controls, dt=self.dt)
-        graphs = self.build_connected_graph(ego_trajectory, ego_grad=False, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=ego_controls.shape[0] + 1, return_more=return_more)
+        graph = self.build_connected_graph(ego_trajectory, ego_grad=False, **kwargs)
+        return self.transcribe_graph(graph, t_horizon=ego_controls.shape[0] + 1, return_more=return_more)
 
-    def predict_w_trajectory(self, ego_trajectory: torch.Tensor, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+    def predict_w_trajectory(self, ego_trajectory: torch.Tensor, return_more: bool = False, **kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados with each other and between the ados and the ego. The implementation therefore is specific
@@ -235,29 +238,31 @@ class GraphBasedEnvironment(ABC):
 
         :param ego_trajectory: ego trajectory (pred_horizon, 4).
         :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :param kwargs: additional arguments for graph construction.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
         assert self.ego is not None
         assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True)
         assert self.sanity_check()
 
-        graphs = self.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=ego_trajectory.shape[0], return_more=return_more)
+        graph = self.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False, **kwargs)
+        return self.transcribe_graph(graph, t_horizon=ego_trajectory.shape[0], return_more=return_more)
 
-    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **graph_kwargs) -> torch.Tensor:
+    def predict_wo_ego(self, t_horizon: int, return_more: bool = False, **kwargs) -> torch.Tensor:
         """Predict the environments future for the given time horizon (discrete time).
         The internal prediction model is dependent on the exact implementation of the internal interaction model
         between the ados while ignoring the ego.
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
         :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :param kwargs: additional arguments for graph construction.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
         assert t_horizon > 0
         assert self.sanity_check()
 
-        graphs = self.build_connected_graph_wo_ego(t_horizon=t_horizon, **graph_kwargs)
-        return self.transcribe_graph(graphs, t_horizon=t_horizon, return_more=return_more)
+        graph = self.build_connected_graph_wo_ego(t_horizon=t_horizon, **kwargs)
+        return self.transcribe_graph(graph, t_horizon=t_horizon, return_more=return_more)
 
     ###########################################################################
     # Scene ###################################################################
@@ -288,7 +293,7 @@ class GraphBasedEnvironment(ABC):
         weights: List[float] = None,
         arg_list: List[Dict] = None,
         **ado_kwargs
-    ):
+    ) -> Agent:
         """Add (multi-modal) ado (i.e. non-robot) agent to environment.
         While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
         individually. To do so for each mode an agent is initialized using the passed initialization arguments and
@@ -314,12 +319,16 @@ class GraphBasedEnvironment(ABC):
             self._num_ado_modes = num_modes
         assert num_modes == self.num_modes  # all ados should have same number of modes
 
-        # Append the created ado for every mode.
+        # Append the created ado for every mode. When no weights are given, then initialize with a uniform weight
+        # distribution between the modes. If not sort the modes by order of decreasing weight. For uniform
+        # distributions no modes are not sorted due to the order - inversion during the sorting process, which
+        # is problematic e.g. when copying the environment.
         arg_list = arg_list if arg_list is not None else [dict()] * num_modes
         weights = weights if weights is not None else (torch.ones(num_modes) / num_modes).tolist()
-        index_sorted = list(reversed(np.argsort(weights)))  # per default in increasing order, but we want decreasing
-        arg_list = [arg_list[k] for k in index_sorted]
-        weights = [weights[k] for k in index_sorted]
+        if not all([abs(weights[0] - weights[i]) < 1e-6 for i in range(num_modes)]):  # = non-uniform
+            index_sorted = list(reversed(np.argsort(weights)))  # so that decreasing order
+            arg_list = [arg_list[k] for k in index_sorted]
+            weights = [weights[k] for k in index_sorted]
         assert len(arg_list) == len(weights) == num_modes
 
         for i in range(num_modes):
@@ -330,6 +339,7 @@ class GraphBasedEnvironment(ABC):
 
         # Perform sanity check for environment and agents.
         assert self.sanity_check()
+        return ado
 
     def ados_most_important_mode(self) -> List[Ghost]:
         """Return a list of the most important ghosts, i.e. the ones with the highest weight, for each ado, by
@@ -503,7 +513,12 @@ class GraphBasedEnvironment(ABC):
 
         return graph
 
-    def transcribe_graph(self, graph: Dict[str, torch.Tensor], t_horizon: int, return_more: bool = False):
+    def transcribe_graph(
+        self,
+        graph: Dict[str, torch.Tensor],
+        t_horizon: int,
+        return_more: bool = False
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """Transcribe states stored in a graph into trajectories and controls.
 
         A connected graph contains the states and controls of every agent in the scene (ego & ados) for every
@@ -568,17 +583,17 @@ class GraphBasedEnvironment(ABC):
             env_copy = self.__class__(ego_type, ego_kwargs, dt=self.dt, **self._env_params)
 
             # Add internal ado agents to newly created environment.
-            env_copy = self._copy_ados(copy=env_copy)
+            env_copy = self._copy_ados(env_copy=env_copy)
 
         assert self.same_initial_conditions(other=env_copy)
         assert env_copy.sanity_check()
         return env_copy
 
-    def _copy_ados(self, copy: 'GraphBasedEnvironment') -> 'GraphBasedEnvironment':
+    def _copy_ados(self, env_copy: 'GraphBasedEnvironment') -> 'GraphBasedEnvironment':
         for i in range(self.num_ados):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
-            copy.add_ado(
+            env_copy.add_ado(
                 position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
@@ -586,7 +601,7 @@ class GraphBasedEnvironment(ABC):
                 num_modes=self.num_modes,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
             )
-        return copy
+        return env_copy
 
     def same_initial_conditions(self, other: 'GraphBasedEnvironment'):
         """Similar to __eq__() function, but not enforcing parameters of environment to be completely equivalent,
@@ -776,13 +791,24 @@ class GraphBasedEnvironment(ABC):
         return self._env_params[PARAMS_VERBOSE]
 
     @property
-    def environment_name(self) -> str:
-        return self.__class__.__name__.lower()
-
-    @property
     def config_name(self) -> str:
         return self._env_params[PARAMS_CONFIG]
 
     @property
     def name(self) -> str:
         return self.environment_name + "_" + self.config_name
+
+    ###########################################################################
+    # Simulation properties ###################################################
+    ###########################################################################
+    @property
+    def environment_name(self) -> str:
+        return self.__class__.__name__.lower()
+
+    @property
+    def is_multi_modality(self) -> bool:
+        return True
+
+    @property
+    def is_deterministic(self) -> bool:
+        return True
