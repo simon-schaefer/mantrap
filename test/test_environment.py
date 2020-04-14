@@ -8,7 +8,7 @@ import torch
 from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
-from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment, Trajectron
+from mantrap.environment import *
 from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.primitives import straight_line
 from mantrap.utility.shaping import check_ado_trajectories, check_ado_states, check_ego_state
@@ -19,28 +19,38 @@ from mantrap.utility.shaping import check_ado_trajectories, check_ado_states, ch
 ###########################################################################
 # In order to test the functionality of the environment in a standardized way
 @pytest.mark.parametrize(
-    "environment_class", (SocialForcesEnvironment, PotentialFieldEnvironment, Trajectron)
+    "environment_class, num_modes",
+    [
+        (ORCAEnvironment, 1),  # ORCA is uni-modal only (!)
+        (SocialForcesEnvironment, 1),
+        (SocialForcesEnvironment, 2),
+        (PotentialFieldEnvironment, 1),
+        (PotentialFieldEnvironment, 2),
+        (Trajectron, 1),
+        (Trajectron, 2)
+    ]
 )
 class TestEnvironment:
 
     @staticmethod
-    def test_initialization(environment_class: GraphBasedEnvironment.__class__):
+    def test_initialization(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([4, 6])})
         assert torch.all(torch.eq(env.ego.position, torch.tensor([4, 6]).float()))
         assert env.num_ados == 0
         assert env.time == 0.0
-        env.add_ado(position=torch.tensor([6, 7]), velocity=torch.zeros(2), num_modes=1)
+        env.add_ado(position=torch.tensor([6, 7]), velocity=torch.ones(2), num_modes=num_modes)
 
         assert torch.all(torch.eq(env.ghosts[0].agent.position, torch.tensor([6, 7]).float()))
-        assert torch.all(torch.eq(env.ghosts[0].agent.velocity, torch.zeros(2)))
+        assert torch.all(torch.eq(env.ghosts[0].agent.velocity, torch.ones(2)))
 
     @staticmethod
-    def test_step(environment_class: GraphBasedEnvironment.__class__):
+    def test_step(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         ado_init_position = torch.zeros(2)
-        ado_init_velocity = torch.zeros(2)
+        ado_init_velocity = torch.ones(2)
         ego_init_position = torch.tensor([-4, 6])
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_init_position})
 
+        # In order to be able to verify the generated trajectories easily, we assume uni-modality here.
         env.add_ado(position=ado_init_position, velocity=ado_init_velocity)
         assert env.num_ados == 1
         assert env.num_modes == 1
@@ -62,8 +72,10 @@ class TestEnvironment:
             assert all(torch.eq(ego_t, ego_trajectory[t+1, :]))
 
     @staticmethod
-    def test_step_reset(environment_class: GraphBasedEnvironment.__class__):
+    def test_step_reset(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-4, 6])})
+
+        # In order to be able to verify the generated trajectories easily, we assume uni-modality here.
         env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), num_modes=1)
         env.add_ado(position=torch.ones(2), velocity=torch.zeros(2), num_modes=1)
 
@@ -76,11 +88,10 @@ class TestEnvironment:
             assert torch.all(torch.eq(env.ghosts[i].agent.state_with_time, ado_next_states[i]))
 
     @staticmethod
-    def test_prediction_trajectories_shape(environment_class: GraphBasedEnvironment.__class__):
-        num_modes = 2
-        t_horizon = 4
-
+    def test_prediction_trajectories_shape(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class()
+
+        t_horizon = 4
         history = torch.stack(5 * [torch.tensor([1, 0, 0, 0, 0])])
         env.add_ado(goal=torch.ones(2), position=torch.tensor([-1, 0]), num_modes=num_modes, history=history)
         env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), num_modes=num_modes, history=history)
@@ -89,11 +100,11 @@ class TestEnvironment:
         assert check_ado_trajectories(ado_trajectories, t_horizon=t_horizon, modes=num_modes, ados=2)
 
     @staticmethod
-    def test_build_connected_graph(environment_class: GraphBasedEnvironment.__class__):
+    def test_build_connected_graph(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
-        env.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
-        env.add_ado(position=torch.tensor([5, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
-        env.add_ado(position=torch.tensor([10, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
+        env.add_ado(position=torch.tensor([3, 0]), goal=torch.tensor([-4, 0]), num_modes=num_modes)
+        env.add_ado(position=torch.tensor([5, 0]), goal=torch.tensor([-2, 0]), num_modes=num_modes)
+        env.add_ado(position=torch.tensor([10, 0]), goal=torch.tensor([5, 3]), num_modes=num_modes)
 
         prediction_horizon = 10
         trajectory = torch.zeros((prediction_horizon, 4))  # does not matter here anyway
@@ -102,32 +113,36 @@ class TestEnvironment:
         assert env.check_graph(graph=graphs, include_ego=True, t_horizon=prediction_horizon)
 
     @staticmethod
-    def test_ego_graph_updates(environment_class: GraphBasedEnvironment.__class__):
+    def test_ego_graph_updates(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         position = torch.tensor([-5, 0])
         goal = torch.tensor([5, 0])
         path = straight_line(start_pos=position, end_pos=goal, steps=11)
 
         ego_kwargs = {"position": position, "velocity": torch.zeros(2)}
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs=ego_kwargs)
-        env.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.zeros(2))
+        env.add_ado(position=torch.tensor([3, 0]), velocity=torch.ones(2), goal=torch.zeros(2), num_modes=num_modes)
 
         graphs = env.build_connected_graph(ego_trajectory=torch.cat((path, torch.zeros((11, 2))), dim=1))
         for k in range(path.shape[0]):
             assert torch.all(torch.eq(path[k, :], graphs[f"{ID_EGO}_{k}_{GK_POSITION}"]))
 
     @staticmethod
-    def test_ghost_sorting(environment_class: GraphBasedEnvironment.__class__):
+    def test_ghost_sorting(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class()
-        weights_initial = [0.08, 0.1, 0.8, 0.02]
-        env.add_ado(position=torch.zeros(2), num_modes=4, weights=torch.tensor(weights_initial))
+        if not env.is_multi_modality:
+            return
+        weights_initial = np.random.rand(num_modes)
+        weights_initial = torch.from_numpy(weights_initial / np.linalg.norm(weights_initial))
+        env.add_ado(position=torch.zeros(2), num_modes=num_modes, weights=weights_initial)
 
         ghost_weights = [ghost.weight for ghost in env.ghosts]
         assert ghost_weights == list(reversed(sorted(weights_initial)))  # sorted increasing values per default
 
     @staticmethod
-    def test_detaching(environment_class: GraphBasedEnvironment.__class__):
+    def test_detaching(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
-        env.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.tensor([-4, 0]), num_modes=2)
+        env.add_ado(position=torch.tensor([3, 0]), goal=torch.tensor([-4, 0]), num_modes=num_modes)
+        env.add_ado(position=torch.tensor([-3, 2]), goal=torch.tensor([1, 5]), num_modes=num_modes)
 
         # Build computation graph to detach later on. Then check whether the graph has been been built by checking
         # for gradient availability.
@@ -145,12 +160,11 @@ class TestEnvironment:
         assert env.ghosts[0].agent.position.grad_fn is None
 
     @staticmethod
-    def test_copy(environment_class: GraphBasedEnvironment.__class__):
+    def test_copy(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         ego_init_pos = torch.tensor([-5, 0])
         ados_init_pos = torch.stack([torch.tensor([1.0, 0.0]), torch.tensor([-6, 2.5])])
         ados_init_vel = torch.stack([torch.tensor([4.2, -1]), torch.tensor([-7, -2.0])])
         ados_goal = torch.stack([torch.zeros(2), torch.ones(2)])
-        num_modes = 2
 
         # Create example environment scene to  copy later on. Then copy the example environment.
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_init_pos})
@@ -171,7 +185,9 @@ class TestEnvironment:
             assert env.ghosts[i].agent == env_copy.ghosts[i].agent
             assert env.ghosts[i].weight == env_copy.ghosts[i].weight
             assert env.ghosts[i].id == env_copy.ghosts[i].id
-            assert env.ghosts[i].params == env_copy.ghosts[i].params
+            for key in env.ghosts[i].params.keys():
+                assert torch.all(torch.eq(torch.tensor(env.ghosts[i].params[key]),
+                                          torch.tensor(env_copy.ghosts[i].params[key])))
         ego_state_original, ado_states_original = env.states()
         ego_state_copy,  ado_states_copy = env_copy.states()
         assert torch.all(torch.eq(ego_state_original, ego_state_copy))
@@ -181,10 +197,11 @@ class TestEnvironment:
         ego_controls = torch.rand((5, 2))
         traj_original = env.predict_w_controls(ego_controls=ego_controls)
         traj_copy = env.predict_w_controls(ego_controls=ego_controls)
-        assert torch.all(torch.eq(traj_original, traj_copy))
+        if env.is_deterministic:
+            assert torch.all(torch.eq(traj_original, traj_copy))
 
-        # Test broken link between `env` and `env_copy`, i.e. when I change env_copy, then the original environment
-        # remains unchanged.
+        # Test broken link between `env` and `env_copy`, i.e. when I change env_copy, then the original
+        # environment remains unchanged.
         env_copy.step(ego_control=torch.ones(1, 2))  # does not matter here anyways
         ego_state_original, ado_states_original = env.states()
         ego_state_copy,  ado_states_copy = env_copy.states()
@@ -192,10 +209,12 @@ class TestEnvironment:
         assert not torch.all(torch.eq(ado_states_original, ado_states_copy))
 
     @staticmethod
-    def test_states(environment_class: GraphBasedEnvironment.__class__):
+    def test_states(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
-        env.add_ado(position=torch.tensor([3, 0]), velocity=-torch.ones(2), goal=torch.tensor([-4, 0]), num_modes=2)
-        env.add_ado(position=torch.tensor([-4, 2]), velocity=torch.ones(2), goal=torch.tensor([-4, 0]), num_modes=2)
+        if not env.is_multi_modality:
+            return
+        env.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.rand(2), num_modes=num_modes)
+        env.add_ado(position=torch.tensor([-4, 2]), velocity=torch.ones(2), goal=torch.rand(2), num_modes=num_modes)
 
         ego_state, ado_states = env.states()
         assert check_ego_state(x=ego_state, enforce_temporal=True)
@@ -318,3 +337,59 @@ def test_trajectron_mode_selection():
     log_sigmas = gmm.log_sigmas.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
     log_sigmas_norm = torch.norm(log_sigmas, dim=2)
     assert np.argmin(log_sigmas_norm) == weight_indices[0]
+
+
+###########################################################################
+# Test - ORCA Environment #################################################
+###########################################################################
+# Comparison to original implementation of ORCA which can be found in
+# external code directory and uses the following parameters:
+# orca_rad = 1.0
+# orca_dt = 10.0
+# sim_dt = 0.25
+# sim_speed_max = 4.0
+def test_orca_single_agent():
+    env = ORCAEnvironment(dt=0.25)
+    env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), goal=torch.ones(2) * 4)
+
+    pos_expected = torch.tensor([[0, 0], [0.70710, 0.70710], [1.4142, 1.4142], [2.1213, 2.1213], [2.8284, 2.8284]])
+    ado_trajectories = env.predict_wo_ego(t_horizon=pos_expected.shape[0])
+    assert torch.isclose(torch.norm(ado_trajectories[0, 0, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)
+
+
+@pytest.mark.xfail(raises=AssertionError)
+def test_orca_two_agents():
+    env = ORCAEnvironment(dt=0.25)
+    env.add_ado(position=torch.tensor([-5, 0.1]), velocity=torch.zeros(2), goal=torch.tensor([5, 0]))
+    env.add_ado(position=torch.tensor([5, -0.1]), velocity=torch.zeros(2), goal=torch.tensor([-5, 0]))
+
+    pos_expected = torch.tensor(
+        [
+            [
+                [-5, 0.1],
+                [-4.8998, 0.107995],
+                [-4.63883, 0.451667],
+                [-3.65957, 0.568928],
+                [-2.68357, 0.6858],
+                [-1.7121, 0.802128],
+                [-0.747214, 0.917669],
+                [0.207704, 1.03202],
+                [1.18529, 0.821493],
+                [2.16288, 0.61097],
+            ],
+            [
+                [5, -0.1],
+                [4.8998, -0.107995],
+                [4.63883, -0.451667],
+                [3.65957, -0.568928],
+                [2.68357, -0.6858],
+                [1.7121, -0.802128],
+                [0.747214, -0.917669],
+                [-0.207704, -1.03202],
+                [-1.18529, -0.821493],
+                [-2.16288, -0.61097],
+            ],
+        ]
+    ).view(2, 1, -1, 2)
+    ado_trajectories = env.predict_wo_ego(t_horizon=pos_expected.shape[2])
+    assert torch.isclose(torch.norm(ado_trajectories[:, :, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)

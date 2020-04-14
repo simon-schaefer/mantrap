@@ -41,8 +41,8 @@ PARAMS_Y_AXIS = "y_axis"
 #######################################
 # agent parameters ####################
 #######################################
-AGENT_SPEED_MAX = 4  # maximal agent velocity in [m/s].
-AGENT_ACC_MAX = 4  # maximal agent acceleration in [m/s^2].
+AGENT_SPEED_MAX = 4.0  # maximal agent velocity in [m/s].
+AGENT_ACC_MAX = 4.0  # maximal agent acceleration in [m/s^2].
 
 #######################################
 # environment parameters ##############
@@ -56,8 +56,15 @@ ENV_SOCIAL_FORCES_DEFAULTS = {
     PARAMS_V0: 4.0,  # [m2s-2] repulsive field constant.
     PARAMS_SIGMA: 0.9,  # [m] repulsive field exponent constant.
 }
-ENV_SOCIAL_FORCES_MIN_GOAL_DISTANCE = 0.2  # [m] minimal distance to goal to have non-zero goal traction force.
+ENV_SOCIAL_FORCES_MAX_GOAL_DISTANCE = 0.3  # [m] maximal distance to goal to have zero goal traction force.
 ENV_SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between agents for interaction force.
+
+ENV_ORCA_AGENT_RADIUS = 1.0  # ado collision radius [m].
+ENV_ORCA_EPS_NUMERIC = 0.0001
+ENV_ORCA_SUB_TIME_STEP = 0.01  # [s] interval the simulation time-steps are divided in.
+ENV_ORCA_MAX_GOAL_DISTANCE = 0.5  # [m] maximal distance to goal to have zero preferred velocity.
+ENV_ORCA_SAFE_TIME = 0.8  # [s] time interval of guaranteed no collisions. The larger it is, the tighter the
+# constraints, but more deviating paths.
 
 ENV_TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
 
@@ -73,10 +80,6 @@ IPOPT_MAX_CPU_TIME_DEFAULT = 1.0  # [s] maximal IPOPT solver CPU time.
 CONSTRAINT_MIN_L2_DISTANCE = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 
 FILTER_EUCLIDEAN_RADIUS = 7.0  # [m] attention radius of ego for planning
-
-ORCA_AGENT_RADIUS = 1.0  # ado collision radius [m].
-ORCA_AGENT_SAFE_DT = 10.0  # safe time for agent [s].
-ORCA_EPS_NUMERIC = 0.0001
 
 MCTS_MAX_STEPS = 1000  # maximal number of samples.
 MCTS_MAX_CPU_TIME = 1.0  # [s] maximal sampling CPU time.
