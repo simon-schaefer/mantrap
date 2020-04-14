@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Dict, List, Union
 
 import torch
@@ -6,11 +5,11 @@ import torch
 from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
+from mantrap.environment.iterative import IterativeEnvironment
 from mantrap.utility.maths import Distribution, Gaussian
-from mantrap.utility.shaping import check_ego_trajectory
 
 
-class SocialForcesEnvironment(GraphBasedEnvironment):
+class SocialForcesEnvironment(IterativeEnvironment):
     """Social Forces Simulation.
     Pedestrian Dynamics based on to "Social Force Model for Pedestrian Dynamics" (D. Helbling, P. Molnar). The idea
     of Social Forces is to determine interaction forces by taking into account the following entities:
@@ -126,122 +125,54 @@ class SocialForcesEnvironment(GraphBasedEnvironment):
                 return force
 
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
-        graph = self.write_state_to_graph(ego_state, ado_grad=True, k=k, **graph_kwargs)
+        graph_k = self.write_state_to_graph(ego_state, ado_grad=True, k=k, **graph_kwargs)
         for ghost in self.ghosts:
-            graph[f"{ghost.id}_{k}_{GK_GOAL}"] = ghost.params[PARAMS_GOAL]
+            graph_k[f"{ghost.id}_{k}_{GK_GOAL}"] = ghost.params[PARAMS_GOAL]
 
         # Make graph with resulting force as an output.
         for ghost in self._ado_ghosts:
             tau, v0, sigma = ghost.params[PARAMS_TAU], ghost.params[PARAMS_TAU], ghost.params[PARAMS_SIGMA]
-            gpos = graph[f"{ghost.id}_{k}_{GK_POSITION}"]
-            gvel = graph[f"{ghost.id}_{k}_{GK_VELOCITY}"]
+            gpos = graph_k[f"{ghost.id}_{k}_{GK_POSITION}"]
+            gvel = graph_k[f"{ghost.id}_{k}_{GK_VELOCITY}"]
 
             # Destination force - Force pulling the ado to its assigned goal position.
-            direction = torch.sub(graph[f"{ghost.id}_{k}_{GK_GOAL}"], graph[f"{ghost.id}_{k}_{GK_POSITION}"])
+            direction = torch.sub(graph_k[f"{ghost.id}_{k}_{GK_GOAL}"], graph_k[f"{ghost.id}_{k}_{GK_POSITION}"])
             goal_distance = torch.norm(direction)
             if goal_distance.data < ENV_SOCIAL_FORCES_MIN_GOAL_DISTANCE:
                 destination_force = torch.zeros(2)
             else:
                 direction = torch.div(direction, goal_distance)
-                speed = torch.norm(graph[f"{ghost.id}_{k}_{GK_VELOCITY}"])
-                destination_force = torch.sub(direction * speed, graph[f"{ghost.id}_{k}_{GK_VELOCITY}"]) * 1 / tau
-            graph[f"{ghost.id}_{k}_{GK_CONTROL}"] = destination_force
+                speed = torch.norm(graph_k[f"{ghost.id}_{k}_{GK_VELOCITY}"])
+                destination_force = torch.sub(direction * speed, graph_k[f"{ghost.id}_{k}_{GK_VELOCITY}"]) * 1 / tau
+            graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"] = destination_force
 
             # Interactive force - Repulsive potential field by every other agent.
             for other in self.ghosts:
                 if ghost.agent.id == other.agent.id:  # ghosts from the same parent agent dont repulse each other
                     continue
-                distance = torch.sub(graph[f"{ghost.id}_{k}_{GK_POSITION}"], graph[f"{other.id}_{k}_{GK_POSITION}"])
+                distance = torch.sub(graph_k[f"{ghost.id}_{k}_{GK_POSITION}"], graph_k[f"{other.id}_{k}_{GK_POSITION}"])
                 if torch.norm(distance) > ENV_SOCIAL_FORCES_MAX_INTERACTION_DISTANCE:
                     continue
                 else:
-                    opos = graph[f"{other.id}_{k}_{GK_POSITION}"]
-                    ovel = graph[f"{other.id}_{k}_{GK_VELOCITY}"]
+                    opos = graph_k[f"{other.id}_{k}_{GK_POSITION}"]
+                    ovel = graph_k[f"{other.id}_{k}_{GK_VELOCITY}"]
                     v_grad = _repulsive_force(gpos, opos, gvel, ovel, p_v_0=v0, p_sigma=sigma)
                 v_grad = v_grad * other.weight  # weight force by probability of the modes
-                graph[f"{ghost.id}_{k}_{GK_CONTROL}"] = torch.sub(graph[f"{ghost.id}_{k}_{GK_CONTROL}"], v_grad)
+                graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"] = torch.sub(graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"], v_grad)
 
             # Interactive force w.r.t. ego - Repulsive potential field.
             if ego_state is not None:
-                ego_pos = graph[f"ego_{k}_{GK_POSITION}"]
-                ego_vel = graph[f"ego_{k}_{GK_VELOCITY}"]
+                ego_pos = graph_k[f"ego_{k}_{GK_POSITION}"]
+                ego_vel = graph_k[f"ego_{k}_{GK_VELOCITY}"]
                 v_grad = _repulsive_force(gpos, ego_pos, gvel, ego_vel, p_v_0=v0, p_sigma=sigma)
-                graph[f"{ghost.id}_{k}_{GK_CONTROL}"] = torch.sub(graph[f"{ghost.id}_{k}_{GK_CONTROL}"], v_grad)
+                graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"] = torch.sub(graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"], v_grad)
 
             # Summarize (standard) graph elements.
-            graph[f"{ghost.id}_{k}_{GK_OUTPUT}"] = torch.norm(graph[f"{ghost.id}_{k}_{GK_CONTROL}"])
+            graph_k[f"{ghost.id}_{k}_{GK_OUTPUT}"] = torch.norm(graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"])
 
         # Check healthiness of graph by looking for specific keys in the graph that are required.
         assert all([f"{ghost.id}_{k}_{GK_OUTPUT}" for ghost in self._ado_ghosts])
-        return graph
-
-    ###########################################################################
-    # Simulation Graph over time-horizon ######################################
-    ###########################################################################
-    def _build_connected_graph(self, ego_trajectory: Union[List, torch.Tensor], **kwargs) -> Dict[str, torch.Tensor]:
-        """Build a connected graph based on the ego's trajectory.
-
-        The graph should span over the time-horizon of the length of the ego's trajectory and contain the state
-        (position, velocity) and "controls" of every ghost in the scene as well as the ego's states itself. When
-        possible the graph should be differentiable, such that finding some gradient between the outputted ado
-        states and the inputted ego trajectory is determinable.
-
-        Since the Social Forces simulation is not conditioned on the ego's presence a list of None can be passed,
-        in order to build a graph without an ego in the scene.
-
-        :param ego_trajectory: ego's trajectory (t_horizon, 5) or list of None if no ego in the scene.
-        :return: dictionary over every state of every agent in the scene for t in [0, t_horizon].
-        """
-        if not all([x is None for x in ego_trajectory]):
-            assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-
-        # Since the ghosts are used for building the graph, and in during this process updated over the time horizon,
-        # they are (deep-)copied in order to be able to re-construct them afterwards.
-        ado_ghosts_copy = deepcopy(self._ado_ghosts)
-
-        # Build first graph for the next state, in case no forces are applied on the ego.
-        graphs = self.build_graph(ego_state=ego_trajectory[0], k=0, **kwargs)
-
-        # Build the graph iteratively for the whole prediction horizon.
-        # Social forces assumes all agents to be controlled by some force vector, i.e. to be double integrators.
-        assert all([ghost.agent.__class__ == DoubleIntegratorDTAgent for ghost in self._ado_ghosts])
-        t_horizon = ego_trajectory.shape[0]
-        for t in range(1, t_horizon):
-            for m_ghost, ghost in enumerate(self._ado_ghosts):
-                self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost.id}_{t - 1}_{GK_CONTROL}"], dt=self.dt)
-
-            # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are
-            # used for the ego motion, as guesses for the final trajectory i.e. starting points for optimization.
-            graph_k = self.build_graph(ego_trajectory[t], k=t, **kwargs)
-            graphs.update(graph_k)
-
-        # Update graph for a last time using the forces determined in the previous step.
-        for m_ghost in range(self.num_ghosts):
-            ghost_id = self.ghosts[m_ghost].id
-            self._ado_ghosts[m_ghost].agent.update(graphs[f"{ghost_id}_{t_horizon - 1}_{GK_CONTROL}"], dt=self.dt)
-            graphs[f"{ghost_id}_{t_horizon}_{GK_POSITION}"] = self.ghosts[m_ghost].agent.position
-            graphs[f"{ghost_id}_{t_horizon}_{GK_VELOCITY}"] = self.ghosts[m_ghost].agent.velocity
-
-        # Reset ado ghosts to previous states.
-        self._ado_ghosts = ado_ghosts_copy
-        return graphs
-
-    def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
-        """Build a connected graph over `t_horizon` time-steps for ados only.
-
-        The graph should span over the time-horizon of the inputted number of time-steps and contain the state
-        (position, velocity) and "controls" of every ghost in the scene as well as the ego's states itself. When
-        possible the graph should be differentiable, such that finding some gradient between the outputted ado
-        states and the inputted ego trajectory is determinable.
-
-        Since the Social Forces simulation is not conditioned on having an ego agent in the scene, the same method
-        can be used as for building the graph with an ego, just having "None"-ego-states instead of a "proper"
-        trajectory.
-
-        :param t_horizon: number of prediction time-steps.
-        :return: dictionary over every state of every ado in the scene for t in [0, t_horizon].
-        """
-        return self._build_connected_graph(t_horizon=t_horizon, ego_trajectory=[None] * t_horizon, **kwargs)
+        return graph_k
 
     ###########################################################################
     # Operators ###############################################################

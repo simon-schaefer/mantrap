@@ -6,6 +6,11 @@ Graph-Based Environment
 .. automodule:: mantrap.environment.environment
     :members:
 
+Iterative Environment
+----------------------------
+.. automodule:: mantrap.environment.iterative
+    :members:
+
 Social Forces
 ----------------------------
 .. automodule:: mantrap.environment.social_forces
