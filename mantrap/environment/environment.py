@@ -647,20 +647,10 @@ class GraphBasedEnvironment(ABC):
         plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
         trajectory is repeated to the whole time horizon.
         """
-        assert self.ego is not None
         if self.verbose > 1 or enforce:
             from mantrap.evaluation.visualization import visualize
             assert check_ego_trajectory(x=ego_trajectory)
             t_horizon = ego_trajectory.shape[0]
-
-            # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
-            # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
-            # to None (interactive mode) or to an actual path (storing mode).
-            if not interactive:
-                output_path = build_os_path(VISUALIZATION_DIRECTORY, make_dir=True, free=False)
-                output_path = os.path.join(output_path, f"{self.name}_prediction")
-            else:
-                output_path = None
 
             # Predict the ado behaviour conditioned on the given ego trajectory.
             ado_trajectories = self.predict_w_trajectory(ego_trajectory=ego_trajectory)
@@ -684,8 +674,43 @@ class GraphBasedEnvironment(ABC):
                 ado_planned_wo=ado_stretched_wo,
                 plot_path_only=True,
                 env=self,
-                file_path=output_path
+                file_path=self._visualize_output_format(interactive=interactive, name="prediction")
             )
+
+    def visualize_prediction_wo_ego(self, t_horizon: int, enforce: bool = False, interactive: bool = False):
+        """Visualize the predictions for the scene based on the given ego trajectory.
+
+        In order to be use the general `visualize()` function defined in the `mantrap.evaluation` - package the ego
+        and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
+        visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
+        plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
+        trajectory is repeated to the whole time horizon.
+        """
+        if self.verbose > 1 or enforce:
+            from mantrap.evaluation.visualization import visualize
+
+            # Predict the ado behaviour conditioned on the given ego trajectory.
+            ado_trajectories_wo = self.predict_wo_ego(t_horizon=t_horizon)
+
+            # Stretch the ego and ado trajectories as described above.
+            ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
+            for t in range(t_horizon):
+                ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
+                ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
+
+            output_path = self._visualize_output_format(interactive=interactive, name="prediction_wo_ego")
+            return visualize(ado_planned_wo=ado_stretched_wo, plot_path_only=True, env=self, file_path=output_path)
+
+    def _visualize_output_format(self, interactive: bool, name: str) -> Union[str, None]:
+        """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
+        # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
+        # to None (interactive mode) or to an actual path (storing mode). """
+        if not interactive:
+            output_path = build_os_path(VISUALIZATION_DIRECTORY, make_dir=True, free=False)
+            output_path = os.path.join(output_path, f"{self.name}_{name}")
+        else:
+            output_path = None
+        return output_path
 
     ###########################################################################
     # Ado properties ##########################################################

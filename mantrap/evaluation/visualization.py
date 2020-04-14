@@ -11,28 +11,37 @@ from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories
 
 
 def visualize(
-    ego_planned: torch.Tensor,
-    ado_planned: torch.Tensor,
     ado_planned_wo: torch.Tensor,
     env: GraphBasedEnvironment,
+    ego_planned: torch.Tensor = None,
+    ado_planned: torch.Tensor = None,
     file_path: str = None,
     obj_dict: Dict[str, List[torch.Tensor]] = None,
     inf_dict: Dict[str, List[torch.Tensor]] = None,
     ego_trials: List[List[torch.Tensor]] = None,
     plot_path_only: bool = False
 ):
-    assert len(ego_planned.shape) == 3
-    num_env_steps = ego_planned.shape[0]
     num_vertical_plots = 2  # paths (2)
+    num_env_steps = ado_planned_wo.shape[0]
     assert num_env_steps > 1
-    assert len(ado_planned.shape) == 5 and ado_planned.shape[0] == num_env_steps
+
+    # Check inputs for validity in shape and matching sizes.
+    if ego_planned is not None:
+        assert len(ego_planned.shape) == 3 and ego_planned.shape[0] == num_env_steps
+
+    if ado_planned is not None:
+        assert len(ado_planned.shape) == 5 and ado_planned.shape[0] == num_env_steps
+
     if not plot_path_only:
+        assert ego_planned is not None and ado_planned is not None
         num_vertical_plots += 3  # velocities, accelerations, controls (3)
         if obj_dict is not None and inf_dict is not None and not plot_path_only:
             assert all([len(x) == num_env_steps for x in obj_dict.values()])
             assert all([len(x) == num_env_steps for x in inf_dict.values()])
             num_vertical_plots += 2  # objective and constraints (2)
 
+    # Create basic plot. In order to safe computational effort the created plot is re-used over the full output
+    # video, by deleting the previous frame content and overwrite it (within the `update()` function).
     fig, ax = plt.subplots(figsize=(8, 8), constrained_layout=True)
 
     grid = plt.GridSpec(num_vertical_plots, 2, wspace=0.4, hspace=0.3, figure=fig)
@@ -52,20 +61,11 @@ def visualize(
             axs.append(fig.add_subplot(grid[2 + 4, 1]))
 
     def update(k):
-        ego_trajectory = ego_planned[:, 0, :].detach()
-        ego_planned_k = ego_planned[k].detach()
-        ado_trajectories = ado_planned[:, :, :, 0, :].permute(1, 2, 0, 3).detach()
-        ado_planned_k = ado_planned[k].detach()
+
+        ego_planned_k = ego_planned[k].detach() if ego_planned is not None else None
+        ado_planned_k = ado_planned[k].detach() if ado_planned is not None else None
         ado_planned_wo_k = ado_planned_wo[k].detach()
         ego_trials_k = ego_trials[k] if ego_trials is not None else None
-
-        assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        t_horizon = ego_trajectory.shape[0]
-        assert check_ado_trajectories(ado_trajectories, ados=env.num_ados, t_horizon=t_horizon)
-        assert check_ego_trajectory(ego_planned_k, pos_and_vel_only=True)
-        planning_horizon = ego_planned_k.shape[0]
-        assert check_ado_trajectories(ado_planned_k, ados=env.num_ados, t_horizon=planning_horizon)
-        assert check_ado_trajectories(ado_planned_wo_k, ados=env.num_ados, t_horizon=planning_horizon)
 
         # Reset plotting axes in order to not having to re-build the whole plot (efficiency !).
         plt.axis("off")
@@ -84,7 +84,17 @@ def visualize(
             ax=axs[0]
         )
 
+        # Draw remaining state graphs, such as velocities, acceleration, controls, optimization performance, etc.
+        # As asserted above, when `plot_path_only = False` then `ego_planned != None` (!), so no checks are required
+        # within the if-bracket.
         if not plot_path_only:
+            ego_trajectory = ego_planned[:, 0, :].detach()
+            ado_trajectories = ado_planned[:, :, :, 0, :].permute(1, 2, 0, 3).detach()
+            t_horizon = ego_trajectory.shape[0]
+
+            assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+            assert check_ado_trajectories(ado_trajectories, ados=env.num_ados, t_horizon=t_horizon)
+
             time_axis = ego_trajectory[:, -1].detach().numpy()
 
             # Determine velocity norm (L2) at every point of time for ado and ego trajectories.
@@ -139,11 +149,11 @@ def visualize(
 # Atomic plotting functions ################################################
 # ##########################################################################
 def draw_trajectories(
-    ego_trajectory: torch.Tensor,
-    ado_trajectories: torch.Tensor,
     ado_trajectories_wo: torch.Tensor,
     env: GraphBasedEnvironment,
     ax: plt.Axes,
+    ego_trajectory: torch.Tensor = None,
+    ado_trajectories: torch.Tensor = None,
     ego_traj_trials: List[torch.Tensor] = None
 ):
     """Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as the
@@ -162,14 +172,15 @@ def draw_trajectories(
         if id is not None:
             ax.text(state[0], state[1], name, fontsize=8)
 
-    assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-    t_horizon = ego_trajectory.shape[0]
-    assert check_ado_trajectories(ado_trajectories, pos_and_vel_only=True, t_horizon=t_horizon, ados=env.num_ados)
-    assert check_ado_trajectories(ado_trajectories_wo, pos_and_vel_only=True, t_horizon=t_horizon, ados=env.num_ados)
+    assert check_ado_trajectories(ado_trajectories_wo, ados=env.num_ados)
+    planning_horizon = ado_trajectories_wo.shape[2]
 
-    ego_trajectory_np = ego_trajectory.detach().numpy()
-    ax.plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label=env.ego.id)
-    draw_agent_representation(ego_trajectory[0, :], color=env.ego.color, name=env.ego.id)
+    # Plot ego trajectory.
+    if ego_trajectory is not None:
+        assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True, t_horizon=planning_horizon)
+        ego_trajectory_np = ego_trajectory.detach().numpy()
+        ax.plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label=env.ego.id)
+        draw_agent_representation(ego_trajectory[0, :], color=env.ego.color, name=env.ego.id)
 
     # Plot trial trajectories during optimisation process.
     if ego_traj_trials is not None:
@@ -181,12 +192,17 @@ def draw_trajectories(
     for ghost in env.ghosts:
         i_ado, i_mode = env.convert_ghost_id(ghost_id=ghost.id)
         ado_id, ado_color = ghost.id, ghost.agent.color
-        ado_pos = ado_trajectories[i_ado, i_mode, :, 0:2].detach().numpy()
         ado_pos_wo = ado_trajectories_wo[i_ado, i_mode, :, 0:2].detach().numpy()
 
-        ax.plot(ado_pos[:, 0], ado_pos[:, 1], "-*", color=ado_color, label=f"{ado_id}")
-        draw_agent_representation(ado_trajectories[i_ado, i_mode, 0, :], color=ado_color, name=ado_id)
         ax.plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "--", color=ado_color, label=f"{ado_id}_wo")
+        if ado_trajectories is not None:
+            assert check_ado_trajectories(ado_trajectories, ados=env.num_ados, t_horizon=planning_horizon)
+            ado_pos = ado_trajectories[i_ado, i_mode, :, 0:2].detach().numpy()
+            ax.plot(ado_pos[:, 0], ado_pos[:, 1], "-*", color=ado_color, label=f"{ado_id}")
+            agent_rep_state = ado_trajectories[i_ado, i_mode, 0, :]
+        else:
+            agent_rep_state = ado_trajectories_wo[i_ado, i_mode, 0, :]
+        draw_agent_representation(agent_rep_state, color=ado_color, name=ado_id)
 
     # Set axes limitations for x- and y-axis and add legend and grid to visualization.
     ax.set_xlim(*env.axes[0])
