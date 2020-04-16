@@ -17,7 +17,6 @@ from mantrap.utility.shaping import check_ado_trajectories, check_ado_states, ch
 ###########################################################################
 # Tests - All Environment #################################################
 ###########################################################################
-# In order to test the functionality of the environment in a standardized way
 @pytest.mark.parametrize(
     "environment_class, num_modes",
     [
