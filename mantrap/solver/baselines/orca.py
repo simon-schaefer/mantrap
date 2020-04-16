@@ -1,4 +1,3 @@
-import logging
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -8,7 +7,7 @@ from mantrap.constants import *
 from mantrap.agents import IntegratorDTAgent
 from mantrap.environment import ORCAEnvironment
 from mantrap.solver.solver import Solver
-from mantrap.utility.shaping import check_ego_action
+from mantrap.utility.shaping import check_ego_action, check_ego_controls
 
 
 class ORCASolver(Solver):
@@ -65,12 +64,18 @@ class ORCASolver(Solver):
             num_modes=1,
             identifier=ID_EGO
         )
-        graph = orca_env.build_connected_graph_wo_ego(t_horizon=1)
-        ego_control = graph[f"{ID_EGO}_0_0_{GK_CONTROL}"]  # first "0" because first (and only) mode !
-        assert check_ego_action(ego_control)
+        graph = orca_env.build_connected_graph_wo_ego(t_horizon=1, safe_time=self.T*self.env.dt)
+        ego_action = graph[f"{ID_EGO}_0_0_{GK_CONTROL}"]  # first "0" because first (and only) mode !
+        assert check_ego_action(ego_action)
+
+        # ORCA itself only plans for one step ahead, but can guarantee some minimal collision-free time interval,
+        # given all other agents behave according to the ORCA algorithm (which is not the case but the underlying
+        # assumption here), therefore stretch the control action over the full planning horizon.
+        ego_controls = torch.stack([ego_action] * self.T)
+        assert check_ego_controls(ego_controls, t_horizon=self.T)
 
         # Determine z and objective value from determined ego-control.
-        z = ego_control.flatten()
+        z = ego_controls.flatten()
         objective_value = self.objective(z=z.detach().numpy())
         return z, objective_value, self.log
 
@@ -79,12 +84,11 @@ class ORCASolver(Solver):
     ###########################################################################
     def initialize(self, **solver_params):
         assert self.env.ego.__class__ == IntegratorDTAgent
-        logging.info(f"solver {self.name}: overwriting solver parameters to fit orca formulation")
-        self._solver_params[PARAMS_T_PLANNING] = 1
-        self._solver_params[PARAMS_MULTIPROCESSING] = False
 
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
-        return torch.tensor([1, 0]).view(1, 2)
+        """As explained in `_optimize()` the optimization is independent from the initial value of z, therefore
+        only return one value, to enforce single-threaded computations. """
+        return torch.zeros((1, 2))
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
