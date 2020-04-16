@@ -21,6 +21,23 @@ class MonteCarloTreeSearch(Solver):
         max_cpu_time: float = MCTS_MAX_CPU_TIME,
         **solver_kwargs
     ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
+        """Optimization function for single core to find optimal z-vector.
+
+        Given some initial value `z0` find the optimal allocation for z with respect to the internally defined
+        objectives and constraints. This function is executed in every thread in parallel, for different initial
+        values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
+        the optimization but only the ones with ids defined in `ado_ids`.
+
+        MCTS (Monte-Carlo-Tree-Search) uses random sampling during the full allowed computation time and
+        returns the trajectory with the best expected objective value.
+
+        :param z0: initial value of optimization variables.
+        :param tag: name of optimization call (name of the core).
+        :param ado_ids: identifiers of ados that should be taken into account during optimization.
+        :returns: z_opt (optimal values of optimization variable vector)
+                  objective_opt (optimal objective value)
+                  optimization_log (logging dictionary for this optimization = self.log)
+        """
         # Find variable bounds for random sampling during search.
         lb, ub = self.optimization_variable_bounds()
         lb, ub = np.asarray(lb), np.asarray(ub)

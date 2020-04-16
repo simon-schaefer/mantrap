@@ -550,7 +550,7 @@ class GraphBasedEnvironment(ABC):
         assert check_ado_trajectories(ado_trajectories, ados=num_ados, t_horizon=t_horizon, modes=num_modes)
         for ghost in self.ghosts:
             m_ado, m_mode = self.convert_ghost_id(ghost_id=ghost.id)
-            assert torch.all(torch.eq(ado_trajectories[m_ado, m_mode, 0, :], ado_trajectories[m_ado, 0, 0, :]))
+            assert torch.all(torch.isclose(ado_trajectories[m_ado, m_mode, 0, :], ado_trajectories[m_ado, 0, 0, :]))
         return ado_trajectories if not return_more else (ado_trajectories, ado_controls, weights)
 
     def detach(self):
@@ -563,11 +563,19 @@ class GraphBasedEnvironment(ABC):
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def copy(self) -> 'GraphBasedEnvironment':
-        """Create copy of environment. However just using deepcopy is not supported for tensors that are not detached
-        from the PyTorch computation graph. Therefore re-initialize the objects such as the agents in the environment
-        and reset their state to the internal current state.
+    def copy(self, env_type: 'GraphBasedEnvironment'.__class__ = None) -> 'GraphBasedEnvironment':
+        """Create copy of environment.
+
+        However just using deepcopy is not supported for tensors that are not detached
+        from the PyTorch computation graph. Therefore re-initialize the objects such as the agents in the
+        environment and reset their state to the internal current state.
+
+        While copying the environment-type can be defined by the user, which is possible due to standardized
+        class interface of every environment-type. When no environment is defined, the default environment
+        will be used which is the type of the executing class object.
         """
+        env_type = env_type if env_type is not None else self.__class__
+
         with torch.no_grad():
             # Create environment copy of internal class, pass environment parameters such as the forward integration
             # time-step and initialize ego agent.
@@ -578,9 +586,9 @@ class GraphBasedEnvironment(ABC):
                 position = self.ego.position
                 velocity = self.ego.velocity
                 history = self.ego.history
-                ego_kwargs = {"position": position, "velocity": velocity, "history": history}
+                ego_kwargs = {"position": position, "velocity": velocity, "history": history, "time": self.time}
 
-            env_copy = self.__class__(ego_type, ego_kwargs, dt=self.dt, **self._env_params)
+            env_copy = env_type(ego_type, ego_kwargs, dt=self.dt, **self._env_params)
 
             # Add internal ado agents to newly created environment.
             env_copy = self._copy_ados(env_copy=env_copy)
@@ -597,6 +605,7 @@ class GraphBasedEnvironment(ABC):
                 position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
+                time=self.time,
                 weights=[ghost.weight for ghost in ghosts_ado],
                 num_modes=self.num_modes,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
@@ -608,17 +617,16 @@ class GraphBasedEnvironment(ABC):
         merely enforcing the initial conditions to be equal, such as states of agents in scene. Hence, all prediction
         depending parameters, namely the number of modes or agent's parameters dont have to be equal.
         """
-        is_equal = True
-        is_equal = is_equal and self.dt == other.dt
-        is_equal = is_equal and self.num_ados == other.num_ados
-        is_equal = is_equal and self.ego == other.ego
+        assert self.dt == other.dt
+        assert self.num_ados == other.num_ados
+        assert self.ego == other.ego
         ghosts_equal = [True] * self.num_ados
         ghosts_imp = self.ados_most_important_mode()
         other_imp = other.ados_most_important_mode()
         for i in range(self.num_ados):
             ghosts_equal[i] = ghosts_equal[i] and ghosts_imp[i].agent == other_imp[i].agent
-        is_equal = is_equal and all(ghosts_equal)
-        return is_equal
+        assert all(ghosts_equal)
+        return True
 
     def sanity_check(self) -> bool:
         """Check for the sanity of the scene and agents.

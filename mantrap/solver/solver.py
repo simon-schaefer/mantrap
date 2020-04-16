@@ -70,6 +70,7 @@ class Solver(ABC):
         self._env = env.copy()
         self._eval_env = eval_env.copy() if eval_env is not None else env.copy()
         assert self._env.same_initial_conditions(other=self._eval_env)
+        assert self._env.ego is not None
 
         # Dictionary of solver parameters.
         self._solver_params = solver_params
@@ -176,8 +177,9 @@ class Solver(ABC):
             results = [self.optimize(z0, tag, **solver_kwargs) for z0, tag in initial_values]
 
         # Update optimization logging values for optimization results.
-        for i, (_, _, optimization_log) in enumerate(results):
-            self._log.update({key: x for key, x in optimization_log.items() if self.cores[i] in key})
+        if self.verbose > -1:
+            for i, (_, _, optimization_log) in enumerate(results):
+                self._log.update({key: x for key, x in optimization_log.items() if self.cores[i] in key})
 
         # Return controls with minimal objective function result.
         index_best = int(np.argmin([obj for _, obj, _ in results]))
@@ -198,7 +200,22 @@ class Solver(ABC):
         return self._optimize(z0, ado_ids=ado_ids, tag=tag, **kwargs)
 
     @abstractmethod
-    def _optimize(self, z0: torch.Tensor, tag: str, ado_ids: List[str], **kwargs):
+    def _optimize(self, z0: torch.Tensor, tag: str, ado_ids: List[str], **kwargs
+                  ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
+        """Optimization function for single core to find optimal z-vector.
+
+        Given some initial value `z0` find the optimal allocation for z with respect to the internally defined
+        objectives and constraints. This function is executed in every thread in parallel, for different initial
+        values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
+        the optimization but only the ones with ids defined in `ado_ids`.
+
+        :param z0: initial value of optimization variables.
+        :param tag: name of optimization call (name of the core).
+        :param ado_ids: identifiers of ados that should be taken into account during optimization.
+        :returns: z_opt (optimal values of optimization variable vector)
+                  objective_opt (optimal objective value)
+                  optimization_log (logging dictionary for this optimization = self.log)
+        """
         raise NotImplementedError
 
     ###########################################################################

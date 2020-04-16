@@ -49,11 +49,17 @@ class Agent(ABC):
         self._position = position.float()
         self._velocity = velocity.float()
 
-        # Initialize (and/or append) history vector.
-        self._history = self.expand_state_vector(self.state, time=time).view(1, 5).float()
+        # Initialize (and/or append) history vector. The current state must be at the end of the internal history,
+        # so either append it or create it when not already the case.
+        state_with_time = self.expand_state_vector(self.state, time=time).view(1, 5).float()
         if history is not None:
             assert history.shape[1] == 5
-            self._history = torch.cat((history.float(), self._history), dim=0)
+            if not torch.all(torch.isclose(history[-1, :], state_with_time)):
+                self._history = torch.cat((history.float(), state_with_time), dim=0)
+            else:
+                self._history = history
+        else:
+            self._history = state_with_time
 
         # Create random agent color (reddish), for evaluation only.
         self._color = np.random.uniform(0.0, 0.8, size=3).tolist()
@@ -249,11 +255,10 @@ class Agent(ABC):
         However the agent's descriptive parameters such as its id are not part of this comparison, since they are
         initialized as random and not descriptive for the state an agent is in.
         """
-        is_equal = True
-        is_equal = is_equal and self.__class__ == other.__class__
-        is_equal = is_equal and torch.all(torch.eq(self.state_with_time, other.state_with_time))
-        is_equal = is_equal and torch.all(torch.eq(self.history, other.history))
-        return is_equal
+        assert self.__class__ == other.__class__
+        assert torch.all(torch.isclose(self.state_with_time, other.state_with_time))
+        assert torch.all(torch.isclose(self.history, other.history))
+        return True
 
     def sanity_check(self) -> bool:
         """Sanity check for agent.
@@ -266,7 +271,7 @@ class Agent(ABC):
 
         assert check_ego_state(x=self.state_with_time, enforce_temporal=True)
         assert check_ego_trajectory(x=self.history)
-        assert torch.all(torch.eq(self.history[-1, :], self.state_with_time))
+        assert torch.all(torch.isclose(self.history[-1, :], self.state_with_time))
         return True
 
     ###########################################################################

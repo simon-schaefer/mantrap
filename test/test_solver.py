@@ -1,5 +1,5 @@
 import time
-from typing import Dict, List, Tuple, Union
+from typing import List
 
 import numpy as np
 import pytest
@@ -99,7 +99,7 @@ def test_solve():
     assert torch.all(torch.isclose(ego_trajectory_opt[:, 0], x_path_exp, atol=1e-3))
     assert torch.all(torch.eq(ego_trajectory_opt[:, 1], torch.zeros(t_horizon_exp)))
 
-    assert torch.isclose(ego_trajectory_opt[0,  2], torch.zeros(1))
+    assert torch.isclose(ego_trajectory_opt[0, 2], torch.zeros(1))
     assert torch.all(torch.isclose(ego_trajectory_opt[1:, 2], torch.ones(t_horizon_exp - 1)))
     assert torch.all(torch.eq(ego_trajectory_opt[:, 3], torch.zeros(t_horizon_exp)))
 

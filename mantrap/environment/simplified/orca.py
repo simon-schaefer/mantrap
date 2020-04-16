@@ -285,6 +285,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 position=ghosts_ado[0].agent.position,  # uni-modal !
                 velocity=ghosts_ado[0].agent.velocity,  # uni-modal !
                 history=ghosts_ado[0].agent.history,  # uni-modal !
+                time=self.time,
                 weights=[ghost.weight for ghost in ghosts_ado],
                 num_modes=self.num_modes,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
