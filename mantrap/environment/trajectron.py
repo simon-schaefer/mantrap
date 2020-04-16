@@ -399,7 +399,7 @@ class Trajectron(GraphBasedEnvironment):
         return "trajectron"
 
     @property
-    def is_multi_modality(self) -> bool:
+    def is_multi_modal(self) -> bool:
         return True
 
     @property

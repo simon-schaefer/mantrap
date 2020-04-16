@@ -129,7 +129,7 @@ class TestEnvironment:
     @staticmethod
     def test_ghost_sorting(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class()
-        if not env.is_multi_modality:
+        if not env.is_multi_modal:
             return
         weights_initial = np.random.rand(num_modes)
         weights_initial = torch.from_numpy(weights_initial / np.linalg.norm(weights_initial))
@@ -211,7 +211,7 @@ class TestEnvironment:
     @staticmethod
     def test_states(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
-        if not env.is_multi_modality:
+        if not env.is_multi_modal:
             return
         env.add_ado(position=torch.tensor([3, 0]), velocity=torch.zeros(2), goal=torch.rand(2), num_modes=num_modes)
         env.add_ado(position=torch.tensor([-4, 2]), velocity=torch.ones(2), goal=torch.rand(2), num_modes=num_modes)

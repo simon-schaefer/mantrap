@@ -318,6 +318,8 @@ class GraphBasedEnvironment(ABC):
         if self._num_ado_modes == 0:
             self._num_ado_modes = num_modes
         assert num_modes == self.num_modes  # all ados should have same number of modes
+        if not self.is_multi_modal:
+            assert num_modes == 1  # environment does not support multi-modality
 
         # Append the created ado for every mode. When no weights are given, then initialize with a uniform weight
         # distribution between the modes. If not sort the modes by order of decreasing weight. For uniform
@@ -814,7 +816,7 @@ class GraphBasedEnvironment(ABC):
         return self.__class__.__name__.lower()
 
     @property
-    def is_multi_modality(self) -> bool:
+    def is_multi_modal(self) -> bool:
         return True
 
     @property

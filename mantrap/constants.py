@@ -59,6 +59,8 @@ ENV_SOCIAL_FORCES_DEFAULTS = {
 ENV_SOCIAL_FORCES_MAX_GOAL_DISTANCE = 0.3  # [m] maximal distance to goal to have zero goal traction force.
 ENV_SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between agents for interaction force.
 
+ENV_POTENTIAL_FIELD_V0_DEFAULT = 4.0  # [m2s-2] repulsive field constant.
+
 ENV_ORCA_AGENT_RADIUS = 1.0  # ado collision radius [m].
 ENV_ORCA_EPS_NUMERIC = 0.0001
 ENV_ORCA_SUB_TIME_STEP = 0.01  # [s] interval the simulation time-steps are divided in.

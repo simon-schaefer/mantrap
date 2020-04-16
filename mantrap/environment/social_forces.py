@@ -178,7 +178,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def _copy_ados(self, env_copy: 'GraphBasedEnvironment') -> 'GraphBasedEnvironment':
+    def _copy_ados(self, env_copy: GraphBasedEnvironment) -> GraphBasedEnvironment:
         for i in range(self.num_ados):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
@@ -204,7 +204,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
         return "social_forces"
 
     @property
-    def is_multi_modality(self) -> bool:
+    def is_multi_modal(self) -> bool:
         return True
 
     @property

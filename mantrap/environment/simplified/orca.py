@@ -18,7 +18,6 @@ class ORCAEnvironment(IterativeEnvironment):
     # Scene ###################################################################
     ###########################################################################
     def add_ado(self, goal: torch.Tensor = torch.zeros(2), num_modes: int = 1, **ado_kwargs) -> Agent:
-        assert num_modes == 1  # ORCA does not support multi-modality
         assert goal.size() == torch.Size([2])
         params = [{PARAMS_GOAL: goal.detach().float()}]
         return super(ORCAEnvironment, self).add_ado(IntegratorDTAgent, arg_list=params, num_modes=1, **ado_kwargs)
@@ -26,7 +25,13 @@ class ORCAEnvironment(IterativeEnvironment):
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
-    def build_graph(self, ego_state: torch.Tensor = None, k: int = 0, **graph_kwargs) -> Dict[str, torch.Tensor]:
+    def build_graph(
+        self,
+        ego_state: torch.Tensor = None,
+        k: int = 0,
+        safe_time: float = ENV_ORCA_SAFE_TIME,
+        **graph_kwargs
+    ) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph_k = self.write_state_to_graph(ego_state, k=k, **graph_kwargs)
 
@@ -51,7 +56,7 @@ class ORCAEnvironment(IterativeEnvironment):
                     other_ids=others_ids,
                     dt=ENV_ORCA_SUB_TIME_STEP,
                     agent_radius=ENV_ORCA_AGENT_RADIUS,
-                    agent_safe_dt=ENV_ORCA_SAFE_TIME
+                    agent_safe_dt=safe_time
                 )
 
                 # Find new velocity based on line constraints. Preferred velocity would be the going from the
@@ -301,7 +306,7 @@ class ORCAEnvironment(IterativeEnvironment):
         return "orca"
 
     @property
-    def is_multi_modality(self) -> bool:
+    def is_multi_modal(self) -> bool:
         return False
 
     @property

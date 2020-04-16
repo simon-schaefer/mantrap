@@ -51,15 +51,6 @@ class ConstantSolver(Solver):
         controls[0, 0] = 1.0
         return controls
 
-    def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        raise NotImplementedError
-
-    def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        raise NotImplementedError
-
-    ###########################################################################
-    # Logging parameters ######################################################
-    ###########################################################################
     @property
     def objective_keys(self) -> List[str]:
         return []
