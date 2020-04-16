@@ -34,6 +34,6 @@
   },
   "dt": 0.4,
   "attention_radius_pp": 10.0,
-  "attention_radius_pr": 10.0,
-  "attention_radius_rp": 10.0
+  "attention_radius_pr": 100.0,
+  "attention_radius_rp": 100.0
 }
