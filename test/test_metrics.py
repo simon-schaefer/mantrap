@@ -1,12 +1,9 @@
-from copy import deepcopy
-
 import numpy as np
 import pytest
-import torch
 
 from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.environment import PotentialFieldEnvironment
-from mantrap.evaluation.metrics import metric_ado_effort, metric_directness, metric_ego_effort, metric_minimal_distance
+from mantrap.environment import ENVIRONMENTS
+from mantrap.evaluation.metrics import *
 from mantrap.utility.primitives import straight_line
 
 
@@ -82,27 +79,28 @@ def test_directness(velocity_profiles: torch.Tensor, directness_score: float):
     assert np.isclose(metric_score, directness_score)
 
 
-def test_ado_effort():
-    env = PotentialFieldEnvironment(DoubleIntegratorDTAgent, {"position": torch.tensor([5, 0])})
+@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+def test_ado_effort(env_class: GraphBasedEnvironment.__class__):
+    env = env_class(DoubleIntegratorDTAgent, {"position": torch.tensor([5, 0])})
     env.add_ado(position=torch.zeros(2), velocity=torch.tensor([1, 0]))
-    env.add_ado(position=torch.zeros(2), velocity=torch.tensor([0, 1]))
 
     # When the ado trajectories are exactly the same as predicting them without an ego, the score should be zero.
     ado_traj = env.predict_wo_ego(t_horizon=10)
     metric_score = metric_ado_effort(ado_trajectories=ado_traj, env=env)
-    assert np.isclose(metric_score, 0.0)
+    if env.is_deterministic:
+        assert np.isclose(metric_score, 0.0)
 
     # Otherwise it is very hard to predict the exact score, but we know it should be non-zero and positive.
     ado_traj = env.predict_w_controls(ego_controls=torch.ones(5, 2))
     metric_score = metric_ado_effort(ado_trajectories=ado_traj, env=env)
-    assert metric_score > 0.0
+    assert metric_score >= 0.0
 
     # For testing the effect of re-predicting the ado trajectories without an ego for the current scene state we
     # stack an altered ado trajectory tensor to another one with is exactly the same as without ego in the scene.
     # When the environment is correctly reset at every time-step, then the only contribution to the ado effort comes
     # from the first part of the ado trajectory (which was predicted with an ego agent in the scene). Therefore the
     # score w.r.t. only the first part and for the combined ado trajectory should be the same.
-    env_test = deepcopy(env)
+    env_test = env.copy()
 
     ado_traj_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
     metric_score_1 = metric_ado_effort(ado_trajectories=ado_traj_1, env=env)
@@ -112,4 +110,5 @@ def test_ado_effort():
     ado_traj_12 = torch.cat((ado_traj_1, ado_traj_2), dim=2)
     ado_traj_12[:, :, :, -1] = torch.linspace(0, 7 * env.dt, steps=8)
     metric_score_12 = metric_ado_effort(ado_trajectories=ado_traj_12, env=env)
-    assert np.isclose(metric_score_1, metric_score_12)
+    if env.is_deterministic:
+        assert np.isclose(metric_score_1, metric_score_12)
