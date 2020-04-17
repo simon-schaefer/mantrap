@@ -11,16 +11,40 @@ from mantrap.environment.iterative import IterativeEnvironment
 
 
 class ORCAEnvironment(IterativeEnvironment):
+    """ORCA-based environment.
+
+    Implementation enviornment according to 'Reciprocal n-body Collision Avoidance' by Jur van den Berg,
+    Stephen J. Guy, Ming Lin, and Dinesh Manocha (short: ORCA, O = optimal). In this environment the optimal velocity
+    update is determined for every agent so that a) there is guaranteed no collision in the next time-steps
+    (`agent_safe_dt`) and b) the new velocity is the closest velocity to the preferred velocity (here: constant
+    velocity to goal) there is in the set of non-collision velocities. Thereby we have some main assumptions:
+
+    1) all agents behave according to the ORCA formalism
+    2) all agents are single integrators i.e. do not have holonomic constraints
+    3) synchronized discrete time updates
+    4) perfect observability of every agents state at the current time (pref. velocities unknown)
+
+    In order to find the "optimal" velocity linear constraints are derived using the ORCA formalism and solved in
+    a linear program. The ego agent is then regarded as one of the (N+1) agents in the scene and the scene, just
+    with a known control input. Since ORCA assumes all parameters to be shared and known to the other agents it
+    can neither be probabilistic nor multi-modal.
+
+    Also the update of some agent is affected by the ego, if and only if the ego agent imposes an active constraint
+    on this agent, which is usually not the case for every agent. Therefore when differentiating the ado positions
+    with respect to the ego's state trajectory, usually it will no gradient (i.e. no connection in the computation
+    graph), while in case of a connection having a very long network connection (i.e. comparably large
+    computational effort to compute gradient).
+    """
 
     LineConstraint = namedtuple("LineConstraint", ["point", "direction"])
 
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, goal: torch.Tensor = torch.zeros(2), num_modes: int = 1, **ado_kwargs) -> Agent:
+    def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> Agent:
         assert goal.size() == torch.Size([2])
         params = [{PARAMS_GOAL: goal.detach().float()}]
-        return super(ORCAEnvironment, self).add_ado(IntegratorDTAgent, arg_list=params, num_modes=1, **ado_kwargs)
+        return super(ORCAEnvironment, self).add_ado(IntegratorDTAgent, arg_list=params, **ado_kwargs)
 
     ###########################################################################
     # Simulation Graph ########################################################
@@ -89,6 +113,7 @@ class ORCAEnvironment(IterativeEnvironment):
         # the graph during initialization as they represent the current internal state.
         for ghost_id in self.ghost_ids:
             graph_k[f"{ghost_id}_{k}_{GK_CONTROL}"] = graph_kk[f"{ghost_id}_{k}_{GK_CONTROL}"]
+
         return graph_k
 
     ###########################################################################

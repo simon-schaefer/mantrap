@@ -200,8 +200,8 @@ class Trajectron(GraphBasedEnvironment):
                 graph[f"{ghost.id}_{t}_{GK_VELOCITY}"] = ado_planned[m_ado, m_mode, t, 2:4]
                 graph[f"{ghost.id}_{t}_{GK_CONTROL}"] = ado_planned[m_ado, m_mode, t, 2:4]  # single integrator ados !
 
-                # Adapt weight as determined from prediction.
-                self._ado_ghosts[m_ghost].weight = ado_weights[m_ado, m_mode]
+                # Adapt weight as determined from prediction (repetitive but very cheap).
+                self._ado_ghosts[m_ghost].weight = ado_weights[m_ado, m_mode] / ado_weights[m_ado, :].sum()  # norming
         return graph
 
     def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:

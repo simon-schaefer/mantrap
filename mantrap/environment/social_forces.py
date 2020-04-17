@@ -127,8 +127,6 @@ class SocialForcesEnvironment(IterativeEnvironment):
 
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph_k = self.write_state_to_graph(ego_state, ado_grad=True, k=k, **graph_kwargs)
-        for ghost in self.ghosts:
-            graph_k[f"{ghost.id}_{k}_{GK_GOAL}"] = ghost.params[PARAMS_GOAL]
 
         # Make graph with resulting force as an output.
         for ghost in self._ado_ghosts:
@@ -137,7 +135,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
             gvel = graph_k[f"{ghost.id}_{k}_{GK_VELOCITY}"]
 
             # Destination force - Force pulling the ado to its assigned goal position.
-            direction = torch.sub(graph_k[f"{ghost.id}_{k}_{GK_GOAL}"], graph_k[f"{ghost.id}_{k}_{GK_POSITION}"])
+            direction = torch.sub(ghost.params[PARAMS_GOAL], graph_k[f"{ghost.id}_{k}_{GK_POSITION}"])
             goal_distance = torch.norm(direction)
             if goal_distance.item() < ENV_SOCIAL_FORCES_MAX_GOAL_DISTANCE:
                 destination_force = torch.zeros(2)
@@ -168,11 +166,6 @@ class SocialForcesEnvironment(IterativeEnvironment):
                 v_grad = _repulsive_force(gpos, ego_pos, gvel, ego_vel, p_v_0=v0, p_sigma=sigma)
                 graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"] = torch.sub(graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"], v_grad)
 
-            # Summarize (standard) graph elements.
-            graph_k[f"{ghost.id}_{k}_{GK_OUTPUT}"] = torch.norm(graph_k[f"{ghost.id}_{k}_{GK_CONTROL}"])
-
-        # Check healthiness of graph by looking for specific keys in the graph that are required.
-        assert all([f"{ghost.id}_{k}_{GK_OUTPUT}" for ghost in self._ado_ghosts])
         return graph_k
 
     ###########################################################################

@@ -69,13 +69,18 @@ class ConstraintModule(ABC):
         """
         assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True)
         assert grad_wrt.requires_grad
+        assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
 
         constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
+
+        # In general the constraints might not be affected by the `ego_trajectory`, then they does not have
+        # gradient function and the gradient is not defined. Then the jacobian is assumed to be zero.
         grad_size = int(grad_wrt.numel())
         jacobian = torch.zeros(constraints.numel() * grad_size)
-        for i, x in enumerate(constraints):
-            grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)
-            jacobian[i*grad_size:(i+1)*grad_size] = grad[0].flatten().detach()
+        if constraints.requires_grad:
+            for i, x in enumerate(constraints):
+                grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)
+                jacobian[i * grad_size:(i + 1) * grad_size] = grad[0].flatten().detach()
         return jacobian.detach().numpy()
 
     @abstractmethod

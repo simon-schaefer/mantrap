@@ -63,8 +63,6 @@ class PotentialFieldEnvironment(IterativeEnvironment):
     def build_graph(self, ego_state: torch.Tensor = None, k: int = 0,  **graph_kwargs) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = self.write_state_to_graph(ego_state, k=k, **graph_kwargs)
-        for ghost in self.ghosts:
-            graph[f"{ghost.id}_{k}_{GK_GOAL}"] = ghost.params[PARAMS_GOAL]
 
         # Make graph with resulting force as an output.
         for ghost in self.ghosts:
@@ -76,9 +74,6 @@ class PotentialFieldEnvironment(IterativeEnvironment):
                 delta = gpos - ego_pos
                 force = ghost.params[PARAMS_V0] * torch.sign(delta) * torch.exp(- torch.abs(delta)) * ghost.weight
                 graph[f"{ghost.id}_{k}_{GK_CONTROL}"] = torch.add(graph[f"{ghost.id}_{k}_{GK_CONTROL}"], force)
-
-            # Summarize (standard) graph elements.
-            graph[f"{ghost.id}_{k}_{GK_OUTPUT}"] = torch.norm(graph[f"{ghost.id}_{k}_{GK_CONTROL}"])
 
         return graph
 

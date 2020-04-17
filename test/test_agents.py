@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from mantrap.agents.agent import Agent
-from mantrap.agents import AGENTS, IntegratorDTAgent, DoubleIntegratorDTAgent
+from mantrap.agents import *
 
 
 ###########################################################################

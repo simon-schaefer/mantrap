@@ -54,8 +54,9 @@ class Agent(ABC):
         state_with_time = self.expand_state_vector(self.state, time=time).view(1, 5).float()
         if history is not None:
             assert history.shape[1] == 5
+            history = history.float()
             if not torch.all(torch.isclose(history[-1, :], state_with_time)):
-                self._history = torch.cat((history.float(), state_with_time), dim=0)
+                self._history = torch.cat((history, state_with_time), dim=0)
             else:
                 self._history = history
         else:

@@ -298,9 +298,8 @@ class GraphBasedEnvironment(ABC):
         While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
         individually. To do so for each mode an agent is initialized using the passed initialization arguments and
         appended to the internal list of ghosts, while staying assignable to the original ado agent by id, i.e.
-        ghost_id = ado_id + mode_index.
-        Thereby the ghosts are sorted with decreasing level of importance, i.e. decreasing weight, so that the first
-        ghost in the list of added ghosts for this agent always is the most important one.
+        ghost_id = ado_id + mode_index. Thereby the ghosts are not sorted, so they at in random order, to be able
+        to dynamically change it without having a lot of computational overhead.
 
         :param ado_type: agent class of creating ado (has to be subclass of Agent-class in agents/).
         :param num_modes: number of modes of multi-modal ado agent (>=1).
@@ -321,16 +320,10 @@ class GraphBasedEnvironment(ABC):
         if not self.is_multi_modal:
             assert num_modes == 1  # environment does not support multi-modality
 
-        # Append the created ado for every mode. When no weights are given, then initialize with a uniform weight
-        # distribution between the modes. If not sort the modes by order of decreasing weight. For uniform
-        # distributions no modes are not sorted due to the order - inversion during the sorting process, which
-        # is problematic e.g. when copying the environment.
+        # Append the created ado for every mode. When no weights are given, then initialize with a uniform
+        # weight distribution between the modes.
         arg_list = arg_list if arg_list is not None else [dict()] * num_modes
         weights = weights if weights is not None else (torch.ones(num_modes) / num_modes).tolist()
-        if not all([abs(weights[0] - weights[i]) < 1e-6 for i in range(num_modes)]):  # = non-uniform
-            index_sorted = list(reversed(np.argsort(weights)))  # so that decreasing order
-            arg_list = [arg_list[k] for k in index_sorted]
-            weights = [weights[k] for k in index_sorted]
         assert len(arg_list) == len(weights) == num_modes
 
         for i in range(num_modes):
@@ -343,18 +336,18 @@ class GraphBasedEnvironment(ABC):
         assert self.sanity_check()
         return ado
 
-    def ados_most_important_mode(self) -> List[Ghost]:
-        """Return a list of the most important ghosts, i.e. the ones with the highest weight, for each ado, by
-        exploiting the way they are added to the list of ghosts (decreasing weights so that the first ghost
-        is the most important one).
-        The functionality of the method can be checked by comparing the ado ids of the selected most important ghosts.
-        Since the ids are unique the only way to get N different ado ids in the list is by having selected ghosts
-        from N different ados.
-        """
-        ghost_max = [self.ghosts[i * self.num_modes + 0] for i in range(self.num_ados)]
+    def ados(self) -> List[Agent]:
+        """Return a list of ado agents associated to each ghost.
 
-        assert len(np.unique([ghost.id for ghost in ghost_max])) == self.num_ados
-        return ghost_max
+        Due to construction during ado initialization and as asserted in `sanity_check()` the agent of all
+        ghosts associated to the same ado (since they represent modes of which). Therefore the current as well
+        as the previous states are the same, basically everything that defines the agent, while mode-specific
+        parameters are defined outside of the agent. Therefore we can just pick a random ghost, here the mode
+        with index 0, to get an ado representation, which is representative for every other mode associated
+        to the same ado.
+        """
+        assert self.sanity_check()
+        return [self.ghosts[self.convert_ado_id(ado_id=ado_id, mode_index=0)].agent for ado_id in self.ado_ids]
 
     def ghosts_by_ado_index(self, ado_index: int) -> List[Ghost]:
         assert 0 <= ado_index < self.num_ados
@@ -617,17 +610,17 @@ class GraphBasedEnvironment(ABC):
     def same_initial_conditions(self, other: 'GraphBasedEnvironment'):
         """Similar to __eq__() function, but not enforcing parameters of environment to be completely equivalent,
         merely enforcing the initial conditions to be equal, such as states of agents in scene. Hence, all prediction
-        depending parameters, namely the number of modes or agent's parameters dont have to be equal.
+        depending parameters, namely the number of modes or agent's parameters dont have to be equal. As the
+        parameters of the ghosts are separated from the agent (and therefore the states and state history), just the
+        agents are compared, not the ghosts themselves.
+
+        :param other: comparable environment object.
         """
         assert self.dt == other.dt
         assert self.num_ados == other.num_ados
         assert self.ego == other.ego
-        ghosts_equal = [True] * self.num_ados
-        ghosts_imp = self.ados_most_important_mode()
-        other_imp = other.ados_most_important_mode()
-        for i in range(self.num_ados):
-            ghosts_equal[i] = ghosts_equal[i] and ghosts_imp[i].agent == other_imp[i].agent
-        assert all(ghosts_equal)
+        for m_ghost in range(self.num_ghosts):
+            assert self.ghosts[m_ghost].agent == other.ghosts[m_ghost].agent
         return True
 
     def sanity_check(self) -> bool:
@@ -647,17 +640,17 @@ class GraphBasedEnvironment(ABC):
         for ghost in self.ghosts:
             ghost.agent.sanity_check()
 
-        # Check for the right order of ghosts, i.e. an order matching between ados and ghosts. Firstly, all ghosts
-        # which origin from the same ado must be subsequent and secondly, have the same ado id, which is the one
-        # at the kth place of the `ado_ids` array.
-        for m_ado, ado_id in enumerate(self.ado_ids):
+        # Firstly, all ghosts which origin from the same ado must be subsequent and secondly, have the same ado id,
+        # which is the one at the kth place of the `ado_ids` array. Also the summed weights should have norm 1.
+        for ado_id in self.ado_ids:
             weights_per_mode = np.zeros(self.num_modes)
-            for m_ghost, ghost in enumerate(self.ghosts[m_ado * self.num_modes:(m_ado + 1) * self.num_modes]):
+            ghosts_by_ado = self.ghosts_by_ado_id(ado_id=ado_id)
+            for m_ghost, ghost in enumerate(ghosts_by_ado):
                 ado_id_ghost, _ = self.split_ghost_id(ghost_id=ghost.id)
-                assert ado_id == ado_id_ghost
+                assert ado_id_ghost == ado_id
+                assert ghost.agent == ghosts_by_ado[0].agent
                 weights_per_mode[m_ghost] = ghost.weight
-            # Check whether ghost order is correct, from highest to smallest weight.
-            assert all([weights_per_mode[k] <= weights_per_mode[k - 1] for k in range(1, self.num_modes)])
+            assert np.isclose(weights_per_mode.sum(), 1.0)
         return True
 
     ###########################################################################
@@ -742,8 +735,7 @@ class GraphBasedEnvironment(ABC):
     ###########################################################################
     @property
     def ado_colors(self) -> List[np.ndarray]:
-        ados = self.ados_most_important_mode()
-        return [ado.agent.color for ado in ados]
+        return [ado.color for ado in self.ados()]
 
     @property
     def ado_ids(self) -> List[str]:

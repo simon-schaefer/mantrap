@@ -55,9 +55,17 @@ class ObjectiveModule(ABC):
         """
         assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
         assert grad_wrt.requires_grad
+        assert ego_trajectory.requires_grad  # otherwise objective cannot have gradient function
 
         objective = self._compute(ego_trajectory, ado_ids=ado_ids)
-        gradient = torch.autograd.grad(objective, grad_wrt, retain_graph=True)[0].flatten().detach().numpy()
+
+        # In general the objective might not be affected by the `ego_trajectory`, then it does not have a gradient
+        # function and the gradient is not defined. Then the objective gradient is assumed to be zero.
+        if objective.requires_grad:
+            gradient = torch.autograd.grad(objective, grad_wrt, retain_graph=True, allow_unused=False)[0]
+            gradient = gradient.flatten().detach().numpy()
+        else:
+            gradient = np.zeros(grad_wrt.numel())
         return self._return_gradient(gradient)
 
     @abstractmethod

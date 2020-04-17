@@ -10,8 +10,6 @@ FILTER_EUCLIDEAN = "euclidean"
 FILTER_NO_FILTER = "no_filter"
 
 GK_CONTROL = "control"  # GK = Graph-Key
-GK_GOAL = "goal"
-GK_OUTPUT = "output"
 GK_POSITION = "position"
 GK_VELOCITY = "velocity"
 

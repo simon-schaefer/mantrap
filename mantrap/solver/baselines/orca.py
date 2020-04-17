@@ -11,23 +11,13 @@ from mantrap.utility.shaping import check_ego_action, check_ego_controls
 
 
 class ORCASolver(Solver):
-    """Implementation of baseline ego strategy according to 'Reciprocal n-body Collision Avoidance' by Jur van den Berg,
-    Stephen J. Guy, Ming Lin, and Dinesh Manocha (short: ORCA, O = optimal). This strategy determines the optimal
-    velocity update so that a) there is guaranteed no collision in the next time-steps (`agent_safe_dt`) and b) the
-    new velocity is the closest velocity to the preferred velocity (here: constant velocity to goal) there is in the
-    set of non-collision velocities. Thereby we have some main assumptions:
+    """ORCA-based solver.
 
-    1) all agents behave according to the ORCA formalism
-    2) all agents are single integrators i.e. do not have holonomic constraints
-    3) synchronized discrete time updates
-    4) perfect observability of every agents state at the current time (pref. velocities unknown)
-
-    In order to find the "optimal" velocity linear constraints are derived using the ORCA formalism and solved in
-    a linear program. Since here only the ego behaves according to ORCA, every collision avoidance movement is fully
-    executed by the ego itself, instead of splitting it up between the two avoiding agents, as in the original ORCA
-    implementation.
+    Based on the ORCA algorithm defined in `ORCAEnvironment` this solver finds the optimal trajectory by
+    introducing the ego agent as another "normal" agent in the scene, solving for the optimal velocity update
+    for every agent in the scene (by following the ORCA algorithm and assumptions) and returning the velocity
+    which is associated to the agent representing the ego agent.
     """
-
     def _optimize(self, z0: torch.Tensor, tag: str, ado_ids: List[str], **kwargs
                   ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.

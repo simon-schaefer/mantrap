@@ -11,11 +11,11 @@ import torch
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
-from mantrap.solver.constraints import CONSTRAINTS
+from mantrap.solver.constraints import CONSTRAINTS_DICT
 from mantrap.solver.filter.filter_module import FilterModule
-from mantrap.solver.filter import FILTER
+from mantrap.solver.filter import FILTER_DICT
 from mantrap.solver.objectives.objective_module import ObjectiveModule
-from mantrap.solver.objectives import OBJECTIVES
+from mantrap.solver.objectives import OBJECTIVES_DICT
 from mantrap.utility.io import build_os_path
 from mantrap.utility.shaping import check_ego_controls
 
@@ -304,18 +304,18 @@ class Solver(ABC):
         raise NotImplementedError
 
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
-        assert all([name in OBJECTIVES.keys() for name, _ in modules])
+        assert all([name in OBJECTIVES_DICT.keys() for name, _ in modules])
         assert all([0.0 <= weight for _, weight in modules])
-        return {m: OBJECTIVES[m](horizon=self.T, weight=w, env=self._env, goal=self.goal) for m, w in modules}
+        return {m: OBJECTIVES_DICT[m](horizon=self.T, weight=w, env=self._env, goal=self.goal) for m, w in modules}
 
     def _build_constraint_modules(self, modules: List[str]) -> Dict[str, ConstraintModule]:
-        assert all([name in CONSTRAINTS.keys() for name in modules])
-        return {m: CONSTRAINTS[m](horizon=self.T, env=self._env) for m in modules}
+        assert all([name in CONSTRAINTS_DICT.keys() for name in modules])
+        return {m: CONSTRAINTS_DICT[m](horizon=self.T, env=self._env) for m in modules}
 
     @staticmethod
     def _build_filter_module(module: str) -> FilterModule:
-        assert module is None or module in FILTER.keys()
-        return FILTER[module]() if module is not None else FILTER[FILTER_NO_FILTER]()
+        assert module is None or module in FILTER_DICT.keys()
+        return FILTER_DICT[module]() if module is not None else FILTER_DICT[FILTER_NO_FILTER]()
 
     ###########################################################################
     # Logging #################################################################
