@@ -203,3 +203,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
     @property
     def is_deterministic(self) -> bool:
         return True
+
+    @property
+    def is_differentiable_wrt_ego(self) -> bool:
+        return True

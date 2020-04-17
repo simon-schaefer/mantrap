@@ -805,12 +805,16 @@ class GraphBasedEnvironment(ABC):
     ###########################################################################
     @property
     def environment_name(self) -> str:
-        return self.__class__.__name__.lower()
+        raise NotImplementedError
 
     @property
     def is_multi_modal(self) -> bool:
-        return True
+        raise NotImplementedError
 
     @property
     def is_deterministic(self) -> bool:
-        return True
+        raise NotImplementedError
+
+    @property
+    def is_differentiable_wrt_ego(self) -> bool:
+        raise NotImplementedError

@@ -165,6 +165,7 @@ class Trajectron(GraphBasedEnvironment):
                 node_state_dict[node] = ado_states[m_ado, 0:2].detach()
         dd = Derivative2(horizon=t_horizon, dt=self.dt, velocity=True)
         trajectory_w_acc = torch.cat((ego_trajectory[:, 0:4], dd.compute(ego_trajectory[:, 2:4])), dim=1)
+
         distribution, _ = self.trajectron.incremental_forward(
             new_inputs_dict=node_state_dict,
             prediction_horizon=t_horizon - 1,
@@ -202,6 +203,7 @@ class Trajectron(GraphBasedEnvironment):
 
                 # Adapt weight as determined from prediction (repetitive but very cheap).
                 self._ado_ghosts[m_ghost].weight = ado_weights[m_ado, m_mode] / ado_weights[m_ado, :].sum()  # norming
+
         return graph
 
     def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> Dict[str, torch.Tensor]:
@@ -249,17 +251,18 @@ class Trajectron(GraphBasedEnvironment):
         assert check_ego_state(x=ado_state, enforce_temporal=True)  # technically ado state, but indexed
         t_start = float(ado_state[-1])
 
-        with torch.no_grad():
-            mus = gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
-            log_sigmas = gmm.log_sigmas.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
+        # Bring distribution from Trajectron to internal shape (hidden shape check).
+        mus = gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
+        log_sigmas = gmm.log_sigmas.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
 
+        with torch.no_grad():
             # Determine weight of every mode and get indices of `N = num_modes` highest weights. Since instead of
             # the inverse of the norm of `log_sigmas` the norm is used directly, the lowest results correspond to the
             # most important modes, i.e. highest weights.
             log_sigmas_norm = torch.norm(log_sigmas, dim=2)
             if t_horizon > 1:
                 importance = torch.linspace(1.0, 0.2, steps=t_horizon - 1)
-                weights_inv = torch.sum(torch.mul(log_sigmas_norm, importance), dim=1).numpy()
+                weights_inv = torch.sum(torch.mul(log_sigmas_norm, importance), dim=1).detach().numpy()
             else:
                 weights_inv = log_sigmas_norm.view(-1,)
 
@@ -405,3 +408,7 @@ class Trajectron(GraphBasedEnvironment):
     @property
     def is_deterministic(self) -> bool:
         return False
+
+    @property
+    def is_differentiable_wrt_ego(self) -> bool:
+        return True
