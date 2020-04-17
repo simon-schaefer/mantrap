@@ -44,10 +44,6 @@ class ConstraintModule(ABC):
     ###########################################################################
     # Constraint Formulation ##################################################
     ###########################################################################
-    @abstractmethod
-    def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
-        raise NotImplementedError
-
     def constraint(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> np.ndarray:
         """Determine constraint value for passed ego trajectory by calling the internal `compute()` method.
 
@@ -71,7 +67,11 @@ class ConstraintModule(ABC):
         assert grad_wrt.requires_grad
         assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
 
+        # Compute the constraint values and check whether a gradient between them and the ego_trajectory input (which
+        # has been assured to require a gradient) exists, if the module-conditions for that are met.
         constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
+        if self._constraints_gradient_condition():
+            assert constraints.requires_grad
 
         # In general the constraints might not be affected by the `ego_trajectory`, then they does not have
         # gradient function and the gradient is not defined. Then the jacobian is assumed to be zero.
@@ -85,6 +85,24 @@ class ConstraintModule(ABC):
 
     @abstractmethod
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+        """Determine constraint value core method.
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
+        """Lower and upper bounds for constraint values."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _constraints_gradient_condition(self) -> bool:
+        """Conditions for the existence of a gradient between the input of the constraint value computation
+        (which is the ego_trajectory) and the constraint values itself. If returns True and the ego_trajectory
+        itself requires a gradient, the constraint output has to require a gradient as well.
+        """
         raise NotImplementedError
 
     def compute_violation(self) -> float:

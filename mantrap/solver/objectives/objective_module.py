@@ -57,7 +57,11 @@ class ObjectiveModule(ABC):
         assert grad_wrt.requires_grad
         assert ego_trajectory.requires_grad  # otherwise objective cannot have gradient function
 
+        # Compute the objective value and check whether a gradient between the value and the ego_trajectory input
+        # (which has been assured to require a gradient) exists, if the module-conditions for that are met.
         objective = self._compute(ego_trajectory, ado_ids=ado_ids)
+        if self._objective_gradient_condition():
+            assert objective.requires_grad
 
         # In general the objective might not be affected by the `ego_trajectory`, then it does not have a gradient
         # function and the gradient is not defined. Then the objective gradient is assumed to be zero.
@@ -70,6 +74,19 @@ class ObjectiveModule(ABC):
 
     @abstractmethod
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+        """Determine objective value core method.
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _objective_gradient_condition(self) -> bool:
+        """Conditions for the existence of a gradient between the input of the objective value computation
+        (which is the ego_trajectory) and the objective value itself. If returns True and the ego_trajectory
+        itself requires a gradient, the objective value output has to require a gradient as well.
+        """
         raise NotImplementedError
 
     ###########################################################################

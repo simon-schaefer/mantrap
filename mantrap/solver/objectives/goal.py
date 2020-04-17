@@ -26,8 +26,28 @@ class GoalModule(ObjectiveModule):
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
 
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+        """Determine objective value core method.
+
+        To compute the goal-based objective simply take the L2 norm between all positions on the ego trajectory
+        and the goal. To encounter the fact, that it is more important for the last position (last = position at
+        the end of the planning horizon) to be close to the goal position than the first position, multiply with
+         a strictly increasing importance distribution, cubic in this case.
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        """
         goal_distances = torch.norm(ego_trajectory[:, 0:2] - self._goal, dim=1)
         return goal_distances.dot(self._distribution)
+
+    def _objective_gradient_condition(self) -> bool:
+        """Conditions for the existence of a gradient between the input of the objective value computation
+        (which is the ego_trajectory) and the objective value itself. If returns True and the ego_trajectory
+        itself requires a gradient, the objective value output has to require a gradient as well.
+
+        Since the objective value computation depends on the ego_trajectory (and the ego goal) only, this
+        should always hold.
+        """
+        return True
 
     @property
     def importance_distribution(self) -> torch.Tensor:

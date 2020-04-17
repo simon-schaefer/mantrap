@@ -5,61 +5,64 @@ import pytest
 import torch
 
 from mantrap.agents import IntegratorDTAgent
-from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment, Trajectron
-from mantrap.environment.environment import GraphBasedEnvironment
-from mantrap.solver.constraints import MaxSpeedModule, MinDistanceModule
-from mantrap.solver.constraints.constraint_module import ConstraintModule
-from mantrap.solver.filter import EuclideanModule, NoFilterModule
-from mantrap.solver.filter.filter_module import FilterModule
-from mantrap.solver.objectives import GoalModule, InteractionAccelerationModule, InteractionPositionModule
-from mantrap.solver.objectives.objective_module import ObjectiveModule
+from mantrap.environment import ENVIRONMENTS
+from mantrap.solver.constraints import *
+from mantrap.solver.filter import *
+from mantrap.solver.objectives import *
 from mantrap.utility.primitives import straight_line
 
 
 ###########################################################################
 # Objectives ##############################################################
 ###########################################################################
-@pytest.mark.parametrize(
-    "module_class, env_class", [
-        (InteractionPositionModule, PotentialFieldEnvironment),
-        (InteractionPositionModule, SocialForcesEnvironment),
-        (InteractionPositionModule, Trajectron),
-        (InteractionAccelerationModule, PotentialFieldEnvironment),
-        (InteractionAccelerationModule, SocialForcesEnvironment),
-        (InteractionAccelerationModule, Trajectron)
-    ]
-)
+@pytest.mark.parametrize("module_class", [InteractionPositionModule, InteractionAccelerationModule])
+@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("num_modes", [1, 2])
 class TestObjectiveInteraction:
 
     @staticmethod
-    def test_far_and_near(module_class: ObjectiveModule.__class__, env_class: GraphBasedEnvironment.__class__):
+    def test_far_and_near(module_class, env_class, num_modes):
         """Every interaction-based objective should be larger the closer the interacting agents are, so having the
         ego agent close to some ado should affect the ado more than when the ego agent is far away. """
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 100.0])}, y_axis=(-100, 100))
-        env.add_ado(position=torch.zeros(2))
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), num_modes=num_modes)
 
-        ego_path_near = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=11)
+        ego_path_near = straight_line(start_pos=torch.tensor([-5, 0.1]), end_pos=torch.tensor([5, 0.1]), steps=11)
         ego_trajectory_near = env.ego.expand_trajectory(ego_path_near, dt=env.dt)
-        ego_path_far = straight_line(torch.tensor([-5, 100.0]), torch.tensor([5, 10.0]), steps=11)
+        ego_path_far = straight_line(start_pos=torch.tensor([-5, 100.0]), end_pos=torch.tensor([5, 10.0]), steps=11)
         ego_trajectory_far = env.ego.expand_trajectory(ego_path_far, dt=env.dt)
 
         module = module_class(horizon=10, env=env)
-        assert module.objective(ego_trajectory_near) > module.objective(ego_trajectory_far)
+        if env.is_deterministic:
+            assert module.objective(ego_trajectory_near) > module.objective(ego_trajectory_far)
 
     @staticmethod
-    def test_multimodal_support(module_class: ObjectiveModule.__class__, env_class: GraphBasedEnvironment.__class__):
+    def test_multimodal_support(module_class, env_class, num_modes):
+        weights = np.random.rand(num_modes)
+        weights_normed = (weights / weights.sum()).tolist()
+
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
-        ado_pos, ado_vel, ado_goal = torch.zeros(2), torch.tensor([-1, 0]), torch.tensor([-5, 0])
-        env.add_ado(position=ado_pos, velocity=ado_vel, num_modes=2, weights=[0.1, 0.9], goal=ado_goal)
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2),
+                    velocity=torch.tensor([-1, 0]),
+                    num_modes=num_modes,
+                    weights=weights_normed,
+                    goal=torch.tensor([-5, 0])
+                    )
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=env.dt)
 
         module = module_class(horizon=10, env=env)
         assert module.objective(ego_trajectory) is not None
 
     @staticmethod
-    def test_output(module_class: ObjectiveModule.__class__, env_class: GraphBasedEnvironment.__class__):
+    def test_output(module_class, env_class, num_modes):
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
-        env.add_ado(position=torch.zeros(2))
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), num_modes=num_modes)
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=env.dt)
         ego_trajectory.requires_grad = True
 
@@ -68,10 +71,12 @@ class TestObjectiveInteraction:
         assert module.gradient(ego_trajectory, grad_wrt=ego_trajectory).size == ego_trajectory.numel()
 
     @staticmethod
-    def test_runtime(module_class: ObjectiveModule.__class__, env_class: GraphBasedEnvironment.__class__):
+    def test_runtime(module_class, env_class, num_modes):
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
-        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=1)
-        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=1)
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
+        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((5, 2)) / 10.0, dt=env.dt)
         ego_trajectory.requires_grad = True
 
@@ -86,42 +91,37 @@ class TestObjectiveInteraction:
             module.gradient(ego_trajectory, grad_wrt=ego_trajectory)
             gradient_run_times.append(time.time() - start_time)
 
-        assert np.mean(objective_run_times) < 0.03  # 33 Hz
-        assert np.mean(gradient_run_times) < 0.05  # 20 Hz
+        assert np.mean(objective_run_times) < 0.03 * num_modes  # 33 Hz
+        assert np.mean(gradient_run_times) < 0.05 * num_modes  # 20 Hz
 
 
 def test_objective_goal_distribution():
-    goal = torch.tensor([4.1, 8.9])
+    goal_state = torch.tensor([4.1, 8.9])
     ego_trajectory = torch.rand((11, 4))
 
-    module = GoalModule(goal=goal, horizon=10, weight=1.0)
+    module = GoalModule(goal=goal_state, horizon=10, weight=1.0)
     module.importance_distribution = torch.zeros(module.importance_distribution.size())
     module.importance_distribution[3] = 1.0
 
     objective = module.objective(ego_trajectory)
-    assert objective == torch.norm(ego_trajectory[3, 0:2] - goal)
+    assert objective == torch.norm(ego_trajectory[3, 0:2] - goal_state)
 
 
 ###########################################################################
 # Constraints #############################################################
 ###########################################################################
-@pytest.mark.parametrize(
-    "module_class, env_class", [
-        (MaxSpeedModule, PotentialFieldEnvironment),
-        (MaxSpeedModule, SocialForcesEnvironment),
-        (MaxSpeedModule, Trajectron),
-        (MinDistanceModule, PotentialFieldEnvironment),
-        (MinDistanceModule, SocialForcesEnvironment),
-        (MinDistanceModule, Trajectron)
-    ]
-)
+@pytest.mark.parametrize("module_class", CONSTRAINTS)
+@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("num_modes", [1, 2])
 class TestConstraints:
 
     @staticmethod
-    def test_runtime(module_class: ConstraintModule.__class__, env_class: GraphBasedEnvironment.__class__):
+    def test_runtime(module_class, env_class, num_modes):
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
-        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=1)
-        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=1)
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
+        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((5, 2)) / 10.0, dt=env.dt)
         ego_trajectory.requires_grad = True
 
@@ -136,30 +136,25 @@ class TestConstraints:
             module.jacobian(ego_trajectory, grad_wrt=ego_trajectory)
             jacobian_run_times.append(time.time() - start_time)
 
-        assert np.mean(constraint_run_times) < 0.03  # 33 Hz
-        assert np.mean(jacobian_run_times) < 0.04  # 25 Hz
+        assert np.mean(constraint_run_times) < 0.03 * num_modes  # 33 Hz
+        assert np.mean(jacobian_run_times) < 0.04 * num_modes  # 25 Hz
 
 
 ###########################################################################
 # Filter ##################################################################
 ###########################################################################
-@pytest.mark.parametrize(
-    "module_class, env_class", [
-        (EuclideanModule, PotentialFieldEnvironment),
-        (EuclideanModule, SocialForcesEnvironment),
-        (EuclideanModule, Trajectron),
-        (NoFilterModule, PotentialFieldEnvironment),
-        (NoFilterModule, SocialForcesEnvironment),
-        (NoFilterModule, Trajectron)
-    ]
-)
+@pytest.mark.parametrize("module_class", FILTER)
+@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("num_modes", [1, 2])
 class TestFilter:
 
     @staticmethod
-    def test_runtime(module_class: FilterModule.__class__, env_class: GraphBasedEnvironment.__class__):
+    def test_runtime(module_class, env_class, num_modes):
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
-        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=2)
-        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=2)
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
+        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
 
         module = module_class()
         filter_run_times = list()
