@@ -13,7 +13,7 @@ class MaxSpeedModule(ConstraintModule):
     For computing this constraint simply the norm of the planned velocity is determined and compared to the maximal
     agent's speed limit. For 0 < t < T_{planning}:
 
-    .. math:: vel(t) < v_{max}
+    .. math:: speed(t) < v_{max}
 
     :param horizon: planning time horizon in number of time-steps (>= 1).
     """
@@ -28,15 +28,15 @@ class MaxSpeedModule(ConstraintModule):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        return ego_trajectory[:, 2:4].flatten()
+        return torch.norm(ego_trajectory[:, 2:4], dim=1).flatten()
 
     def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
         """Lower and upper bounds for constraint values.
 
-        For the max speed constraint the lower and upper bounds are the agents maximal allowed speeds, which
-        is an assumed constant value defined in constants.
+        For the max speed constraint the lower is None since the norm always is semi-positive and upper bounds
+        are the agents maximal allowed speeds, which is an assumed constant value defined in constants.
         """
-        return np.ones(self.num_constraints) * (-AGENT_SPEED_MAX), np.ones(self.num_constraints) * AGENT_SPEED_MAX
+        return [None] * self.num_constraints, np.ones(self.num_constraints) * AGENT_SPEED_MAX
 
     def _constraints_gradient_condition(self) -> bool:
         """Conditions for the existence of a gradient between the input of the constraint value computation
@@ -49,4 +49,4 @@ class MaxSpeedModule(ConstraintModule):
 
     @property
     def num_constraints(self) -> int:
-        return 2 * (self.T + 1)
+        return self.T + 1
