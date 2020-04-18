@@ -60,19 +60,22 @@ class SGradSolver(IPOPTSolver):
         ego_controls = torch.from_numpy(z).view(self.T, 2)
         ego_controls.requires_grad = True
         ego_trajectory = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt)
-
         assert check_ego_trajectory(ego_trajectory, t_horizon=self.T + 1, pos_and_vel_only=True)
         return ego_trajectory if not return_leaf else (ego_trajectory, ego_controls)
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         ego_controls = torch.from_numpy(z).view(self.T, 2)
         ego_controls.requires_grad = True
-
         assert check_ego_controls(ego_controls, t_horizon=self.T)
         return ego_controls if not return_leaf else (ego_controls, ego_controls)
 
+    def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory)
+        controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
+        return controls.flatten().detach().numpy()
+
     ###########################################################################
-    # Logging parameters ######################################################
+    # Solver properties #######################################################
     ###########################################################################
     @property
     def solver_name(self) -> str:

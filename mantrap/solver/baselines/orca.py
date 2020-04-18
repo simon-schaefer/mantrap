@@ -102,12 +102,22 @@ class ORCASolver(Solver):
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         controls = self.z_to_ego_controls(z, return_leaf=return_leaf)
         trajectory = self.env.ego.unroll_trajectory(controls, dt=self.env.dt)
-
         assert check_ego_trajectory(trajectory, t_horizon=self.T + 1)
         return trajectory
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        controls = torch.from_numpy(z).view(-1, 2)
-
+        controls = torch.from_numpy(z).view(self.T, 2)
         assert check_ego_controls(controls, t_horizon=self.T)
         return controls
+
+    def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory)
+        controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
+        return controls.flatten().detach().numpy()
+
+    ###########################################################################
+    # Solver properties #######################################################
+    ###########################################################################
+    @property
+    def solver_name(self) -> str:
+        return "orca"

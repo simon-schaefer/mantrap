@@ -250,8 +250,24 @@ class Solver(ABC):
     # Problem formulation - Objective #########################################
     ###########################################################################
     def objective(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = TAG_DEFAULT) -> float:
+        """Determine objective value for some optimization vector `z`.
+
+        This function generally defines the value of the objective function for some input optimization vector `z`,
+        and some input list of ados that should be taken into account in this computation. Therefore all objective
+        modules are called, their results are summed (module-internally weighted).
+
+        Since the objective function is the only overlap between all solver classes, for logging purposes (and
+        if the required verbosity level is met), after deriving the objective value the current optimization vector
+        is logged, after being transformed into an understandable format (ego trajectory). Also the other parameters
+        such as the objective values for every objective module are logged.
+
+        :param z: optimization vector (shape depends on exact optimization formulation).
+        :param ado_ids: identifiers of ados that should be taken into account during optimization.
+        :param tag: name of optimization call (name of the core).
+        :return: weighted sum of objective values w.r.t. `z`.
+        """
         ego_trajectory = self.z_to_ego_trajectory(z)
-        objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids) for m in self._objective_modules.values()])
+        objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids) for m in self.objective_modules])
 
         logging.debug(f"solver {self.name}:{tag} Objective function = {objective}")
         ado_planned = ado_planned_wo = torch.zeros(0)  # pseudo for ado_planned (only required for plotting)
@@ -261,35 +277,69 @@ class Solver(ABC):
             ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_trajectory.shape[0])
         self.log_append(ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo, tag=tag)
         self.log_append(obj_overall=objective, tag=tag)
-        module_log = {f"{LK_OBJECTIVE}_{key}": mod.obj_current for key, mod in self._objective_modules.items()}
+        module_log = {f"{LK_OBJECTIVE}_{key}": mod.obj_current for key, mod in self.objective_module_dict.items()}
         self.log_append(**module_log, tag=tag)
         return float(objective)
 
     @staticmethod
     def objective_defaults() -> List[Tuple[str, float]]:
+        """List of default objective modules that should be taken into account during optimization (can be
+        overwritten during solver initialization `objectives` - argument.
+
+        Format: [(objective_name, weight), (...), ...]
+        """
         raise NotImplementedError
 
     ###########################################################################
     # Problem formulation - Constraints #######################################
     ###########################################################################
     def constraints(
-        self, z: np.ndarray, ado_ids: List[str] = None, tag: str = TAG_DEFAULT, return_violation: bool = False
+        self,
+        z: np.ndarray,
+        ado_ids: List[str] = None,
+        tag: str = TAG_DEFAULT,
+        return_violation: bool = False
     ) -> np.ndarray:
+        """Determine constraints vector for some optimization vector `z`.
+
+        This function generally defines the constraints vector for some input optimization vector `z`, and some
+        list of ados that should be taken into account in this computation. Therefore all constraint modules
+        are called, their results are concatenated.
+
+        For logging purposes additionally the overall constraints violation, i.e. a scalar value representing the
+        amount of how much each constraint is violated (zero if constraint is not active), summed over all
+        constraints, is determined and logged, together with the violation by constraint module. Since the
+        optimization parameters itself already have been logged in the `objective()` method, there are not logged
+        within the `constraints()` method.
+
+        If the optimization is unconstrained, an empty constraint vector as well as zero violation are returned.
+
+        :param z: optimization vector (shape depends on exact optimization formulation).
+        :param ado_ids: identifiers of ados that should be taken into account during optimization.
+        :param tag: name of optimization call (name of the core).
+        :param return_violation: flag whether to return the overall constraint violation value as well.
+        :return: constraints vector w.r.t. `z`.
+        """
         if self.is_unconstrained:
             return np.array([]) if not return_violation else (np.array([]), 0.0)
 
         ego_trajectory = self.z_to_ego_trajectory(z)
-        constraints = np.concatenate([m.constraint(ego_trajectory, ado_ids=ado_ids) for m in self._constraint_modules.values()])
-        violation = float(np.sum([m.compute_violation() for m in self._constraint_modules.values()]))
+        constraints = np.concatenate([m.constraint(ego_trajectory, ado_ids=ado_ids) for m in self.constraint_modules])
+        violation = float(np.sum([m.compute_violation_internal() for m in self.constraint_modules]))
 
         logging.debug(f"solver {self.name}:{tag}: Constraints vector = {constraints}")
         self.log_append(inf_overall=violation, tag=tag)
-        module_log = {f"{LK_CONSTRAINT}_{key}": mod.inf_current for key, mod in self._constraint_modules.items()}
+        module_log = {f"{LK_CONSTRAINT}_{key}": mod.inf_current for key, mod in self.constraint_module_dict.items()}
         self.log_append(**module_log, tag=tag)
         return constraints if not return_violation else (constraints, violation)
 
     @staticmethod
     def constraints_defaults() -> List[str]:
+        """List of default constraints modules that should be taken into account during optimization (can be
+        overwritten during solver initialization `constraints` - argument.
+
+        Format: [constraint_name, ...]
+        """
         raise NotImplementedError
 
     ###########################################################################
@@ -301,6 +351,10 @@ class Solver(ABC):
 
     @abstractmethod
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        raise NotImplementedError
+
+    @abstractmethod
+    def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:
         raise NotImplementedError
 
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
@@ -335,8 +389,8 @@ class Solver(ABC):
             for tag in self.cores:
 
                 # Log first and last (considered as best) objective value.
-                log = {key: self.log[f"{tag}/{LK_OBJECTIVE}_{key}_{k}"] for key in self.objective_modules}
-                log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.objective_modules}
+                log = {key: self.log[f"{tag}/{LK_OBJECTIVE}_{key}_{k}"] for key in self.objective_names}
+                log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.objective_names}
                 logging.info(f"solver [{tag}] - objectives: {log}")
 
                 # Log first and last (considered as best) infeasibility value.
@@ -352,8 +406,8 @@ class Solver(ABC):
         return ["ego_planned", "ado_planned", "ado_planned_wo"]
 
     def log_keys_performance(self) -> List[str]:
-        objective_keys = [f"{tag}/{LK_OBJECTIVE}_{key}" for key in self.objective_modules for tag in self.cores]
-        constraint_keys = [f"{tag}/{LK_CONSTRAINT}_{key}" for key in self.constraint_modules for tag in self.cores]
+        objective_keys = [f"{tag}/{LK_OBJECTIVE}_{key}" for key in self.objective_names for tag in self.cores]
+        constraint_keys = [f"{tag}/{LK_CONSTRAINT}_{key}" for key in self.constraint_names for tag in self.cores]
         return objective_keys + constraint_keys
 
     def log_keys_all(self) -> List[str]:
@@ -425,10 +479,10 @@ class Solver(ABC):
             # From optimization log extract the core (initial condition) which has resulted in the best objective
             # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
             # N=t_horizon times to be able to visualize the whole distribution at every time.
-            obj_dict = {key: self.log[f"{self.core_opt}/{LK_OBJECTIVE}_{key}"] for key in self.objective_modules}
-            obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.objective_modules}
-            inf_dict = {key: self.log[f"{self.core_opt}/{LK_CONSTRAINT}_{key}"] for key in self.constraint_modules}
-            inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.constraint_modules}
+            obj_dict = {key: self.log[f"{self.core_opt}/{LK_OBJECTIVE}_{key}"] for key in self.objective_names}
+            obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.objective_names}
+            inf_dict = {key: self.log[f"{self.core_opt}/{LK_CONSTRAINT}_{key}"] for key in self.constraint_names}
+            inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.constraint_names}
 
             ego_trials = [self._log[f"{self.core_opt}/ego_planned_{k}"] for k in range(self._iteration)]
 
@@ -463,12 +517,19 @@ class Solver(ABC):
     def T(self) -> int:
         return self._solver_params[PARAMS_T_PLANNING]
 
+    ###########################################################################
+    # Optimization formulation parameters #####################################
+    ###########################################################################
     @property
     def objective_module_dict(self) -> Dict[str, ObjectiveModule]:
         return self._objective_modules
 
     @property
-    def objective_modules(self) -> List[str]:
+    def objective_modules(self) -> List[ObjectiveModule]:
+        return list(self.objective_module_dict.values())
+
+    @property
+    def objective_names(self) -> List[str]:
         return [LK_OVERALL_PERFORMANCE] + list(self.objective_module_dict.keys())
 
     @property
@@ -476,10 +537,13 @@ class Solver(ABC):
         return self._constraint_modules
 
     @property
-    def constraint_modules(self) -> List[str]:
-        return [LK_OVERALL_PERFORMANCE] + list(self.constraint_module_dict.keys())
+    def constraint_modules(self) -> List[ConstraintModule]:
+        return list(self.constraint_module_dict.values())
 
     @property
+    def constraint_names(self) -> List[str]:
+        return [LK_OVERALL_PERFORMANCE] + list(self.constraint_module_dict.keys())
+
     def filter_module(self) -> str:
         return self._filter_module.__str__()
 
@@ -510,13 +574,16 @@ class Solver(ABC):
         return self._solver_params[PARAMS_VERBOSE]
 
     @property
-    def solver_name(self) -> str:
-        return self.__class__.__name__.lower()
-
-    @property
     def config_name(self) -> str:
         return self._solver_params[PARAMS_CONFIG]
 
     @property
     def name(self) -> str:
         return self.solver_name + "_" + self.config_name
+
+    ###########################################################################
+    # Solver properties #######################################################
+    ###########################################################################
+    @property
+    def solver_name(self) -> str:
+        raise NotImplementedError

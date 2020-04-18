@@ -125,7 +125,7 @@ class TestConstraints:
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((5, 2)) / 10.0, dt=env.dt)
         ego_trajectory.requires_grad = True
 
-        module = module_class(env=env, horizon=10)
+        module = module_class(env=env, horizon=5)
         constraint_run_times, jacobian_run_times = list(), list()
         for i in range(10):
             start_time = time.time()
@@ -138,6 +138,78 @@ class TestConstraints:
 
         assert np.mean(constraint_run_times) < 0.03 * num_modes  # 33 Hz
         assert np.mean(jacobian_run_times) < 0.04 * num_modes  # 25 Hz
+
+    @staticmethod
+    def test_violation(module_class, env_class, num_modes):
+        """In order to test the constraint violation in general test it in a scene with static and far-distant
+        agent(s), with  respect to the ego, and static ego robot. In this configurations all constraints should
+        be met. """
+        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.ones(2) * 9, goal=torch.ones(2) * 9, num_modes=num_modes)
+        ego_trajectory = env.ego.unroll_trajectory(controls=torch.zeros((5, 2)), dt=env.dt)
+
+        module = module_class(env=env, horizon=5)
+        violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=None)
+        assert violation == 0
+
+
+@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("num_modes", [1, 2])
+def test_max_speed_constraint_violation(env_class, num_modes):
+    env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1]), "velocity": torch.zeros(2)})
+    if num_modes > 1 and not env.is_multi_modal:
+        pytest.skip()
+    module = MaxSpeedModule(env=env, horizon=5)
+    _, upper_bound = module.constraint_bounds
+
+    # In this first scenario the ego has zero velocity over the full horizon.
+    controls = torch.zeros((module.T, 2))
+    ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
+    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    assert violation == 0
+
+    # In this second scenario the ego has non-zero random velocity in x-direction, but always below the maximal
+    # allowed speed (random -> [0, 1]).
+    controls[:, 0] = torch.rand(module.T) * upper_bound  # single integrator, so no velocity summation !
+    ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
+    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    assert violation == 0
+
+    # In this third scenario the ego has the same random velocity in the x-direction as in the second scenario,
+    # but at one time step, it is increased to a slightly larger speed than allowed.
+    controls[1, 0] = upper_bound + 1e-3
+    ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
+    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    assert violation > 0
+
+
+@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("num_modes", [1, 2])
+def test_min_distance_constraint_violation(env_class, num_modes):
+    env = env_class(IntegratorDTAgent, {"position": torch.ones(2) * 9, "velocity": torch.zeros(2)})
+    if num_modes > 1 and not env.is_multi_modal:
+        pytest.skip()
+    ado_kwargs = {"goal": torch.tensor([9, -9]), "num_modes": num_modes}
+    env.add_ado(position=torch.ones(2) * (-9), velocity=torch.tensor([1, 0]), **ado_kwargs)
+    controls = torch.stack((torch.ones(10) * (-1), torch.zeros(10))).view(10, 2)
+    ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
+
+    # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
+    module = MinDistanceModule(env=env, horizon=controls.shape[0])
+    lower_bound, _ = module.constraint_bounds
+    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    assert violation == 0
+
+    # In the second scenario add another ado agent that is starting and moving very close to the ego robot.
+    ado_start_pos = env.ego.position - (lower_bound * 0.5) * torch.ones(2)
+    ado_kwargs = {"goal": ado_start_pos, "num_modes": num_modes}
+    env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
+    module = MinDistanceModule(env=env, horizon=controls.shape[0])
+    lower_bound, _ = module.constraint_bounds
+    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    assert violation > 0
 
 
 ###########################################################################

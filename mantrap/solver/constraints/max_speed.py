@@ -30,14 +30,6 @@ class MaxSpeedModule(ConstraintModule):
         """
         return torch.norm(ego_trajectory[:, 2:4], dim=1).flatten()
 
-    def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
-        """Lower and upper bounds for constraint values.
-
-        For the max speed constraint the lower is None since the norm always is semi-positive and upper bounds
-        are the agents maximal allowed speeds, which is an assumed constant value defined in constants.
-        """
-        return [None] * self.num_constraints, np.ones(self.num_constraints) * AGENT_SPEED_MAX
-
     def _constraints_gradient_condition(self) -> bool:
         """Conditions for the existence of a gradient between the input of the constraint value computation
         (which is the ego_trajectory) and the constraint values itself. If returns True and the ego_trajectory
@@ -46,6 +38,15 @@ class MaxSpeedModule(ConstraintModule):
         Since the velocities are part of the given ego_trajectory, the gradient should always exist.
         """
         return True
+
+    @property
+    def constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
+        """Lower and upper bounds for constraint values.
+
+        For the max speed constraint the lower is None since the norm always is semi-positive and upper bounds
+        are the agents maximal allowed speeds, which is an assumed constant value defined in constants.
+        """
+        return None, AGENT_SPEED_MAX
 
     @property
     def num_constraints(self) -> int:

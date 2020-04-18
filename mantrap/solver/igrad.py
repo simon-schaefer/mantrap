@@ -75,16 +75,25 @@ class IGradSolver(IPOPTSolver):
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         ego_trajectory, mid = self.z_to_ego_trajectory(z, return_leaf=True)
         ego_controls = self.env.ego.roll_trajectory(trajectory=ego_trajectory, dt=self.env.dt)
-
         assert check_ego_controls(ego_controls, t_horizon=self.T)
         return ego_controls if not return_leaf else (ego_controls, mid)
+
+    def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:
+        assert check_ego_trajectory(ego_trajectory)
+
+        # An inverse Lagrange interpolation is not invertible. However Lagrange interpolation guarantees that
+        # the resulting trajectory intersects with all its control points, so the points are somewhere on the
+        # trajectory, but we don't know where exactly. The best guess we have is equally spacing the points
+        # on the trajectory (index-wise), while the first and last points always are part of the trajectory.
+        indexes = np.linspace(start=0, endpoint=self.T, num=self.num_control_points + 2)
+        return ego_trajectory[indexes, 0:2].flatten().detach().numpy()
 
     @property
     def num_control_points(self) -> int:
         return self._solver_params[PARAMS_NUM_CONTROL_POINTS]
 
     ###########################################################################
-    # Logging parameters ######################################################
+    # Solver properties #######################################################
     ###########################################################################
     @property
     def solver_name(self) -> str:

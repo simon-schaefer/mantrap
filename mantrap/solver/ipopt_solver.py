@@ -49,9 +49,10 @@ class IPOPTSolver(Solver, ABC):
         lb, ub = self.optimization_variable_bounds()
         cl, cu = list(), list()
         for name, constraint in self._constraint_modules.items():
-            cl += list(constraint.lower)
-            cu += list(constraint.upper)
-            logging.debug(f"Constraint {name} has bounds lower = {constraint.lower} & upper = {constraint.upper}")
+            lower, upper = constraint.constraint_boundaries()
+            cl += list(lower)
+            cu += list(upper)
+            logging.debug(f"Constraint {name} has bounds lower = {lower} & upper = {upper}")
 
         # Formulate optimization problem as in standardized IPOPT format.
         z0_flat = z0.flatten().numpy().tolist()
@@ -88,7 +89,7 @@ class IPOPTSolver(Solver, ABC):
     ###########################################################################
     def gradient(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = TAG_DEFAULT) -> np.ndarray:
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._objective_modules.values()]
+        gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.objective_modules]
         gradient = np.sum(gradient, axis=0)
 
         logging.debug(f"Gradient function = {gradient}")
@@ -105,7 +106,7 @@ class IPOPTSolver(Solver, ABC):
             return np.array([])
 
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self._constraint_modules.values()]
+        jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.constraint_modules]
         jacobian = np.concatenate(jacobian)
 
         logging.debug(f"Constraint jacobian function computed")
@@ -124,12 +125,12 @@ class IPOPTSolver(Solver, ABC):
         super(IPOPTSolver, self).log_reset(log_horizon)
         for tag in self.cores:
             for k in range(log_horizon):
-                self._log.update({f"{tag}/{LK_GRADIENT}_{key}_{k}": [] for key in self.objective_modules})
+                self._log.update({f"{tag}/{LK_GRADIENT}_{key}_{k}": [] for key in self.objective_names})
 
     def log_summarize(self, tag: str = TAG_DEFAULT):
         super(IPOPTSolver, self).log_summarize()
 
-        gradient_keys = [f"{tag}/{LK_GRADIENT}_{key}" for key in self.objective_modules for tag in self.cores]
+        gradient_keys = [f"{tag}/{LK_GRADIENT}_{key}" for key in self.objective_names for tag in self.cores]
         for key in gradient_keys:
             # Summarize best gradient values to one website.
             summary = [self._log[f"{key}_{k}"][-1] for k in range(self._iteration)]

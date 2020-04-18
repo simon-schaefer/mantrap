@@ -1,6 +1,5 @@
 from typing import List, Tuple, Union
 
-import numpy as np
 import torch
 
 from mantrap.constants import *
@@ -61,14 +60,6 @@ class MinDistanceModule(ConstraintModule):
                     constraints[m, t] = torch.norm(ado_position - ego_position)
         return constraints.flatten()
 
-    def constraint_bounds(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
-        """Lower and upper bounds for constraint values.
-
-        While there is no upper value for the distance, the lower bound is a constant minimal safety distance
-        which is defined in constants.
-        """
-        return np.ones(self.num_constraints) * CONSTRAINT_MIN_L2_DISTANCE, [None] * self.num_constraints
-
     def _constraints_gradient_condition(self) -> bool:
         """Conditions for the existence of a gradient between the input of the constraint value computation
         (which is the ego_trajectory) and the constraint values itself. If returns True and the ego_trajectory
@@ -78,6 +69,15 @@ class MinDistanceModule(ConstraintModule):
         with respect to the ego (trajectory), the computation is conditioned on-
         """
         return self._env.is_differentiable_wrt_ego
+
+    @property
+    def constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
+        """Lower and upper bounds for constraint values.
+
+        While there is no upper value for the distance, the lower bound is a constant minimal safety distance
+        which is defined in constants.
+        """
+        return CONSTRAINT_MIN_L2_DISTANCE, None
 
     @property
     def num_constraints(self) -> int:

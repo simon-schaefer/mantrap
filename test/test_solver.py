@@ -142,19 +142,13 @@ class TestSolvers:
             time_steps_exp = torch.linspace(start=t_start, end=t_start + env.dt * solver.T, steps=solver.T + 1)
             assert torch.all(torch.isclose(ego_opt_planned[k, :, -1], time_steps_exp))
 
-        # Test constraint satisfaction - minimal distance constraint.
-        if CONSTRAINT_MIN_DISTANCE in solver.constraint_modules:
-            limit, _ = solver.constraint_module_dict[CONSTRAINT_MIN_DISTANCE].constraint_bounds()
-            for t in range(solver_horizon):
-                for m in range(env.num_ghosts):
-                    distance = ego_trajectory_opt[t, 0:2] - ado_trajectories[m, :, t, 0:2]
-                    assert torch.all(torch.ge(torch.norm(distance, dim=1), CONSTRAINT_MIN_L2_DISTANCE))
-
-        # Test constraint satisfaction - maximal speed constraint.
-        if CONSTRAINT_MAX_SPEED in solver.constraint_modules:
-            _, limit = solver.constraint_module_dict[CONSTRAINT_MAX_SPEED].constraint_bounds()
-            speeds = torch.norm(ego_trajectory_opt[:, 2:4], dim=1).detach().numpy()
-            assert torch.all(torch.le(speeds, AGENT_SPEED_MAX))
+        # Test constraint satisfaction - automatic constraint violation test. The constraints have to be met for
+        # the optimized trajectory, therefore the violation has to be zero (i.e. all constraints are not active).
+        # Since the constraint modules have been tested independently, for generalization, the module-internal
+        # violation computation can be used for this check.
+        for constraint_module in solver.constraint_modules:
+            violation = constraint_module.compute_violation(ego_trajectory_opt, ado_ids=None)
+            assert violation == 0.0
 
 
 ###########################################################################
