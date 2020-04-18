@@ -250,13 +250,15 @@ class Agent(ABC):
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def __eq__(self, other):
+    def __eq__(self, other, check_class: bool = True):
         """Two agents are considered as being identical when their current state and their complete state history are
-        equal. Also the agent's class should be the same, e.g. single or double integrators.
-        However the agent's descriptive parameters such as its id are not part of this comparison, since they are
-        initialized as random and not descriptive for the state an agent is in.
+        equal. However the agent's descriptive parameters such as its id are not part of this comparison, since they
+        are initialized as random and not descriptive for the state an agent is in. Also the agent's class does not
+        have to be the same (given flag).
         """
-        assert self.__class__ == other.__class__
+        assert self.id == other.id
+        if check_class:
+            assert self.__class__ == other.__class__
         assert torch.all(torch.isclose(self.state_with_time, other.state_with_time))
         assert torch.all(torch.isclose(self.history, other.history))
         return True

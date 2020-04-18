@@ -7,7 +7,7 @@ from mantrap.constants import *
 from mantrap.agents import IntegratorDTAgent
 from mantrap.environment import ORCAEnvironment
 from mantrap.solver.solver import Solver
-from mantrap.utility.shaping import check_ego_action, check_ego_controls
+from mantrap.utility.shaping import check_ego_action, check_ego_controls, check_ego_trajectory
 
 
 class ORCASolver(Solver):
@@ -64,9 +64,11 @@ class ORCASolver(Solver):
         ego_controls = torch.stack([ego_action] * self.T)
         assert check_ego_controls(ego_controls, t_horizon=self.T)
 
-        # Determine z and objective value from determined ego-control.
+        # Determine z and objective value from determined ego-control. For logging only also determine
+        # the constraints values (since logging happens within the function).
         z = ego_controls.flatten()
-        objective_value = self.objective(z=z.detach().numpy())
+        objective_value = self.objective(z=z.detach().numpy(), tag=tag, ado_ids=ado_ids)
+        _ = self.constraints(z=z.detach().numpy(), tag=tag, ado_ids=ado_ids)
         return z, objective_value, self.log
 
     ###########################################################################
@@ -78,7 +80,7 @@ class ORCASolver(Solver):
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
         """As explained in `_optimize()` the optimization is independent from the initial value of z, therefore
         only return one value, to enforce single-threaded computations. """
-        return torch.zeros((1, 2))
+        return torch.zeros((1, self.T, 2))
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
@@ -99,7 +101,13 @@ class ORCASolver(Solver):
     ###########################################################################
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         controls = self.z_to_ego_controls(z, return_leaf=return_leaf)
-        return self.env.ego.unroll_trajectory(controls, dt=self.env.dt)
+        trajectory = self.env.ego.unroll_trajectory(controls, dt=self.env.dt)
+
+        assert check_ego_trajectory(trajectory, t_horizon=self.T + 1)
+        return trajectory
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        return torch.from_numpy(z).view(-1, 2)
+        controls = torch.from_numpy(z).view(-1, 2)
+
+        assert check_ego_controls(controls, t_horizon=self.T)
+        return controls

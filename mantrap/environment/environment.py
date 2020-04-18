@@ -620,7 +620,7 @@ class GraphBasedEnvironment(ABC):
         assert self.num_ados == other.num_ados
         assert self.ego == other.ego
         for m_ghost in range(self.num_ghosts):
-            assert self.ghosts[m_ghost].agent == other.ghosts[m_ghost].agent
+            assert self.ghosts[m_ghost].agent.__eq__(other.ghosts[m_ghost].agent, check_class=False)
         return True
 
     def sanity_check(self) -> bool:

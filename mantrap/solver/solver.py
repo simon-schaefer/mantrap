@@ -335,13 +335,13 @@ class Solver(ABC):
             for tag in self.cores:
 
                 # Log first and last (considered as best) objective value.
-                log = {key: self.log[f"{tag}/{LK_OBJECTIVE}_{key}_{k}"] for key in self.objective_keys}
-                log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.objective_keys}
+                log = {key: self.log[f"{tag}/{LK_OBJECTIVE}_{key}_{k}"] for key in self.objective_modules}
+                log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.objective_modules}
                 logging.info(f"solver [{tag}] - objectives: {log}")
 
                 # Log first and last (considered as best) infeasibility value.
-                log = {key: self.log[f"{tag}/{LK_CONSTRAINT}_{key}_{k}"] for key in self.constraint_modules}
-                log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.constraint_modules}
+                log = {key: self.log[f"{tag}/{LK_CONSTRAINT}_{key}_{k}"] for key in self.constraint_module_dict}
+                log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.constraint_module_dict}
                 logging.info(f"solver [{tag}] - infeasibility: {log}")
 
             logging.info(f"solver {self.name} @k={k}: ego optimized controls = {ego_controls_k.tolist()}")
@@ -352,8 +352,8 @@ class Solver(ABC):
         return ["ego_planned", "ado_planned", "ado_planned_wo"]
 
     def log_keys_performance(self) -> List[str]:
-        objective_keys = [f"{tag}/{LK_OBJECTIVE}_{key}" for key in self.objective_keys for tag in self.cores]
-        constraint_keys = [f"{tag}/{LK_CONSTRAINT}_{key}" for key in self.constraint_keys for tag in self.cores]
+        objective_keys = [f"{tag}/{LK_OBJECTIVE}_{key}" for key in self.objective_modules for tag in self.cores]
+        constraint_keys = [f"{tag}/{LK_CONSTRAINT}_{key}" for key in self.constraint_modules for tag in self.cores]
         return objective_keys + constraint_keys
 
     def log_keys_all(self) -> List[str]:
@@ -425,10 +425,10 @@ class Solver(ABC):
             # From optimization log extract the core (initial condition) which has resulted in the best objective
             # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
             # N=t_horizon times to be able to visualize the whole distribution at every time.
-            obj_dict = {key: self.log[f"{self.core_opt}/{LK_OBJECTIVE}_{key}"] for key in self.objective_keys}
-            obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.objective_keys}
-            inf_dict = {key: self.log[f"{self.core_opt}/{LK_CONSTRAINT}_{key}"] for key in self.constraint_keys}
-            inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.constraint_keys}
+            obj_dict = {key: self.log[f"{self.core_opt}/{LK_OBJECTIVE}_{key}"] for key in self.objective_modules}
+            obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.objective_modules}
+            inf_dict = {key: self.log[f"{self.core_opt}/{LK_CONSTRAINT}_{key}"] for key in self.constraint_modules}
+            inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.constraint_modules}
 
             ego_trials = [self._log[f"{self.core_opt}/ego_planned_{k}"] for k in range(self._iteration)]
 
@@ -464,20 +464,24 @@ class Solver(ABC):
         return self._solver_params[PARAMS_T_PLANNING]
 
     @property
-    def objective_modules(self) -> Dict[str, ObjectiveModule]:
+    def objective_module_dict(self) -> Dict[str, ObjectiveModule]:
         return self._objective_modules
 
     @property
-    def objective_keys(self) -> List[str]:
-        return [LK_OVERALL_PERFORMANCE] + list(self.objective_modules.keys())
+    def objective_modules(self) -> List[str]:
+        return [LK_OVERALL_PERFORMANCE] + list(self.objective_module_dict.keys())
 
     @property
-    def constraint_modules(self) -> Dict[str, ConstraintModule]:
+    def constraint_module_dict(self) -> Dict[str, ConstraintModule]:
         return self._constraint_modules
 
     @property
-    def constraint_keys(self) -> List[str]:
-        return [LK_OVERALL_PERFORMANCE] + list(self.constraint_modules.keys())
+    def constraint_modules(self) -> List[str]:
+        return [LK_OVERALL_PERFORMANCE] + list(self.constraint_module_dict.keys())
+
+    @property
+    def filter_module(self) -> str:
+        return self._filter_module.__str__()
 
     ###########################################################################
     # Utility parameters ######################################################

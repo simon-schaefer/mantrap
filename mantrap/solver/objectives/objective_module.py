@@ -39,7 +39,7 @@ class ObjectiveModule(ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
+        assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
 
         obj_value = self._compute(ego_trajectory, ado_ids=ado_ids)
         return self._return_objective(float(obj_value.item()))

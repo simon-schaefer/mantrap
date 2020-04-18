@@ -124,12 +124,12 @@ class IPOPTSolver(Solver, ABC):
         super(IPOPTSolver, self).log_reset(log_horizon)
         for tag in self.cores:
             for k in range(log_horizon):
-                self._log.update({f"{tag}/{LK_GRADIENT}_{key}_{k}": [] for key in self.objective_keys})
+                self._log.update({f"{tag}/{LK_GRADIENT}_{key}_{k}": [] for key in self.objective_modules})
 
     def log_summarize(self, tag: str = TAG_DEFAULT):
         super(IPOPTSolver, self).log_summarize()
 
-        gradient_keys = [f"{tag}/{LK_GRADIENT}_{key}" for key in self.objective_keys for tag in self.cores]
+        gradient_keys = [f"{tag}/{LK_GRADIENT}_{key}" for key in self.objective_modules for tag in self.cores]
         for key in gradient_keys:
             # Summarize best gradient values to one website.
             summary = [self._log[f"{key}_{k}"][-1] for k in range(self._iteration)]
