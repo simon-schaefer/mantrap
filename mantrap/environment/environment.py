@@ -105,7 +105,7 @@ class GraphBasedEnvironment(ABC):
         assert y_axis[0] < y_axis[1], "y axis must be in form (y_min, y_max)"
         assert dt > 0.0, "time-step must be larger than 0"
 
-        self._ego = ego_type(**ego_kwargs, identifier=ID_EGO) if ego_type is not None else None
+        self._ego = ego_type(**ego_kwargs, is_robot=True, identifier=ID_EGO) if ego_type is not None else None
         self._ado_ghosts = []
         self._num_ado_modes = 0
         self._ado_ids = []
@@ -647,6 +647,7 @@ class GraphBasedEnvironment(ABC):
 
         # Check sanity of all agents in the scene.
         if self.ego is not None:
+            assert self.ego.is_robot
             self.ego.sanity_check()
         for ghost in self.ghosts:
             ghost.agent.sanity_check()

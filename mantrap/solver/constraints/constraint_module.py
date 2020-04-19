@@ -5,6 +5,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import torch
 
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.shaping import check_ego_trajectory
 
 
@@ -19,21 +20,15 @@ class ConstraintModule(ABC):
 
     :param horizon: planning time horizon in number of time-steps (>= 1).
     """
-    def __init__(self, horizon: int, **module_kwargs):
+    def __init__(self, horizon: int, env: GraphBasedEnvironment, **module_kwargs):
         assert horizon >= 1
         self.T = horizon
-
-        # Initialize module.
-        self.initialize(**module_kwargs)
+        self._env = env
 
         # Logging variables for objective and gradient values. For logging the latest variables are stored
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
         # appending multiple values within one optimization step.
         self._constraint_current = None
-
-    @abstractmethod
-    def initialize(self, **module_kwargs):
-        raise NotImplementedError
 
     ###########################################################################
     # Constraint Formulation ##################################################

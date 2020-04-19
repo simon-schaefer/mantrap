@@ -2,8 +2,7 @@ from typing import List, Tuple, Union
 
 import torch
 
-from mantrap.constants import *
-from mantrap.environment.environment import GraphBasedEnvironment
+from mantrap.constants import CONSTRAINT_MIN_L2_DISTANCE, GK_POSITION
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
@@ -24,20 +23,8 @@ class MinDistanceModule(ConstraintModule):
     In fact it reduces the problem of minimal distance to the "selected" agent and time-step, while the optimized
     trajectory has no gradients pointing to a certain distance from other agents at other points in time, so that
     the number of convergence steps might be increased.
-
-    :param horizon: planning time horizon in number of time-steps (>= 1).
-    :param env: environment object for forward environment of scene.
     """
-    def __init__(self, horizon: int, **module_kwargs):
-        self._env = None
-        super(MinDistanceModule, self).__init__(horizon, **module_kwargs)
 
-    def initialize(self, env: GraphBasedEnvironment, **unused):
-        self._env = env
-
-    ###########################################################################
-    # Constraint Formulation ##################################################
-    ###########################################################################
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine constraint value core method.
 

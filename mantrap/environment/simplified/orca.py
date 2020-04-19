@@ -86,13 +86,13 @@ class ORCAEnvironment(IterativeEnvironment):
                 # Find new velocity based on line constraints. Preferred velocity would be the going from the
                 # current position to the goal directly with maximal speed. However when the goal has been reached
                 # set the preferred velocity to zero (not original ORCA).
-                speed_max = AGENT_SPEED_MAX
+                speed_max = ghost.agent.speed_max
                 vel_preferred = ghost.params[PARAMS_GOAL] - ghost.agent.position
                 goal_distance = torch.norm(vel_preferred)
                 if goal_distance.item() < ENV_ORCA_MAX_GOAL_DISTANCE:
                     vel_preferred = torch.zeros(2)
                 else:
-                    vel_preferred = vel_preferred / goal_distance * AGENT_SPEED_MAX
+                    vel_preferred = vel_preferred / goal_distance * speed_max
 
                 # Solve the constrained optimization problem defined above.
                 i_fail, vel_new = self.linear_solver_2d(constraints, speed_max=speed_max, velocity_opt=vel_preferred)

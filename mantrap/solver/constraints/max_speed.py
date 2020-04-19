@@ -2,7 +2,6 @@ from typing import List, Tuple, Union
 
 import torch
 
-from mantrap.constants import AGENT_SPEED_MAX
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
@@ -13,15 +12,8 @@ class MaxSpeedModule(ConstraintModule):
     agent's speed limit. For 0 < t < T_{planning}:
 
     .. math:: speed(t) < v_{max}
-
-    :param horizon: planning time horizon in number of time-steps (>= 1).
     """
-    def initialize(self, **module_kwargs):
-        pass
 
-    ###########################################################################
-    # Constraint Formulation ##################################################
-    ###########################################################################
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
@@ -51,7 +43,7 @@ class MaxSpeedModule(ConstraintModule):
         For the max speed constraint the lower is None since the norm always is semi-positive and upper bounds
         are the agents maximal allowed speeds, which is an assumed constant value defined in constants.
         """
-        return None, AGENT_SPEED_MAX
+        return None, self._env.ego.speed_max
 
     def num_constraints(self, ado_ids: List[str] = None) -> int:
         return self.T + 1

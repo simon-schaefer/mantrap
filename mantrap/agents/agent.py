@@ -7,8 +7,14 @@ from typing import Tuple
 import numpy as np
 import torch
 
-from mantrap.constants import AGENT_SPEED_MAX
-from mantrap.utility.shaping import check_ego_path, check_ego_action, check_ego_controls, check_ego_trajectory, check_ego_state
+from mantrap.constants import *
+from mantrap.utility.shaping import (
+    check_ego_path,
+    check_ego_action,
+    check_ego_controls,
+    check_ego_trajectory,
+    check_ego_state
+)
 
 
 class Agent(ABC):
@@ -36,11 +42,12 @@ class Agent(ABC):
     def __init__(
         self,
         position: torch.Tensor,
-        velocity: torch.Tensor,
+        velocity: torch.Tensor = torch.zeros(2),
         time: float = 0,
         history: torch.Tensor = None,
+        is_robot: bool = False,
         identifier: str = None,
-        **kwargs,
+        **unused
     ):
         assert position.size() == torch.Size([2]), "position must be two-dimensional (x, y)"
         assert velocity.size() == torch.Size([2]), "velocity must be two-dimensional (vx, vy)"
@@ -61,6 +68,11 @@ class Agent(ABC):
                 self._history = history
         else:
             self._history = state_with_time
+
+        # Initialize agent properties.
+        self._is_robot = is_robot
+        self._max_speed = AGENT_SPEED_MAX if not is_robot else ROBOT_SPEED_MAX
+        self._max_acceleration = AGENT_ACC_MAX if not is_robot else ROBOT_ACC_MAX
 
         # Create random agent color (reddish), for evaluation only.
         self._color = np.random.uniform(0.0, 0.8, size=3).tolist()
@@ -84,10 +96,10 @@ class Agent(ABC):
         self._velocity = state_new[2:4]
 
         # maximal speed constraint.
-        if self.speed > AGENT_SPEED_MAX:
-            logging.warning(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {AGENT_SPEED_MAX}")
+        if self.speed > self.speed_max:
+            logging.warning(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {self.speed_max}")
             assert not torch.isinf(self.speed), "speed is infinite, physical break"
-            self._velocity = self._velocity / self.speed * AGENT_SPEED_MAX
+            self._velocity = self._velocity / self.speed * self.speed_max
 
         # append history with new state.
         state_new = self.expand_state_vector(self.state, time=self._history[-1, -1].item() + dt).unsqueeze(0)
@@ -306,6 +318,21 @@ class Agent(ABC):
     @property
     def history(self) -> torch.Tensor:
         return self._history
+
+    ###########################################################################
+    # Agent properties ########################################################
+    ###########################################################################
+    @property
+    def speed_max(self) -> float:
+        return self._max_speed
+
+    @property
+    def acceleration_max(self) -> float:
+        return self._max_acceleration
+
+    @property
+    def is_robot(self) -> bool:
+        return self._is_robot
 
     ###########################################################################
     # Visualization/Utility properties ########################################

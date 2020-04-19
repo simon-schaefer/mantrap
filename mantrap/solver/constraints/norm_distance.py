@@ -2,8 +2,7 @@ from typing import List, Tuple, Union
 
 import torch
 
-from mantrap.constants import *
-from mantrap.environment.environment import GraphBasedEnvironment
+from mantrap.constants import CONSTRAINT_MIN_L2_DISTANCE, GK_POSITION
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
@@ -15,20 +14,8 @@ class NormDistanceModule(ConstraintModule):
     ado is computed for every time-step of the trajectory. For 0 < t < T_{planning}:
 
     .. math:: || pos(t) - pos^{ado}_{0:2}(t) || > D
-
-    :param horizon: planning time horizon in number of time-steps (>= 1).
-    :param env: environment object for forward environment of scene.
     """
-    def __init__(self, horizon: int, **module_kwargs):
-        self._env = None
-        super(NormDistanceModule, self).__init__(horizon, **module_kwargs)
 
-    def initialize(self, env: GraphBasedEnvironment, **unused):
-        self._env = env
-
-    ###########################################################################
-    # Constraint Formulation ##################################################
-    ###########################################################################
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
