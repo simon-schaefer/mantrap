@@ -15,7 +15,7 @@ class MonteCarloTreeSearch(Solver):
     def _optimize(
         self,
         z0: torch.Tensor,
-        ado_ids: List[str] = None,
+        ado_ids: List[str],
         tag: str = TAG_DEFAULT,
         max_iter: int = MCTS_MAX_STEPS,
         max_cpu_time: float = MCTS_MAX_CPU_TIME,
@@ -67,7 +67,7 @@ class MonteCarloTreeSearch(Solver):
 
     def _evaluate(self, z: np.ndarray, ado_ids: List[str], tag: str) -> Tuple[float, float]:
         objective = self.objective(z, tag=tag, ado_ids=ado_ids)
-        _, constraint_violation = self.constraints(z, return_violation=True, tag=tag)
+        _, constraint_violation = self.constraints(z, ado_ids=ado_ids, return_violation=True, tag=tag)
         return objective, constraint_violation
 
     ###########################################################################

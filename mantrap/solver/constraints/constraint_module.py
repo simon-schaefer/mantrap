@@ -45,8 +45,9 @@ class ConstraintModule(ABC):
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
         assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
-        constraint = self._compute(ego_trajectory, ado_ids=ado_ids)
-        return self._return_constraint(constraint.detach().numpy())
+        constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
+        constraints = constraints.detach().numpy() if constraints is not None else np.array([])
+        return self._return_constraint(constraints)
 
     def jacobian(
         self,
@@ -69,6 +70,10 @@ class ConstraintModule(ABC):
         # Compute the constraint values and check whether a gradient between them and the ego_trajectory input (which
         # has been assured to require a gradient) exists, if the module-conditions for that are met.
         constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
+        # If constraint vector is None, directly return empty jacobian vector.
+        if constraints is None:
+            return np.array([])
+        # Otherwise check for the existence of a gradient, as explained above.
         if self._constraints_gradient_condition():
             assert constraints.requires_grad
 
@@ -83,7 +88,7 @@ class ConstraintModule(ABC):
         return jacobian.detach().numpy()
 
     @abstractmethod
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
@@ -109,11 +114,16 @@ class ConstraintModule(ABC):
         """Lower and upper bounds for constraint values."""
         raise NotImplementedError
 
-    def constraint_boundaries(self) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
+    def constraint_boundaries(self, ado_ids: List[str] = None
+                              ) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
         lower, upper = self.constraint_bounds
-        lower = lower * np.ones(self.num_constraints) if lower is not None else [None] * self.num_constraints
-        upper = upper * np.ones(self.num_constraints) if upper is not None else [None] * self.num_constraints
+        num_constraints = self.num_constraints(ado_ids=ado_ids)
+        lower = lower * np.ones(num_constraints) if lower is not None else [None] * num_constraints
+        upper = upper * np.ones(num_constraints) if upper is not None else [None] * num_constraints
         return lower, upper
+
+    def num_constraints(self, ado_ids: List[str] = None) -> int:
+        raise NotImplementedError
 
     ###########################################################################
     # Constraint Violation ####################################################
@@ -122,8 +132,8 @@ class ConstraintModule(ABC):
         """Determine constraint violation based on some input ego trajectory and ado ids list.
 
         The violation is the amount how much the solution state is inside the constraint active region.
-        When the constraint is not active, then the violation is zero. The calculation is based on the last (cached)
-        evaluation of the constraint function.
+        When the constraint is not active, then the violation is zero. The calculation is based on the last
+        (cached) evaluation of the constraint function.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
@@ -162,7 +172,3 @@ class ConstraintModule(ABC):
     def inf_current(self) -> float:
         """Current infeasibility value (amount of constraint violation)."""
         return self.compute_violation_internal()
-
-    @property
-    def num_constraints(self) -> int:
-        raise NotImplementedError  # should be absolute input-independent number for sanity checking

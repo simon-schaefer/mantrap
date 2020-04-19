@@ -10,4 +10,5 @@ OBJECTIVES_DICT = {
     OBJECTIVE_INTERACTION: InteractionPositionModule,  # default for interaction
 }
 
-OBJECTIVES = [GoalModule, InteractionAccelerationModule, InteractionPositionModule]
+OBJECTIVE_MODULES = [GoalModule, InteractionAccelerationModule, InteractionPositionModule]
+OBJECTIVES = list(OBJECTIVES_DICT.keys())

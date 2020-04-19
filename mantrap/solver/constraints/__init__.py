@@ -7,4 +7,5 @@ CONSTRAINTS_DICT = {
     CONSTRAINT_MIN_DISTANCE: MinDistanceModule,
 }
 
-CONSTRAINTS = [MaxSpeedModule, MinDistanceModule]
+CONSTRAINT_MODULES = [MaxSpeedModule, MinDistanceModule]
+CONSTRAINTS = list(CONSTRAINTS_DICT.keys())

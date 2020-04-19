@@ -4,4 +4,4 @@ from mantrap.solver.baselines.orca import ORCASolver
 from mantrap.solver.mc_tree_search import MonteCarloTreeSearch
 
 # SOLVER = [IGradSolver, SGradSolver, ORCASolver, MonteCarloTreeSearch]
-SOLVER = [SGradSolver, ORCASolver, MonteCarloTreeSearch]
+SOLVERS = [SGradSolver, ORCASolver, MonteCarloTreeSearch]

@@ -110,7 +110,7 @@ def test_objective_goal_distribution():
 ###########################################################################
 # Constraints #############################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", CONSTRAINTS)
+@pytest.mark.parametrize("module_class", CONSTRAINT_MODULES)
 @pytest.mark.parametrize("env_class", ENVIRONMENTS)
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestConstraints:
@@ -215,7 +215,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
 ###########################################################################
 # Filter ##################################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", FILTER)
+@pytest.mark.parametrize("module_class", FILTER_MODULES)
 @pytest.mark.parametrize("env_class", ENVIRONMENTS)
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestFilter:

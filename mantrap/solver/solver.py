@@ -56,7 +56,7 @@ class Solver(ABC):
         t_planning: int = SOLVER_HORIZON_DEFAULT,
         objectives: List[Tuple[str, float]] = None,
         constraints: List[str] = None,
-        filter_module: str = None,
+        filter_module: str = FILTER_NO_FILTER,
         eval_env: GraphBasedEnvironment = None,
         verbose: int = -1,
         multiprocessing: bool = True,
@@ -368,8 +368,8 @@ class Solver(ABC):
 
     @staticmethod
     def _build_filter_module(module: str) -> FilterModule:
-        assert module is None or module in FILTER_DICT.keys()
-        return FILTER_DICT[module]() if module is not None else FILTER_DICT[FILTER_NO_FILTER]()
+        assert module in FILTER_DICT.keys()
+        return FILTER_DICT[module]()
 
     ###########################################################################
     # Logging #################################################################

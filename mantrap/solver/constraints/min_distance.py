@@ -26,7 +26,10 @@ class MinDistanceModule(ConstraintModule):
     def initialize(self, env: GraphBasedEnvironment, **unused):
         self._env = env
 
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+    ###########################################################################
+    # Constraint Formulation ##################################################
+    ###########################################################################
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         Since predicting trajectories in the future the time-steps of the resulting time-discrete trajectories
@@ -47,7 +50,15 @@ class MinDistanceModule(ConstraintModule):
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
         num_constraints_per_step = len(ado_ids) * self._env.num_modes
         horizon = ego_trajectory.shape[0]
+        # This constraint is only defined with respect to other agents, so if no other agents are taken into
+        # account then return None directly.
+        if len(ado_ids) == 0:
+            return None
 
+        # Otherwise compute the constraint as described above. It is important to take all agents into account
+        # during the environment forward prediction step (`build_connected_graph()`) to not introduce possible
+        # behavioural changes into the forward prediction, which occur due to a reduction of the agents in the
+        # scene.
         graph = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
         constraints = torch.zeros((num_constraints_per_step, horizon))
         for m_ado, ado_id in enumerate(ado_ids):
@@ -70,6 +81,9 @@ class MinDistanceModule(ConstraintModule):
         """
         return self._env.is_differentiable_wrt_ego
 
+    ###########################################################################
+    # Constraint Bounds #######################################################
+    ###########################################################################
     @property
     def constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
         """Lower and upper bounds for constraint values.
@@ -79,6 +93,5 @@ class MinDistanceModule(ConstraintModule):
         """
         return CONSTRAINT_MIN_L2_DISTANCE, None
 
-    @property
-    def num_constraints(self) -> int:
-        return (self.T + 1) * self._env.num_ghosts
+    def num_constraints(self, ado_ids: List[str] = None) -> int:
+        return (self.T + 1) * len(ado_ids) * self._env.num_modes

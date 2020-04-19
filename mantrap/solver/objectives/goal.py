@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import torch
 
@@ -25,13 +25,13 @@ class GoalModule(ObjectiveModule):
         self._distribution = torch.linspace(0, 1, steps=self.T + 1) ** 3
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
 
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         To compute the goal-based objective simply take the L2 norm between all positions on the ego trajectory
         and the goal. To encounter the fact, that it is more important for the last position (last = position at
         the end of the planning horizon) to be close to the goal position than the first position, multiply with
-         a strictly increasing importance distribution, cubic in this case.
+        a strictly increasing importance distribution, cubic in this case.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.

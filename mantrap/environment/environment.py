@@ -601,8 +601,8 @@ class GraphBasedEnvironment(ABC):
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
                 time=self.time,
-                weights=[ghost.weight for ghost in ghosts_ado],
-                num_modes=self.num_modes,
+                weights=[ghost.weight for ghost in ghosts_ado] if env_copy.is_multi_modal else [1.0],
+                num_modes=self.num_modes if env_copy.is_multi_modal else 1,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
             )
         return env_copy
@@ -619,8 +619,19 @@ class GraphBasedEnvironment(ABC):
         assert self.dt == other.dt
         assert self.num_ados == other.num_ados
         assert self.ego == other.ego
-        for m_ghost in range(self.num_ghosts):
-            assert self.ghosts[m_ghost].agent.__eq__(other.ghosts[m_ghost].agent, check_class=False)
+
+        # The environment might be different in the number of modes, e.g. if one of them supports multi-modality
+        # and the environment does not. So only compare ghosts directly if both supports multi-modality.
+        if self.is_multi_modal and other.is_multi_modal:
+            assert self.num_modes == other.num_modes
+            for m_ghost in range(self.num_ghosts):
+                assert self.ghosts[m_ghost].agent.__eq__(other.ghosts[m_ghost].agent, check_class=False)
+        # Otherwise search and compare agents only.
+        else:
+            for ghost in self.ghosts:
+                ado_id, _ = self.split_ghost_id(ghost_id=ghost.id)
+                other_ghost = other.ghosts_by_ado_id(ado_id=ado_id)[0]  # zeroth ghost always there (num_modes >= 1)
+                assert ghost.agent.__eq__(other_ghost.agent, check_class=False)
         return True
 
     def sanity_check(self) -> bool:

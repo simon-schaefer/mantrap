@@ -89,8 +89,8 @@ class PotentialFieldEnvironment(IterativeEnvironment):
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
                 time=self.time,
-                weights=[ghost.weight for ghost in ghosts_ado],
-                num_modes=self.num_modes,
+                weights=[ghost.weight for ghost in ghosts_ado] if env_copy.is_multi_modal else [1],
+                num_modes=self.num_modes if env_copy.is_multi_modal else 1,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
                 v0s=[ghost.params[PARAMS_V0] for ghost in ghosts_ado],
             )

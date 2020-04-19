@@ -7,4 +7,5 @@ FILTER_DICT = {
     FILTER_NO_FILTER: NoFilterModule,
 }
 
-FILTER = [NoFilterModule, EuclideanModule]
+FILTER_MODULES = [NoFilterModule, EuclideanModule]
+FILTERS = list(FILTER_DICT.keys())

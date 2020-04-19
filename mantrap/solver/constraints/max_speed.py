@@ -1,6 +1,5 @@
 from typing import List, Tuple, Union
 
-import numpy as np
 import torch
 
 from mantrap.constants import AGENT_SPEED_MAX
@@ -20,7 +19,10 @@ class MaxSpeedModule(ConstraintModule):
     def initialize(self, **module_kwargs):
         pass
 
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+    ###########################################################################
+    # Constraint Formulation ##################################################
+    ###########################################################################
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         The max speed constraints simply are the velocity values of the ego trajectory.
@@ -39,6 +41,9 @@ class MaxSpeedModule(ConstraintModule):
         """
         return True
 
+    ###########################################################################
+    # Constraint Bounds #######################################################
+    ###########################################################################
     @property
     def constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
         """Lower and upper bounds for constraint values.
@@ -48,6 +53,5 @@ class MaxSpeedModule(ConstraintModule):
         """
         return None, AGENT_SPEED_MAX
 
-    @property
-    def num_constraints(self) -> int:
+    def num_constraints(self, ado_ids: List[str] = None) -> int:
         return self.T + 1

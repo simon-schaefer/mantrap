@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import logging
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import torch
@@ -40,8 +40,9 @@ class ObjectiveModule(ABC):
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
         assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
-
         obj_value = self._compute(ego_trajectory, ado_ids=ado_ids)
+        if obj_value is None:
+            obj_value = torch.zeros(1)  # if objective not defined simply return 0.0
         return self._return_objective(float(obj_value.item()))
 
     def gradient(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: List[str] = None) -> np.ndarray:
@@ -60,6 +61,10 @@ class ObjectiveModule(ABC):
         # Compute the objective value and check whether a gradient between the value and the ego_trajectory input
         # (which has been assured to require a gradient) exists, if the module-conditions for that are met.
         objective = self._compute(ego_trajectory, ado_ids=ado_ids)
+        # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
+        if objective is None:
+            return self._return_gradient(np.zeros(grad_wrt.numel()))
+        # Otherwise check for the existence of a gradient, as explained above.
         if self._objective_gradient_condition():
             assert objective.requires_grad
 
@@ -73,7 +78,7 @@ class ObjectiveModule(ABC):
         return self._return_gradient(gradient)
 
     @abstractmethod
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).

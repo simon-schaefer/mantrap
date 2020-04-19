@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import torch
 
@@ -29,7 +29,7 @@ class InteractionPositionModule(ObjectiveModule):
         self._env = env
         self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)[:, :, :, 0:2]
 
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> torch.Tensor:
+    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         To compute the objective value first predict the behaviour of all agents (and modes) in the scene in the
@@ -41,10 +41,17 @@ class InteractionPositionModule(ObjectiveModule):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
+        # Per default (i.e. if `ado_ids`) is None use all ado ids defined in the environment.
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
+        # The objective can only work if any ado agents are taken into account, otherwise return None.
+        if len(ado_ids) == 0:
+            return None
 
+        # If more than zero ado agents are taken into account, compute the objective as described.
+        # It is important to take all agents into account during the environment forward prediction step
+        # (`build_connected_graph()`) to not introduce possible behavioural changes into the forward prediction,
+        # which occur due to a reduction of the agents in the scene.
         graph = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
-
         objective = torch.zeros(1)
         for ado_id in ado_ids:
             for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
