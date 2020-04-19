@@ -3,6 +3,7 @@
 #######################################
 CONSTRAINT_MAX_SPEED = "max_speed"
 CONSTRAINT_MIN_DISTANCE = "min_distance"
+CONSTRAINT_NORM_DISTANCE = "norm_distance"
 
 ID_EGO = "ego"
 

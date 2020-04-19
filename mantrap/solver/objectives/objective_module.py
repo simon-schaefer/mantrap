@@ -61,20 +61,19 @@ class ObjectiveModule(ABC):
         # Compute the objective value and check whether a gradient between the value and the ego_trajectory input
         # (which has been assured to require a gradient) exists, if the module-conditions for that are met.
         objective = self._compute(ego_trajectory, ado_ids=ado_ids)
-        # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
-        if objective is None:
-            return self._return_gradient(np.zeros(grad_wrt.numel()))
-        # Otherwise check for the existence of a gradient, as explained above.
-        if self._objective_gradient_condition():
-            assert objective.requires_grad
 
+        # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
+        if objective is None or not self._objective_gradient_condition():
+            gradient = np.zeros(grad_wrt.numel())
+
+        # Otherwise check for the existence of a gradient, as explained above.
         # In general the objective might not be affected by the `ego_trajectory`, then it does not have a gradient
         # function and the gradient is not defined. Then the objective gradient is assumed to be zero.
-        if objective.requires_grad:
+        else:
+            assert objective.requires_grad
             gradient = torch.autograd.grad(objective, grad_wrt, retain_graph=True, allow_unused=False)[0]
             gradient = gradient.flatten().detach().numpy()
-        else:
-            gradient = np.zeros(grad_wrt.numel())
+
         return self._return_gradient(gradient)
 
     @abstractmethod

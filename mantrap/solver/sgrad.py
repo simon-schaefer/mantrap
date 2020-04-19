@@ -51,7 +51,7 @@ class SGradSolver(IPOPTSolver):
     ###########################################################################
     @staticmethod
     def constraints_defaults() -> List[str]:
-        return [CONSTRAINT_MAX_SPEED, CONSTRAINT_MIN_DISTANCE]
+        return [CONSTRAINT_MAX_SPEED, CONSTRAINT_NORM_DISTANCE]
 
     ###########################################################################
     # Utility #################################################################

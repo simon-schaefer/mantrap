@@ -136,8 +136,8 @@ class TestConstraints:
             module.jacobian(ego_trajectory, grad_wrt=ego_trajectory)
             jacobian_run_times.append(time.time() - start_time)
 
-        assert np.mean(constraint_run_times) < 0.03 * num_modes  # 33 Hz
-        assert np.mean(jacobian_run_times) < 0.04 * num_modes  # 25 Hz
+        assert np.mean(constraint_run_times) < 0.04 * num_modes  # 25 Hz
+        assert np.mean(jacobian_run_times) < 0.05 * num_modes  # 20 Hz
 
     @staticmethod
     def test_violation(module_class, env_class, num_modes):
@@ -197,7 +197,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
 
     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
-    module = MinDistanceModule(env=env, horizon=controls.shape[0])
+    module = NormDistanceModule(env=env, horizon=controls.shape[0])
     lower_bound, _ = module.constraint_bounds
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation == 0
@@ -206,7 +206,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ado_start_pos = env.ego.position - (lower_bound * 0.5) * torch.ones(2)
     ado_kwargs = {"goal": ado_start_pos, "num_modes": num_modes}
     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
-    module = MinDistanceModule(env=env, horizon=controls.shape[0])
+    module = NormDistanceModule(env=env, horizon=controls.shape[0])
     lower_bound, _ = module.constraint_bounds
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation > 0

@@ -7,30 +7,21 @@ from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
-class MinDistanceModule(ConstraintModule):
-    """Constraint for minimal distance between the robot (ego) and any other agent (ado) over all time.
+class NormDistanceModule(ConstraintModule):
+    """Constraint for norm distance between the robot (ego) and any other agent (ado) at any point in time.
 
-    For computing the minimal distance between the ego and every ado the scene is forward simulated given the
-    planned ego trajectory, using the `build_connected_graph()` method. Then the minimal distance between ego
-    and every ado is computed for every time-step of the trajectory. For 0 < t < T_{planning}:
+    For computing the norm distance between the ego and every ado the scene is forward simulated given the
+    planned ego trajectory, using the `build_connected_graph()` method. Then the L2-distance between ego and every
+    ado is computed for every time-step of the trajectory. For 0 < t < T_{planning}:
 
-    .. math:: min_t || pos(t) - pos^{ado}_{0:2}(t) || > D
-
-    In comparison to the `norm_distance` constraint, this constraint only includes the minimal value over all
-    time-steps and agents (w.r.t. the ego agent) during the planning horizon. Thus, the `min_distance` constraint
-    is a necessary condition for the `norm_distance` to be satisfied. However, although the `min_distance`
-    constraint definitely is computationally way more efficient due to the decrease of  number of constraints
-    (leading to way less backward passes), it gives a lot less information about where the optimization should go.
-    In fact it reduces the problem of minimal distance to the "selected" agent and time-step, while the optimized
-    trajectory has no gradients pointing to a certain distance from other agents at other points in time, so that
-    the number of convergence steps might be increased.
+    .. math:: || pos(t) - pos^{ado}_{0:2}(t) || > D
 
     :param horizon: planning time horizon in number of time-steps (>= 1).
     :param env: environment object for forward environment of scene.
     """
     def __init__(self, horizon: int, **module_kwargs):
         self._env = None
-        super(MinDistanceModule, self).__init__(horizon, **module_kwargs)
+        super(NormDistanceModule, self).__init__(horizon, **module_kwargs)
 
     def initialize(self, env: GraphBasedEnvironment, **unused):
         self._env = env
@@ -51,8 +42,7 @@ class MinDistanceModule(ConstraintModule):
 
         Therefore first the trajectories of all agents is predicted, then by iterating over all modes and time-steps
         in the discrete planning horizon, the constraint values are computed by calculating the L2 norm between
-        the ego's and the predicted agents positions at this specific point in time. Afterwards the minimum over
-        all these values is extracted and returned.
+        the ego's and the predicted agents positions at this specific point in time.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
@@ -79,7 +69,7 @@ class MinDistanceModule(ConstraintModule):
                     ado_position = graph[f"{ghost.id}_{t}_{GK_POSITION}"]
                     ego_position = ego_trajectory[t, 0:2]
                     constraints[m, t] = torch.norm(ado_position - ego_position)
-        return torch.min(constraints.flatten())
+        return constraints.flatten()
 
     def _constraints_gradient_condition(self) -> bool:
         """Conditions for the existence of a gradient between the input of the constraint value computation
@@ -104,4 +94,4 @@ class MinDistanceModule(ConstraintModule):
         return CONSTRAINT_MIN_L2_DISTANCE, None
 
     def num_constraints(self, ado_ids: List[str] = None) -> int:
-        return 1
+        return (self.T + 1) * len(ado_ids) * self._env.num_modes

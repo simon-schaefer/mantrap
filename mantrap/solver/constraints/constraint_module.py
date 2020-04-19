@@ -70,22 +70,28 @@ class ConstraintModule(ABC):
         # Compute the constraint values and check whether a gradient between them and the ego_trajectory input (which
         # has been assured to require a gradient) exists, if the module-conditions for that are met.
         constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
-        # If constraint vector is None, directly return empty jacobian vector.
-        if constraints is None:
-            return np.array([])
-        # Otherwise check for the existence of a gradient, as explained above.
-        if self._constraints_gradient_condition():
-            assert constraints.requires_grad
 
+        # If constraint vector is None, directly return empty jacobian vector.
+        if constraints is None or not self._constraints_gradient_condition():
+            jacobian = np.array([])
+
+        # Otherwise check for the existence of a gradient, as explained above.
         # In general the constraints might not be affected by the `ego_trajectory`, then they does not have
         # gradient function and the gradient is not defined. Then the jacobian is assumed to be zero.
-        grad_size = int(grad_wrt.numel())
-        jacobian = torch.zeros(constraints.numel() * grad_size)
-        if constraints.requires_grad:
-            for i, x in enumerate(constraints):
-                grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)
-                jacobian[i * grad_size:(i + 1) * grad_size] = grad[0].flatten().detach()
-        return jacobian.detach().numpy()
+        else:
+            assert constraints.requires_grad
+            grad_size = int(grad_wrt.numel())
+            constraint_size = int(constraints.numel())
+            if constraint_size == 1:
+                jacobian = torch.autograd.grad(constraints, grad_wrt, retain_graph=True)[0]
+            else:
+                jacobian = torch.zeros(constraint_size * grad_size)
+                for i, x in enumerate(constraints):
+                    grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)[0]
+                    jacobian[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
+            jacobian = jacobian.detach().numpy()
+
+        return jacobian
 
     @abstractmethod
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
