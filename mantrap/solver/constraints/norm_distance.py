@@ -94,4 +94,5 @@ class NormDistanceModule(ConstraintModule):
         return CONSTRAINT_MIN_L2_DISTANCE, None
 
     def num_constraints(self, ado_ids: List[str] = None) -> int:
+        ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
         return (self.T + 1) * len(ado_ids) * self._env.num_modes

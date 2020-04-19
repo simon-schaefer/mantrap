@@ -97,7 +97,7 @@ class TestSolvers:
         objective = solver.objective(z=z0, tag="core0")
         assert type(objective) == float
         constraints = solver.constraints(z=z0, tag="core0", return_violation=False)
-        assert constraints.size == sum([c.num_constraints for c in solver.constraint_module_dict.values()])
+        assert constraints.size == sum([c.num_constraints() for c in solver.constraint_modules])
 
     @staticmethod
     def test_z_to_ego_trajectory(solver_class, env_class, num_modes, filter_class):
