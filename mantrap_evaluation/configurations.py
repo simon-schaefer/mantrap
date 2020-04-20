@@ -14,4 +14,5 @@ Solver
 - objectives weight distribution (for non-single permutations)
 - constraints: (max_speed, min_distance), max_speed only
 - filter: no_filter, uni-modal, attention radius
+- IPOPT configuration: automatic Jacobian estimate, manual Jacobian estimate
 """
