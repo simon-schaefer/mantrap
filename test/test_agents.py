@@ -3,6 +3,7 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.agents import *
+from mantrap.utility.maths import Circle
 
 
 ###########################################################################
@@ -70,6 +71,40 @@ class TestAgent:
         assert torch.all(torch.eq(agent.history[0, 0:4], state_init))
         assert torch.all(torch.eq(agent.history[1, 0:4], state_next))
 
+    @staticmethod
+    def test_forward_reachability(agent_class: Agent.__class__):
+        agent = agent_class(position=torch.rand(2) * 5, velocity=torch.rand(2) * 2)
+        num_samples, time_steps = 100, 4
+        control_min, control_max = agent.control_limits()
+        control_samples = torch.linspace(start=control_min, end=control_max, steps=num_samples)
+
+        def _compute_end_points(control_x: float, control_y: float) -> torch.Tensor:
+            controls = torch.ones((time_steps, 2)).__mul__(torch.tensor([control_x, control_y]))
+            controls = torch.div(controls, torch.norm(controls, dim=1).unsqueeze(1)) * control_max
+            return agent.unroll_trajectory(controls=controls, dt=1.0)[-1, 0:2]
+
+        # Compute the forward reachability bounds numerically by integrating trajectories at the bound
+        # of feasible control inputs, i.e. since 2D: (x, y_max), (x, y_min), (x_max, y), (x_min, y).
+        boundary_numeric = torch.zeros((4*num_samples, 2))
+        for i, control_sample in enumerate(control_samples):
+            boundary_numeric[i + 0*num_samples, :] = _compute_end_points(control_sample, control_max)
+            boundary_numeric[i + 1*num_samples, :] = _compute_end_points(control_sample, control_min)
+            boundary_numeric[i + 2*num_samples, :] = _compute_end_points(control_max, control_sample)
+            boundary_numeric[i + 3*num_samples, :] = _compute_end_points(control_min, control_sample)
+
+        # Use the agents method to compute the same boundary (analytically).
+        boundary = agent.reachability_boundary(time_steps, dt=1.0)
+
+        # Derive numeric bounds properties. This is not sufficient proof for being a circle but at
+        # least a necessary condition.
+        if type(boundary) == Circle:
+            min_x, min_y = min(boundary_numeric[:, 0]), min(boundary_numeric[:, 1])
+            max_x, max_y = max(boundary_numeric[:, 0]), max(boundary_numeric[:, 1])
+            radius_numeric = (max_x - min_x) / 2
+
+            assert torch.isclose((max_y - min_y) / 2, radius_numeric, atol=0.1)  # is circle ?
+            assert torch.isclose(torch.tensor(boundary.radius), radius_numeric, atol=0.1)  # same circle ?
+
 
 ###########################################################################
 # Test - Single Integrator ################################################
@@ -117,7 +152,7 @@ def test_inv_dynamics_single_integrator(
 @pytest.mark.parametrize("position, velocity, dt, n", [(torch.tensor([-5.0, 0.0]), torch.tensor([1.0, 0.0]), 1, 10)])
 def test_unrolling(position: torch.Tensor, velocity: torch.Tensor, dt: float, n: int):
     ego = IntegratorDTAgent(position=position, velocity=velocity)
-    policy = torch.stack((torch.ones(n) * velocity[0], torch.ones(n) * velocity[1])).T
+    policy = torch.stack((torch.ones(n) * velocity[0], torch.ones(n) * velocity[1])).view(-1, 2)
     ego_trajectory = ego.unroll_trajectory(controls=policy, dt=dt)
 
     ego_trajectory_x_exp = torch.linspace(position[0].item(), position[0].item() + velocity[0].item() * n * dt, n + 1)

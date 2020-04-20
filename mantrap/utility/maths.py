@@ -1,14 +1,13 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import numpy as np
 import torch
 
 
 ###########################################################################
-# Distributions ###########################################################
-# Probability distribution classes for sampling ###########################
+# Probability Distributions ###############################################
 ###########################################################################
-class Distribution:
+class Distribution(ABC):
     def __init__(self, mean: float):
         self.mean = mean
 
@@ -73,7 +72,7 @@ class Derivative2:
                 self._diff_mat[k, k] = 1
             self._diff_mat *= 1 / dt
 
-        # Unsqueeze difference matrix in case the state tensor is larger then two dimensional (batching).
+        # Un-squeeze difference matrix in case the state tensor is larger then two dimensional (batching).
         for _ in range(num_axes - 2):
             self._diff_mat = self._diff_mat.unsqueeze(0)
 
@@ -94,10 +93,10 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100,
     extrapolation (which is however not required for trajectory fitting, since the trajectory starts and ends at
     defined control points.
 
-    Source: http://www.maths.lth.se/na/courses/FMN050/media/material/lec8_9.pdf"""
+    Source: http://www.maths.lth.se/na/courses/FMN050/media/material/lec8_9.pdf
+    """
     assert len(control_points.shape) == 2, "control points should be in shape (num_points, 2)"
     assert control_points.shape[1] == 2, "2D interpolation requires 2D input"
-    n = control_points.shape[0]
 
     x = torch.stack([control_points[:, 0] ** n for n in range(deg)], dim=1)
     y = control_points[:, 1]
@@ -111,3 +110,38 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100,
     x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)
     y_up = torch.stack([x_up ** n for n in range(deg)]).T.matmul(a)
     return torch.stack((x_up, y_up), dim=1)
+
+
+###########################################################################
+# Shapes ##################################################################
+###########################################################################
+class Shape2D(ABC):
+
+    @abstractmethod
+    def does_intersect(self, other: 'Shape2D') -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def samples(self, num_samples: int = 100) -> torch.Tensor:
+        raise NotImplementedError
+
+
+class Circle(Shape2D):
+    def __init__(self, center: torch.Tensor, radius: float):
+        assert center.size() == torch.Size([2])
+        assert radius > 0.0
+
+        self.center = center.float()
+        self.radius = float(radius)
+
+    def does_intersect(self, other: 'Circle') -> bool:
+        if not other.__class__ == self.__class__:
+            raise NotImplementedError
+
+        distance = torch.norm(self.center - other.center)
+        return distance < self.radius + other.radius
+
+    def samples(self, num_samples: int = 100) -> torch.Tensor:
+        angles = torch.linspace(start=0, end=2 * np.pi, steps=num_samples)
+        dx_dy = torch.stack((torch.cos(angles), torch.sin(angles))).view(num_samples, 2)
+        return self.center + self.radius * dx_dy

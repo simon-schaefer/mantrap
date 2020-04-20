@@ -3,6 +3,7 @@ from typing import Tuple
 import torch
 
 from mantrap.agents.agent import Agent
+from mantrap.utility.maths import Circle
 from mantrap.utility.shaping import check_ego_action, check_ego_state
 
 
@@ -37,3 +38,27 @@ class DoubleIntegratorDTAgent(Agent):
         .. math:: [- a_{max}, a_{max}]
         """
         return -self.acceleration_max, self.acceleration_max
+
+    ###########################################################################
+    # Reachability ############################################################
+    ###########################################################################
+    def reachability_boundary(self, time_steps: int, dt: float) -> Circle:
+        """Double integrators cannot adapt their velocity instantly, but delayed by (instantly) changing
+        their acceleration in any direction. Similarly to the single integrator therefore the forward
+        reachable set within the number of time_steps is just a circle (in general ellipse, but agent is
+        assumed to be isotropic within this class, i.e. same bounds for both x- and y-direction), just
+        not around the current position, since the velocity the agent has acts as an "inertia", shifting
+        the center of the circle. The radius of the circle results from the double integrator dynamics,
+        the change of position with altering the acceleration to be exact. With `T = time_steps * dt`
+        being the time horizon, the reachability bounds are determined for, the circle has the following
+        parameters:
+
+        .. math:: center = x(0) + v(0) * T
+        .. math:: radius = 0.5 * a_{max} * T^2
+
+        :param time_steps: number of discrete time-steps in reachable time-horizon.
+        :param dt: time interval which is assumed to be constant over full path sequence [s].
+        """
+        center = self.position + self.velocity * time_steps * dt
+        radius = 0.5 * self.acceleration_max * (time_steps * dt)**2
+        return Circle(center=center, radius=radius)

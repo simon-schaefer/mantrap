@@ -8,6 +8,7 @@ import numpy as np
 import torch
 
 from mantrap.constants import *
+from mantrap.utility.maths import Shape2D
 from mantrap.utility.shaping import (
     check_ego_path,
     check_ego_action,
@@ -125,6 +126,9 @@ class Agent(ABC):
         # Perform sanity check for agent properties.
         assert self.sanity_check()
 
+    ###########################################################################
+    # Trajectory ##############################################################
+    ###########################################################################
     def unroll_trajectory(self, controls: torch.Tensor, dt: float) -> torch.Tensor:
         """Build the trajectory from some controls and current state, by iteratively applying the model dynamics.
         Thereby a perfect model i.e. without uncertainty and correct is assumed.
@@ -192,6 +196,24 @@ class Agent(ABC):
         assert check_ego_trajectory(trajectory, t_horizon=t_horizon)
         return trajectory
 
+    ###########################################################################
+    # Reachability ############################################################
+    ###########################################################################
+    @abstractmethod
+    def reachability_boundary(self, time_steps: int, dt: float) -> Shape2D:
+        """Compute the forward reachable set within the time-horizon with `time_steps` number of discrete
+        steps with time-step `dt`. While the reachable set can be computed numerically in general, an
+        exact (and more efficient) implementation has to be done in the child classes. Return this exact
+        solution as class object of `Shape2D` type.
+
+        :param time_steps: number of discrete time-steps in reachable time-horizon.
+        :param dt: time interval which is assumed to be constant over full path sequence [s].
+        """
+        raise NotImplementedError
+
+    ###########################################################################
+    # Dynamics ################################################################
+    ###########################################################################
     @abstractmethod
     def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         """Forward integrate the egos motion given some state-action pair and an integration time-step. Passing the

@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from mantrap.utility.maths import Derivative2, lagrange_interpolation
+from mantrap.utility.maths import Derivative2, lagrange_interpolation, Circle
 from mantrap.utility.primitives import square_primitives, straight_line
 
 
@@ -131,3 +131,32 @@ def test_square_primitives(num_points: int):
     assert all([primitives[1, -1, 0] >= primitives[i, -1, 0] for i in range(primitives.shape[0])])
     assert all([primitives[0, -1, 1] >= primitives[i, -1, 1] for i in range(primitives.shape[0])])
     assert all([primitives[-1, -1, 1] <= primitives[i, -1, 1] for i in range(primitives.shape[0])])
+
+
+###########################################################################
+# Shapes Testing ##########################################################
+###########################################################################
+def test_circle_sampling():
+    circle = Circle(center=torch.rand(2), radius=3.0)
+    samples = circle.samples(num_samples=100)
+
+    assert samples.shape == (100, 2)
+
+    min_x, min_y = min(samples[:, 0]), min(samples[:, 1])
+    max_x, max_y = max(samples[:, 0]), max(samples[:, 1])
+    radius_numeric = (max_x - min_x) / 2
+
+    assert torch.isclose((max_y - min_y) / 2, radius_numeric, atol=0.1)  # is circle ?
+    assert torch.isclose(torch.tensor(circle.radius), radius_numeric, atol=0.1)  # same circle ?
+
+
+def test_circle_intersection():
+    circle = Circle(center=torch.tensor([4, 5]), radius=2.0)
+
+    # These circles do not intersect, since the distance between the centers is larger than 1 + 2 = 3.
+    circle_not = Circle(center=torch.tensor([0, 5]), radius=1.0)
+    assert not circle.does_intersect(circle_not)
+
+    # These circles do intersect, since the distance between the centers is smaller than 3 + 2 = 5.
+    circle_is = Circle(center=torch.tensor([2, 3]), radius=3.0)
+    assert circle.does_intersect(circle_is)

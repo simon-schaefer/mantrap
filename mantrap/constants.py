@@ -9,6 +9,7 @@ ID_EGO = "ego"
 
 FILTER_EUCLIDEAN = "euclidean"
 FILTER_NO_FILTER = "no_filter"
+FILTER_REACHABILITY = "reachability"
 
 GK_CONTROL = "control"  # GK = Graph-Key
 GK_POSITION = "position"
@@ -21,7 +22,6 @@ LK_OPTIMAL = "opt"
 LK_OVERALL_PERFORMANCE = "overall"
 
 OBJECTIVE_GOAL = "goal"
-OBJECTIVE_INTERACTION = "interaction"
 OBJECTIVE_INTERACTION_POS = "interaction_pos"
 OBJECTIVE_INTERACTION_ACC = "interaction_acc"
 
