@@ -34,7 +34,7 @@ class TestObjectiveInteraction:
         ego_path_far = straight_line(start_pos=torch.tensor([-5, 100.0]), end_pos=torch.tensor([5, 10.0]), steps=11)
         ego_trajectory_far = env.ego.expand_trajectory(ego_path_far, dt=env.dt)
 
-        module = module_class(horizon=10, env=env)
+        module = module_class(t_horizon=10, env=env)
         if env.is_deterministic:
             assert module.objective(ego_trajectory_near) > module.objective(ego_trajectory_far)
 
@@ -54,7 +54,7 @@ class TestObjectiveInteraction:
                     )
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=env.dt)
 
-        module = module_class(horizon=10, env=env)
+        module = module_class(t_horizon=10, env=env)
         assert module.objective(ego_trajectory) is not None
 
     @staticmethod
@@ -66,7 +66,7 @@ class TestObjectiveInteraction:
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=env.dt)
         ego_trajectory.requires_grad = True
 
-        module = module_class(horizon=10, env=env)
+        module = module_class(t_horizon=10, env=env)
         assert type(module.objective(ego_trajectory)) == float
         assert module.gradient(ego_trajectory, grad_wrt=ego_trajectory).size == ego_trajectory.numel()
 
@@ -80,7 +80,7 @@ class TestObjectiveInteraction:
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((5, 2)) / 10.0, dt=env.dt)
         ego_trajectory.requires_grad = True
 
-        module = module_class(horizon=5, env=env)
+        module = module_class(t_horizon=5, env=env)
         objective_run_times, gradient_run_times = list(), list()
         for i in range(10):
             start_time = time.time()
@@ -99,7 +99,7 @@ def test_objective_goal_distribution():
     goal_state = torch.tensor([4.1, 8.9])
     ego_trajectory = torch.rand((11, 4))
 
-    module = GoalModule(goal=goal_state, horizon=10, weight=1.0)
+    module = GoalModule(goal=goal_state, t_horizon=10, weight=1.0)
     module.importance_distribution = torch.zeros(module.importance_distribution.size())
     module.importance_distribution[3] = 1.0
 
@@ -125,7 +125,7 @@ class TestConstraints:
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((5, 2)) / 10.0, dt=env.dt)
         ego_trajectory.requires_grad = True
 
-        module = module_class(env=env, horizon=5)
+        module = module_class(env=env, t_horizon=5)
         constraint_run_times, jacobian_run_times = list(), list()
         for i in range(10):
             start_time = time.time()
@@ -150,7 +150,7 @@ class TestConstraints:
         env.add_ado(position=torch.ones(2) * 9, goal=torch.ones(2) * 9, num_modes=num_modes)
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.zeros((5, 2)), dt=env.dt)
 
-        module = module_class(env=env, horizon=5)
+        module = module_class(env=env, t_horizon=5)
         violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=None)
         assert violation == 0
 
@@ -161,18 +161,18 @@ def test_max_speed_constraint_violation(env_class, num_modes):
     env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1]), "velocity": torch.zeros(2)})
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
-    module = MaxSpeedModule(env=env, horizon=5)
+    module = MaxSpeedModule(env=env, t_horizon=5)
     _, upper_bound = module.constraint_bounds
 
     # In this first scenario the ego has zero velocity over the full horizon.
-    controls = torch.zeros((module.T, 2))
+    controls = torch.zeros((module._t_horizon, 2))
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation == 0
 
     # In this second scenario the ego has non-zero random velocity in x-direction, but always below the maximal
     # allowed speed (random -> [0, 1]).
-    controls[:, 0] = torch.rand(module.T) * upper_bound  # single integrator, so no velocity summation !
+    controls[:, 0] = torch.rand(module._t_horizon) * upper_bound  # single integrator, so no velocity summation !
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation == 0
@@ -197,7 +197,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
 
     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
-    module = NormDistanceModule(env=env, horizon=controls.shape[0])
+    module = NormDistanceModule(env=env, t_horizon=controls.shape[0])
     lower_bound, _ = module.constraint_bounds
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation == 0
@@ -206,7 +206,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ado_start_pos = env.ego.position - (lower_bound * 0.5) * torch.ones(2)
     ado_kwargs = {"goal": ado_start_pos, "num_modes": num_modes}
     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
-    module = NormDistanceModule(env=env, horizon=controls.shape[0])
+    module = NormDistanceModule(env=env, t_horizon=controls.shape[0])
     lower_bound, _ = module.constraint_bounds
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation > 0
@@ -228,11 +228,11 @@ class TestFilter:
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
         env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
 
-        module = module_class()
+        module = module_class(env=env, t_horizon=5)
         filter_run_times = list()
         for i in range(10):
             start_time = time.time()
-            module.compute(*env.states())
+            module.compute()
             filter_run_times.append(time.time() - start_time)
 
         assert np.mean(filter_run_times) < 0.01  # 100 Hz

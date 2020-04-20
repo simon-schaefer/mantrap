@@ -18,12 +18,12 @@ class ObjectiveModule(ABC):
     gradient vector using the PyTorch autograd library. Each output (objective & gradient) are multiplied with it's
     importance weight.
 
-    :param horizon: planning time horizon in number of time-steps (>= 1).
+    :param t_horizon: planning time horizon in number of time-steps (>= 1).
     :param weight: objective importance weight.
     """
-    def __init__(self, horizon: int, weight: float = 1.0, **module_kwargs):
-        self.weight = weight
-        self.T = horizon
+    def __init__(self, t_horizon: int, weight: float = 1.0, **module_kwargs):
+        self._weight = weight
+        self._t_horizon = t_horizon
 
         # Logging variables for objective and gradient values. For logging the latest variables are stored
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
@@ -39,7 +39,7 @@ class ObjectiveModule(ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
+        assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True, t_horizon=self.t_horizon + 1)
         obj_value = self._compute(ego_trajectory, ado_ids=ado_ids)
         if obj_value is None:
             obj_value = torch.zeros(1)  # if objective not defined simply return 0.0
@@ -54,7 +54,7 @@ class ObjectiveModule(ABC):
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
+        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.t_horizon + 1)
         assert grad_wrt.requires_grad
         assert ego_trajectory.requires_grad  # otherwise objective cannot have gradient function
 
@@ -116,3 +116,11 @@ class ObjectiveModule(ABC):
     @property
     def grad_current(self) -> float:
         return np.linalg.norm(self._grad_current)
+
+    @property
+    def t_horizon(self) -> int:
+        return self._t_horizon
+
+    @property
+    def weight(self) -> float:
+        return self._weight

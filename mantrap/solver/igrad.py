@@ -47,7 +47,7 @@ class IGradSolver(IPOPTSolver):
     ###########################################################################
     @staticmethod
     def objective_defaults() -> List[Tuple[str, float]]:
-        return [(OBJECTIVE_INTERACTION, 1.0)]
+        return [(OBJECTIVE_INTERACTION_POS, 1.0)]
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################
@@ -66,16 +66,20 @@ class IGradSolver(IPOPTSolver):
         start_point = self._env.ego.position.unsqueeze(0)
         end_point = self._goal.unsqueeze(0)
         control_points = torch.cat((start_point, mid, end_point))
-        path = lagrange_interpolation(control_points, num_samples=self.T + 1, deg=self.num_control_points + 2)
+        path = lagrange_interpolation(
+            control_points,
+            num_samples=self.planning_horizon + 1,
+            deg=self.num_control_points + 2
+        )
         ego_trajectory = self.env.ego.expand_trajectory(path, dt=self.env.dt)
 
-        assert check_ego_trajectory(ego_trajectory, t_horizon=self.T + 1, pos_and_vel_only=True)
+        assert check_ego_trajectory(ego_trajectory, t_horizon=self.planning_horizon + 1, pos_and_vel_only=True)
         return ego_trajectory if not return_leaf else (ego_trajectory, mid)
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         ego_trajectory, mid = self.z_to_ego_trajectory(z, return_leaf=True)
         ego_controls = self.env.ego.roll_trajectory(trajectory=ego_trajectory, dt=self.env.dt)
-        assert check_ego_controls(ego_controls, t_horizon=self.T)
+        assert check_ego_controls(ego_controls, t_horizon=self.planning_horizon)
         return ego_controls if not return_leaf else (ego_controls, mid)
 
     def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:
@@ -85,7 +89,7 @@ class IGradSolver(IPOPTSolver):
         # the resulting trajectory intersects with all its control points, so the points are somewhere on the
         # trajectory, but we don't know where exactly. The best guess we have is equally spacing the points
         # on the trajectory (index-wise), while the first and last points always are part of the trajectory.
-        indexes = np.linspace(start=0, endpoint=self.T, num=self.num_control_points + 2)
+        indexes = np.linspace(start=0, endpoint=self.planning_horizon, num=self.num_control_points + 2)
         return ego_trajectory[indexes, 0:2].flatten().detach().numpy()
 
     @property

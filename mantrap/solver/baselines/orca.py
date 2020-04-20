@@ -54,15 +54,15 @@ class ORCASolver(Solver):
             num_modes=1,
             identifier=ID_EGO
         )
-        graph = orca_env.build_connected_graph_wo_ego(t_horizon=1, safe_time=self.T*self.env.dt)
+        graph = orca_env.build_connected_graph_wo_ego(t_horizon=1, safe_time=self.planning_horizon * self.env.dt)
         ego_action = graph[f"{ID_EGO}_0_0_{GK_CONTROL}"]  # first "0" because first (and only) mode !
         assert check_ego_action(ego_action)
 
         # ORCA itself only plans for one step ahead, but can guarantee some minimal collision-free time interval,
         # given all other agents behave according to the ORCA algorithm (which is not the case but the underlying
         # assumption here), therefore stretch the control action over the full planning horizon.
-        ego_controls = torch.stack([ego_action] * self.T)
-        assert check_ego_controls(ego_controls, t_horizon=self.T)
+        ego_controls = torch.stack([ego_action] * self.planning_horizon)
+        assert check_ego_controls(ego_controls, t_horizon=self.planning_horizon)
 
         # Determine z and objective value from determined ego-control. For logging only also determine
         # the constraints values (since logging happens within the function).
@@ -80,7 +80,7 @@ class ORCASolver(Solver):
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
         """As explained in `_optimize()` the optimization is independent from the initial value of z, therefore
         only return one value, to enforce single-threaded computations. """
-        return torch.zeros((1, self.T, 2))
+        return torch.zeros((1, self.planning_horizon, 2))
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
@@ -102,12 +102,12 @@ class ORCASolver(Solver):
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         controls = self.z_to_ego_controls(z, return_leaf=return_leaf)
         trajectory = self.env.ego.unroll_trajectory(controls, dt=self.env.dt)
-        assert check_ego_trajectory(trajectory, t_horizon=self.T + 1)
+        assert check_ego_trajectory(trajectory, t_horizon=self.planning_horizon + 1)
         return trajectory
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        controls = torch.from_numpy(z).view(self.T, 2)
-        assert check_ego_controls(controls, t_horizon=self.T)
+        controls = torch.from_numpy(z).view(self.planning_horizon, 2)
+        assert check_ego_controls(controls, t_horizon=self.planning_horizon)
         return controls
 
     def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:

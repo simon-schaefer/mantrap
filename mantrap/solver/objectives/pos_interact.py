@@ -27,7 +27,7 @@ class InteractionPositionModule(ObjectiveModule):
         assert env.num_ghosts > 0 and env.ego is not None
 
         self._env = env
-        self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)[:, :, :, 0:2]
+        self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]
 
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine objective value core method.
@@ -55,7 +55,7 @@ class InteractionPositionModule(ObjectiveModule):
         objective = torch.zeros(1)
         for ado_id in ado_ids:
             for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
-                for t in range(1, self.T - 1):
+                for t in range(1, self.t_horizon - 1):
                     m_ado, m_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
                     ado_position = graph[f"{ghost.id}_{t}_{GK_POSITION}"]
                     ado_position_wo = self._ado_positions_wo[m_ado, m_mode, t, :]

@@ -29,8 +29,8 @@ class InteractionAccelerationModule(ObjectiveModule):
         assert env.num_ghosts > 0 and env.ego is not None
 
         self._env = env
-        ado_states_wo = self._env.predict_wo_ego(t_horizon=self.T + 1)
-        self._derivative_2 = Derivative2(horizon=self.T + 1, dt=self._env.dt, num_axes=2)
+        ado_states_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)
+        self._derivative_2 = Derivative2(horizon=self.t_horizon + 1, dt=self._env.dt, num_axes=2)
         self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
 
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
@@ -59,7 +59,7 @@ class InteractionAccelerationModule(ObjectiveModule):
         objective = torch.zeros(1)
         for ado_id in ado_ids:
             for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
-                for t in range(1, self.T - 1):
+                for t in range(1, self.t_horizon - 1):
                     i_ado, i_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
                     ado_acceleration = self._derivative_2.compute_single(
                         graph[f"{ghost.id}_{t - 1}_{GK_POSITION}"],

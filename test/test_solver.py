@@ -74,7 +74,7 @@ def scenario(
 class TestSolvers:
 
     @staticmethod
-    def test_convergence(solver_class, env_class, num_modes, filter_class):
+    def test_convergence(solver_class, env_class, _, filter_class):
         ego_goal_distance = (AGENT_SPEED_MAX / 2) * ENV_DT_DEFAULT
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-ego_goal_distance, 0])}, dt=ENV_DT_DEFAULT)
         solver_kwargs = {"filter_module": filter_class, "t_planning": 1}
@@ -86,7 +86,7 @@ class TestSolvers:
         ego_trajectory_opt = solver.env.ego.unroll_trajectory(controls=ego_controls, dt=solver.env.dt)
 
         assert torch.all(torch.isclose(ego_trajectory_opt[0, :], env.ego.state_with_time))
-        for k in range(1, solver.T):
+        for k in range(1, solver.planning_horizon):
             assert torch.all(torch.isclose(ego_trajectory_opt[k, 0:2], solver.goal, atol=0.5))
 
     @staticmethod
@@ -134,7 +134,7 @@ class TestSolvers:
         solver_kwargs = {"t_planning": 5, "verbose": 0, "multiprocessing": False}
         solver = solver_class(env, filter_module=filter_class, goal=torch.zeros(2), **solver_kwargs)
 
-        assert solver.T == 5
+        assert solver.planning_horizon == 5
         assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
 
         solver_horizon = 3
@@ -147,15 +147,17 @@ class TestSolvers:
         modes_exp = 1  # output path is deterministic, so uni-modal
         assert check_ego_trajectory(ego_trajectory_opt, t_horizon=t_horizon_exp)
         assert check_ado_trajectories(ado_trajectories, t_horizon=t_horizon_exp, ados=env.num_ados, modes=modes_exp)
-        assert tuple(ado_planned.shape) == (solver_horizon, 1, num_modes, solver.T + 1, 5)
-        assert tuple(ego_opt_planned.shape) == (solver_horizon, solver.T + 1, 5)
+        assert tuple(ado_planned.shape) == (solver_horizon, 1, num_modes, solver.planning_horizon + 1, 5)
+        assert tuple(ego_opt_planned.shape) == (solver_horizon, solver.planning_horizon + 1, 5)
 
         # Test ado planned trajectories - depending on environment engine. Therefore only time-stamps can be tested.
         time_steps_exp = torch.arange(start=env.time, end=env.time + env.dt * (solver_horizon + 1), step=env.dt)
         assert torch.all(torch.isclose(ego_trajectory_opt[:, -1], time_steps_exp))
         for k in range(solver_horizon):
             t_start = env.time + (k + 1) * env.dt
-            time_steps_exp = torch.linspace(start=t_start, end=t_start + env.dt * solver.T, steps=solver.T + 1)
+            time_steps_exp = torch.linspace(start=t_start,
+                                            end=t_start + env.dt * solver.planning_horizon,
+                                            steps=solver.planning_horizon + 1)
             assert torch.all(torch.isclose(ego_opt_planned[k, :, -1], time_steps_exp))
 
         # Test constraint satisfaction - automatic constraint violation test. The constraints have to be met for

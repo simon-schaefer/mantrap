@@ -127,7 +127,7 @@ class Solver(ABC):
         for z0, tag in zip(self.z0s_default(), self.cores):
             self.objective(z=z0.detach().numpy(), tag=tag)
             self.constraints(z=z0.detach().numpy(), tag=tag)
-        self.intermediate_log(ego_controls_k=torch.zeros((self.T, 2)))
+        self.intermediate_log(ego_controls_k=torch.zeros((self.planning_horizon, 2)))
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
@@ -187,13 +187,12 @@ class Solver(ABC):
 
         # Convert the resulting optimization variable to control inputs.
         ego_controls = self.z_to_ego_controls(z_opt_best.detach().numpy())
-        assert check_ego_controls(ego_controls, t_horizon=self.T)
+        assert check_ego_controls(ego_controls, t_horizon=self.planning_horizon)
         return ego_controls
 
     def optimize(self, z0: torch.Tensor, tag: str, **kwargs) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
         # Filter the important ghost indices from the current scene state.
-        ado_indices = self._filter_module.compute(*self.env.states())
-        ado_ids = [self.env.ado_ids[m] for m in ado_indices]
+        ado_ids = self._filter_module.compute()
         logging.debug(f"solver [{tag}]: important ado ids = {ado_ids}")
 
         # Computation is done in `_optimize()` class that is implemented in child class.
@@ -360,16 +359,16 @@ class Solver(ABC):
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES_DICT.keys() for name, _ in modules])
         assert all([0.0 <= weight for _, weight in modules])
-        return {m: OBJECTIVES_DICT[m](horizon=self.T, weight=w, env=self._env, goal=self.goal) for m, w in modules}
+        objective_kwargs = {"horizon": self.planning_horizon, "env": self.env, "goal": self.goal}
+        return {m: OBJECTIVES_DICT[m](weight=w, **objective_kwargs) for m, w in modules}
 
     def _build_constraint_modules(self, modules: List[str]) -> Dict[str, ConstraintModule]:
         assert all([name in CONSTRAINTS_DICT.keys() for name in modules])
-        return {m: CONSTRAINTS_DICT[m](horizon=self.T, env=self._env) for m in modules}
+        return {m: CONSTRAINTS_DICT[m](horizon=self.planning_horizon, env=self.env) for m in modules}
 
-    @staticmethod
-    def _build_filter_module(module: str) -> FilterModule:
+    def _build_filter_module(self, module: str) -> FilterModule:
         assert module in FILTER_DICT.keys()
-        return FILTER_DICT[module]()
+        return FILTER_DICT[module](horizon=self.planning_horizon, env=self.env)
 
     ###########################################################################
     # Logging #################################################################
@@ -514,7 +513,7 @@ class Solver(ABC):
         return self._goal
 
     @property
-    def T(self) -> int:
+    def planning_horizon(self) -> int:
         return self._solver_params[PARAMS_T_PLANNING]
 
     ###########################################################################

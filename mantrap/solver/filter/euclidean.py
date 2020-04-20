@@ -3,7 +3,6 @@ import torch
 
 from mantrap.constants import FILTER_EUCLIDEAN_RADIUS
 from mantrap.solver.filter.filter_module import FilterModule
-from mantrap.utility.shaping import check_ego_state, check_ado_states
 
 
 class EuclideanModule(FilterModule):
@@ -19,12 +18,9 @@ class EuclideanModule(FilterModule):
     prevent deviating much from the actual full-agent planning due to possible behavioral changes of the ados with
     less agents in the scene).
     """
-
-    def _compute(self, ego_state: torch.Tensor, ado_states: torch.Tensor) -> np.ndarray:
-        assert check_ego_state(ego_state, enforce_temporal=False)
-        assert check_ado_states(ado_states, enforce_temporal=False)
-
+    def _compute(self) -> np.ndarray:
         with torch.no_grad():
+            ego_state, ado_states = self._env.states()
             euclidean_distances = torch.norm(ado_states[:, 0:2] - ego_state[0:2], dim=1)
             in_attention = (euclidean_distances < FILTER_EUCLIDEAN_RADIUS).numpy()
             in_indices = np.nonzero(in_attention)[0]

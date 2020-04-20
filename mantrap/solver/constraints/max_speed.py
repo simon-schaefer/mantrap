@@ -46,4 +46,4 @@ class MaxSpeedModule(ConstraintModule):
         return None, self._env.ego.speed_max
 
     def num_constraints(self, ado_ids: List[str] = None) -> int:
-        return self.T + 1
+        return self.t_horizon + 1

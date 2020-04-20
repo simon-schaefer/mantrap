@@ -18,11 +18,12 @@ class ConstraintModule(ABC):
     given a planned ego trajectory, while building a torch computation graph, which is used later on to determine the
     jacobian matrix using the PyTorch autograd library.
 
-    :param horizon: planning time horizon in number of time-steps (>= 1).
+    :param t_horizon: planning time horizon in number of time-steps (>= 1).
+    :param env: environment object reference.
     """
-    def __init__(self, horizon: int, env: GraphBasedEnvironment, **module_kwargs):
-        assert horizon >= 1
-        self.T = horizon
+    def __init__(self, t_horizon: int, env: GraphBasedEnvironment):
+        assert t_horizon >= 1
+        self._t_horizon = t_horizon
         self._env = env
 
         # Logging variables for objective and gradient values. For logging the latest variables are stored
@@ -39,7 +40,7 @@ class ConstraintModule(ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
+        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.t_horizon + 1)
         constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
         constraints = constraints.detach().numpy() if constraints is not None else np.array([])
         return self._return_constraint(constraints)
@@ -58,7 +59,7 @@ class ConstraintModule(ABC):
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.T + 1)
+        assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.t_horizon + 1)
         assert grad_wrt.requires_grad
         assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
 
@@ -170,6 +171,14 @@ class ConstraintModule(ABC):
     # Constraint Properties ###################################################
     ###########################################################################
     @property
+    def constraint_current(self) -> np.ndarray:
+        return self._constraint_current
+
+    @property
     def inf_current(self) -> float:
         """Current infeasibility value (amount of constraint violation)."""
         return self.compute_violation_internal()
+
+    @property
+    def t_horizon(self) -> int:
+        return self._t_horizon

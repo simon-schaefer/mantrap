@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 import logging
+from typing import List
 
 import numpy as np
-import torch
 
-from mantrap.utility.shaping import check_ego_state, check_ado_states
+from mantrap.environment.environment import GraphBasedEnvironment
 
 
 class FilterModule(ABC):
@@ -14,35 +14,41 @@ class FilterModule(ABC):
     as list of indices of the chosen ados which should be taken into account in further computations.
     For a unified  and general implementation of the filter modules this superclass implements methods for computing
     and logging the filter, all based on the `_compute()` method which should be implemented in the child classes.
+
+    :param t_horizon: planning time horizon in number of time-steps (>= 1).
+    :param env: environment object reference.
     """
-    def __init__(self, **module_kwargs):
-        pass
+    def __init__(self, env: GraphBasedEnvironment, t_horizon: int):
+        self._env = env
+        self._t_horizon = t_horizon
 
     ###########################################################################
     # Filter Formulation ######################################################
     ###########################################################################
-    def compute(self, ego_state: torch.Tensor, ado_states: torch.Tensor) -> np.ndarray:
-        assert check_ego_state(x=ego_state, enforce_temporal=False)
-        assert check_ado_states(x=ado_states, enforce_temporal=False)
-
-        filtered_indices = self._compute(ego_state=ego_state, ado_states=ado_states)
-        return self._return_filtered(filtered_indices)
+    def compute(self) -> List[str]:
+        filter_indices = self._compute()
+        filtered_ids = [self._env.ado_ids[m] for m in filter_indices]
+        return self._return_filtered(filtered_ids)
 
     @abstractmethod
-    def _compute(self, ego_state: torch.Tensor, ado_states: torch.Tensor) -> np.ndarray:
+    def _compute(self) -> np.ndarray:
         raise NotImplementedError
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
-    def _return_filtered(self, indices_filtered: np.ndarray) -> np.ndarray:
-        self._indices_current = indices_filtered
+    def _return_filtered(self, ids_filtered: List[str]) -> List[str]:
+        self._ids_current = ids_filtered
         logging.debug(f"Module {self.__str__()} computed")
-        return self._indices_current
+        return self._ids_current
 
     ###########################################################################
     # Filter properties #######################################################
     ###########################################################################
     @property
-    def indices_current(self) -> np.ndarray:
-        return self._indices_current
+    def ids_current(self) -> List[str]:
+        return self._ids_current
+
+    @property
+    def t_horizon(self) -> int:
+        return self._t_horizon
