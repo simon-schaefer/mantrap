@@ -33,8 +33,9 @@ cd external/Ipopt
 chmod u+x coinbrew
 brew install bash  # update bash version (>= 4.0)
 
+mkdir build
 ./coinbrew fetch Ipopt
-./coinbrew build Ipopt --prefix=/to/build/dir --test
+./coinbrew build Ipopt --prefix=/path/to/build --test
 ./coinbrew install Ipopt
 
 # Set PKG_CONFIG_PATH environment variable to IPOPT build directory

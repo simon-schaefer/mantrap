@@ -11,6 +11,7 @@ from mantrap.agents.agent import Agent
 from mantrap.constants import *
 from mantrap.utility.io import build_os_path
 from mantrap.utility.shaping import (
+    check_ego_action,
     check_ego_controls,
     check_ego_state,
     check_ego_trajectory,
@@ -126,26 +127,27 @@ class GraphBasedEnvironment(ABC):
     ###########################################################################
     # Simulation step #########################################################
     ###########################################################################
-    def step(self, ego_control: torch.Tensor) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
+    def step(self, ego_action: torch.Tensor) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
         """Run environment step (time-step = dt). Update state and history of ados and ego. Also reset environment time
         to time_new = time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
         one time-step at a time, not in general `t_horizon` steps, secondly, step() changes the actual agent states
         in the environment while predict() copies all agents and changes the states of these copies (so the actual
         agent states remain unchanged).
 
-        :param ego_control: planned ego control input for current time step (1, 2).
+        :param ego_action: planned ego control input for current time step (2).
         :returns: ado_states (num_ados, num_modes, 1, 5), ego_next_state (5) in next time step.
         """
-        assert check_ego_controls(ego_control, t_horizon=1)
+        assert check_ego_action(ego_action)
         self._time = self._time + self.dt
 
         # Unroll future ego trajectory, which is surely deterministic and certain due to the deterministic dynamics
         # assumption. Update ego based on the first action of the input ego policy.
-        self._ego.update(ego_control.flatten(), dt=self.dt)
-        logging.info(f"env {self.name} step @t={self.time} [ego]: action={ego_control.tolist()}")
+        self._ego.update(ego_action, dt=self.dt)
+        logging.info(f"env {self.name} step @t={self.time} [ego]: action={ego_action.tolist()}")
         logging.info(f"env {self.name} step @t={self.time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
 
         # Predict the next step in the environment by forward environment.
+        ego_control = ego_action.unsqueeze(dim=0)  # (2) -> (1, 2)
         _, ado_controls, weights = self.predict_w_controls(ego_controls=ego_control, return_more=True)
 
         # Update ados by forward simulate them and determining their most likely policies. Therefore predict the

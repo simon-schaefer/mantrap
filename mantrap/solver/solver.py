@@ -139,7 +139,7 @@ class Solver(ABC):
             logging.info(f"solver {self.name} @k={k}: finishing optimization")
 
             # Forward simulate environment.
-            ado_states, ego_state = self._eval_env.step(ego_control=ego_controls_k[0:1, :])
+            ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
             self._env.step_reset(ego_state_next=ego_state, ado_states_next=ado_states)
             ego_trajectory_opt[k + 1] = ego_state
             ado_trajectories[:, 0, k + 1, :] = ado_states

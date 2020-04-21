@@ -94,6 +94,28 @@ class TestObjectiveInteraction:
         assert np.mean(objective_run_times) < 0.03 * num_modes  # 33 Hz
         assert np.mean(gradient_run_times) < 0.05 * num_modes  # 20 Hz
 
+    @staticmethod
+    def test_internal_env_update(module_class, env_class, num_modes):
+        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
+        module = module_class(env=env, t_horizon=5)
+
+        # Compare the environment with the module-internally's environment states.
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+        # Add agent to environment (i.e. change the environment) and check again.
+        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+        # Step environment (i.e. change environment internally) and check again.
+        env.step(ego_action=torch.rand(2))
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
 
 def test_objective_goal_distribution():
     goal_state = torch.tensor([4.1, 8.9])
@@ -153,6 +175,28 @@ class TestConstraints:
         module = module_class(env=env, t_horizon=5)
         violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=None)
         assert violation == 0
+
+    @staticmethod
+    def test_internal_env_update(module_class, env_class, num_modes):
+        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
+        module = module_class(env=env, t_horizon=5)
+
+        # Compare the environment with the module-internally's environment states.
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+        # Add agent to environment (i.e. change the environment) and check again.
+        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+        # Step environment (i.e. change environment internally) and check again.
+        env.step(ego_action=torch.rand(2))
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
 
 
 @pytest.mark.parametrize("env_class", ENVIRONMENTS)
@@ -236,3 +280,25 @@ class TestFilter:
             filter_run_times.append(time.time() - start_time)
 
         assert np.mean(filter_run_times) < 0.01  # 100 Hz
+
+    @staticmethod
+    def test_internal_env_update(module_class, env_class, num_modes):
+        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
+        module = module_class(env=env, t_horizon=5)
+
+        # Compare the environment with the module-internally's environment states.
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+        # Add agent to environment (i.e. change the environment) and check again.
+        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+        # Step environment (i.e. change environment internally) and check again.
+        env.step(ego_action=torch.rand(2))
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))

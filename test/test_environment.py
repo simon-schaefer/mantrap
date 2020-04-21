@@ -52,7 +52,7 @@ class TestEnvironment:
         ego_controls = torch.stack([torch.tensor([1, 0])] * t_horizon)
         ego_trajectory = env.ego.unroll_trajectory(controls=ego_controls, dt=env.dt)
         for t in range(t_horizon):
-            ado_t, ego_t = env.step(ego_control=ego_controls[t:t+1])
+            ado_t, ego_t = env.step(ego_action=ego_controls[t])
 
             # Check dimensions of outputted ado and ego states.
             assert ado_t.numel() == 5
@@ -193,7 +193,7 @@ class TestEnvironment:
 
         # Test broken link between `env` and `env_copy`, i.e. when I change env_copy, then the original
         # environment remains unchanged.
-        env_copy.step(ego_control=torch.ones(1, 2))  # does not matter here anyways
+        env_copy.step(ego_action=torch.ones(2))  # does not matter here anyways
         ego_state_original, ado_states_original = env.states()
         ego_state_copy,  ado_states_copy = env_copy.states()
         assert not torch.all(torch.eq(ego_state_original, ego_state_copy))
