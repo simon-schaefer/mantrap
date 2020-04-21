@@ -326,7 +326,9 @@ def test_trajectron_mode_selection():
     # related to the first (highest weight) index.
     log_pis = gmm.log_pis.permute(0, 1, 3, 2)[0, 0, :, :]
     pis = torch.exp(log_pis)
-    assert np.argmin(pis) == weight_indices[0]
+    print(np.argmax(pis))
+    print(weight_indices[0])
+    assert np.argmax(pis) == weight_indices[0]
 
 
 ###########################################################################

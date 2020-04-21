@@ -260,7 +260,7 @@ class Trajectron(GraphBasedEnvironment):
         mus = gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
         log_pis = gmm.log_pis.permute(0, 1, 3, 2)[0, 0, :, :]
 
-        assert mus.shape[0] == log_pis.shape[0]
+        assert mus.shape[0] == log_pis.shape[0]  # num_modes
         assert mus.shape[1] == log_pis.shape[1] == t_horizon - 1
 
         with torch.no_grad():
@@ -272,12 +272,13 @@ class Trajectron(GraphBasedEnvironment):
                 # However when multiplying one very small factor at the end of the time-horizon would
                 # decrease the weight of the whole (maybe highly important) mode dramatically, therefore
                 # summation is used here.
-                weights_inv = torch.sum(torch.mul(pis, importance), dim=1).detach().numpy()
+                weights_np = torch.sum(torch.mul(pis, importance), dim=1).detach().numpy()
             else:
-                weights_inv = pis.view(-1,)
+                weights_np = pis.view(-1,).detach().numpy()
 
-            weights_indices = np.argpartition(weights_inv, kth=num_output_modes)[:num_output_modes]
-            weights_np = 1 / weights_inv[weights_indices]
+            weights_indices = weights_np.argsort()[::-1][:num_output_modes]  # N=num_output_modes largest weights
+            weights_indices = weights_indices.flatten()
+            weights_np = weights_np[weights_indices]
             weights_np = weights_np / np.sum(weights_np)  # normalization
             weights = torch.from_numpy(weights_np)
             assert torch.isclose(torch.sum(weights), torch.ones(1))
