@@ -236,16 +236,21 @@ class Trajectron(GraphBasedEnvironment):
         """Transform the Trajectron model GMM distribution to a trajectory.
         The output of the Trajectron model is a Gaussian Mixture Model (GMM) with mean and log_variance (among several
         other properties) for each of the 25 modes. Since `num_modes` < 25 in a first step the most important modes
-        will be selected, by using the inverse of the length of the variance vector, i.e.
+        will be selected, by using the weight vector directly. The GMM is a multi-nominal distribution with weight
+        parameters pi_i, i.e. we have
 
-        .. math:: w = \sum_t^T \omega_t 1 / \sqrt{\sigma_{t,X}^2 + \sigma_{t,Y}^2}
+        .. math:: z_1, ..., z_n \sim Mult_g(1, \pi_1, ..., \pi_g)
 
-        The importance vector omega is introduced in order to encounter the importance of uncertainty with respect to
-        the evolution in time. A high uncertainty at the beginning of the trajectory is worse in terms of planning than
-        at its end. The importance vector is a simple linear function going from 1 to 0.2 uniformly over `t_horizon`.
+        with z_i denoting the unobservable component-indicator vector, showing to which out of g clusters a drawn
+        sample belongs to (https://books.google.de/books?id=-0mfDwAAQBAJ&pg=PA18&lpg=PA18&dq=Log+Mixing+Proportions).
+
+        The importance vector omega is introduced in order to encounter the importance of uncertainty with respect
+        to the evolution of the weight vector in time. A high uncertainty at the beginning of the trajectory is worse
+        in terms of planning than at its end. The importance vector is a simple linear function going from 1 to 0.2
+        uniformly over `t_horizon`.
 
         mus.shape: (num_ados = 1, 1, t_horizon, num_modes, 2)
-        log_sigma.shape: (num_ados = 1, 1, t_horizon, num_modes, 2)
+        log_pis.shape: (num_ados = 1, 1, t_horizon, num_modes)
         """
         assert t_horizon >= 1
         assert check_ego_state(x=ado_state, enforce_temporal=True)  # technically ado state, but indexed
@@ -253,23 +258,29 @@ class Trajectron(GraphBasedEnvironment):
 
         # Bring distribution from Trajectron to internal shape (hidden shape check).
         mus = gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
-        log_sigmas = gmm.log_sigmas.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
+        log_pis = gmm.log_pis.permute(0, 1, 3, 2)[0, 0, :, :]
+
+        assert mus.shape[0] == log_pis.shape[0]
+        assert mus.shape[1] == log_pis.shape[1] == t_horizon - 1
 
         with torch.no_grad():
-            # Determine weight of every mode and get indices of `N = num_modes` highest weights. Since instead of
-            # the inverse of the norm of `log_sigmas` the norm is used directly, the lowest results correspond to the
-            # most important modes, i.e. highest weights.
-            log_sigmas_norm = torch.norm(log_sigmas, dim=2)
+            # Determine weight of every mode and get indices of `N = num_modes` highest weights.
+            pis = torch.exp(log_pis)  # element-wise logarithmic to linear
             if t_horizon > 1:
                 importance = torch.linspace(1.0, 0.2, steps=t_horizon - 1)
-                weights_inv = torch.sum(torch.mul(log_sigmas_norm, importance), dim=1).detach().numpy()
+                # The choice to sum over time-horizon here, instead of multiplying, is a bit random.
+                # However when multiplying one very small factor at the end of the time-horizon would
+                # decrease the weight of the whole (maybe highly important) mode dramatically, therefore
+                # summation is used here.
+                weights_inv = torch.sum(torch.mul(pis, importance), dim=1).detach().numpy()
             else:
-                weights_inv = log_sigmas_norm.view(-1,)
+                weights_inv = pis.view(-1,)
 
             weights_indices = np.argpartition(weights_inv, kth=num_output_modes)[:num_output_modes]
             weights_np = 1 / weights_inv[weights_indices]
-            weights_np = weights_np / np.linalg.norm(weights_np)  # normalization
+            weights_np = weights_np / np.sum(weights_np)  # normalization
             weights = torch.from_numpy(weights_np)
+            assert torch.isclose(torch.sum(weights), torch.ones(1))
 
         # Write means of highest weight modes in output trajectory. While the means merely describe the positions
         # (2D path points) the (mean) velocity can be determined by computing the finite time difference between

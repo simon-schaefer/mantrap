@@ -309,11 +309,10 @@ def test_trajectron_mode_selection():
     num_modes = 2
 
     # Create distribution object similar to the Trajectron output.
-    GMM2D = namedtuple("GMM2D", "mus log_sigmas")
+    GMM2D = namedtuple("GMM2D", "mus log_pis")
     mus = torch.rand((1, 1, 1, num_modes * 2, 2))
-    log_sigmas = torch.stack((torch.linspace(10, 2, steps=num_modes * 2), torch.ones(num_modes * 2))).t()
-    log_sigmas = log_sigmas.view((1, 1, 1, num_modes * 2, 2))
-    gmm = GMM2D(mus=mus, log_sigmas=log_sigmas)
+    log_pis = torch.rand((1, 1, 1, num_modes * 2))
+    gmm = GMM2D(mus=mus, log_pis=log_pis)
 
     # Determine trajectory from distribution. The time horizon `t_horizon` is the prediction horizon of the
     # simulation, however when predicting based on the applied controls of the ego then `t_horizon` is one step longer
@@ -323,11 +322,11 @@ def test_trajectron_mode_selection():
         gmm=gmm, num_output_modes=num_modes, dt=1.0, t_horizon=2, return_more=True, ado_state=torch.zeros(5)
     )
 
-    # Test the obtained weight indices by checking for the smallest element in the GMM's variances, which should be
+    # Test the obtained weight indices by checking for the smallest element in the GMM's "weights", which should be
     # related to the first (highest weight) index.
-    log_sigmas = gmm.log_sigmas.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
-    log_sigmas_norm = torch.norm(log_sigmas, dim=2)
-    assert np.argmin(log_sigmas_norm) == weight_indices[0]
+    log_pis = gmm.log_pis.permute(0, 1, 3, 2)[0, 0, :, :]
+    pis = torch.exp(log_pis)
+    assert np.argmin(pis) == weight_indices[0]
 
 
 ###########################################################################
