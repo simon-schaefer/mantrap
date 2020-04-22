@@ -29,9 +29,9 @@ class TestObjectiveInteraction:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), num_modes=num_modes)
 
-        ego_path_near = straight_line(start_pos=torch.tensor([-5, 0.1]), end_pos=torch.tensor([5, 0.1]), steps=11)
+        ego_path_near = straight_line(start=torch.tensor([-5, 0.1]), end=torch.tensor([5, 0.1]), steps=11)
         ego_trajectory_near = env.ego.expand_trajectory(ego_path_near, dt=env.dt)
-        ego_path_far = straight_line(start_pos=torch.tensor([-5, 100.0]), end_pos=torch.tensor([5, 10.0]), steps=11)
+        ego_path_far = straight_line(start=torch.tensor([-5, 100.0]), end=torch.tensor([5, 10.0]), steps=11)
         ego_trajectory_far = env.ego.expand_trajectory(ego_path_far, dt=env.dt)
 
         module = module_class(t_horizon=10, env=env)

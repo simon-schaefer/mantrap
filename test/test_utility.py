@@ -8,7 +8,7 @@ from mantrap.utility.primitives import square_primitives, straight_line
 # Straight Line Testing ###################################################
 ###########################################################################
 def test_build_trajectory_from_positions():
-    path = straight_line(start_pos=torch.zeros(2), end_pos=torch.ones(2) * 10, steps=11)
+    path = straight_line(start=torch.zeros(2), end=torch.ones(2) * 10, steps=11)
     velocities = torch.cat(((path[1:, 0:2] - path[:-1, 0:2]) / 1.0, torch.zeros((1, 2))))
     trajectory = torch.cat((path, velocities), dim=1)
 
@@ -114,7 +114,7 @@ def test_square_primitives(num_points: int):
     position = torch.tensor([-5.0, 0.0])
     velocity = torch.tensor([1.0, 0.0])
     goal = torch.tensor([20.0, 0.0])
-    primitives = square_primitives(start=position, end=goal, dt=1.0, steps=num_points)
+    primitives = square_primitives(start=position, end=goal, steps=num_points)
 
     assert primitives.shape[1] == num_points
     # for m in range(primitives.shape[0]):

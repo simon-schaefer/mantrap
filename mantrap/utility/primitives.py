@@ -5,7 +5,7 @@ import torch
 from mantrap.utility.shaping import check_ego_path
 
 
-def square_primitives(start: torch.Tensor, end: torch.Tensor, dt: float, steps: int) -> torch.Tensor:
+def square_primitives(start: torch.Tensor, end: torch.Tensor, steps: int) -> torch.Tensor:
     """As the trajectory is optimized over several time-steps we have to set some base ego trajectory in order to
      estimate the reactive behaviour of all other agents. Therefore in the following some trajectory primitives
      between the current state of the ego and its goal state are defined, such as a first order (straight line from
@@ -66,9 +66,9 @@ def midpoint_spline(
     # return primitive
 
 
-def straight_line(start_pos: torch.Tensor, end_pos: torch.Tensor, steps: int):
+def straight_line(start: torch.Tensor, end: torch.Tensor, steps: int):
     primitive = torch.zeros((steps, 2))
-    primitive[:, 0] = torch.linspace(start_pos[0].item(), end_pos[0].item(), steps)
-    primitive[:, 1] = torch.linspace(start_pos[1].item(), end_pos[1].item(), steps)
+    primitive[:, 0] = torch.linspace(start[0].item(), end[0].item(), steps)
+    primitive[:, 1] = torch.linspace(start[1].item(), end[1].item(), steps)
     assert check_ego_path(primitive, t_horizon=steps)
     return primitive

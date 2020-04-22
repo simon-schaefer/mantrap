@@ -112,7 +112,7 @@ class TestEnvironment:
     def test_ego_graph_updates(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
         position = torch.tensor([-5, 0])
         goal = torch.tensor([5, 0])
-        path = straight_line(start_pos=position, end_pos=goal, steps=11)
+        path = straight_line(start=position, end=goal, steps=11)
 
         ego_kwargs = {"position": position, "velocity": torch.zeros(2)}
         env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs=ego_kwargs)

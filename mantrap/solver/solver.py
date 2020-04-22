@@ -141,18 +141,18 @@ class Solver(ABC):
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
             self._env.step_reset(ego_state_next=ego_state, ado_states_next=ado_states)
-            ego_trajectory_opt[k + 1] = ego_state
+            ego_trajectory_opt[k + 1, :] = ego_state
             ado_trajectories[:, 0, k + 1, :] = ado_states
-
-            # If the goal state has been reached, break the optimization loop (and shorten trajectories to
-            # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
-            if torch.norm(ego_state[0:2] - self._goal) < 0.1:
-                ego_trajectory_opt = ego_trajectory_opt[:k + 1, :].detach()
-                ado_trajectories = ado_trajectories[:, :, :k + 1, :].detach()
-                break
 
             # Logging.
             self.intermediate_log(ego_controls_k=ego_controls_k)
+
+            # If the goal state has been reached, break the optimization loop (and shorten trajectories to
+            # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
+            if torch.norm(ego_state[0:2] - self.goal) < SOLVER_GOAL_END_DISTANCE:
+                ego_trajectory_opt = ego_trajectory_opt[:k + 1, :].detach()
+                ado_trajectories = ado_trajectories[:, :, :k + 1, :].detach()
+                break
 
         logging.info(f"solver {self.name}: logging and visualizing trajectory optimization")
         self.env.detach()
@@ -359,16 +359,16 @@ class Solver(ABC):
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES_DICT.keys() for name, _ in modules])
         assert all([0.0 <= weight for _, weight in modules])
-        objective_kwargs = {"horizon": self.planning_horizon, "env": self.env, "goal": self.goal}
+        objective_kwargs = {"t_horizon": self.planning_horizon, "env": self.env, "goal": self.goal}
         return {m: OBJECTIVES_DICT[m](weight=w, **objective_kwargs) for m, w in modules}
 
     def _build_constraint_modules(self, modules: List[str]) -> Dict[str, ConstraintModule]:
         assert all([name in CONSTRAINTS_DICT.keys() for name in modules])
-        return {m: CONSTRAINTS_DICT[m](horizon=self.planning_horizon, env=self.env) for m in modules}
+        return {m: CONSTRAINTS_DICT[m](t_horizon=self.planning_horizon, env=self.env) for m in modules}
 
     def _build_filter_module(self, module: str) -> FilterModule:
         assert module in FILTER_DICT.keys()
-        return FILTER_DICT[module](horizon=self.planning_horizon, env=self.env)
+        return FILTER_DICT[module](t_horizon=self.planning_horizon, env=self.env)
 
     ###########################################################################
     # Logging #################################################################
@@ -437,7 +437,8 @@ class Solver(ABC):
         e.g. the last value of the objective tensor `obj_overall` should be the smallest one. However it is hard to
         validate for the general logging key, therefore it is up to the user to implement it correctly.
         """
-        if self.verbose > -1 and self.log is not None:
+        if self.verbose > -1:
+            assert self.log is not None
             # Stack always the last values in the step-dictionaries (lists of logging values for each optimization
             # step), since it is assumed to be the most optimal one (e.g. for IPOPT).
             for key in self.log_keys_all():

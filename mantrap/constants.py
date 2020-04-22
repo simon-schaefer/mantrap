@@ -77,6 +77,7 @@ TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron mo
 #######################################
 SOLVER_HORIZON_DEFAULT = 5  # number of future time-steps to be taken into account
 SOLVER_CONSTRAINT_LIMIT = 1e-3  # limit of sum of constraints to be fulfilled
+SOLVER_GOAL_END_DISTANCE = 0.1  # [m] maximal distance to goal to finish optimization.
 
 IPOPT_MAX_STEPS_DEFAULT = 100  # maximal number of IPOPT solver iterations.
 IPOPT_MAX_CPU_TIME_DEFAULT = 1.0  # [s] maximal IPOPT solver CPU time.
