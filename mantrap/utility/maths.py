@@ -5,41 +5,6 @@ import torch
 
 
 ###########################################################################
-# Probability Distributions ###############################################
-###########################################################################
-class Distribution(ABC):
-    def __init__(self, mean: float):
-        self.mean = mean
-
-    @abstractmethod
-    def sample(self, num_samples: int = 1) -> np.ndarray:
-        pass
-
-
-class DirecDelta(Distribution):
-    """Direc Delta distribution peaking at one specific point x, while have zero probability otherwise."""
-
-    def __init__(self, x: float):
-        super(DirecDelta, self).__init__(x)
-
-    def sample(self, num_samples: int = 1) -> np.ndarray:
-        super(DirecDelta, self).sample(num_samples)
-        return np.tile(self.mean, num_samples).reshape(num_samples, -1)
-
-
-class Gaussian(Distribution):
-    """1D Gaussian distribution with mean mu and standard deviation sigma."""
-
-    def __init__(self, mean: float, sigma: float):
-        super(Gaussian, self).__init__(mean)
-        self.sigma = sigma
-
-    def sample(self, num_samples: int = 1) -> np.ndarray:
-        super(Gaussian, self).sample(num_samples)
-        return np.random.normal(self.mean, self.sigma, num_samples).reshape(num_samples, -1)
-
-
-###########################################################################
 # Numerical Methods #######################################################
 ###########################################################################
 class Derivative2:

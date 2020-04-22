@@ -1,15 +1,15 @@
 from collections import namedtuple
-from typing import List
 
 import numpy as np
 import pytest
+from scipy.stats import uniform
 import torch
 
 from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
+from mantrap.environment.iterative import IterativeEnvironment
 from mantrap.environment import *
-from mantrap.utility.maths import Distribution, DirecDelta
 from mantrap.utility.primitives import straight_line
 from mantrap.utility.shaping import check_ado_trajectories, check_ado_states, check_ego_state
 
@@ -224,6 +224,34 @@ class TestEnvironment:
 
 
 ###########################################################################
+# Test - Iterative Environments ###########################################
+###########################################################################
+@pytest.mark.parametrize("env_class", [PotentialFieldEnvironment, SocialForcesEnvironment])
+class TestIterative:
+
+    @staticmethod
+    def test_social_forces_ghosts_init(env_class: IterativeEnvironment.__class__):
+        position = torch.tensor([-1, 0])
+        velocity = torch.tensor([0.1, 0.2])
+        num_modes = 2
+        # For the sake of easy testing simulate some kind of direc delta distribution.
+        v0s = [(uniform, {"loc": 2.3, "scale": 1e-6}), (uniform, {"loc": 1.5, "scale": 1e-6})]
+
+        env = env_class()
+        env.add_ado(goal=torch.zeros(2), position=position, velocity=velocity, num_modes=num_modes, v0s=v0s)
+
+        assert env.num_modes == num_modes
+        assert all([env.split_ghost_id(ghost.id)[0] == env.ado_ids[0] for ghost in env.ghosts])
+        assert len(env.ghosts) == num_modes
+
+        v0s_env = np.array([ghost.params["v0"] for ghost in env.ghosts])
+        v0s_env.sort()
+        v0s_exp = np.array([2.3, 1.5])
+        v0s_exp.sort()
+        assert np.allclose(v0s_env, v0s_exp)
+
+
+###########################################################################
 # Test - Social Forces Environment ########################################
 ###########################################################################
 @pytest.mark.parametrize("goal_position", [torch.tensor([2.0, 2.0]), torch.tensor([0.0, -2.0])])
@@ -246,24 +274,6 @@ def test_social_forces_static_ado_pair_prediction():
     # the same for both of them). Therefore the distance must be larger then zero basically, otherwise the repulsive
     # force would not act (or act attractive instead of repulsive).
     assert torch.norm(trajectories[0, -1, 0:1] - trajectories[1, -1, 0:1]) > 1e-3
-
-
-@pytest.mark.parametrize(
-    "pos, vel, num_modes, v0s",
-    [(torch.tensor([-1, 0]), torch.tensor([0.1, 0.2]), 2, [DirecDelta(2.3), DirecDelta(1.5)])],
-)
-def test_social_forces_ghosts_init(pos: torch.Tensor, vel: torch.Tensor, num_modes: int, v0s: List[Distribution]):
-    env = SocialForcesEnvironment()
-    env.add_ado(goal=torch.zeros(2), position=pos, velocity=vel, num_modes=num_modes, v0s=v0s)
-
-    assert env.num_modes == num_modes
-    assert all([env.split_ghost_id(ghost.id)[0] == env.ado_ids[0] for ghost in env.ghosts])
-    assert len(env.ghosts) == num_modes
-
-    assert all([type(v0) == DirecDelta for v0 in v0s])  # otherwise hard to compare due to sampling
-    v0s_env = [ghost.params["v0"] for ghost in env.ghosts]
-    v0s_exp = [v0.mean for v0 in v0s]
-    assert set(v0s_env) == set(v0s_exp)
 
 
 ###########################################################################

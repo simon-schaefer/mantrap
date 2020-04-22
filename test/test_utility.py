@@ -1,12 +1,11 @@
 import pytest
-import torch
 
-from mantrap.utility.maths import Derivative2, lagrange_interpolation, Circle
+from mantrap.utility.maths import *
 from mantrap.utility.primitives import square_primitives, straight_line
 
 
 ###########################################################################
-# Utility Testing #########################################################
+# Straight Line Testing ###################################################
 ###########################################################################
 def test_build_trajectory_from_positions():
     path = straight_line(start_pos=torch.zeros(2), end_pos=torch.ones(2) * 10, steps=11)

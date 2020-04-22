@@ -1,5 +1,7 @@
-from typing import Dict, List, Union
+import math
+from typing import Dict, List, Tuple, Union
 
+from scipy.stats import rv_continuous, truncnorm
 import torch
 
 from mantrap.agents.agent import Agent
@@ -7,7 +9,6 @@ from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment.iterative import IterativeEnvironment
-from mantrap.utility.maths import Distribution, Gaussian
 
 
 class PotentialFieldEnvironment(IterativeEnvironment):
@@ -26,33 +27,48 @@ class PotentialFieldEnvironment(IterativeEnvironment):
     def add_ado(
         self,
         num_modes: int = 1,
-        v0s: Union[List[Distribution], List[float]] = None,
+        v0s: Union[List[Tuple[rv_continuous, Dict[str, float]]], List[float]] = None,
         weights: List[float] = None,
         **ado_kwargs
     ) -> Agent:
         # In order to introduce multi-modality and stochastic effects the underlying v0 parameters of the potential
         # field environment are sampled from distributions, each for one mode. If not stated the default parameters
         # are used as Gaussian distribution around the default value.
-        v0s_default = Gaussian(ENV_POTENTIAL_FIELD_V0_DEFAULT, ENV_POTENTIAL_FIELD_V0_DEFAULT / 2)
-        v0s = v0s if v0s is not None else [v0s_default] * num_modes
+        v0_default = (truncnorm, {
+            "a": 0.0, "b": math.inf,
+            "loc": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0],
+            "scale": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0] / 2
+        })
+        v0s = v0s if v0s is not None else [v0_default] * num_modes
 
         # For each mode sample new parameters from the previously defined distribution. If no distribution is defined,
         # but a list of floating point values is passed directly, just use them.
         args_list = []
+        weights_arg = [-1.0] * num_modes
         for i in range(num_modes):
             if type(v0s[i]) == float:
+                assert type(weights[i]) == float
                 v0 = v0s[i]
-            elif v0s[i].__class__.__bases__[0] == Distribution:
-                v0 = abs(float(v0s[i].sample()))
+                weight = weights[i]
+
+            elif v0s[i][0].__class__.__bases__[0] == rv_continuous:
+                # Sample v0 from distribution.
+                v0_distribution, v0_kwargs = v0s[i]
+                v0 = float(v0_distribution.rvs(**v0_kwargs))
+                # Assign sigma to the overall probability of this parameters occurring (independent !).
+                weight = v0_distribution.pdf(v0, **v0_kwargs)
+
             else:
                 raise ValueError
+
+            weights_arg[i] = weight  # normalization in super-class.
             args_list.append({PARAMS_V0: v0})
 
         # Finally add ado ghosts to environment.
         return super(PotentialFieldEnvironment, self).add_ado(
             ado_type=DoubleIntegratorDTAgent,
             num_modes=num_modes,
-            weights=weights,
+            weights=weights_arg,
             arg_list=args_list,
             **ado_kwargs
         )

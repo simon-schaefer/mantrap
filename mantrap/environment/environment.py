@@ -325,8 +325,11 @@ class GraphBasedEnvironment(ABC):
         # Append the created ado for every mode. When no weights are given, then initialize with a uniform
         # weight distribution between the modes.
         arg_list = arg_list if arg_list is not None else [dict()] * num_modes
-        weights = weights if weights is not None else (torch.ones(num_modes) / num_modes).tolist()
+        weights = np.array(weights) if weights is not None else (np.ones(num_modes) / num_modes)
+        weights = weights / np.sum(weights)
         assert len(arg_list) == len(weights) == num_modes
+        assert np.isclose(np.sum(weights), 1.0)
+        assert np.all(weights >= 0.0)
 
         for i in range(num_modes):
             ado = deepcopy(ado)

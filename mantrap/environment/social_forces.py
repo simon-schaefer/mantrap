@@ -1,5 +1,7 @@
-from typing import Dict, List, Union
+import math
+from typing import Dict, List, Tuple, Union
 
+from scipy.stats import rv_continuous, truncnorm
 import torch
 
 from mantrap.agents.agent import Agent
@@ -7,7 +9,6 @@ from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment.iterative import IterativeEnvironment
-from mantrap.utility.maths import Distribution, Gaussian
 
 
 class SocialForcesEnvironment(IterativeEnvironment):
@@ -42,8 +43,8 @@ class SocialForcesEnvironment(IterativeEnvironment):
         self,
         num_modes: int = 1,
         goal: torch.Tensor = torch.zeros(2),
-        v0s: Union[List[Distribution], List[float]] = None,
-        sigmas: Union[List[Distribution], List[float]] = None,
+        v0s: Union[List[Tuple[rv_continuous, Dict[str, float]]], List[float]] = None,
+        sigmas: Union[List[Tuple[rv_continuous, Dict[str, float]]], List[float]] = None,
         weights: List[float] = None,
         **ado_kwargs,
     ) -> Agent:
@@ -55,26 +56,47 @@ class SocialForcesEnvironment(IterativeEnvironment):
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces
         # environment are sampled from distributions, each for one mode. If not stated the default parameters are
         # used as Gaussian distribution around the default value.
-        v0s_default = Gaussian(ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0], ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0] / 2)
-        v0s = v0s if v0s is not None else [v0s_default] * num_modes
-        sigma_default = Gaussian(ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_SIGMA], ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_SIGMA] / 2)
+        v0_default = (truncnorm, {
+            "a": 0.0, "b": math.inf,
+            "loc": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0],
+            "scale": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0] / 2
+        })
+        v0s = v0s if v0s is not None else [v0_default] * num_modes
+        sigma_default = (truncnorm, {
+            "a": 0.0, "b": math.inf,
+            "loc": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_SIGMA],
+            "scale": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_SIGMA] / 2
+        })
         sigmas = sigmas if sigmas is not None else [sigma_default] * num_modes
         assert len(v0s) == len(sigmas)
 
         # For each mode sample new parameters from the previously defined distribution. If no distribution is defined,
         # but a list of floating point values is passed directly, just use them.
         args_list = []
+        weights_arg = [-1] * num_modes
         for i in range(num_modes):
             if type(v0s[i]) == float:
                 assert type(sigmas[i]) == float
+                assert type(weights[i]) == float
                 v0 = v0s[i]
                 sigma = sigmas[i]
-            elif v0s[i].__class__.__bases__[0] == Distribution:
-                assert sigmas[i].__class__.__bases__[0] == Distribution
-                v0 = abs(float(v0s[i].sample()))
-                sigma = abs(float(sigmas[i].sample()))
+                weight = weights[i]
+
+            elif v0s[i][0].__class__.__bases__[0] == rv_continuous:
+                assert sigmas[i][0].__class__.__bases__[0] == rv_continuous
+                # Sample v0 from distribution.
+                v0_distribution, v0_kwargs = v0s[i]
+                v0 = float(v0_distribution.rvs(**v0_kwargs))
+                # Sample sigma from distribution.
+                sigma_distribution, sigma_kwargs = sigmas[i]
+                sigma = float(sigma_distribution.rvs(**sigma_kwargs))
+                # Assign sigma to the overall probability of these parameters occurring (independent !).
+                weight = v0_distribution.pdf(v0, **v0_kwargs) * sigma_distribution.pdf(sigma, **sigma_kwargs)
+
             else:
                 raise ValueError
+
+            weights_arg[i] = weight  # normalization in super-class.
             tau = ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_TAU]
             args_list.append({PARAMS_V0: v0, PARAMS_SIGMA: sigma, PARAMS_TAU: tau, PARAMS_GOAL: goal})
 
@@ -82,7 +104,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
         return super(SocialForcesEnvironment, self).add_ado(
             ado_type=DoubleIntegratorDTAgent,
             num_modes=num_modes,
-            weights=weights,
+            weights=weights_arg,
             arg_list=args_list,
             **ado_kwargs
         )

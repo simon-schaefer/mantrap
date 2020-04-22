@@ -276,6 +276,8 @@ class Trajectron(GraphBasedEnvironment):
             else:
                 weights_np = pis.view(-1,).detach().numpy()
 
+            # Although sorting is a computationally complex operation, for an array of size 25, it is very
+            # a very reasonable (and small) effort here compared to other bottlenecks.
             weights_indices = weights_np.argsort()[::-1][:num_output_modes]  # N=num_output_modes largest weights
             weights_indices = weights_indices.flatten()
             weights_np = weights_np[weights_indices]
