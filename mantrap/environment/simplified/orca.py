@@ -43,7 +43,7 @@ class ORCAEnvironment(IterativeEnvironment):
     ###########################################################################
     def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> Agent:
         assert goal.size() == torch.Size([2])
-        params = [{PARAMS_GOAL: goal.detach().float()}]
+        params = [{PK_GOAL: goal.detach().float()}]
         return super(ORCAEnvironment, self).add_ado(IntegratorDTAgent, arg_list=params, **ado_kwargs)
 
     ###########################################################################
@@ -53,7 +53,7 @@ class ORCAEnvironment(IterativeEnvironment):
         self,
         ego_state: torch.Tensor = None,
         k: int = 0,
-        safe_time: float = ENV_ORCA_SAFE_TIME,
+        safe_time: float = ORCA_SAFE_TIME,
         **graph_kwargs
     ) -> Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
@@ -63,9 +63,9 @@ class ORCAEnvironment(IterativeEnvironment):
         # to be quite low, < 0.1 s. Since the simulation runs quite fast, we can split the actual simulation
         # time-step in smaller sub-steps. This improves the result while being independent from the user-defined
         # simulation time-step, at a comparably low computational cost.
-        assert (self.dt / ENV_ORCA_SUB_TIME_STEP).is_integer()
+        assert (self.dt / ORCA_SUB_TIME_STEP).is_integer()
         graph_kk = graph_k.copy()
-        for _ in range(int(self.dt // ENV_ORCA_SUB_TIME_STEP)):
+        for _ in range(int(self.dt // ORCA_SUB_TIME_STEP)):
             for m_ghost, ghost in enumerate(self.ghosts):
                 # Find set of line constraint for (current iteration) agent to be safe. Important here is that
                 # uni-modality is assumed (and enforced during agent initialization). Therefore no inter-mode
@@ -78,8 +78,8 @@ class ORCAEnvironment(IterativeEnvironment):
                     k=k,
                     self_id=ghost.id,
                     other_ids=others_ids,
-                    dt=ENV_ORCA_SUB_TIME_STEP,
-                    agent_radius=ENV_ORCA_AGENT_RADIUS,
+                    dt=ORCA_SUB_TIME_STEP,
+                    agent_radius=ORCA_AGENT_RADIUS,
                     agent_safe_dt=safe_time
                 )
 
@@ -87,9 +87,9 @@ class ORCAEnvironment(IterativeEnvironment):
                 # current position to the goal directly with maximal speed. However when the goal has been reached
                 # set the preferred velocity to zero (not original ORCA).
                 speed_max = ghost.agent.speed_max
-                vel_preferred = ghost.params[PARAMS_GOAL] - ghost.agent.position
+                vel_preferred = ghost.params[PK_GOAL] - ghost.agent.position
                 goal_distance = torch.norm(vel_preferred)
-                if goal_distance.item() < ENV_ORCA_MAX_GOAL_DISTANCE:
+                if goal_distance.item() < ORCA_MAX_GOAL_DISTANCE:
                     vel_preferred = torch.zeros(2)
                 else:
                     vel_preferred = vel_preferred / goal_distance * speed_max
@@ -103,7 +103,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 # time-step, creating a differentiable chain since the next sub-time-step is then using these
                 # updated values.
                 trajectory = ghost.agent.unroll_trajectory(controls=vel_new.unsqueeze(dim=0),
-                                                           dt=ENV_ORCA_SUB_TIME_STEP)
+                                                           dt=ORCA_SUB_TIME_STEP)
                 graph_kk[f"{ghost.id}_{k}_{GK_POSITION}"] = trajectory[-1, 0:2]
                 graph_kk[f"{ghost.id}_{k}_{GK_VELOCITY}"] = trajectory[-1, 2:4]
                 graph_kk[f"{ghost.id}_{k}_{GK_CONTROL}"] = vel_new  # single integrator !
@@ -164,7 +164,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 for j in range(0, i):
                     determinant = torch.det(torch.stack((constraints[i].direction, constraints[j].direction)))
 
-                    if torch.abs(determinant) < ENV_ORCA_EPS_NUMERIC:
+                    if torch.abs(determinant) < ORCA_EPS_NUMERIC:
                         # Line i and line j point in the same direction.
                         if constraints[i].direction.dot(constraints[j].direction) > 0:
                             continue
@@ -212,7 +212,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 torch.stack((constraints[j].direction, constraints[i].point - constraints[j].point)))
 
             # Lines (constraint lines) i and j are (almost) parallel.
-            if torch.abs(denominator) < ENV_ORCA_EPS_NUMERIC:
+            if torch.abs(denominator) < ORCA_EPS_NUMERIC:
                 if numerator < 0.0:
                     return None
                 continue
@@ -319,7 +319,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 weights=[ghost.weight for ghost in ghosts_ado],
                 num_modes=self.num_modes,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
-                goal=ghosts_ado[0].params[PARAMS_GOAL],
+                goal=ghosts_ado[0].params[PK_GOAL],
             )
         return env_copy
 

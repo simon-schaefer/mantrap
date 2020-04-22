@@ -114,10 +114,10 @@ class GraphBasedEnvironment(ABC):
 
         # Dictionary of environment parameters.
         self._env_params = dict()
-        self._env_params[PARAMS_X_AXIS] = x_axis
-        self._env_params[PARAMS_Y_AXIS] = y_axis
-        self._env_params[PARAMS_CONFIG] = config_name
-        self._env_params[PARAMS_VERBOSE] = verbose
+        self._env_params[PK_X_AXIS] = x_axis
+        self._env_params[PK_Y_AXIS] = y_axis
+        self._env_params[PK_CONFIG] = config_name
+        self._env_params[PK_VERBOSE] = verbose
         self._dt = dt
         self._time = 0
 
@@ -292,7 +292,7 @@ class GraphBasedEnvironment(ABC):
         self,
         ado_type: Agent.__class__ = None,
         num_modes: int = 1,
-        weights: List[float] = None,
+        weights: np.ndarray = None,
         arg_list: List[Dict] = None,
         **ado_kwargs
     ) -> Agent:
@@ -325,7 +325,7 @@ class GraphBasedEnvironment(ABC):
         # Append the created ado for every mode. When no weights are given, then initialize with a uniform
         # weight distribution between the modes.
         arg_list = arg_list if arg_list is not None else [dict()] * num_modes
-        weights = np.array(weights) if weights is not None else (np.ones(num_modes) / num_modes)
+        weights = weights if weights is not None else (np.ones(num_modes) / num_modes)
         weights = weights / np.sum(weights)
         assert len(arg_list) == len(weights) == num_modes
         assert np.isclose(np.sum(weights), 1.0)
@@ -606,7 +606,7 @@ class GraphBasedEnvironment(ABC):
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
                 time=self.time,
-                weights=[ghost.weight for ghost in ghosts_ado] if env_copy.is_multi_modal else [1.0],
+                weights=np.array([ghost.weight for ghost in ghosts_ado]) if env_copy.is_multi_modal else np.ones(1),
                 num_modes=self.num_modes if env_copy.is_multi_modal else 1,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
             )
@@ -803,15 +803,15 @@ class GraphBasedEnvironment(ABC):
 
     @property
     def axes(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-        return self._env_params[PARAMS_X_AXIS], self._env_params[PARAMS_Y_AXIS]
+        return self._env_params[PK_X_AXIS], self._env_params[PK_Y_AXIS]
 
     @property
     def verbose(self) -> int:
-        return self._env_params[PARAMS_VERBOSE]
+        return self._env_params[PK_VERBOSE]
 
     @property
     def config_name(self) -> str:
-        return self._env_params[PARAMS_CONFIG]
+        return self._env_params[PK_CONFIG]
 
     @property
     def name(self) -> str:

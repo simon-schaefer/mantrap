@@ -24,8 +24,8 @@ class IGradSolver(IPOPTSolver):
     def initialize(self, **solver_params):
         # Number of control points determines the number of points used for interpolation, next to the initial
         # and terminal (goal) point. This is equivalent to the number of optimization variables (x2 -> 2D).
-        if PARAMS_NUM_CONTROL_POINTS not in solver_params.keys():
-            self._solver_params[PARAMS_NUM_CONTROL_POINTS] = 2
+        if PK_NUM_CONTROL_POINTS not in solver_params.keys():
+            self._solver_params[PK_NUM_CONTROL_POINTS] = 2
 
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
         ego_path_init = square_primitives(
@@ -94,7 +94,7 @@ class IGradSolver(IPOPTSolver):
 
     @property
     def num_control_points(self) -> int:
-        return self._solver_params[PARAMS_NUM_CONTROL_POINTS]
+        return self._solver_params[PK_NUM_CONTROL_POINTS]
 
     ###########################################################################
     # Solver properties #######################################################

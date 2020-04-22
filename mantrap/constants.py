@@ -25,17 +25,17 @@ OBJECTIVE_GOAL = "goal"
 OBJECTIVE_INTERACTION_POS = "interaction_pos"
 OBJECTIVE_INTERACTION_ACC = "interaction_acc"
 
-PARAMS_CONFIG = "config_name"
-PARAMS_MULTIPROCESSING = "multiprocessing"
-PARAMS_NUM_CONTROL_POINTS = "num_control_points"
-PARAMS_GOAL = "goal"
-PARAMS_TAU = "tau"
-PARAMS_T_PLANNING = "t_planning"
-PARAMS_VERBOSE = "verbose"
-PARAMS_V0 = "v0"
-PARAMS_SIGMA = "sigma"
-PARAMS_X_AXIS = "x_axis"
-PARAMS_Y_AXIS = "y_axis"
+PK_CONFIG = "config_name"  # PK = Parameter-Key
+PK_MULTIPROCESSING = "multiprocessing"
+PK_NUM_CONTROL_POINTS = "num_control_points"
+PK_GOAL = "goal"
+PK_TAU = "tau"
+PK_T_PLANNING = "t_planning"
+PK_VERBOSE = "verbose"
+PK_V0 = "v0"
+PK_SIGMA = "sigma"
+PK_X_AXIS = "x_axis"
+PK_Y_AXIS = "y_axis"
 
 #######################################
 # agent parameters ####################
@@ -52,24 +52,24 @@ ENV_DT_DEFAULT = 0.4
 ENV_X_AXIS_DEFAULT = (-10, 10)
 ENV_Y_AXIS_DEFAULT = (-10, 10)
 
-ENV_SOCIAL_FORCES_DEFAULTS = {
-    PARAMS_TAU: 0.4,  # [s] relaxation time (assumed to be uniform over all agents).
-    PARAMS_V0: 4.0,  # [m2s-2] repulsive field constant.
-    PARAMS_SIGMA: 0.9,  # [m] repulsive field exponent constant.
+SOCIAL_FORCES_DEFAULTS = {
+    PK_TAU: 0.4,  # [s] relaxation time (assumed to be uniform over all agents).
+    PK_V0: 4.0,  # [m2s-2] repulsive field constant.
+    PK_SIGMA: 0.9,  # [m] repulsive field exponent constant.
 }
-ENV_SOCIAL_FORCES_MAX_GOAL_DISTANCE = 0.3  # [m] maximal distance to goal to have zero goal traction force.
-ENV_SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between agents for interaction force.
+SOCIAL_FORCES_MAX_GOAL_DISTANCE = 0.3  # [m] maximal distance to goal to have zero goal traction force.
+SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between agents for interaction force.
 
-ENV_POTENTIAL_FIELD_V0_DEFAULT = 4.0  # [m2s-2] repulsive field constant.
+POTENTIAL_FIELD_V0_DEFAULT = 4.0  # [m2s-2] repulsive field constant.
 
-ENV_ORCA_AGENT_RADIUS = 1.0  # ado collision radius [m].
-ENV_ORCA_EPS_NUMERIC = 0.0001
-ENV_ORCA_SUB_TIME_STEP = 0.01  # [s] interval the simulation time-steps are divided in.
-ENV_ORCA_MAX_GOAL_DISTANCE = 0.5  # [m] maximal distance to goal to have zero preferred velocity.
-ENV_ORCA_SAFE_TIME = 0.8  # [s] time interval of guaranteed no collisions. The larger it is, the tighter the
+ORCA_AGENT_RADIUS = 1.0  # ado collision radius [m].
+ORCA_EPS_NUMERIC = 0.0001
+ORCA_SUB_TIME_STEP = 0.01  # [s] interval the simulation time-steps are divided in.
+ORCA_MAX_GOAL_DISTANCE = 0.5  # [m] maximal distance to goal to have zero preferred velocity.
+ORCA_SAFE_TIME = 0.8  # [s] time interval of guaranteed no collisions. The larger it is, the tighter the
 # constraints, but more deviating paths.
 
-ENV_TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
+TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
 
 #######################################
 # solver parameters ###################

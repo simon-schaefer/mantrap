@@ -174,11 +174,10 @@ class TestEnvironment:
         assert env.ego == env_copy.ego
         for i in range(env.num_ghosts):  # agents should be equal and in the same order
             assert env.ghosts[i].agent == env_copy.ghosts[i].agent
-            assert env.ghosts[i].weight == env_copy.ghosts[i].weight
+            assert np.isclose(env.ghosts[i].weight, env_copy.ghosts[i].weight)
             assert env.ghosts[i].id == env_copy.ghosts[i].id
             for key in env.ghosts[i].params.keys():
-                assert torch.all(torch.eq(torch.tensor(env.ghosts[i].params[key]),
-                                          torch.tensor(env_copy.ghosts[i].params[key])))
+                assert np.allclose(env.ghosts[i].params[key], env_copy.ghosts[i].params[key])
         ego_state_original, ado_states_original = env.states()
         ego_state_copy,  ado_states_copy = env_copy.states()
         assert torch.all(torch.eq(ego_state_original, ego_state_copy))
@@ -227,10 +226,10 @@ class TestEnvironment:
 # Test - Iterative Environments ###########################################
 ###########################################################################
 @pytest.mark.parametrize("env_class", [PotentialFieldEnvironment, SocialForcesEnvironment])
-class TestIterative:
+class TestParametrized:
 
     @staticmethod
-    def test_social_forces_ghosts_init(env_class: IterativeEnvironment.__class__):
+    def test_parametrized_ghosts_init(env_class: IterativeEnvironment.__class__):
         position = torch.tensor([-1, 0])
         velocity = torch.tensor([0.1, 0.2])
         num_modes = 2
@@ -294,7 +293,7 @@ def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
     forces = torch.zeros((2, 2))
     gradients = torch.zeros((2, 2))
     for i, env in enumerate([env_1, env_2]):
-        env.add_ado(position=torch.zeros(2), v0s=[1.0])
+        env.add_ado(position=torch.zeros(2), v0s=np.ones(1), weights=np.ones(1))
         graph = env.build_graph(ego_state=env.ego.state)
         forces[i, :] = graph[f"{env.ghosts[0].id}_0_{GK_CONTROL}"]
         ado_force_norm_0 = torch.norm(forces[i, :])
@@ -336,8 +335,6 @@ def test_trajectron_mode_selection():
     # related to the first (highest weight) index.
     log_pis = gmm.log_pis.permute(0, 1, 3, 2)[0, 0, :, :]
     pis = torch.exp(log_pis)
-    print(np.argmax(pis))
-    print(weight_indices[0])
     assert np.argmax(pis) == weight_indices[0]
 
 

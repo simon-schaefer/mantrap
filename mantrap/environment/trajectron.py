@@ -366,8 +366,8 @@ class Trajectron(GraphBasedEnvironment):
         from argument_parser import args
 
         # Load configuration files.
-        config = {"trajectron_model_path": build_os_path(f"config/trajectron_models/{ENV_TRAJECTRON_MODEL[0]}"),
-                  "trajectron_model_iteration": ENV_TRAJECTRON_MODEL[1]}
+        config = {"trajectron_model_path": build_os_path(f"config/trajectron_models/{TRAJECTRON_MODEL[0]}"),
+                  "trajectron_model_iteration": TRAJECTRON_MODEL[1]}
         with open(config_path) as trajectron_config_file:
             config.update(json.load(trajectron_config_file))
         with open(os.path.join(config["trajectron_model_path"], args.conf)) as model_config_file:

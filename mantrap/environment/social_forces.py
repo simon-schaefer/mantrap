@@ -1,7 +1,7 @@
-import math
 from typing import Dict, List, Tuple, Union
 
-from scipy.stats import rv_continuous, truncnorm
+import numpy as np
+from scipy.stats import rv_continuous
 import torch
 
 from mantrap.agents.agent import Agent
@@ -43,9 +43,9 @@ class SocialForcesEnvironment(IterativeEnvironment):
         self,
         num_modes: int = 1,
         goal: torch.Tensor = torch.zeros(2),
-        v0s: Union[List[Tuple[rv_continuous, Dict[str, float]]], List[float]] = None,
-        sigmas: Union[List[Tuple[rv_continuous, Dict[str, float]]], List[float]] = None,
-        weights: List[float] = None,
+        v0s: Union[List[Tuple[rv_continuous, Dict[str, float]]], np.ndarray] = None,
+        sigmas: Union[List[Tuple[rv_continuous, Dict[str, float]]], np.ndarray] = None,
+        weights: np.ndarray = None,
         **ado_kwargs,
     ) -> Agent:
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
@@ -56,55 +56,21 @@ class SocialForcesEnvironment(IterativeEnvironment):
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces
         # environment are sampled from distributions, each for one mode. If not stated the default parameters are
         # used as Gaussian distribution around the default value.
-        v0_default = (truncnorm, {
-            "a": 0.0, "b": math.inf,
-            "loc": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0],
-            "scale": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_V0] / 2
-        })
-        v0s = v0s if v0s is not None else [v0_default] * num_modes
-        sigma_default = (truncnorm, {
-            "a": 0.0, "b": math.inf,
-            "loc": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_SIGMA],
-            "scale": ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_SIGMA] / 2
-        })
-        sigmas = sigmas if sigmas is not None else [sigma_default] * num_modes
-        assert len(v0s) == len(sigmas)
+        assert (weights is not None) == (type(v0s) == np.ndarray) == (type(sigmas) == np.ndarray)
+        if type(v0s) != np.ndarray:
+            v0s, weights_v = self.ado_mode_params(v0s, SOCIAL_FORCES_DEFAULTS[PK_V0], num_modes=num_modes)
+            sigmas, weights_s = self.ado_mode_params(sigmas, SOCIAL_FORCES_DEFAULTS[PK_SIGMA], num_modes=num_modes)
+            weights = np.multiply(weights_s, weights_v)
 
-        # For each mode sample new parameters from the previously defined distribution. If no distribution is defined,
-        # but a list of floating point values is passed directly, just use them.
-        args_list = []
-        weights_arg = [-1] * num_modes
-        for i in range(num_modes):
-            if type(v0s[i]) == float:
-                assert type(sigmas[i]) == float
-                assert type(weights[i]) == float
-                v0 = v0s[i]
-                sigma = sigmas[i]
-                weight = weights[i]
-
-            elif v0s[i][0].__class__.__bases__[0] == rv_continuous:
-                assert sigmas[i][0].__class__.__bases__[0] == rv_continuous
-                # Sample v0 from distribution.
-                v0_distribution, v0_kwargs = v0s[i]
-                v0 = float(v0_distribution.rvs(**v0_kwargs))
-                # Sample sigma from distribution.
-                sigma_distribution, sigma_kwargs = sigmas[i]
-                sigma = float(sigma_distribution.rvs(**sigma_kwargs))
-                # Assign sigma to the overall probability of these parameters occurring (independent !).
-                weight = v0_distribution.pdf(v0, **v0_kwargs) * sigma_distribution.pdf(sigma, **sigma_kwargs)
-
-            else:
-                raise ValueError
-
-            weights_arg[i] = weight  # normalization in super-class.
-            tau = ENV_SOCIAL_FORCES_DEFAULTS[PARAMS_TAU]
-            args_list.append({PARAMS_V0: v0, PARAMS_SIGMA: sigma, PARAMS_TAU: tau, PARAMS_GOAL: goal})
+        # Fill ghost argument list with mode parameters.
+        tau = SOCIAL_FORCES_DEFAULTS[PK_TAU]
+        args_list = [{PK_V0: v0s[i], PK_SIGMA: sigmas[i], PK_TAU: tau, PK_GOAL: goal} for i in range(num_modes)]
 
         # Finally add ado ghosts to environment.
         return super(SocialForcesEnvironment, self).add_ado(
             ado_type=DoubleIntegratorDTAgent,
             num_modes=num_modes,
-            weights=weights_arg,
+            weights=weights,
             arg_list=args_list,
             **ado_kwargs
         )
@@ -152,14 +118,14 @@ class SocialForcesEnvironment(IterativeEnvironment):
 
         # Make graph with resulting force as an output.
         for ghost in self._ado_ghosts:
-            tau, v0, sigma = ghost.params[PARAMS_TAU], ghost.params[PARAMS_TAU], ghost.params[PARAMS_SIGMA]
+            tau, v0, sigma = ghost.params[PK_TAU], ghost.params[PK_TAU], ghost.params[PK_SIGMA]
             gpos = graph_k[f"{ghost.id}_{k}_{GK_POSITION}"]
             gvel = graph_k[f"{ghost.id}_{k}_{GK_VELOCITY}"]
 
             # Destination force - Force pulling the ado to its assigned goal position.
-            direction = torch.sub(ghost.params[PARAMS_GOAL], graph_k[f"{ghost.id}_{k}_{GK_POSITION}"])
+            direction = torch.sub(ghost.params[PK_GOAL], graph_k[f"{ghost.id}_{k}_{GK_POSITION}"])
             goal_distance = torch.norm(direction)
-            if goal_distance.item() < ENV_SOCIAL_FORCES_MAX_GOAL_DISTANCE:
+            if goal_distance.item() < SOCIAL_FORCES_MAX_GOAL_DISTANCE:
                 destination_force = torch.zeros(2)
             else:
                 direction = torch.div(direction, goal_distance)
@@ -172,7 +138,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
                 if ghost.agent.id == other.agent.id:  # ghosts from the same parent agent dont repulse each other
                     continue
                 distance = torch.sub(graph_k[f"{ghost.id}_{k}_{GK_POSITION}"], graph_k[f"{other.id}_{k}_{GK_POSITION}"])
-                if torch.norm(distance) > ENV_SOCIAL_FORCES_MAX_INTERACTION_DISTANCE:
+                if torch.norm(distance) > SOCIAL_FORCES_MAX_INTERACTION_DISTANCE:
                     continue
                 else:
                     opos = graph_k[f"{other.id}_{k}_{GK_POSITION}"]
@@ -202,12 +168,12 @@ class SocialForcesEnvironment(IterativeEnvironment):
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
                 time=self.time,
-                weights=[ghost.weight for ghost in ghosts_ado] if env_copy.is_multi_modal else [1],
+                weights=np.array([ghost.weight for ghost in ghosts_ado]) if env_copy.is_multi_modal else np.ones(1),
                 num_modes=self.num_modes if env_copy.is_multi_modal else 1,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
-                goal=ghosts_ado[0].params[PARAMS_GOAL],
-                v0s=[ghost.params[PARAMS_V0] for ghost in ghosts_ado],
-                sigmas=[ghost.params[PARAMS_SIGMA] for ghost in ghosts_ado],
+                goal=ghosts_ado[0].params[PK_GOAL],
+                v0s=np.array([ghost.params[PK_V0] for ghost in ghosts_ado]),
+                sigmas=np.array([ghost.params[PK_SIGMA] for ghost in ghosts_ado]),
             )
         return env_copy
 

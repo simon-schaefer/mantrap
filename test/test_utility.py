@@ -111,7 +111,9 @@ def test_lagrange_singularity():
 ###########################################################################
 @pytest.mark.parametrize("num_points", [5, 10])
 def test_square_primitives(num_points: int):
-    position, velocity, goal = torch.tensor([-5.0, 0.0]), torch.tensor([1.0, 0.0]), torch.tensor([20.0, 0.0])
+    position = torch.tensor([-5.0, 0.0])
+    velocity = torch.tensor([1.0, 0.0])
+    goal = torch.tensor([20.0, 0.0])
     primitives = square_primitives(start=position, end=goal, dt=1.0, steps=num_points)
 
     assert primitives.shape[1] == num_points

@@ -74,10 +74,10 @@ class Solver(ABC):
 
         # Dictionary of solver parameters.
         self._solver_params = solver_params
-        self._solver_params[PARAMS_T_PLANNING] = t_planning
-        self._solver_params[PARAMS_VERBOSE] = verbose
-        self._solver_params[PARAMS_MULTIPROCESSING] = multiprocessing
-        self._solver_params[PARAMS_CONFIG] = config_name
+        self._solver_params[PK_T_PLANNING] = t_planning
+        self._solver_params[PK_VERBOSE] = verbose
+        self._solver_params[PK_MULTIPROCESSING] = multiprocessing
+        self._solver_params[PK_CONFIG] = config_name
 
         # The objective and constraint functions (and their gradients) are packed into objectives, for a more compact
         # representation, the ease of switching between different objective functions and to simplify logging and
@@ -514,7 +514,7 @@ class Solver(ABC):
 
     @property
     def planning_horizon(self) -> int:
-        return self._solver_params[PARAMS_T_PLANNING]
+        return self._solver_params[PK_T_PLANNING]
 
     ###########################################################################
     # Optimization formulation parameters #####################################
@@ -559,7 +559,7 @@ class Solver(ABC):
 
     @property
     def do_multiprocessing(self) -> bool:
-        return self._solver_params[PARAMS_MULTIPROCESSING]
+        return self._solver_params[PK_MULTIPROCESSING]
 
     ###########################################################################
     # Logging parameters ######################################################
@@ -570,11 +570,11 @@ class Solver(ABC):
 
     @property
     def verbose(self) -> bool:
-        return self._solver_params[PARAMS_VERBOSE]
+        return self._solver_params[PK_VERBOSE]
 
     @property
     def config_name(self) -> str:
-        return self._solver_params[PARAMS_CONFIG]
+        return self._solver_params[PK_CONFIG]
 
     @property
     def name(self) -> str:

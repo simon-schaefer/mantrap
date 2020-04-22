@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Dict, List, Union
+import math
+from typing import Dict, List, Tuple, Union
 
+import numpy as np
+from scipy.stats import rv_continuous, truncnorm
 import torch
 
 from mantrap.constants import *
@@ -10,6 +13,35 @@ from mantrap.utility.shaping import check_ego_trajectory
 
 
 class IterativeEnvironment(GraphBasedEnvironment, ABC):
+
+    ###########################################################################
+    # Scene ###################################################################
+    ###########################################################################
+    @staticmethod
+    def ado_mode_params(xs: List[Tuple[rv_continuous, Dict[str, float]]], x0_default: float, num_modes: int):
+        """Create simulation mode parameters and weights for given modes by sampling.
+
+        In order to introduce multi-modality and stochastic effects the underlying mode parameters are sampled
+        from distributions, each for one mode. If not stated the default parameters are used as truncated Gaussian
+        distribution (cut so that always positive) around the default value.
+
+        :param xs: distribution-tuples for every mode.
+        :param x0_default: mean for default distribution.
+        :param num_modes: number of modes (= number of sampled parameters).
+        :return: sampled parameters, according weights.
+        """
+        x_default = (truncnorm, {"a": 0.0, "b": math.inf, "loc": x0_default, "scale": x0_default / 2})
+        xs = xs if xs is not None else [x_default] * num_modes
+        assert len(xs) == num_modes
+
+        xs_parameters = np.ones(num_modes)
+        weights = np.ones(num_modes) * (-1)
+        for i in range(num_modes):
+            x_distribution, x_kwargs = xs[i]
+            xs_parameters[i] = float(x_distribution.rvs(**x_kwargs))
+            weights[i] = x_distribution.pdf(xs_parameters[i], **x_kwargs)
+
+        return xs_parameters, weights
 
     ###########################################################################
     # Simulation Graph ########################################################
