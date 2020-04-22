@@ -79,7 +79,8 @@ class ORCASolver(ZControlIntermediate):
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
         """As explained in `_optimize()` the optimization is independent from the initial value of z, therefore
         only return one value, to enforce single-threaded computations. """
-        return torch.zeros((1, self.planning_horizon, 2))
+        z0 = torch.zeros((1, self.planning_horizon, 2))
+        return z0 if not just_one else z0[0, :, :]
 
     ###########################################################################
     # Problem formulation - Formulation #######################################

@@ -81,7 +81,7 @@ def scenario(
 class TestSolvers:
 
     @staticmethod
-    def test_convergence(solver_class, env_class, _, filter_class):
+    def test_convergence(solver_class, env_class, num_modes, filter_class):
         ego_goal_distance = (AGENT_SPEED_MAX / 2) * ENV_DT_DEFAULT
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-ego_goal_distance, 0])}, dt=ENV_DT_DEFAULT)
         solver_kwargs = {"filter_module": filter_class, "t_planning": 1}
@@ -114,6 +114,24 @@ class TestSolvers:
         x02 = np.reshape(ego_trajectory_initial, (-1, 2))
         for xi in x02:
             assert any([np.isclose(np.linalg.norm(xk - xi), 0, atol=2.0) for xk in ego_trajectory_initial])
+
+    @staticmethod
+    def test_num_optimization_variables(solver_class, env_class, num_modes, filter_class):
+        _, solver, _ = scenario(solver_class, env_class=env_class, num_modes=num_modes, filter_class=filter_class)
+        lb, ub = solver.optimization_variable_bounds()
+
+        assert len(lb) == solver.num_optimization_variables()
+        assert len(ub) == solver.num_optimization_variables()
+
+        z0s = solver.z0s_default(just_one=False)
+        assert len(z0s.shape) == 3
+        assert z0s.shape[1] == solver.planning_horizon
+        assert z0s.shape[1] * z0s.shape[2] == solver.num_optimization_variables()
+
+        z0 = solver.z0s_default(just_one=True)
+        assert len(z0.shape) == 2
+        assert z0.shape[0] == solver.planning_horizon
+        assert z0.shape[0] * z0.shape[1] == solver.num_optimization_variables()
 
     @staticmethod
     def test_runtime(solver_class, env_class, num_modes, filter_class):

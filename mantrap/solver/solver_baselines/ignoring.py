@@ -19,7 +19,8 @@ class IgnoringSolver(IPOPTIntermediate, ZControlIntermediate):
     # Initialization ##########################################################
     ###########################################################################
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
-        return super(IgnoringSolver, self).z0s_default(just_one=True).view(1, -1, 2)
+        z0s = super(IgnoringSolver, self).z0s_default(just_one=just_one)
+        return z0s[0:1, :, :] if not just_one else z0s
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
