@@ -36,20 +36,16 @@ class TestObjectiveInteraction:
 
         module = module_class(t_horizon=10, env=env)
         if env.is_deterministic:
-            assert module.objective(ego_trajectory_near) > module.objective(ego_trajectory_far)
+            assert module.objective(ego_trajectory_near) >= module.objective(ego_trajectory_far)
 
     @staticmethod
     def test_multimodal_support(module_class, env_class, num_modes):
-        weights = np.random.rand(num_modes)
-        weights_normed = (weights / weights.sum()).tolist()
-
         env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2),
                     velocity=torch.tensor([-1, 0]),
                     num_modes=num_modes,
-                    weights=weights_normed,
                     goal=torch.tensor([-5, 0])
                     )
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=env.dt)

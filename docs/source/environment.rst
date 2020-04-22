@@ -21,6 +21,16 @@ Potential Field
 .. automodule:: mantrap.environment.simplified.potential_field
     :members:
 
+ORCA
+----------------------------
+.. automodule:: mantrap.environment.simplified.orca
+    :members:
+
+Kalman
+----------------------------
+.. automodule:: mantrap.environment.simplified.kalman
+    :members:
+
 Trajectron
 ----------------------------
  .. automodule:: mantrap.environment.trajectron

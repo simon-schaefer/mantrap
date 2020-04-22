@@ -21,6 +21,7 @@ LK_OBJECTIVE = "obj"
 LK_OPTIMAL = "opt"
 LK_OVERALL_PERFORMANCE = "overall"
 
+OBJECTIVE_CONTROL_EFFORT = "control_effort"
 OBJECTIVE_GOAL = "goal"
 OBJECTIVE_INTERACTION_POS = "interaction_pos"
 OBJECTIVE_INTERACTION_ACC = "interaction_acc"

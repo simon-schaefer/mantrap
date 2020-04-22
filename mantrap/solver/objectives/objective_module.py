@@ -5,6 +5,7 @@ from typing import List, Union
 import numpy as np
 import torch
 
+from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.utility.shaping import check_ego_trajectory
 
 
@@ -24,11 +25,16 @@ class ObjectiveModule(ABC):
     def __init__(self, t_horizon: int, weight: float = 1.0, **module_kwargs):
         self._weight = weight
         self._t_horizon = t_horizon
+        self._env = None
 
         # Logging variables for objective and gradient values. For logging the latest variables are stored
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
         # appending multiple values within one optimization step.
         self._obj_current, self._grad_current = 0.0, np.zeros(2)
+
+    def initialize_env(self, env: GraphBasedEnvironment):
+        assert env.num_ghosts > 0 and env.ego is not None
+        self._env = env
 
     ###########################################################################
     # Optimization Formulation ################################################
