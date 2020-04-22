@@ -29,6 +29,13 @@ def scenario(
     z0 = solver.z0s_default(just_one=True).detach().numpy()
     return env, solver, z0
 
+
+###########################################################################
+# Tests - Evaluation Environment ##########################################
+###########################################################################
+# from mantrap.environment import PotentialFieldEnvironment, SocialForcesEnvironment
+#
+#
 # def test_eval_environment():
 #     env = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
 #     env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0.2]))
