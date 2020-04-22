@@ -4,13 +4,13 @@ import numpy as np
 import torch
 
 from mantrap.constants import *
-from mantrap.solver.ipopt_solver import IPOPTSolver
+from mantrap.solver.solver_intermediates.ipopt import IPOPTIntermediate
 from mantrap.utility.maths import lagrange_interpolation
 from mantrap.utility.primitives import square_primitives
 from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
 
 
-class IGradSolver(IPOPTSolver):
+class IGradIntermediate(IPOPTIntermediate):
     """Collocation NLP using IPOPT solver.
 
     .. math:: z = lagrange-parameters
@@ -28,12 +28,7 @@ class IGradSolver(IPOPTSolver):
             self._solver_params[PK_NUM_CONTROL_POINTS] = 2
 
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
-        ego_path_init = square_primitives(
-            start=self.env.ego.position,
-            end=self.goal,
-            dt=self.env.dt,
-            steps=self.num_control_points + 2
-        )
+        ego_path_init = square_primitives(start=self.env.ego.position, end=self.goal, steps=self.num_control_points + 2)
         return ego_path_init[:, 1:-1, :] if not just_one else ego_path_init[1, 1:-1, :]
 
     ###########################################################################

@@ -220,9 +220,9 @@ class Solver(ABC):
     ###########################################################################
     # Initialization ##########################################################
     ###########################################################################
-    @abstractmethod
     def initialize(self, **solver_params):
-        raise NotImplementedError
+        """Method can be overwritten when further initialization is required."""
+        pass
 
     @abstractmethod
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
@@ -241,8 +241,8 @@ class Solver(ABC):
 
     def optimization_variable_bounds(self) -> Tuple[List, List]:
         limits = self._env.ego.control_limits()
-        lb = (np.ones(2 * self.num_optimization_variables()) * limits[0]).tolist()
-        ub = (np.ones(2 * self.num_optimization_variables()) * limits[1]).tolist()
+        lb = (np.ones(self.num_optimization_variables()) * limits[0]).tolist()
+        ub = (np.ones(self.num_optimization_variables()) * limits[1]).tolist()
         return lb, ub
 
     ###########################################################################

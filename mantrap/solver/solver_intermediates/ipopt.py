@@ -10,7 +10,7 @@ from mantrap.constants import *
 from mantrap.solver.solver import Solver
 
 
-class IPOPTSolver(Solver, ABC):
+class IPOPTIntermediate(Solver, ABC):
 
     def _optimize(
         self,
@@ -96,7 +96,7 @@ class IPOPTSolver(Solver, ABC):
         gradient = np.sum(gradient, axis=0)
 
         logging.debug(f"Gradient function = {gradient}")
-        self.log_append(grad_overall=gradient, tag=tag)
+        self.log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
         module_log = {f"{LK_GRADIENT}_{key}": mod.grad_current for key, mod in self._objective_modules.items()}
         self.log_append(**module_log, tag=tag)
         return gradient
@@ -124,23 +124,10 @@ class IPOPTSolver(Solver, ABC):
     ###########################################################################
     # Visualization & Logging #################################################
     ###########################################################################
-    def log_reset(self, log_horizon: int):
-        super(IPOPTSolver, self).log_reset(log_horizon)
-        for tag in self.cores:
-            for k in range(log_horizon):
-                self._log.update({f"{tag}/{LK_GRADIENT}_{key}_{k}": [] for key in self.objective_names})
-
-    def log_summarize(self, tag: str = TAG_DEFAULT):
-        super(IPOPTSolver, self).log_summarize()
-
+    def log_keys_performance(self) -> List[str]:
+        log_keys = super(IPOPTIntermediate, self).log_keys_performance()
         gradient_keys = [f"{tag}/{LK_GRADIENT}_{key}" for key in self.objective_names for tag in self.cores]
-        for key in gradient_keys:
-            # Summarize best gradient values to one website.
-            summary = [self._log[f"{key}_{k}"][-1] for k in range(self._iteration)]
-            self._log[key] = torch.stack(summary)
-            # Restructure 1-size tensor to actual vectors (objective and constraint).
-            for k in range(self._iteration):
-                self._log[f"{key}_{k}"] = torch.stack(self._log[f"{key}_{k}"])
+        return log_keys + gradient_keys
 
 
 ###########################################################################
@@ -148,7 +135,7 @@ class IPOPTSolver(Solver, ABC):
 ###########################################################################
 class IPOPTProblem:
 
-    def __init__(self, problem: IPOPTSolver, ado_ids: List[str], tag: str = TAG_DEFAULT):
+    def __init__(self, problem: IPOPTIntermediate, ado_ids: List[str], tag: str = TAG_DEFAULT):
         self.problem = problem
         self.tag = tag
         self.ado_ids = ado_ids

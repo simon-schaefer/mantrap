@@ -1,16 +1,15 @@
 from typing import Dict, List, Tuple
 
-import numpy as np
 import torch
 
 from mantrap.constants import *
 from mantrap.agents import IntegratorDTAgent
 from mantrap.environment import ORCAEnvironment
-from mantrap.solver.solver import Solver
-from mantrap.utility.shaping import check_ego_action, check_ego_controls, check_ego_trajectory
+from mantrap.solver.solver_intermediates.z_controls import ZControlIntermediate
+from mantrap.utility.shaping import check_ego_action, check_ego_controls
 
 
-class ORCASolver(Solver):
+class ORCASolver(ZControlIntermediate):
     """ORCA-based solver.
 
     Based on the ORCA algorithm defined in `ORCAEnvironment` this solver finds the optimal trajectory by
@@ -85,35 +84,13 @@ class ORCASolver(Solver):
     ###########################################################################
     # Problem formulation - Formulation #######################################
     ###########################################################################
-    def num_optimization_variables(self) -> int:
-        return 2  # [vx, vy]_ego
-
     @staticmethod
     def objective_defaults() -> List[Tuple[str, float]]:
         return [(OBJECTIVE_GOAL, 1.0)]
 
     @staticmethod
     def constraints_defaults() -> List[str]:
-        return [CONSTRAINT_MAX_SPEED, CONSTRAINT_NORM_DISTANCE]
-
-    ###########################################################################
-    # Utility #################################################################
-    ###########################################################################
-    def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        controls = self.z_to_ego_controls(z, return_leaf=return_leaf)
-        trajectory = self.env.ego.unroll_trajectory(controls, dt=self.env.dt)
-        assert check_ego_trajectory(trajectory, t_horizon=self.planning_horizon + 1)
-        return trajectory
-
-    def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        controls = torch.from_numpy(z).view(self.planning_horizon, 2)
-        assert check_ego_controls(controls, t_horizon=self.planning_horizon)
-        return controls
-
-    def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:
-        assert check_ego_trajectory(ego_trajectory)
-        controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
-        return controls.flatten().detach().numpy()
+        return [CONSTRAINT_MAX_SPEED]
 
     ###########################################################################
     # Solver properties #######################################################
