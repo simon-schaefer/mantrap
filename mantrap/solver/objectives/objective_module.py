@@ -33,7 +33,7 @@ class ObjectiveModule(ABC):
         self._obj_current, self._grad_current = 0.0, np.zeros(2)
 
     def initialize_env(self, env: GraphBasedEnvironment):
-        assert env.num_ghosts > 0 and env.ego is not None
+        assert env.ego is not None
         self._env = env
 
     ###########################################################################

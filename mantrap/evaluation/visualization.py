@@ -222,7 +222,7 @@ def draw_values(
 ):
     assert len(values.shape) == 1  # one-dimensional vector (!)
 
-    ax.plot(time_axis, np.log(np.asarray(values) + 1e-8), label=label, color=color)
+    ax.plot(time_axis, values, label=label, color=color)
     if k is not None:
         ax.axvline(x=time_axis[k], color=np.array([1, 0, 0]))
     ax.legend()

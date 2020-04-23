@@ -131,7 +131,7 @@ class Solver(ABC):
 
         logging.info(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
-            logging.info(f"solver {self.name} @k={k}: initializing optimization")
+            logging.info("#" * 30 + f"solver {self.name} @k={k}: initializing optimization")
             self._iteration = k
 
             # Solve optimisation problem.

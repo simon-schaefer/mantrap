@@ -25,6 +25,8 @@ class InteractionPositionModule(ObjectiveModule):
     def __init__(self, env: GraphBasedEnvironment, **module_kwargs):
         super(InteractionPositionModule, self).__init__(**module_kwargs)
         self.initialize_env(env=env)
+
+        assert env.num_ghosts > 0
         self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]
 
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:

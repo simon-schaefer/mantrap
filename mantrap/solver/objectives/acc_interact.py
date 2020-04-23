@@ -27,6 +27,7 @@ class InteractionAccelerationModule(ObjectiveModule):
     def __init__(self, env: GraphBasedEnvironment, **module_kwargs):
         super(InteractionAccelerationModule, self).__init__(**module_kwargs)
         self.initialize_env(env=env)
+        assert env.num_ghosts > 0
 
         ado_states_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)
         self._derivative_2 = Derivative2(horizon=self.t_horizon + 1, dt=self._env.dt, num_axes=2)

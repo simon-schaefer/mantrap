@@ -19,8 +19,14 @@ class IgnoringSolver(IPOPTIntermediate, ZControlIntermediate):
     # Initialization ##########################################################
     ###########################################################################
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
+        """For this solver only the goal distance is the objective to be minimized. Going there is
+        fast as possible is following a straight line from start to goal, with maximal velocity
+        which happens to be the second entry of the superclasses `z0s_default()` methods return.
+        Having multiple starting positions does not make sense, since we know that this is the
+        given the solvers objective, going straight is optimal !
+        """
         z0s = super(IgnoringSolver, self).z0s_default(just_one=just_one)
-        return z0s[0:1, :, :] if not just_one else z0s
+        return z0s[1:2, :, :] if not just_one else z0s
 
     ###########################################################################
     # Optimization formulation - Objective ####################################

@@ -144,7 +144,7 @@ class GraphBasedEnvironment(ABC):
         # assumption. Update ego based on the first action of the input ego policy.
         self._ego.update(ego_action, dt=self.dt)
         logging.info(f"env {self.name} step @t={self.time} [ego]: action={ego_action.tolist()}")
-        logging.info(f"env {self.name} step @t={self.time} [ego_{self._ego.id}]: state={self.ego.state.tolist()}")
+        logging.info(f"env {self.name} step @t={self.time} [ego]: state={self.ego.state.tolist()}")
 
         # Predict the next step in the environment by forward environment.
         ego_control = ego_action.unsqueeze(dim=0)  # (2) -> (1, 2)
