@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
+import math
 
-import numpy as np
 import torch
 
 
@@ -107,6 +107,6 @@ class Circle(Shape2D):
         return distance < self.radius + other.radius
 
     def samples(self, num_samples: int = 100) -> torch.Tensor:
-        angles = torch.linspace(start=0, end=2 * np.pi, steps=num_samples)
-        dx_dy = torch.stack((torch.cos(angles), torch.sin(angles))).view(num_samples, 2)
+        angles = torch.linspace(start=0, end=2 * math.pi, steps=num_samples)
+        dx_dy = torch.stack((torch.cos(angles), torch.sin(angles))).view(2, num_samples).t()
         return self.center + self.radius * dx_dy
