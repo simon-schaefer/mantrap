@@ -54,21 +54,21 @@ class Agent(ABC):
         assert velocity.size() == torch.Size([2]), "velocity must be two-dimensional (vx, vy)"
         assert time >= 0, "time must be larger or equal to zero"
 
-        self._position = position.float()
-        self._velocity = velocity.float()
+        self._state = torch.cat((position.float(), velocity.float(), torch.ones(1) * time))
 
         # Initialize (and/or append) history vector. The current state must be at the end of the internal history,
         # so either append it or create it when not already the case.
-        state_with_time = self.expand_state_vector(self.state, time=time).view(1, 5).float()
+        state_un_squeezed = self.state_with_time.unsqueeze(dim=0)
         if history is not None:
             assert history.shape[1] == 5
             history = history.float()
-            if not torch.all(torch.isclose(history[-1, :], state_with_time)):
-                self._history = torch.cat((history, state_with_time), dim=0)
+
+            if not torch.all(torch.isclose(history[-1, :], state_un_squeezed)):
+                self._history = torch.cat((history, state_un_squeezed), dim=0)
             else:
                 self._history = history
         else:
-            self._history = state_with_time
+            self._history = state_un_squeezed
 
         # Initialize agent properties.
         self._is_robot = is_robot
@@ -92,19 +92,20 @@ class Agent(ABC):
         assert check_ego_action(x=action)
         assert dt > 0.0
 
-        state_new = self.dynamics(self.state, action, dt=dt)
-        self._position = state_new[0:2]
-        self._velocity = state_new[2:4]
+        # Maximal control effort constraint.
+        _, control_limit = self.control_limits()
+        control_effort = torch.norm(action)
+        if control_effort > control_limit:
+            logging.warning(f"agent {self.id} has surpassed control limit, with {control_effort} > {control_limit}")
+            assert not torch.isinf(control_effort), "control effort is infinite, physical break"
+            action = action / control_effort * control_limit
 
-        # maximal speed constraint.
-        if self.speed > self.speed_max:
-            logging.warning(f"agent {self.id} has surpassed maximal speed, with {self.speed} > {self.speed_max}")
-            assert not torch.isinf(self.speed), "speed is infinite, physical break"
-            self._velocity = self._velocity / self.speed * self.speed_max
+        # Compute next state using internal dynamics.
+        state_new = self.dynamics(self.state_with_time, action, dt=dt)
 
-        # append history with new state.
-        state_new = self.expand_state_vector(self.state, time=self._history[-1, -1].item() + dt).unsqueeze(0)
-        self._history = torch.cat((self._history, state_new), dim=0)
+        # Update internal state and append history with new state.
+        self._state = state_new
+        self._history = torch.cat((self._history, state_new.unsqueeze(0)), dim=0)
 
         # Perform sanity check for agent properties.
         assert self.sanity_check()
@@ -114,13 +115,12 @@ class Agent(ABC):
         history to the new state (i.e. append it to the already existing history) if history is given as None or set
         it to some given trajectory.
 
-        :param state: new state (4 or 5).
+        :param state: new state (5).
         :param history: new state history (N, 5).
         """
         assert check_ego_state(state, enforce_temporal=True), "state has to be at least 5-dimensional"
 
-        self._position = state[0:2]
-        self._velocity = state[2:4]
+        self._state = state
         self._history = torch.cat((self._history, state.unsqueeze(0)), dim=0) if history is None else history
 
         # Perform sanity check for agent properties.
@@ -149,8 +149,7 @@ class Agent(ABC):
 
         # every next state follows from robot's dynamics recursion, basically assuming no model uncertainty.
         for k in range(controls.shape[0]):
-            state_k = self.dynamics(trajectory[k, :], action=controls[k, :], dt=dt)
-            trajectory[k + 1, :] = torch.cat((state_k, torch.ones(1) * trajectory[k, -1] + dt))
+            trajectory[k + 1, :] = self.dynamics(trajectory[k, :], action=controls[k, :], dt=dt)
 
         assert check_ego_trajectory(trajectory, t_horizon=controls.shape[0] + 1, pos_and_vel_only=False)
         return trajectory
@@ -222,10 +221,10 @@ class Agent(ABC):
         Since every agent type has different dynamics (like single-integrator or Dubins Car) this method is
         implemented abstractly.
 
-        :param state: state to be updated @ t = k (4 or 5).
+        :param state: state to be updated @ t = k (5).
         :param action: control input @ t = k (size depending on agent type).
         :param dt: forward integration time step [s].
-        :returns: updated state vector @ t = k + dt (4).
+        :returns: updated state vector with time @ t = k + dt (5).
         """
         raise NotImplementedError
 
@@ -255,23 +254,12 @@ class Agent(ABC):
     def detach(self):
         """Detach the agent's internal variables (position, velocity, history) from computation tree. This is sometimes
         required to completely separate subsequent computations in PyTorch."""
-        self._position = self._position.detach()
-        self._velocity = self._velocity.detach()
+        self._state = self._state.detach()
         self._history = self._history.detach()
 
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
-    @staticmethod
-    def build_state_vector(position: torch.Tensor, velocity: torch.Tensor) -> torch.Tensor:
-        """Stack position, orientation and velocity vector to build a full state vector,
-        either np array or torch tensor. """
-        assert type(position) == type(velocity)
-
-        state = torch.cat((position, velocity))
-        assert check_ego_state(state, enforce_temporal=False)
-        return state
-
     @staticmethod
     def expand_state_vector(state_4: torch.Tensor, time: float) -> torch.Tensor:
         """Expand 4 dimensional (x, y, vx, vy) state vector by time information. """
@@ -316,23 +304,23 @@ class Agent(ABC):
     ###########################################################################
     @property
     def state(self) -> torch.Tensor:
-        return torch.cat((self.position, self.velocity))
+        return self._state[0:4]
 
     @property
     def state_with_time(self) -> torch.Tensor:
-        return torch.cat((self.position, self.velocity, torch.ones(1) * self._history[-1, -1]))
+        return self._state
 
     @property
     def position(self) -> torch.Tensor:
-        return self._position
+        return self._state[0:2]
 
     @property
     def velocity(self) -> torch.Tensor:
-        return self._velocity
+        return self._state[2:4]
 
     @property
     def speed(self) -> float:
-        return torch.norm(self._velocity)
+        return torch.norm(self.velocity)
 
     ###########################################################################
     # History properties ######################################################

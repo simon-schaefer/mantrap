@@ -16,7 +16,7 @@ class TestAgent:
     def test_dynamics(agent_class: Agent.__class__):
         control = torch.rand(2)
         agent = agent_class(position=torch.rand(2), velocity=torch.rand(2))
-        state_next = agent.dynamics(state=agent.state, action=control, dt=1.0)
+        state_next = agent.dynamics(state=agent.state_with_time, action=control, dt=1.0)
         control_output = agent.inverse_dynamics(state_previous=agent.state, state=state_next, dt=1.0)
         assert torch.all(torch.isclose(control, control_output))
 
@@ -47,6 +47,8 @@ class TestAgent:
     def test_initialization(agent_class: Agent.__class__):
         # history initial value = None.
         agent = agent_class(position=torch.zeros(2), velocity=torch.zeros(2), history=None)
+
+        print(agent.history)
         assert torch.all(torch.eq(agent.history, torch.zeros((1, 5))))
 
         # history initial value != None
@@ -63,13 +65,13 @@ class TestAgent:
         state_init = torch.rand(4)
         control_input = torch.rand(2)
         agent = agent_class(position=state_init[0:2], velocity=state_init[2:4])
-        state_next = agent.dynamics(state=agent.state, action=control_input, dt=1.0)
+        state_next = agent.dynamics(state=agent.state_with_time, action=control_input, dt=1.0)
         agent.update(control_input, dt=1.0)
 
         assert torch.all(torch.eq(agent.position, state_next[0:2]))
         assert torch.all(torch.eq(agent.velocity, state_next[2:4]))
         assert torch.all(torch.eq(agent.history[0, 0:4], state_init))
-        assert torch.all(torch.eq(agent.history[1, 0:4], state_next))
+        assert torch.all(torch.eq(agent.history[1, :], state_next))
 
     @staticmethod
     def test_forward_reachability(agent_class: Agent.__class__):
@@ -125,7 +127,7 @@ def test_dynamics_single_integrator(
     velocity_expected: torch.Tensor,
 ):
     agent = IntegratorDTAgent(position=position, velocity=velocity)
-    state_next = agent.dynamics(state=agent.state, action=control, dt=1.0)
+    state_next = agent.dynamics(state=agent.state_with_time, action=control, dt=1.0)
     assert torch.all(torch.isclose(state_next[0:2], position_expected.float()))
     assert torch.all(torch.isclose(state_next[2:4], velocity_expected.float()))
 
@@ -149,14 +151,21 @@ def test_inv_dynamics_single_integrator(
     assert torch.all(torch.isclose(control, control_expected.float()))
 
 
-@pytest.mark.parametrize("position, velocity, dt, n", [(torch.tensor([-5.0, 0.0]), torch.tensor([1.0, 0.0]), 1, 10)])
+@pytest.mark.parametrize(
+    "position, velocity, dt, n",
+    [
+        (torch.tensor([-5.0, 0.0]), torch.tensor([1.0, 0.0]), 1, 10),
+
+    ]
+)
 def test_unrolling(position: torch.Tensor, velocity: torch.Tensor, dt: float, n: int):
     ego = IntegratorDTAgent(position=position, velocity=velocity)
-    policy = torch.stack((torch.ones(n) * velocity[0], torch.ones(n) * velocity[1])).view(-1, 2)
+    policy = torch.cat((torch.ones(n, 1) * velocity[0], torch.ones(n, 1) * velocity[1]), dim=1)
     ego_trajectory = ego.unroll_trajectory(controls=policy, dt=dt)
 
     ego_trajectory_x_exp = torch.linspace(position[0].item(), position[0].item() + velocity[0].item() * n * dt, n + 1)
     ego_trajectory_y_exp = torch.linspace(position[1].item(), position[1].item() + velocity[1].item() * n * dt, n + 1)
+
     assert torch.all(torch.eq(ego_trajectory[:, 0], ego_trajectory_x_exp))
     assert torch.all(torch.eq(ego_trajectory[:, 1], ego_trajectory_y_exp))
     assert torch.all(torch.eq(ego_trajectory[:, 2], torch.ones(n + 1) * velocity[0]))
@@ -183,7 +192,7 @@ def test_dynamics_double_integrator(
     velocity_expected: torch.Tensor,
 ):
     agent = DoubleIntegratorDTAgent(position=position, velocity=velocity)
-    state_next = agent.dynamics(state=agent.state, action=control, dt=1.0)
+    state_next = agent.dynamics(state=agent.state_with_time, action=control, dt=1.0)
     assert torch.all(torch.isclose(state_next[0:2], position_expected.float()))
     assert torch.all(torch.isclose(state_next[2:4], velocity_expected.float()))
 

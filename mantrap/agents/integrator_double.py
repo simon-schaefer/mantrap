@@ -14,13 +14,17 @@ class DoubleIntegratorDTAgent(Agent):
           .. math:: vel_{t+1} = vel_t + action * dt
           .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt + 0.5 * action * dt^2
           """
-        assert check_ego_state(state, enforce_temporal=False)  # (x, y, theta, vx, vy)
-        assert action.size() == torch.Size([2])  # (vx, vy)
+        assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
+        assert action.size() == torch.Size([2])  # (ax, ay)
         action = action.float()
 
-        velocity_new = (state[2:4] + action * dt).float()
-        position_new = (state[0:2] + state[2:4] * dt + 0.5 * action * dt ** 2).float()
-        return self.build_state_vector(position_new, velocity_new)
+        state_new = torch.zeros(5)
+        state_new[2:4] = (state[2:4] + action * dt).float()  # velocity
+        state_new[0:2] = (state[0:2] + state[2:4] * dt + 0.5 * action * dt ** 2).float()  # position
+        state_new[4] = state[4] + dt
+
+        assert check_ego_state(state_new, enforce_temporal=True)
+        return state_new
 
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
         """

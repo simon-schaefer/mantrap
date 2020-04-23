@@ -14,12 +14,17 @@ class IntegratorDTAgent(Agent):
         .. math:: vel_{t+1} = action
         .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt
         """
-        assert check_ego_state(state, enforce_temporal=False)
-        assert action.size() == torch.Size([2])
+        assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
+        assert action.size() == torch.Size([2])  # (vx, vy)
+        action = action.float()
 
-        velocity_new = action.float()
-        position_new = (state[0:2] + velocity_new * dt).float()
-        return self.build_state_vector(position_new, velocity_new)
+        state_new = torch.zeros(5)
+        state_new[2:4] = action  # velocity
+        state_new[0:2] = state[0:2] + state_new[2:4] * dt
+        state_new[4] = state[-1] + dt
+
+        assert check_ego_state(state_new, enforce_temporal=True)
+        return state_new
 
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
         """
