@@ -12,7 +12,7 @@ class DoubleIntegratorDTAgent(Agent):
     def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         """
           .. math:: vel_{t+1} = vel_t + action * dt
-          .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt + 0.5 * action * dt^2
+          .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt
           """
         assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
         assert action.size() == torch.Size([2])  # (ax, ay)
@@ -20,7 +20,7 @@ class DoubleIntegratorDTAgent(Agent):
 
         state_new = torch.zeros(5)
         state_new[2:4] = (state[2:4] + action * dt).float()  # velocity
-        state_new[0:2] = (state[0:2] + state[2:4] * dt + 0.5 * action * dt ** 2).float()  # position
+        state_new[0:2] = (state[0:2] + state[2:4] * dt).float()  # position
         state_new[4] = state[4] + dt
 
         assert check_ego_state(state_new, enforce_temporal=True)
