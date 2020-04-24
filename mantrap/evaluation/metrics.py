@@ -2,8 +2,7 @@ import torch
 
 from mantrap.constants import AGENT_ACC_MAX
 from mantrap.environment.environment import GraphBasedEnvironment
-from mantrap.utility.maths import Derivative2
-from mantrap.utility.primitives import straight_line
+from mantrap.utility.maths import Derivative2, straight_line
 from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories
 
 

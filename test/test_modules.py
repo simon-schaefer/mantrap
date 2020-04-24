@@ -9,7 +9,7 @@ from mantrap.environment import ENVIRONMENTS
 from mantrap.solver.constraints import *
 from mantrap.solver.filter import *
 from mantrap.solver.objectives import *
-from mantrap.utility.primitives import straight_line
+from mantrap.utility.maths import straight_line
 
 
 ###########################################################################

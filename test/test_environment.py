@@ -10,7 +10,7 @@ from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment.iterative import IterativeEnvironment
 from mantrap.environment import *
-from mantrap.utility.primitives import straight_line
+from mantrap.utility.maths import straight_line
 from mantrap.utility.shaping import check_ado_trajectories, check_ado_states, check_ego_state
 
 

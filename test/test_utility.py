@@ -1,7 +1,7 @@
 import pytest
 
 from mantrap.utility.maths import *
-from mantrap.utility.primitives import square_primitives, straight_line
+from mantrap.utility.maths import straight_line
 
 
 ###########################################################################
@@ -104,34 +104,6 @@ def test_lagrange_singularity():
     for n in range(1, 10):
         torch.autograd.grad(points_up[n, 0], mid, retain_graph=True)
         torch.autograd.grad(points_up[n, 1], mid, retain_graph=True)
-
-
-###########################################################################
-# Primitives ##############################################################
-###########################################################################
-@pytest.mark.parametrize("num_points", [5, 10])
-def test_square_primitives(num_points: int):
-    position = torch.tensor([-5.0, 0.0])
-    velocity = torch.tensor([1.0, 0.0])
-    goal = torch.tensor([20.0, 0.0])
-    primitives = square_primitives(start=position, end=goal, steps=num_points)
-
-    assert primitives.shape[1] == num_points
-    # for m in range(primitives.shape[0]):
-    #     for i in range(1, num_points - 1):
-    #         distance = torch.norm(primitives[m, i, :] - primitives[m, i - 1, :])
-    #         distance_next = torch.norm(primitives[m, i + 1, :] - primitives[m, i, :])
-    #         if torch.isclose(distance_next, torch.zeros(1), atol=0.1):
-    #             continue
-    #         tolerance = agent_speed_max / 10
-    #         assert torch.isclose(distance, torch.tensor([agent_speed_max]).double(), atol=tolerance)  # dt = 1.0
-
-    # The center primitive should be a straight line, therefore the one with largest x-expansion, since we are moving
-    # straight in x-direction. Similarly the first primitive should have the largest expansion in y direction, the
-    # last one the smallest.
-    assert all([primitives[1, -1, 0] >= primitives[i, -1, 0] for i in range(primitives.shape[0])])
-    assert all([primitives[0, -1, 1] >= primitives[i, -1, 1] for i in range(primitives.shape[0])])
-    assert all([primitives[-1, -1, 1] <= primitives[i, -1, 1] for i in range(primitives.shape[0])])
 
 
 ###########################################################################

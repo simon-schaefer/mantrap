@@ -4,7 +4,7 @@ import pytest
 from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.environment import ENVIRONMENTS
 from mantrap.evaluation.metrics import *
-from mantrap.utility.primitives import straight_line
+from mantrap.utility.maths import straight_line
 
 
 def test_minimal_distance_principle():

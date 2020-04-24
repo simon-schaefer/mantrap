@@ -1,12 +1,17 @@
 from abc import ABC, abstractmethod
 import math
 
+import numpy as np
+from scipy.interpolate import splev, splprep
 import torch
 
 
 ###########################################################################
 # Numerical Methods #######################################################
 ###########################################################################
+from mantrap.utility.shaping import check_ego_path
+
+
 class Derivative2:
     """Determine the 2nd derivative of some series of point numerically by using the Central Difference Expression
     (with error of order dt^2). Assuming smoothness we can extract the acceleration from the positions:
@@ -60,8 +65,8 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100,
 
     Source: http://www.maths.lth.se/na/courses/FMN050/media/material/lec8_9.pdf
     """
-    assert len(control_points.shape) == 2, "control points should be in shape (num_points, 2)"
-    assert control_points.shape[1] == 2, "2D interpolation requires 2D input"
+    assert len(control_points.shape) == 2
+    assert control_points.shape[1] == 2
 
     x = torch.stack([control_points[:, 0] ** n for n in range(deg)], dim=1)
     y = control_points[:, 1]
@@ -73,8 +78,22 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100,
     a = torch.inverse(x).matmul(y)
 
     x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)
-    y_up = torch.stack([x_up ** n for n in range(deg)]).T.matmul(a)
+    y_up = torch.stack([x_up ** n for n in range(deg)]).t().matmul(a)
     return torch.stack((x_up, y_up), dim=1)
+
+
+def spline_interpolation(control_points: torch.Tensor,  num_samples: int = 100):
+    assert check_ego_path(x=control_points)
+
+    # B-Spline is not differentiable anyway.
+    with torch.no_grad():
+        control_points_np = control_points.detach().numpy()
+        tck, _ = splprep([control_points_np[:, 0], control_points_np[:, 1]], s=0.0)
+        x_path, y_path = splev(np.linspace(0, 1, num_samples), tck)
+        path = torch.stack((torch.tensor(x_path), torch.tensor(y_path)), dim=1)
+
+    assert check_ego_path(path, t_horizon=num_samples)
+    return path
 
 
 ###########################################################################
@@ -110,3 +129,17 @@ class Circle(Shape2D):
         angles = torch.linspace(start=0, end=2 * math.pi, steps=num_samples)
         dx_dy = torch.stack((torch.cos(angles), torch.sin(angles))).view(2, num_samples).t()
         return self.center + self.radius * dx_dy
+
+
+###########################################################################
+# Geometry ################################################################
+###########################################################################
+def straight_line(start: torch.Tensor, end: torch.Tensor, steps: int):
+    """Create a 2D straight line from start to end position with `steps` number of points,
+    with the first point being `start` and the last point being `end`. """
+    line = torch.zeros((steps, 2))
+    line[:, 0] = torch.linspace(start[0].item(), end[0].item(), steps)
+    line[:, 1] = torch.linspace(start[1].item(), end[1].item(), steps)
+
+    assert check_ego_path(line, t_horizon=steps)
+    return line
