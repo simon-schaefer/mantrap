@@ -134,7 +134,7 @@ class Agent(ABC):
         Thereby a perfect model i.e. without uncertainty and correct is assumed.
 
         :param controls: sequence of inputs to apply to the robot (N, input_size).
-        :param dt: time interval [s].
+        :param dt: time interval [s] between discrete trajectory states.
         :return: resulting trajectory (no uncertainty in dynamics assumption !), (N, 4).
         """
         assert check_ego_controls(x=controls)
@@ -159,7 +159,7 @@ class Agent(ABC):
         Thereby a perfect model i.e. without uncertainty and correct is assumed.
 
         :param trajectory: sequence of states to apply to the robot (N, 4).
-        :param dt: time interval [s].
+        :param dt: time interval [s] between discrete trajectory states.
         :return: inferred controls (no uncertainty in dynamics assumption !), (N, input_size).
         """
         assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
@@ -194,6 +194,41 @@ class Agent(ABC):
 
         assert check_ego_trajectory(trajectory, t_horizon=t_horizon)
         return trajectory
+
+    ###########################################################################
+    # Feasibility #############################################################
+    ###########################################################################
+    def check_feasibility_trajectory(self, trajectory: torch.Tensor, dt: float) -> bool:
+        """Check feasibility of a given trajectory to be followed by the internal agent.
+
+        In order to check feasibility convert the trajectory to control inputs using the
+        internal inverse dynamics of the agent and check whether all of them are inside
+        its control boundaries.
+
+        :param trajectory: trajectory to be checked (N, 4).
+        :param dt: time interval [s] between discrete trajectory states.
+        """
+        assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
+
+        controls = self.roll_trajectory(trajectory, dt=dt)
+        return self.check_feasibility_controls(controls=controls)
+
+    def check_feasibility_controls(self, controls: torch.Tensor) -> bool:
+        """Check feasibility of a given set of controls to be executed by the internal agent.
+
+        In order to check feasibility convert the trajectory just check whether the controls
+        are inside the internal control boundaries. Since changes of control input from one
+        step to another are not limited, they are not checked here.
+
+        :param controls: controls to be checked (N, 2).
+        :param dt: time interval [s] between discrete trajectory states.
+        """
+        assert check_ego_controls(controls)
+
+        lower, upper = self.control_limits()
+        lower_checked = torch.all(torch.ge(controls, lower))
+        upper_checked = torch.all(torch.le(controls, upper))
+        return bool(lower_checked and upper_checked)
 
     ###########################################################################
     # Reachability ############################################################

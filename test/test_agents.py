@@ -47,8 +47,6 @@ class TestAgent:
     def test_initialization(agent_class: Agent.__class__):
         # history initial value = None.
         agent = agent_class(position=torch.zeros(2), velocity=torch.zeros(2), history=None)
-
-        print(agent.history)
         assert torch.all(torch.eq(agent.history, torch.zeros((1, 5))))
 
         # history initial value != None
@@ -106,6 +104,18 @@ class TestAgent:
 
             assert torch.isclose((max_y - min_y) / 2, radius_numeric, atol=0.1)  # is circle ?
             assert torch.isclose(torch.tensor(boundary.radius), radius_numeric, atol=0.1)  # same circle ?
+
+    @staticmethod
+    def test_feasibility_check(agent_class: Agent.__class__):
+        # Only check the feasibility controls function since the feasibility trajectory function simply
+        # adds a rolling of the trajectory to a set of controls, which has been tested before.
+        agent = agent_class(position=torch.rand(2) * 5, velocity=torch.rand(2) * 2)
+
+        controls = torch.zeros((20, 2))
+        assert agent.check_feasibility_controls(controls=controls)
+
+        controls[5, 0] = 100.0  # should be far off every maximum
+        assert not agent.check_feasibility_controls(controls=controls)
 
 
 ###########################################################################
