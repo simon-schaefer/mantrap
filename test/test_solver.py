@@ -26,7 +26,7 @@ def scenario(
         pytest.skip()
     env.add_ado(position=torch.tensor([3, 2]), num_modes=num_modes)
     solver = solver_class(env, goal=torch.tensor([1, 1]), filter_module=filter_class, **solver_kwargs)
-    z0 = solver.z0s_default(just_one=True).detach().numpy()
+    z0 = solver.initial_values(just_one=True).detach().numpy()
     return env, solver, z0
 
 
@@ -87,7 +87,7 @@ class TestSolvers:
         solver_kwargs = {"filter_module": filter_class, "t_planning": 1}
         solver = solver_class(env, goal=torch.zeros(2), objectives=[("goal", 1.0)], constraints=[], **solver_kwargs)
 
-        z0 = solver.z0s_default(just_one=True)
+        z0 = solver.initial_values(just_one=True)
         z_opt, _, _ = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0, max_iter=1000)
         ego_controls = solver.z_to_ego_controls(z=z_opt.detach().numpy())
         ego_trajectory_opt = solver.env.ego.unroll_trajectory(controls=ego_controls, dt=solver.env.dt)
@@ -123,12 +123,12 @@ class TestSolvers:
         assert len(lb) == solver.num_optimization_variables()
         assert len(ub) == solver.num_optimization_variables()
 
-        z0s = solver.z0s_default(just_one=False)
+        z0s = solver.initial_values(just_one=False)
         assert len(z0s.shape) == 3
         assert z0s.shape[1] == solver.planning_horizon
         assert z0s.shape[1] * z0s.shape[2] == solver.num_optimization_variables()
 
-        z0 = solver.z0s_default(just_one=True)
+        z0 = solver.initial_values(just_one=True)
         assert len(z0.shape) == 2
         assert z0.shape[0] == solver.planning_horizon
         assert z0.shape[0] * z0.shape[1] == solver.num_optimization_variables()

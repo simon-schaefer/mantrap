@@ -22,7 +22,8 @@ class MaxSpeedModule(ConstraintModule):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        return torch.norm(ego_trajectory[:, 2:4], dim=1).flatten()
+        controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+        return torch.norm(controls, dim=1).flatten()
 
     def _constraints_gradient_condition(self) -> bool:
         """Conditions for the existence of a gradient between the input of the constraint value computation
@@ -43,7 +44,8 @@ class MaxSpeedModule(ConstraintModule):
         For the max speed constraint the lower is None since the norm always is semi-positive and upper bounds
         are the agents maximal allowed speeds, which is an assumed constant value defined in constants.
         """
-        return None, self._env.ego.speed_max
+        lower, upper = self._env.ego.control_limits()
+        return lower, upper
 
     def num_constraints(self, ado_ids: List[str] = None) -> int:
         return self.t_horizon + 1

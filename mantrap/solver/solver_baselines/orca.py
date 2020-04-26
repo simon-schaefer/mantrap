@@ -76,7 +76,7 @@ class ORCASolver(ZControlIntermediate):
     def initialize(self, **solver_params):
         assert self.env.ego.__class__ == IntegratorDTAgent
 
-    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
+    def initial_values(self, just_one: bool = False) -> torch.Tensor:
         """As explained in `_optimize()` the optimization is independent from the initial value of z, therefore
         only return one value, to enforce single-threaded computations. """
         z0 = torch.zeros((1, self.planning_horizon, 2))

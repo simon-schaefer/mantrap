@@ -126,7 +126,7 @@ class Solver(ABC):
         for ghost in self.env.ghosts:
             m_ado, m_mode = self.env.convert_ghost_id(ghost_id=ghost.id)
             ado_trajectories[m_ado, 0, 0, :] = ghost.agent.state_with_time
-        for z0, tag in zip(self.z0s_default(), self.cores):
+        for z0, tag in zip(self.initial_values(), self.cores):
             self.objective(z=z0.detach().numpy(), tag=tag)
             self.constraints(z=z0.detach().numpy(), tag=tag)
         self.intermediate_log(ego_controls_k=torch.zeros((self.planning_horizon, 2)))
@@ -171,7 +171,7 @@ class Solver(ABC):
         :return: optimization dictionary of solution (containing objective, infeasibility scores, etc.).
         """
         # Solve optimisation problem for each initial condition, either in multiprocessing or sequential.
-        initial_values = zip(self.z0s_default(), self.cores)
+        initial_values = zip(self.initial_values(), self.cores)
         if self.do_multiprocessing:
             results = joblib.Parallel(n_jobs=8)(joblib.delayed(self.optimize)
                                                 (z0, tag, **solver_kwargs) for z0, tag in initial_values)
@@ -226,7 +226,7 @@ class Solver(ABC):
         """Method can be overwritten when further initialization is required."""
         pass
 
-    def z0s_default(self, just_one: bool = False) -> torch.Tensor:
+    def initial_values(self, just_one: bool = False) -> torch.Tensor:
         """Initialize with three primitives, going from the current ego position to the goal point, following
         square shapes. The middle one (index = 1) is a straight line, the other two have some curvature,
         one positive and the other one negative curvature. When just one initial trajectory should be returned,
@@ -591,7 +591,7 @@ class Solver(ABC):
     ###########################################################################
     @property
     def cores(self) -> List[str]:
-        return [f"core{i}" for i in range(self.z0s_default().shape[0])]
+        return [f"core{i}" for i in range(self.initial_values().shape[0])]
 
     @property
     def core_opt(self) -> str:
