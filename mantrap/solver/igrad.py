@@ -10,7 +10,7 @@
 # from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
 #
 #
-# class IGradIntermediate(IPOPTIntermediate):
+# class IGradSolver(IPOPTIntermediate):
 #     """Collocation NLP using IPOPT solver.
 #
 #     .. math:: z = lagrange-parameters

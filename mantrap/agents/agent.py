@@ -248,11 +248,11 @@ class Agent(ABC):
     ###########################################################################
     @abstractmethod
     def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
-        """Forward integrate the egos motion given some state-action pair and an integration time-step. Passing the
-        state, instead of using the internal state, allows the method to be used for other state vector than the
-        internal state, e.g. for forward predicting over a time horizon > 1.
-        Since every agent type has different dynamics (like single-integrator or Dubins Car) this method is
-        implemented abstractly.
+        """Forward integrate the agent's motion given some state-action pair and an integration time-step.
+
+        Passing the state, instead of using the internal state, allows the method to be used for other state
+        vector than the internal state, e.g. for forward predicting over a time horizon > 1. Since every agent
+        type has different dynamics (like single-integrator or Dubins Car) this method is implemented abstractly.
 
         :param state: state to be updated @ t = k (5).
         :param action: control input @ t = k (size depending on agent type).
@@ -261,18 +261,51 @@ class Agent(ABC):
         """
         raise NotImplementedError
 
+    @staticmethod
+    def dynamics_scalar(px: float, py: float, vx: float, vy: float, ux: float, uy: float, dt: float
+                        ) -> Tuple[float, float, float, float]:
+        """Forward integrate the agent's motion given some state-action pair and an integration time-step.
+
+        In comparison to the "normal" dynamics() method this method can be used for repeated scalar and non-
+        differentiable use cases. Since the agent's fundamental state tensor operations are "only" two-dimensional
+        using tensor arithmetic rather creates an overhead, instead of saving computational effort, compared to
+        native python scalar operations.
+
+        :returns: position x, position y, velocity x, velocity y of new state
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
-        """Determine the ego motion given its current and previous state. Passing the state, instead of using the
-        internal state, allows the method to be used for other state vector than the internal state, e.g. for forward
-        predicting over a time horizon > 1.
-        Since every agent type has different dynamics (like single-integrator or Dubins Car) this method is
-        implemented abstractly.
+        """Determine the agent's motion given its current and previous state.
+
+        Passing the state, instead of using the internal state, allows the method to be used for other state
+        vector than the internal state, e.g. for forward predicting over a time horizon > 1. Since every agent
+        type has different dynamics (like single-integrator or Dubins Car) this method is implemented abstractly.
 
         :param state: state @ t = k (4 or 5).
         :param state_previous: previous state @ t = k - dt (4 or 5).
         :param dt: forward integration time step [s].
         :returns: control input @ t = k (size depending on agent type).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def go_to_point(
+        self,
+        state: Tuple[float, float, float, float],
+        target_point: Tuple[float, float],
+        speed: float,
+        dt: float
+    ) -> Tuple[Tuple[float, float, float, float], Tuple[float, float]]:
+        """Determine and execute the controls for going for the given state to some target point with respect to
+        the internal dynamics.
+
+        :param state: pos_and_vel_only state vector i.e. (px, py, vx, vy) for starting state.
+        :param target_point: 2D target point (px, py).
+        :param speed: preferable speed for state update [m/s].
+        :param dt: update time interval [s].
+        :return updated state at t = t0 + dt and used (cardinal) control input.
         """
         raise NotImplementedError
 

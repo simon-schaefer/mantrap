@@ -1,4 +1,3 @@
-from mantrap.solver.igrad import IGradIntermediate
 from mantrap.solver.sgrad import SGradSolver
 from mantrap.solver.mc_tree_search import MonteCarloTreeSearch
 from mantrap.solver.solver_baselines.orca import ORCASolver

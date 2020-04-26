@@ -12,5 +12,6 @@ mantrap
    constraints.rst
    objectives.rst
    filter.rst
+   controllers.rst
    evaluation.rst
    visualisation.rst
