@@ -72,8 +72,6 @@ class Agent(ABC):
 
         # Initialize agent properties.
         self._is_robot = is_robot
-        self._max_speed = AGENT_SPEED_MAX if not is_robot else ROBOT_SPEED_MAX
-        self._max_acceleration = AGENT_ACC_MAX if not is_robot else ROBOT_ACC_MAX
 
         # Create random agent color (reddish), for evaluation only.
         self._color = np.random.uniform(0.0, 0.8, size=3).tolist()
@@ -82,12 +80,13 @@ class Agent(ABC):
         self._id = identifier if identifier is not None else "".join(random.choice(letters) for _ in range(3))
         logging.debug(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
 
-    def update(self, action: torch.Tensor, dt: float):
+    def update(self, action: torch.Tensor, dt: float) -> Tuple[torch.Tensor, torch.Tensor]:
         """Update internal state (position, velocity and history) by forward integrating the agent's dynamics over
         the given time-step. The new state and time are then appended to the agent's state history.
 
         :param action: control input (size depending on agent type).
         :param dt: forward integration time step [s].
+        :returns: executed control action and new agent state
         """
         assert check_ego_action(x=action)
         assert dt > 0.0
@@ -96,8 +95,7 @@ class Agent(ABC):
         _, control_limit = self.control_limits()
         control_effort = torch.norm(action)
         if control_effort > control_limit:
-            logging.warning(f"agent {self.id} has surpassed control limit, with {control_effort} > {control_limit}")
-            assert not torch.isinf(control_effort), "control effort is infinite, physical break"
+            assert not torch.isinf(control_effort)
             action = action / control_effort * control_limit
 
         # Compute next state using internal dynamics.
@@ -109,6 +107,7 @@ class Agent(ABC):
 
         # Perform sanity check for agent properties.
         assert self.sanity_check()
+        return action, state_new
 
     def reset(self, state: torch.Tensor, history: torch.Tensor = None):
         """Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent's
@@ -221,7 +220,6 @@ class Agent(ABC):
         step to another are not limited, they are not checked here.
 
         :param controls: controls to be checked (N, 2).
-        :param dt: time interval [s] between discrete trajectory states.
         """
         assert check_ego_controls(controls)
 
@@ -287,8 +285,8 @@ class Agent(ABC):
     # Computation graph #######################################################
     ###########################################################################
     def detach(self):
-        """Detach the agent's internal variables (position, velocity, history) from computation tree. This is sometimes
-        required to completely separate subsequent computations in PyTorch."""
+        """Detach the agent's internal variables (position, velocity, history) from computation tree. This is
+        sometimes required to completely separate subsequent computations in PyTorch."""
         self._state = self._state.detach()
         self._history = self._history.detach()
 
@@ -369,11 +367,11 @@ class Agent(ABC):
     ###########################################################################
     @property
     def speed_max(self) -> float:
-        return self._max_speed
+        return AGENT_SPEED_MAX if not self.is_robot else ROBOT_SPEED_MAX
 
     @property
     def acceleration_max(self) -> float:
-        return self._max_acceleration
+        return AGENT_ACC_MAX if not self.is_robot else ROBOT_ACC_MAX
 
     @property
     def is_robot(self) -> bool:

@@ -1,3 +1,4 @@
+import math
 from typing import Tuple
 
 import torch
@@ -61,3 +62,12 @@ class IntegratorDTAgent(Agent):
         :param dt: time interval which is assumed to be constant over full path sequence [s].
         """
         return Circle(center=self.position, radius=self.speed_max * dt * time_steps)
+
+    ###########################################################################
+    # Agent Properties ########################################################
+    ###########################################################################
+    @property
+    def acceleration_max(self) -> float:
+        """Since single integrators are assumed to react instantly, their maximal acceleration
+        is in fact infinite !"""
+        return math.inf
