@@ -9,6 +9,7 @@ import pandas
 import torch
 
 from mantrap.constants import *
+from mantrap.controller import p_ahead_controller
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 from mantrap.solver.constraints import CONSTRAINTS_DICT
@@ -17,6 +18,7 @@ from mantrap.solver.filter import FILTER_DICT
 from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.solver.objectives import OBJECTIVES_DICT
 from mantrap.utility.io import build_os_path
+from mantrap.utility.maths import normal_line, spline_interpolation
 from mantrap.utility.shaping import check_ego_controls
 
 
@@ -224,9 +226,42 @@ class Solver(ABC):
         """Method can be overwritten when further initialization is required."""
         pass
 
-    @abstractmethod
     def z0s_default(self, just_one: bool = False) -> torch.Tensor:
-        raise NotImplementedError
+        """Initialize with three primitives, going from the current ego position to the goal point, following
+        square shapes. The middle one (index = 1) is a straight line, the other two have some curvature,
+        one positive and the other one negative curvature. When just one initial trajectory should be returned,
+        then return straight line trajectory.
+
+        :param just_one: flag whether to return just one trajectory or multiple.
+        """
+        with torch.no_grad():
+            z0s = []
+
+            distance_state_goal = torch.norm(self.env.ego.position - self.goal)
+            normal = normal_line(self.env.ego.position, self.goal)
+            mid_point = self.env.ego.position + self.goal * distance_state_goal / 2
+
+            for i, distance in enumerate([- distance_state_goal / 2, 0.0, distance_state_goal / 2.0]):
+                control_points = [self.env.ego.position, mid_point + distance * normal, self.goal]
+                control_points = torch.stack(control_points, dim=0)
+                reference_path = spline_interpolation(control_points, num_samples=self.planning_horizon)
+
+                # Determine controls to track the given trajectory. Afterwards check whether the determined
+                # controls are feasible in terms of the control limits of the ego agent.
+                controls = p_ahead_controller(
+                    agent=self.env.ego,
+                    path=reference_path,
+                    max_sim_time=self.planning_horizon * self.env.dt,
+                    dtc=self.env.dt,
+                    speed_reference=0.5
+                )
+                assert self.env.ego.check_feasibility_controls(controls)
+
+                # Transform controls to z variable.
+                z0s.append(self.ego_controls_to_z(controls))
+
+        z0s = torch.from_numpy(np.array(z0s)).view(3, -1)
+        return z0s if not just_one else z0s[1, :]
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
@@ -354,6 +389,10 @@ class Solver(ABC):
 
     @abstractmethod
     def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def ego_controls_to_z(self, ego_controls: torch.Tensor) -> np.ndarray:
         raise NotImplementedError
 
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:

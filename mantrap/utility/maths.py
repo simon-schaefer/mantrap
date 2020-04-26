@@ -82,7 +82,7 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100,
     return torch.stack((x_up, y_up), dim=1)
 
 
-def spline_interpolation(control_points: torch.Tensor,  num_samples: int = 100):
+def spline_interpolation(control_points: torch.Tensor, num_samples: int = 100):
     assert check_ego_path(x=control_points)
 
     # B-Spline is not differentiable anyway.
@@ -143,3 +143,9 @@ def straight_line(start: torch.Tensor, end: torch.Tensor, steps: int):
 
     assert check_ego_path(line, t_horizon=steps)
     return line
+
+
+def normal_line(start: torch.Tensor, end: torch.Tensor):
+    """Normal direction to a line defined by  start and end position. """
+    direction = (end - start) / torch.norm(end - start)
+    return torch.tensor([direction[1], -direction[0]])
