@@ -61,7 +61,6 @@ class Solver(ABC):
         filter_module: str = FILTER_NO_FILTER,
         eval_env: GraphBasedEnvironment = None,
         verbose: int = -1,
-        multiprocessing: bool = True,
         config_name: str = CONFIG_UNKNOWN,
         **solver_params
     ):
@@ -78,7 +77,6 @@ class Solver(ABC):
         self._solver_params = solver_params
         self._solver_params[PK_T_PLANNING] = t_planning
         self._solver_params[PK_VERBOSE] = verbose
-        self._solver_params[PK_MULTIPROCESSING] = multiprocessing
         self._solver_params[PK_CONFIG] = config_name
 
         # The objective and constraint functions (and their gradients) are packed into objectives, for a more compact
@@ -106,7 +104,8 @@ class Solver(ABC):
         # Sanity checks.
         assert self.num_optimization_variables() > 0
 
-    def solve(self, time_steps: int, **solver_kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
+    def solve(self, time_steps: int, multiprocessing: bool = True, **solver_kwargs
+              ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal environment with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
@@ -114,6 +113,7 @@ class Solver(ABC):
         This method changes the internal environment by forward simulating it over the prediction horizon.
 
         :param time_steps: how many time-steps shall be solved (not planning horizon !).
+        :param multiprocessing: use multiple threads for solving with each initial value in parallel.
         :return: derived ego trajectory [horizon + 1, 5].
         :return: derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
         """
@@ -163,16 +163,17 @@ class Solver(ABC):
         logging.debug(f"solver {self.name}: finishing up optimization process")
         return ego_trajectory_opt, ado_trajectories
 
-    def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
+    def determine_ego_controls(self, multiprocessing: bool = True, **solver_kwargs) -> torch.Tensor:
         """Determine the ego control inputs for the internally stated problem and the current state of the environment.
         The implementation crucially depends on the solver class itself and is hence not implemented here.
 
+        :param multiprocessing: use multiple threads for solving with each initial value in parallel.
         :return: ego_controls: control inputs of ego agent for whole planning horizon.
         :return: optimization dictionary of solution (containing objective, infeasibility scores, etc.).
         """
         # Solve optimisation problem for each initial condition, either in multiprocessing or sequential.
         initial_values = list(zip(self.initial_values(), self.cores))
-        if self.do_multiprocessing:
+        if multiprocessing:
             results = joblib.Parallel(n_jobs=8)(joblib.delayed(self.optimize)
                                                 (z0, tag, **solver_kwargs) for z0, tag in initial_values)
         else:
@@ -601,10 +602,6 @@ class Solver(ABC):
     @property
     def core_opt(self) -> str:
         return self._core_opt if self._core_opt is not None else LK_OPTIMAL
-
-    @property
-    def do_multiprocessing(self) -> bool:
-        return self._solver_params[PK_MULTIPROCESSING]
 
     ###########################################################################
     # Logging parameters ######################################################

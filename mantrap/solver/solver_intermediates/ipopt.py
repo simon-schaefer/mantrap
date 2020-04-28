@@ -95,7 +95,7 @@ class IPOPTIntermediate(Solver, ABC):
         gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.objective_modules]
         gradient = np.sum(gradient, axis=0)
 
-        logging.debug(f"Gradient function = {gradient}")
+        logging.debug(f"solver [{tag}]: Gradient function = {gradient}")
         self.log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
         module_log = {f"{LK_GRADIENT}_{key}": mod.grad_current for key, mod in self._objective_modules.items()}
         self.log_append(**module_log, tag=tag)
@@ -112,7 +112,7 @@ class IPOPTIntermediate(Solver, ABC):
         jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.constraint_modules]
         jacobian = np.concatenate(jacobian)
 
-        logging.debug(f"Constraint jacobian function computed")
+        logging.debug(f"solver [{tag}]: Constraint jacobian function computed")
         return jacobian
 
     # wrong hessian should just affect rate of convergence, not convergence in general

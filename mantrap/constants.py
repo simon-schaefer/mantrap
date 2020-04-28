@@ -27,7 +27,6 @@ OBJECTIVE_INTERACTION_POS = "interaction_pos"
 OBJECTIVE_INTERACTION_ACC = "interaction_acc"
 
 PK_CONFIG = "config_name"  # PK = Parameter-Key
-PK_MULTIPROCESSING = "multiprocessing"
 PK_NUM_CONTROL_POINTS = "num_control_points"
 PK_GOAL = "goal"
 PK_TAU = "tau"

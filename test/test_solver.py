@@ -156,14 +156,14 @@ class TestSolvers:
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
-        solver_kwargs = {"t_planning": 5, "verbose": 0, "multiprocessing": False}
+        solver_kwargs = {"t_planning": 5, "verbose": 0}
         solver = solver_class(env, filter_module=filter_class, goal=torch.zeros(2), **solver_kwargs)
 
         assert solver.planning_horizon == 5
         assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
 
         solver_horizon = 3
-        ego_trajectory_opt, ado_trajectories = solver.solve(solver_horizon, max_cpu_time=0.1)
+        ego_trajectory_opt, ado_trajectories = solver.solve(solver_horizon, max_cpu_time=0.1, multiprocessing=False)
         ado_planned = solver.log["opt/ado_planned"]
         ego_opt_planned = solver.log["opt/ego_planned"]
 
