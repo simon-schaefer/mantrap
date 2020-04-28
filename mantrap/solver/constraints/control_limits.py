@@ -38,7 +38,7 @@ class ControlLimitModule(ConstraintModule):
     ###########################################################################
     # Constraint Bounds #######################################################
     ###########################################################################
-    def _constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
+    def _constraint_boundaries(self) -> Tuple[Union[float, None], Union[float, None]]:
         """Lower and upper bounds for constraint values.
 
         The control limitations are a property of each agent and defined by both a lower and upper bound.

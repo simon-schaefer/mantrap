@@ -111,13 +111,13 @@ class ConstraintModule(ABC):
     ###########################################################################
     # Constraint Bounds #######################################################
     ###########################################################################
-    def _constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
+    def _constraint_boundaries(self) -> Tuple[Union[float, None], Union[float, None]]:
         """Lower and upper bounds for constraint values."""
         raise NotImplementedError
 
     def constraint_boundaries(self, ado_ids: List[str] = None
                               ) -> Tuple[Union[np.ndarray, List[None]], Union[np.ndarray, List[None]]]:
-        lower, upper = self._constraint_bounds()
+        lower, upper = self._constraint_boundaries()
         num_constraints = self.num_constraints(ado_ids=ado_ids)
         lower = lower * np.ones(num_constraints) if lower is not None else [None] * num_constraints
         upper = upper * np.ones(num_constraints) if upper is not None else [None] * num_constraints
@@ -153,7 +153,7 @@ class ConstraintModule(ABC):
     def _violation(self, constraint: np.ndarray) -> float:
         num_constraints = constraint.size
         no_violation = np.zeros(num_constraints)
-        lower, upper = self._constraint_bounds()
+        lower, upper = self._constraint_boundaries()
         violation_lower = lower * np.ones(num_constraints) - constraint if lower is not None else no_violation
         violation_upper = constraint - upper * np.ones(num_constraints) if upper is not None else no_violation
         return float(np.sum(np.maximum(no_violation, violation_lower) + np.maximum(no_violation, violation_upper)))

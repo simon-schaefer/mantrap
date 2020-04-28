@@ -202,7 +202,7 @@ def test_max_speed_constraint_violation(env_class, num_modes):
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
     module = ControlLimitModule(env=env, t_horizon=5)
-    _, upper_bound = module._constraint_bounds()
+    _, upper_bound = module._constraint_boundaries()
 
     # In this first scenario the ego has zero velocity over the full horizon.
     controls = torch.zeros((module._t_horizon, 2))
@@ -238,7 +238,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
 
     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
     module = NormDistanceModule(env=env, t_horizon=controls.shape[0])
-    lower_bound, _ = module._constraint_bounds
+    lower_bound, _ = module._constraint_boundaries
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation == 0
 
@@ -247,7 +247,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ado_kwargs = {"goal": ado_start_pos, "num_modes": num_modes}
     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
     module = NormDistanceModule(env=env, t_horizon=controls.shape[0])
-    lower_bound, _ = module._constraint_bounds
+    lower_bound, _ = module._constraint_boundaries
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation > 0
 
