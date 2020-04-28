@@ -171,7 +171,7 @@ class Solver(ABC):
         :return: optimization dictionary of solution (containing objective, infeasibility scores, etc.).
         """
         # Solve optimisation problem for each initial condition, either in multiprocessing or sequential.
-        initial_values = zip(self.initial_values(), self.cores)
+        initial_values = list(zip(self.initial_values(), self.cores))
         if self.do_multiprocessing:
             results = joblib.Parallel(n_jobs=8)(joblib.delayed(self.optimize)
                                                 (z0, tag, **solver_kwargs) for z0, tag in initial_values)
@@ -238,8 +238,8 @@ class Solver(ABC):
             z0s = []
 
             ego_pos, goal = self.env.ego.position, self.goal  # local variables for speed up looping
-            eg_direction = goal - ego_pos  # ego-goal-direction vector
-            eg_distance = torch.norm(eg_direction)  # distance between ego and goal
+            eg_distance = torch.norm(goal - ego_pos)  # distance between ego and goal
+            eg_direction = goal - ego_pos / eg_distance # ego-goal-direction vector
             normal = normal_line(ego_pos, goal)  # normal line to vector from ego to goal
 
             for i, distance in enumerate([- eg_distance / 2, 0.0, eg_distance / 2.0]):
@@ -257,7 +257,7 @@ class Solver(ABC):
                     path=reference_path,
                     max_sim_time=self.planning_horizon * self.env.dt,
                     dtc=self.env.dt,
-                    speed_reference=0.5
+                    speed_reference=self.env.ego.speed_max
                 )
                 assert check_ego_controls(controls)
                 assert self.env.ego.check_feasibility_controls(controls)

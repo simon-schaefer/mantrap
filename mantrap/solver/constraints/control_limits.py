@@ -24,7 +24,7 @@ class ControlLimitModule(ConstraintModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
         controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-        return torch.norm(controls, dim=1).flatten()
+        return controls.flatten()
 
     def _constraints_gradient_condition(self) -> bool:
         """Conditions for the existence of a gradient between the input of the constraint value computation
@@ -47,4 +47,4 @@ class ControlLimitModule(ConstraintModule):
         return lower, upper
 
     def num_constraints(self, ado_ids: List[str] = None) -> int:
-        return self.t_horizon
+        return 2 * self.t_horizon
