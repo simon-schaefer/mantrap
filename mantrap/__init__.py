@@ -15,7 +15,7 @@ def remove_bytes_from_logging(fn):
 
 
 logging.StreamHandler.emit = remove_bytes_from_logging(logging.StreamHandler.emit)
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.WARNING,
                     format="[%(asctime)-8s:%(msecs)03d %(levelname)-6s] %(message)-s",
                     datefmt="%H:%M:%S")
 logging.getLogger("matplotlib").setLevel(logging.ERROR)

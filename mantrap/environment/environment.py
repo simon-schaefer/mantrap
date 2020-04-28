@@ -143,8 +143,8 @@ class GraphBasedEnvironment(ABC):
         # Unroll future ego trajectory, which is surely deterministic and certain due to the deterministic dynamics
         # assumption. Update ego based on the first action of the input ego policy.
         self._ego.update(ego_action, dt=self.dt)
-        logging.info(f"env {self.name} step @t={self.time} [ego]: action={ego_action.tolist()}")
-        logging.info(f"env {self.name} step @t={self.time} [ego]: state={self.ego.state.tolist()}")
+        logging.debug(f"env {self.name} step @t={self.time} [ego]: action={ego_action.tolist()}")
+        logging.debug(f"env {self.name} step @t={self.time} [ego]: state={self.ego.state.tolist()}")
 
         # Predict the next step in the environment by forward environment.
         ego_control = ego_action.unsqueeze(dim=0)  # (2) -> (1, 2)
@@ -172,7 +172,7 @@ class GraphBasedEnvironment(ABC):
             i_ado = self.index_ado_id(ado_id=ado_id)
             self._ado_ghosts[j].agent.update(action=ado_controls[i_ado, sampled_modes[ado_id], 0, :], dt=self.dt)
             ado_states[i_ado, :] = self.ghosts[j].agent.state_with_time  # TODO: repetitive !
-            logging.info(f"env {self.name} step @t={self.time} [ado_{ado_id}]: state={ado_states[i_ado].tolist()}")
+            logging.debug(f"env {self.name} step @t={self.time} [ado_{ado_id}]: state={ado_states[i_ado].tolist()}")
 
         # Detach agents from graph in order to keep independence between subsequent runs. Afterwards perform sanity
         # check for environment and agents.

@@ -107,20 +107,25 @@ def visualize(
             ego_controls_norm = np.linalg.norm(ego_controls.detach().numpy(),  axis=1)
             ego_controls_norm = np.concatenate((ego_controls_norm, np.zeros(1)))  # controls = T - 1 so stretch them
 
-            # Draw calculation results in the different axes plots.
+            # Draw resulting ado agent states in the different axes plots.
             for ghost in env.ghosts:
                 i_ado, i_mode = env.convert_ghost_id(ghost_id=ghost.id)
                 ado_kwargs = {"color": ghost.agent.color, "label": f"{ghost.id}_current"}
                 draw_values(ado_velocity_norm[i_ado, i_mode, :], time_axis, ax=axs[1], k=k, **ado_kwargs)
                 draw_values(ado_acceleration_norm[i_ado, i_mode, :], time_axis, ax=axs[2], k=k, **ado_kwargs)
-            ego_kwargs = {"color": env.ego.color, "label": env.ego.id}
-            draw_values(ego_controls_norm, time_axis, ax=axs[3], k=k, **ego_kwargs)
             axs[1].set_title("velocities [m/s]")
             axs[2].set_title("accelerations [m/s^2]")
-            axs[3].set_title("control input")
             for i in [1, 2]:
                 axs[i].grid()
                 axs[i].legend()
+
+            # Draw ego control input in separate plot, together with its lower and upper bound.
+            ego_kwargs = {"color": env.ego.color, "label": env.ego.id}
+            lower, upper = env.ego.control_limits()
+            axs[3].plot(time_axis, np.ones(time_axis.size) * lower, "--", label="lower")
+            axs[3].plot(time_axis, np.ones(time_axis.size) * upper, "--", label="upper")
+            draw_values(ego_controls_norm, time_axis, ax=axs[3], k=k, **ego_kwargs)
+            axs[3].set_title("control input")
 
             # Draw objective and constraint violation values in line plot.
             if obj_dict is not None and inf_dict is not None:
@@ -130,8 +135,10 @@ def visualize(
 
                 for key, values in obj_dict.items():
                     axs[4] = draw_values(transform_data(values[k]), time_axis, label=key, ax=axs[4], k=k)
+                axs[4].set_title("log-objectives")
                 for key, values in inf_dict.items():
                     axs[5] = draw_values(transform_data(values[k]), time_axis, label=key, ax=axs[5], k=k)
+                axs[5].set_title("log-constraints")
 
         axs[0].set_title(f"step {k}")
         return axs

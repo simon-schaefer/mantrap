@@ -74,8 +74,8 @@ class IPOPTIntermediate(Solver, ABC):
             nlp.addOption("hessian_approximation", "limited-memory")
 
         # The larger the `print_level` value, the more print output IPOPT will provide.
-        nlp.addOption("print_level", 5 if self.verbose > 2 or check_derivative else 0)
-        if self.verbose > 2:
+        nlp.addOption("print_level", 5 if self.verbose >= 1 or check_derivative else 0)
+        if self.verbose >= 1:
             nlp.addOption("print_timing_statistics", "yes")
         if check_derivative:
             nlp.addOption("derivative_test", "first-order")

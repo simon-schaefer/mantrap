@@ -131,14 +131,14 @@ class Solver(ABC):
             self.constraints(z=z0.detach().numpy(), tag=tag)
         self.intermediate_log(ego_controls_k=torch.zeros((self.planning_horizon, 2)))
 
-        logging.info(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
+        logging.debug(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
-            logging.info("#" * 30 + f"solver {self.name} @k={k}: initializing optimization")
+            logging.debug("#" * 30 + f"solver {self.name} @k={k}: initializing optimization")
             self._iteration = k
 
             # Solve optimisation problem.
             ego_controls_k = self.determine_ego_controls(**solver_kwargs)
-            logging.info(f"solver {self.name} @k={k}: finishing optimization")
+            logging.debug(f"solver {self.name} @k={k}: finishing optimization")
 
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
@@ -156,11 +156,11 @@ class Solver(ABC):
                 ado_trajectories = ado_trajectories[:, :, :k + 1, :].detach()
                 break
 
-        logging.info(f"solver {self.name}: logging and visualizing trajectory optimization")
+        logging.debug(f"solver {self.name}: logging and visualizing trajectory optimization")
         self.env.detach()
         self.log_summarize()
         self.visualize_scenes(enforce=False, interactive=False)
-        logging.info(f"solver {self.name}: finishing up optimization process")
+        logging.debug(f"solver {self.name}: finishing up optimization process")
         return ego_trajectory_opt, ado_trajectories
 
     def determine_ego_controls(self, **solver_kwargs) -> torch.Tensor:
@@ -237,13 +237,17 @@ class Solver(ABC):
         with torch.no_grad():
             z0s = []
 
-            distance_state_goal = torch.norm(self.env.ego.position - self.goal)
-            normal = normal_line(self.env.ego.position, self.goal)
-            mid_point = self.env.ego.position + self.goal * distance_state_goal / 2
+            ego_pos, goal = self.env.ego.position, self.goal  # local variables for speed up looping
+            eg_direction = goal - ego_pos  # ego-goal-direction vector
+            eg_distance = torch.norm(eg_direction)  # distance between ego and goal
+            normal = normal_line(ego_pos, goal)  # normal line to vector from ego to goal
 
-            for i, distance in enumerate([- distance_state_goal / 2, 0.0, distance_state_goal / 2.0]):
-                control_points = [self.env.ego.position, mid_point + distance * normal, self.goal]
+            for i, distance in enumerate([- eg_distance / 2, 0.0, eg_distance / 2.0]):
+                control_points = [ego_pos + eg_direction * eg_distance * f_point + f_distance * distance * normal
+                                  for f_point, f_distance in [(0, 0), (0.25, 0.5), (0.5, 1), (0.75, 0.5), (1, 0.0)]]
                 control_points = torch.stack(control_points, dim=0)
+
+                # Spline interpolation to build "continuous" path.
                 reference_path = spline_interpolation(control_points, num_samples=self.planning_horizon)
 
                 # Determine controls to track the given trajectory. Afterwards check whether the determined
@@ -255,13 +259,14 @@ class Solver(ABC):
                     dtc=self.env.dt,
                     speed_reference=0.5
                 )
+                assert check_ego_controls(controls)
                 assert self.env.ego.check_feasibility_controls(controls)
 
                 # Transform controls to z variable.
                 z0s.append(self.ego_controls_to_z(controls))
 
         z0s = torch.from_numpy(np.array(z0s)).view(3, -1)
-        return z0s if not just_one else z0s[1, :]
+        return z0s if not just_one else z0s[1, :, :]
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
@@ -429,15 +434,15 @@ class Solver(ABC):
                 # Log first and last (considered as best) objective value.
                 log = {key: self.log[f"{tag}/{LK_OBJECTIVE}_{key}_{k}"] for key in self.objective_names}
                 log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.objective_names}
-                logging.info(f"solver [{tag}] - objectives: {log}")
+                logging.debug(f"solver [{tag}] - objectives: {log}")
 
                 # Log first and last (considered as best) infeasibility value.
                 log = {key: self.log[f"{tag}/{LK_CONSTRAINT}_{key}_{k}"] for key in self.constraint_module_dict}
                 log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.constraint_module_dict}
-                logging.info(f"solver [{tag}] - infeasibility: {log}")
+                logging.debug(f"solver [{tag}] - infeasibility: {log}")
 
-            logging.info(f"solver {self.name} @k={k}: ego optimized controls = {ego_controls_k.tolist()}")
-            logging.info(f"solver {self.name} @k={k}: ego optimized path = {ego_opt_planned[:, 0:2].tolist()}")
+            logging.debug(f"solver {self.name} @k={k}: ego optimized controls = {ego_controls_k.tolist()}")
+            logging.debug(f"solver {self.name} @k={k}: ego optimized path = {ego_opt_planned[:, 0:2].tolist()}")
 
     @staticmethod
     def log_keys() -> List[str]:
