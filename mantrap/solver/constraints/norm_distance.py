@@ -71,8 +71,7 @@ class NormDistanceModule(ConstraintModule):
     ###########################################################################
     # Constraint Bounds #######################################################
     ###########################################################################
-    @property
-    def constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
+    def _constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
         """Lower and upper bounds for constraint values.
 
         While there is no upper value for the distance, the lower bound is a constant minimal

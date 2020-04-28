@@ -280,9 +280,9 @@ class Solver(ABC):
         return len(self._constraint_modules.keys()) == 0
 
     def optimization_variable_bounds(self) -> Tuple[List, List]:
-        limits = self._env.ego.control_limits()
-        lb = (np.ones(self.num_optimization_variables()) * limits[0]).tolist()
-        ub = (np.ones(self.num_optimization_variables()) * limits[1]).tolist()
+        lower, upper = self._env.ego.control_limits()
+        lb = (np.ones(self.num_optimization_variables()) * lower).tolist()
+        ub = (np.ones(self.num_optimization_variables()) * upper).tolist()
         return lb, ub
 
     ###########################################################################
