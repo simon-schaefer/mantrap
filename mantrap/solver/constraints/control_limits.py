@@ -5,19 +5,20 @@ import torch
 from mantrap.solver.constraints.constraint_module import ConstraintModule
 
 
-class MaxSpeedModule(ConstraintModule):
-    """Maximal ego speed of every trajectory point.
+class ControlLimitModule(ConstraintModule):
+    """Maximal control input at every point in time.
 
-    For computing this constraint simply the norm of the planned velocity is determined and compared to the maximal
-    agent's speed limit. For 0 < t < T_{planning}:
+    For computing this constraint simply the norm of the planned control input is determined and compared to the
+    maximal agent's control limit. For 0 < t < T_{planning}:
 
-    .. math:: speed(t) < v_{max}
+    .. math:: u_{min} < ||u(t)||_2 < u_{max}
     """
 
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
-        The max speed constraints simply are the velocity values of the ego trajectory.
+        The max control constraints simply are computed by transforming the given trajectory to control input
+        (deterministic dynamics).
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
@@ -41,8 +42,7 @@ class MaxSpeedModule(ConstraintModule):
     def constraint_bounds(self) -> Tuple[Union[float, None], Union[float, None]]:
         """Lower and upper bounds for constraint values.
 
-        For the max speed constraint the lower is None since the norm always is semi-positive and upper bounds
-        are the agents maximal allowed speeds, which is an assumed constant value defined in constants.
+        The control limitations are a property of each agent and defined by both a lower and upper bound.
         """
         lower, upper = self._env.ego.control_limits()
         return lower, upper

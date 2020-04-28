@@ -25,7 +25,7 @@ class SGradSolver(IPOPTIntermediate, ZControlIntermediate):
     ###########################################################################
     @staticmethod
     def constraints_defaults() -> List[str]:
-        return [CONSTRAINT_MAX_SPEED, CONSTRAINT_NORM_DISTANCE]
+        return [CONSTRAINT_CONTROL_LIMIT, CONSTRAINT_NORM_DISTANCE]
 
     ###########################################################################
     # Solver properties #######################################################

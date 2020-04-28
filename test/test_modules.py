@@ -201,7 +201,7 @@ def test_max_speed_constraint_violation(env_class, num_modes):
     env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1]), "velocity": torch.zeros(2)})
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
-    module = MaxSpeedModule(env=env, t_horizon=5)
+    module = ControlLimitModule(env=env, t_horizon=5)
     _, upper_bound = module.constraint_bounds
 
     # In this first scenario the ego has zero velocity over the full horizon.

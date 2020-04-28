@@ -26,7 +26,7 @@ class IgnoringSolver(IPOPTIntermediate, ZControlIntermediate):
         given the solvers objective, going straight is optimal !
         """
         z0s = super(IgnoringSolver, self).initial_values(just_one=just_one)
-        return z0s[1:2, :, :] if not just_one else z0s
+        return z0s[1:2, :] if not just_one else z0s
 
     ###########################################################################
     # Optimization formulation - Objective ####################################
@@ -40,7 +40,7 @@ class IgnoringSolver(IPOPTIntermediate, ZControlIntermediate):
     ###########################################################################
     @staticmethod
     def constraints_defaults() -> List[str]:
-        return [CONSTRAINT_MAX_SPEED]
+        return [CONSTRAINT_CONTROL_LIMIT]
 
     ###########################################################################
     # Solver properties #######################################################

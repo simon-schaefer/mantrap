@@ -91,7 +91,7 @@ class ORCASolver(ZControlIntermediate):
 
     @staticmethod
     def constraints_defaults() -> List[str]:
-        return [CONSTRAINT_MAX_SPEED]
+        return [CONSTRAINT_CONTROL_LIMIT]
 
     ###########################################################################
     # Solver properties #######################################################

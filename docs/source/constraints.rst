@@ -6,9 +6,9 @@ Abstract Constraint
 .. automodule:: mantrap.solver.constraints.constraint_module
     :members:
 
-Maximal Speed
--------------
-.. automodule:: mantrap.solver.constraints.max_speed
+Control Limits
+--------------
+.. automodule:: mantrap.solver.constraints.control_limits
     :members:
 
 Minimal Distance
