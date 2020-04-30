@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import logging
+import math
 import random
 import string
 from typing import Tuple
@@ -30,6 +31,7 @@ class Agent(ABC):
 
     For unique identification each agent has an id (3-character string) and for visualisation purposes a unique color.
     Both are created randomly during initialization.
+
     The internal state of the agent can be altered by calling the `update()` function, which uses some (control) input
     to update the agent's state using its dynamics, or the `reset()` function, which sets the internal state to some
     value directly. All other methods do not alter the internal state.
@@ -53,7 +55,7 @@ class Agent(ABC):
     ):
         assert check_2d_vector(position)  # (x, y)
         assert check_2d_vector(velocity)  # (vx, vy)
-        assert time >= 0, "time must be larger or equal to zero"
+        assert time >= 0
 
         self._state = torch.cat((position.float(), velocity.float(), torch.ones(1) * time))
 
@@ -231,17 +233,20 @@ class Agent(ABC):
         assert check_ego_controls(controls)
 
         lower, upper = self.control_limits()
-        lower_checked = torch.all(torch.ge(controls, lower))
-        upper_checked = torch.all(torch.le(controls, upper))
+        controls_norm = torch.norm(controls, dim=-1)
+        lower_checked = torch.all(torch.ge(controls_norm, lower))
+        upper_checked = torch.all(torch.le(controls_norm, upper))
         return bool(lower_checked and upper_checked)
 
     def make_controls_feasible(self, controls: torch.Tensor) -> torch.Tensor:
         """Make controls feasible by clipping them between its lower and upper boundaries. Return
-        the transformed feasible controls. Since this is basically clamping each direction separately,
-        the overall direction of the control input might be changed !!
+        the transformed feasible controls. The direction of controls is thereby not changed, since
+        just the length of the control vector is adapted.
         """
         lower, upper = self.control_limits()
-        return controls.clamp(lower, upper)
+        controls_norm = torch.norm(controls, dim=-1, keepdim=True).detach()
+        controls_norm_clamped = controls_norm.clamp(lower, upper)
+        return controls.div(controls_norm) * controls_norm_clamped
 
     def make_controls_feasible_scalar(self, control_x: float, control_y: float) -> Tuple[float, float]:
         """Make single control feasible by clipping them between its lower and upper boundaries. Return
@@ -249,8 +254,11 @@ class Agent(ABC):
         the overall direction of the control input might be changed !!
         """
         lower, upper = self.control_limits()
-        control_x = min(upper, max(lower, control_x))
-        control_y = min(upper, max(lower, control_y))
+        control_norm = math.hypot(control_x, control_y)
+        control_norm_clamped = min(upper, max(lower, control_norm))
+
+        control_x = control_x / control_norm * control_norm_clamped
+        control_y = control_y / control_norm * control_norm_clamped
         return control_x, control_y
 
     ###########################################################################
@@ -271,7 +279,6 @@ class Agent(ABC):
     ###########################################################################
     # Dynamics ################################################################
     ###########################################################################
-    @abstractmethod
     def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         """Forward integrate the agent's motion given some state-action pair and an integration time-step.
 
@@ -284,6 +291,17 @@ class Agent(ABC):
         :param dt: forward integration time step [s].
         :returns: updated state vector with time @ t = k + dt (5).
         """
+        assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
+        assert check_ego_action(action)  # (vx, vy)
+        action = action.float()
+
+        state_new = self._dynamics(state, action, dt=dt)
+
+        assert check_ego_state(state_new, enforce_temporal=True)
+        return state_new
+
+    @abstractmethod
+    def _dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         raise NotImplementedError
 
     @staticmethod
@@ -300,7 +318,6 @@ class Agent(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
         """Determine the agent's motion given its current and previous state.
 
@@ -313,8 +330,21 @@ class Agent(ABC):
         :param dt: forward integration time step [s].
         :returns: control input @ t = k (size depending on agent type).
         """
+        assert check_ego_state(state, enforce_temporal=False)
+        assert check_ego_state(state_previous, enforce_temporal=False)
+
+        action = self._inverse_dynamics(state, state_previous, dt=dt)
+
+        assert check_ego_action(x=action)
+        return action
+
+    @abstractmethod
+    def _inverse_dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         raise NotImplementedError
 
+    ###########################################################################
+    # Agent control functions #################################################
+    ###########################################################################
     @abstractmethod
     def go_to_point(
         self,

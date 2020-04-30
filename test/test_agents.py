@@ -31,7 +31,7 @@ class TestAgent:
 
     @staticmethod
     def test_reset(agent_class: Agent.__class__):
-        agent = agent_class(torch.tensor([5, 6]))
+        agent = agent_class(position=torch.tensor([5, 6]))
         agent.reset(state=torch.tensor([1, 5, 4, 2, 1.0]), history=None)
         assert torch.all(torch.eq(agent.position, torch.tensor([1, 5]).float()))
         assert torch.all(torch.eq(agent.velocity, torch.tensor([4, 2]).float()))
@@ -66,10 +66,10 @@ class TestAgent:
         state_next = agent.dynamics(state=agent.state_with_time, action=control_input, dt=1.0)
         agent.update(control_input, dt=1.0)
 
-        assert torch.all(torch.eq(agent.position, state_next[0:2]))
-        assert torch.all(torch.eq(agent.velocity, state_next[2:4]))
-        assert torch.all(torch.eq(agent.history[0, 0:4], state_init))
-        assert torch.all(torch.eq(agent.history[1, :], state_next))
+        assert torch.all(torch.isclose(agent.position, state_next[0:2]))
+        assert torch.all(torch.isclose(agent.velocity, state_next[2:4]))
+        assert torch.all(torch.isclose(agent.history[0, 0:4], state_init))
+        assert torch.all(torch.isclose(agent.history[1, :], state_next))
 
     @staticmethod
     def test_forward_reachability(agent_class: Agent.__class__):
@@ -80,7 +80,7 @@ class TestAgent:
 
         def _compute_end_points(control_x: float, control_y: float) -> torch.Tensor:
             controls = torch.ones((time_steps, 2)).__mul__(torch.tensor([control_x, control_y]))
-            controls = torch.div(controls, torch.norm(controls, dim=1).unsqueeze(1)) * control_max
+            controls = agent.make_controls_feasible(controls)
             return agent.unroll_trajectory(controls=controls, dt=1.0)[-1, 0:2]
 
         # Compute the forward reachability bounds numerically by integrating trajectories at the bound
@@ -101,7 +101,9 @@ class TestAgent:
             min_x, min_y = min(boundary_numeric[:, 0]), min(boundary_numeric[:, 1])
             max_x, max_y = max(boundary_numeric[:, 0]), max(boundary_numeric[:, 1])
             radius_numeric = (max_x - min_x) / 2
+            center_numeric = torch.tensor([min_x + radius_numeric, min_y + radius_numeric])
 
+            assert torch.all(torch.isclose(boundary.center, center_numeric))  # center ?
             assert torch.isclose((max_y - min_y) / 2, radius_numeric, atol=0.1)  # is circle ?
             assert torch.isclose(torch.tensor(boundary.radius), radius_numeric, atol=0.1)  # same circle ?
 
@@ -191,7 +193,7 @@ def test_unrolling(position: torch.Tensor, velocity: torch.Tensor, dt: float, n:
     [
         (torch.tensor([1, 0]), torch.zeros(2), torch.zeros(2), torch.tensor([1, 0]), torch.zeros(2)),
         (torch.tensor([1, 0]), torch.tensor([2, 3]), torch.zeros(2), torch.tensor([3, 3]), torch.tensor([2, 3])),
-        (torch.tensor([1, 0]), torch.zeros(2), torch.tensor([2, 3]), torch.tensor([2, 1.5]), torch.tensor([2, 3])),
+        (torch.tensor([1, 0]), torch.zeros(2), torch.tensor([2, 3]), torch.tensor([1, 0.0]), torch.tensor([2, 3])),
     ],
 )
 def test_dynamics_double_integrator(
@@ -203,6 +205,7 @@ def test_dynamics_double_integrator(
 ):
     agent = DoubleIntegratorDTAgent(position=position, velocity=velocity)
     state_next = agent.dynamics(state=agent.state_with_time, action=control, dt=1.0)
+
     assert torch.all(torch.isclose(state_next[0:2], position_expected.float()))
     assert torch.all(torch.isclose(state_next[2:4], velocity_expected.float()))
 

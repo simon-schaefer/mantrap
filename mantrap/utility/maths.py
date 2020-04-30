@@ -117,6 +117,13 @@ class Circle(Shape2D):
         self.center = center.float()
         self.radius = float(radius)
 
+    @classmethod
+    def from_min_max_2d(cls, x_min, x_max, y_min, y_max):
+        radius = (x_max - x_min) / 2
+        center = torch.tensor([x_min + radius, y_min + radius])
+        assert torch.isclose((y_max - y_min) / 2, radius, atol=0.01)
+        return cls(center=center, radius=radius)
+
     def does_intersect(self, other: 'Circle') -> bool:
         if not other.__class__ == self.__class__:
             raise NotImplementedError

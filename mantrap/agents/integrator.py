@@ -3,46 +3,41 @@ from typing import Tuple
 
 import torch
 
-from mantrap.agents.agent import Agent
-from mantrap.utility.maths import Circle
-from mantrap.utility.shaping import check_ego_action, check_ego_state
+from mantrap.agents.agent_intermediates.linear import LinearAgent
 
 
-class IntegratorDTAgent(Agent):
+class IntegratorDTAgent(LinearAgent):
+    """Linear single integrator dynamics:
 
-    def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt:  float) -> torch.Tensor:
-        """
-        .. math:: vel_{t+1} = action
-        .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt
-        """
-        assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
-        assert check_ego_action(action)  # (vx, vy)
-        action = action.float()
+    .. math:: vel_{t+1} = action
+    .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt
+    """
 
-        state_new = torch.zeros(5)
-        state_new[2:4] = action  # velocity
-        state_new[0:2] = state[0:2] + state_new[2:4] * dt
-        state_new[4] = state[-1] + dt
-
-        assert check_ego_state(state_new, enforce_temporal=True)
-        return state_new
+    def _dynamics_matrices(self, dt: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        A = torch.tensor([[1, 0, 0, 0, 0],
+                          [0, 1, 0, 0, 0],
+                          [0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 1]]).float()
+        B = torch.tensor([[dt, 0, 1, 0, 0],
+                          [0, dt, 0, 1, 0]]).t().float()
+        T = torch.tensor([0, 0, 0, 0, dt]).t().float()
+        return A, B, T
 
     @staticmethod
     def dynamics_scalar(px: float, py: float, vx: float, vy: float, ux: float, uy: float, dt: float
                         ) -> Tuple[float, float, float, float]:
         return px + ux * dt, py + uy * dt, ux, uy
 
-    def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
+    def _inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
         """
         .. math:: action = (pos_t - pos_{t-1}) / dt
         """
-        assert check_ego_state(state, enforce_temporal=False)
-        assert check_ego_state(state_previous, enforce_temporal=False)
+        return (state[0:2] - state_previous[0:2]) / dt
 
-        action = (state[0:2] - state_previous[0:2]) / dt
-        assert check_ego_action(x=action)
-        return action
-
+    ###########################################################################
+    # Agent control functions #################################################
+    ###########################################################################
     def go_to_point(
         self,
         state: Tuple[float, float, float, float],
@@ -83,25 +78,6 @@ class IntegratorDTAgent(Agent):
         .. math:: [- v_{max}, v_{max}]
         """
         return -self.speed_max, self.speed_max
-
-    ###########################################################################
-    # Reachability ############################################################
-    ###########################################################################
-    def reachability_boundary(self, time_steps: int, dt: float) -> Circle:
-        """Single integrators can adapt their velocity instantly in any direction. Therefore the forward
-        reachable set within the number of time_steps is just a circle (in general ellipse, but agent is
-        assumed to be isotropic within this class, i.e. same control bounds for both x- and y-direction)
-        around the current position, with radius being the maximal allowed agent speed.
-        With `T = time_steps * dt` being the time horizon, the reachability bounds are determined for,
-        the circle has the following parameters:
-
-        .. math:: center = x(0)
-        .. math:: radius = v_{max} * T
-
-        :param time_steps: number of discrete time-steps in reachable time-horizon.
-        :param dt: time interval which is assumed to be constant over full path sequence [s].
-        """
-        return Circle(center=self.position, radius=self.speed_max * dt * time_steps)
 
     ###########################################################################
     # Agent Properties ########################################################
