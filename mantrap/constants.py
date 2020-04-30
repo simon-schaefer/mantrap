@@ -1,7 +1,7 @@
 #######################################
 # names/strings #######################
 #######################################
-CONSTRAINT_CONTROL_LIMIT = "max_speed"
+CONSTRAINT_CONTROL_LIMIT = "control_limits"
 CONSTRAINT_MIN_DISTANCE = "min_distance"
 CONSTRAINT_NORM_DISTANCE = "norm_distance"
 
@@ -80,6 +80,9 @@ SOLVER_GOAL_END_DISTANCE = 0.1  # [m] maximal distance to goal to finish optimiz
 
 IPOPT_MAX_STEPS_DEFAULT = 100  # maximal number of IPOPT solver iterations.
 IPOPT_MAX_CPU_TIME_DEFAULT = 3.0  # [s] maximal IPOPT solver CPU time.
+IPOPT_OPTIMALITY_TOLERANCE = 0.01  # maximal optimality error to return solution (see documentation).
+IPOPT_AUTOMATIC_JACOBIAN = "finite-difference-values"  # method for Jacobian approximation (if flag is True).
+IPOPT_AUTOMATIC_HESSIAN = "limited-memory"  # method for Hessian approximation.
 
 CONSTRAINT_MIN_L2_DISTANCE = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 

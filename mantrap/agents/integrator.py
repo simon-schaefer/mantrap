@@ -71,6 +71,11 @@ class IntegratorDTAgent(Agent):
         u_speed = math.hypot(ux, uy)
         ux, uy = ux / u_speed * speed, uy / u_speed * speed
 
+        # Ensure feasibility of control input given internal control limits.
+        lower, upper = self.control_limits()
+        ux = min(upper, max(lower, ux))
+        uy = min(upper, max(lower, uy))
+
         # Do simulation step, i.e. update agent with computed control input.
         px, py, vx, vy = self.dynamics_scalar(px, py, vx, vy, ux, uy, dt)
         return (px, py, vx, vy), (ux, uy)
