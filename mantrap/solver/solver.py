@@ -137,7 +137,7 @@ class Solver(ABC):
             self._iteration = k
 
             # Solve optimisation problem.
-            ego_controls_k = self.determine_ego_controls(**solver_kwargs)
+            ego_controls_k = self.determine_ego_controls(multiprocessing=multiprocessing, **solver_kwargs)
             logging.debug(f"solver {self.name} @k={k}: finishing optimization")
 
             # Forward simulate environment.
@@ -171,8 +171,11 @@ class Solver(ABC):
         :return: ego_controls: control inputs of ego agent for whole planning horizon.
         :return: optimization dictionary of solution (containing objective, infeasibility scores, etc.).
         """
+        logging.debug(f"solver: solving optimization problem in parallel = {multiprocessing}")
         # Solve optimisation problem for each initial condition, either in multiprocessing or sequential.
         initial_values = list(zip(self.initial_values(), self.cores))
+        logging.debug(f"solver: initial values = {initial_values}")
+
         if multiprocessing:
             results = joblib.Parallel(n_jobs=8)(joblib.delayed(self.optimize)
                                                 (z0, tag, **solver_kwargs) for z0, tag in initial_values)
@@ -196,7 +199,7 @@ class Solver(ABC):
     def optimize(self, z0: torch.Tensor, tag: str, **kwargs) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
         # Filter the important ghost indices from the current scene state.
         ado_ids = self._filter_module.compute()
-        logging.debug(f"solver [{tag}]: important ado ids = {ado_ids}")
+        logging.debug(f"solver [{tag}]: optimizing w.r.t. important ado ids = {ado_ids}")
 
         # Computation is done in `_optimize()` class that is implemented in child class.
         return self._optimize(z0, ado_ids=ado_ids, tag=tag, **kwargs)
@@ -240,7 +243,7 @@ class Solver(ABC):
 
             ego_pos, goal = self.env.ego.position, self.goal  # local variables for speed up looping
             eg_distance = torch.norm(goal - ego_pos)  # distance between ego and goal
-            eg_direction = goal - ego_pos / eg_distance # ego-goal-direction vector
+            eg_direction = goal - ego_pos / eg_distance  # ego-goal-direction vector
             normal = normal_line(ego_pos, goal)  # normal line to vector from ego to goal
 
             for i, distance in enumerate([- eg_distance / 2, 0.0, eg_distance / 2.0]):
@@ -250,6 +253,7 @@ class Solver(ABC):
 
                 # Spline interpolation to build "continuous" path.
                 reference_path = spline_interpolation(control_points, num_samples=self.planning_horizon)
+                logging.debug(f"solver: initial reference path = {reference_path}")
 
                 # Determine controls to track the given trajectory. Afterwards check whether the determined
                 # controls are feasible in terms of the control limits of the ego agent.
@@ -260,8 +264,17 @@ class Solver(ABC):
                     dtc=self.env.dt,
                     speed_reference=self.env.ego.speed_max
                 )
-                assert check_ego_controls(controls)
+
+                # If the controller did not need the full time until reaching the end of the reference path
+                # it has to be expanded (to be transformable to a valid optimization variable). Since the controller
+                # is assumed to break at the end, the easiest (and also valid) approach is to fill with zeros.
+                if controls.shape[0] < self.planning_horizon:
+                    delta_horizon = self.planning_horizon - controls.shape[0]
+                    delta_zeros = torch.zeros((delta_horizon, controls.shape[1]))
+                    controls = torch.cat((controls, delta_zeros), dim=0)
+                assert check_ego_controls(controls, t_horizon=self.planning_horizon)
                 assert self.env.ego.check_feasibility_controls(controls)
+                logging.debug(f"solver: initial control values = {controls}")
 
                 # Transform controls to z variable.
                 z0s.append(self.ego_controls_to_z(controls))

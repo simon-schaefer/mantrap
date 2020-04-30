@@ -91,7 +91,7 @@ def p_ahead_controller(
     # Convert controls to torch tensor, validate and return them.
     controls = torch.from_numpy(np.array(controls))
     assert check_ego_controls(controls, t_horizon=int(sim_time / dtc))
-    return controls
+    return controls.float()
 
 
 def _closest_path_index(cx, cy, px, py, index_start: int = None) -> int:
