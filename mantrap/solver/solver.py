@@ -19,7 +19,7 @@ from mantrap.solver.objectives.objective_module import ObjectiveModule
 from mantrap.solver.objectives import OBJECTIVES_DICT
 from mantrap.utility.io import build_os_path
 from mantrap.utility.maths import normal_line, spline_interpolation
-from mantrap.utility.shaping import check_ego_controls
+from mantrap.utility.shaping import check_ego_controls, check_goal
 
 
 class Solver(ABC):
@@ -64,7 +64,7 @@ class Solver(ABC):
         config_name: str = CONFIG_UNKNOWN,
         **solver_params
     ):
-        assert goal.size() == torch.Size([2])
+        assert check_goal(goal)
         self._goal = goal.float()
 
         # Set planning and evaluation environment.

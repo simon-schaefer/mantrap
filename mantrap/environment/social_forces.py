@@ -9,6 +9,7 @@ from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment.iterative import IterativeEnvironment
+from mantrap.utility.shaping import check_goal
 
 
 class SocialForcesEnvironment(IterativeEnvironment):
@@ -50,7 +51,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
     ) -> Agent:
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
-        assert goal.size() == torch.Size([2])
+        assert check_goal(goal)
         goal = goal.detach().float()
 
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces

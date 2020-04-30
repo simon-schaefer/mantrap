@@ -3,6 +3,7 @@ from typing import List, Union
 import torch
 
 from mantrap.solver.objectives.objective_module import ObjectiveModule
+from mantrap.utility.shaping import check_goal
 
 
 class GoalModule(ObjectiveModule):
@@ -18,7 +19,7 @@ class GoalModule(ObjectiveModule):
     :param goal: goal state/position for robot agent (2).
     """
     def __init__(self, goal: torch.Tensor, **module_kwargs):
-        assert goal.size() == torch.Size([2])
+        assert check_goal(goal)
 
         super(GoalModule, self).__init__(**module_kwargs)
         self._goal = goal

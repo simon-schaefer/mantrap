@@ -16,7 +16,7 @@ class IntegratorDTAgent(Agent):
         .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt
         """
         assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
-        assert action.size() == torch.Size([2])  # (vx, vy)
+        assert check_ego_action(action)  # (vx, vy)
         action = action.float()
 
         state_new = torch.zeros(5)

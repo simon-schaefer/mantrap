@@ -5,13 +5,12 @@ import numpy as np
 from scipy.interpolate import splev, splprep
 import torch
 
+from mantrap.utility.shaping import check_ego_path, check_2d_vector
+
 
 ###########################################################################
 # Numerical Methods #######################################################
 ###########################################################################
-from mantrap.utility.shaping import check_ego_path
-
-
 class Derivative2:
     """Determine the 2nd derivative of some series of point numerically by using the Central Difference Expression
     (with error of order dt^2). Assuming smoothness we can extract the acceleration from the positions:
@@ -112,7 +111,7 @@ class Shape2D(ABC):
 
 class Circle(Shape2D):
     def __init__(self, center: torch.Tensor, radius: float):
-        assert center.size() == torch.Size([2])
+        assert check_2d_vector(center)
         assert radius > 0.0
 
         self.center = center.float()

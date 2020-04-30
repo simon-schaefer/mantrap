@@ -8,6 +8,7 @@ from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import *
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment.iterative import IterativeEnvironment
+from mantrap.utility.shaping import check_goal
 
 
 class ORCAEnvironment(IterativeEnvironment):
@@ -42,7 +43,7 @@ class ORCAEnvironment(IterativeEnvironment):
     # Scene ###################################################################
     ###########################################################################
     def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> Agent:
-        assert goal.size() == torch.Size([2])
+        assert check_goal(goal)
         params = [{PK_GOAL: goal.detach().float()}]
         return super(ORCAEnvironment, self).add_ado(IntegratorDTAgent, arg_list=params, **ado_kwargs)
 

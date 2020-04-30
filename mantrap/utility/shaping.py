@@ -16,16 +16,6 @@ def check_ego_action(x: torch.Tensor) -> bool:
     return True
 
 
-def check_weights(x: torch.Tensor, num_ados: int = None, num_modes: int = None) -> bool:
-    assert not torch.any(torch.isnan(x))
-    assert len(x.shape) == 2  # (num_ados, num_modes)
-    if num_ados is not None:
-        assert x.shape[0] == num_ados
-    if num_modes is not None:
-        assert x.shape[1] == num_modes
-    return True
-
-
 def check_ego_path(x: torch.Tensor, num_primitives: int = None, t_horizon: int = None) -> bool:
     assert not torch.any(torch.isnan(x))
     if num_primitives is not None:
@@ -117,4 +107,24 @@ def check_ado_trajectories(
         assert x.shape[1] == modes
     if t_horizon is not None:
         assert x.shape[2] == t_horizon
+    return True
+
+
+def check_goal(x: torch.Tensor) -> bool:
+    return check_2d_vector(x)
+
+
+def check_weights(x: torch.Tensor, num_ados: int = None, num_modes: int = None) -> bool:
+    assert not torch.any(torch.isnan(x))
+    assert len(x.shape) == 2  # (num_ados, num_modes)
+    if num_ados is not None:
+        assert x.shape[0] == num_ados
+    if num_modes is not None:
+        assert x.shape[1] == num_modes
+    return True
+
+
+def check_2d_vector(x: torch.Tensor) -> bool:
+    assert not torch.any(torch.isnan(x))
+    assert x.size() == torch.Size([2])
     return True

@@ -56,3 +56,10 @@ In order to ensure a working Trajectron model the branch `online_with_torch` has
 For code documentation the [Sphinx](https://www.sphinx-doc.org/en/master/) engine has been used. For building the 
 documentation locally setup the project and run `make html` in the documentation folder. Then open the documentation 
 by opening the `index.html` file in the resulting documentation build directory. 
+
+## Running in optimized mode
+Running python in optimized mode let's skip all `assert` statements in order to save runtime.
+
+```
+python3 -O evaluation.py
+```

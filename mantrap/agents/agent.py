@@ -14,7 +14,8 @@ from mantrap.utility.shaping import (
     check_ego_action,
     check_ego_controls,
     check_ego_trajectory,
-    check_ego_state
+    check_ego_state,
+    check_2d_vector,
 )
 
 
@@ -50,8 +51,8 @@ class Agent(ABC):
         identifier: str = None,
         **unused
     ):
-        assert position.size() == torch.Size([2]), "position must be two-dimensional (x, y)"
-        assert velocity.size() == torch.Size([2]), "velocity must be two-dimensional (vx, vy)"
+        assert check_2d_vector(position)  # (x, y)
+        assert check_2d_vector(velocity)  # (vx, vy)
         assert time >= 0, "time must be larger or equal to zero"
 
         self._state = torch.cat((position.float(), velocity.float(), torch.ones(1) * time))
@@ -329,7 +330,7 @@ class Agent(ABC):
     @staticmethod
     def expand_state_vector(state_4: torch.Tensor, time: float) -> torch.Tensor:
         """Expand 4 dimensional (x, y, vx, vy) state vector by time information. """
-        assert state_4.size() == torch.Size([4])
+        assert check_ego_state(state_4, enforce_temporal=False)
 
         state = torch.cat((state_4, torch.ones(1) * time))
         assert check_ego_state(state, enforce_temporal=True)
