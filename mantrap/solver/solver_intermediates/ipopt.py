@@ -20,8 +20,6 @@ class IPOPTIntermediate(Solver, ABC):
         max_iter: int = IPOPT_MAX_STEPS_DEFAULT,
         max_cpu_time: float = IPOPT_MAX_CPU_TIME_DEFAULT,
         approx_jacobian: bool = False,
-        approx_hessian: bool = True,
-        check_derivative: bool = False,
         **solver_kwargs
     ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.
@@ -37,6 +35,9 @@ class IPOPTIntermediate(Solver, ABC):
         :param z0: initial value of optimization variables.
         :param tag: name of optimization call (name of the core).
         :param ado_ids: identifiers of ados that should be taken into account during optimization.
+        :param max_iter: maximal solver iterations until return.
+        :param max_cpu_time: maximal cpu time until return.
+        :param approx_jacobian: if True automatic approximation of Jacobian based on finite-difference values.
         :returns: z_opt (optimal values of optimization variable vector)
                   objective_opt (optimal objective value)
                   optimization_log (logging dictionary for this optimization = self.log)
@@ -59,7 +60,7 @@ class IPOPTIntermediate(Solver, ABC):
 
         # Formulate optimization problem as in standardized IPOPT format.
         z0_flat = z0.flatten().numpy().tolist()
-        assert len(z0_flat) == len(lb) == len(ub), f"initial value z0 should be {len(lb)} long"
+        assert len(z0_flat) == len(lb) == len(ub)
 
         # Create ipopt problem with specific tag.
         problem = IPOPTProblem(self, ado_ids=ado_ids, tag=tag)
@@ -68,18 +69,22 @@ class IPOPTIntermediate(Solver, ABC):
         nlp = ipopt.problem(n=len(z0_flat), m=len(cl), problem_obj=problem, lb=lb, ub=ub, cl=cl, cu=cu)
         nlp.addOption("max_iter", max_iter)
         nlp.addOption("max_cpu_time", max_cpu_time)
+        nlp.addOption("tol", IPOPT_OPTIMALITY_TOLERANCE)  # tolerance for optimality error
         if approx_jacobian:
-            nlp.addOption("jacobian_approximation", "finite-difference-values")
-        if approx_hessian:
-            nlp.addOption("hessian_approximation", "limited-memory")
+            nlp.addOption("jacobian_approximation", IPOPT_AUTOMATIC_JACOBIAN)
+        # Due to the generalized automatic differentiation through large graphs the computational bottleneck
+        # of the underlying approach clearly is computing computing derivatives. While calculating the Hessian
+        # theoretically would be possible, it would introduce the need of a huge amount of additional computational
+        # effort (squared size of gradient !), therefore it will be approximated automatically when needed.
+        nlp.addOption("hessian_approximation", IPOPT_AUTOMATIC_HESSIAN)
 
         # The larger the `print_level` value, the more print output IPOPT will provide.
-        nlp.addOption("print_level", 5 if self.verbose >= 1 or check_derivative else 0)
+        nlp.addOption("print_level", 5 if self.verbose >= 1 else 0)
         if self.verbose >= 1:
             nlp.addOption("print_timing_statistics", "yes")
-        if check_derivative:
-            nlp.addOption("derivative_test", "first-order")
-            nlp.addOption("derivative_test_tol", 1e-4)
+        # if check_derivative:
+        #     nlp.addOption("derivative_test", "first-order")
+        #     nlp.addOption("derivative_test_tol", 1e-4)
 
         # Solve optimization problem for "optimal" ego trajectory `x_optimized`.
         z_opt, info = nlp.solve(z0_flat)
@@ -143,7 +148,7 @@ class IPOPTProblem:
     def objective(self, z: np.ndarray) -> float:
         return self.problem.objective(z, tag=self.tag, ado_ids=self.ado_ids)
 
-    def gradient(self, z: np.ndarray,) -> np.ndarray:
+    def gradient(self, z: np.ndarray) -> np.ndarray:
         return self.problem.gradient(z, tag=self.tag, ado_ids=self.ado_ids)
 
     def constraints(self, z: np.ndarray) -> np.ndarray:
