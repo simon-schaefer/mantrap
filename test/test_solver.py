@@ -156,8 +156,7 @@ class TestSolvers:
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
-        solver_kwargs = {"t_planning": 5, "verbose": 0}
-        solver = solver_class(env, filter_module=filter_class, goal=torch.zeros(2), **solver_kwargs)
+        solver = solver_class(env, filter_module=filter_class, goal=torch.zeros(2), t_planning=5)
 
         assert solver.planning_horizon == 5
         assert torch.all(torch.eq(solver.goal, torch.zeros(2)))

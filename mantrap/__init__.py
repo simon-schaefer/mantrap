@@ -23,7 +23,7 @@ torch.set_default_dtype(torch.float32)
 # Logging preferences #################
 #######################################
 logging.StreamHandler.emit = remove_bytes_from_logging(logging.StreamHandler.emit)
-logging.basicConfig(level=logging.WARNING,
+logging.basicConfig(level=logging.DEBUG if __debug__ is True else logging.DEBUG,
                     format="[%(asctime)-8s:%(msecs)03d %(levelname)-6s] %(message)-s",
                     datefmt="%H:%M:%S")
 logging.getLogger("matplotlib").setLevel(logging.ERROR)

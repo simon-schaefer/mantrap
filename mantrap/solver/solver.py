@@ -32,8 +32,7 @@ class Solver(ABC):
     account, see below).
 
     Initialise solver class by building objective and constraint modules as defined within the specific
-    definition of the (optimisation) problem. The verbose flag enables printing more debugging flags as well
-    as plotting the optimisation history at the end.
+    definition of the (optimisation) problem.
 
     Internally, the solver stores two environments, the environment it uses for planning (optimization etc) and
     the environment it uses for evaluation, i.e. which is actually unknown for the solver but encodes the way
@@ -43,7 +42,6 @@ class Solver(ABC):
     :param env: environment the solver's forward simulations are based on.
     :param goal: goal state (position) of the robot (2).
     :param t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
-    :param verbose: debugging flag (-1: nothing, 0: logging, 1: +printing, 2: +plot scenes, 3: +plot optimization).
     :param multiprocessing: use multiprocessing for optimization.
     :param objectives: List of objective module names and according weights.
     :param constraints: List of constraint module names.
@@ -60,7 +58,6 @@ class Solver(ABC):
         constraints: List[str] = None,
         filter_module: str = FILTER_NO_FILTER,
         eval_env: GraphBasedEnvironment = None,
-        verbose: int = -1,
         config_name: str = CONFIG_UNKNOWN,
         **solver_params
     ):
@@ -76,7 +73,6 @@ class Solver(ABC):
         # Dictionary of solver parameters.
         self._solver_params = solver_params
         self._solver_params[PK_T_PLANNING] = t_planning
-        self._solver_params[PK_VERBOSE] = verbose
         self._solver_params[PK_CONFIG] = config_name
 
         # The objective and constraint functions (and their gradients) are packed into objectives, for a more compact
@@ -156,10 +152,9 @@ class Solver(ABC):
                 ado_trajectories = ado_trajectories[:, :, :k + 1, :].detach()
                 break
 
-        logging.debug(f"solver {self.name}: logging and visualizing trajectory optimization")
+        logging.debug(f"solver {self.name}: logging trajectory optimization")
         self.env.detach()
         self.log_summarize()
-        self.visualize_scenes(enforce=False, interactive=False)
         logging.debug(f"solver {self.name}: finishing up optimization process")
         return ego_trajectory_opt, ado_trajectories
 
@@ -183,7 +178,7 @@ class Solver(ABC):
             results = [self.optimize(z0, tag, **solver_kwargs) for z0, tag in initial_values]
 
         # Update optimization logging values for optimization results.
-        if self.verbose > -1:
+        if __debug__ is True:
             for i, (_, _, optimization_log) in enumerate(results):
                 self._log.update({key: x for key, x in optimization_log.items() if self.cores[i] in key})
 
@@ -325,7 +320,7 @@ class Solver(ABC):
         logging.debug(f"solver {self.name}:{tag} Objective function = {objective}")
         ado_planned = ado_planned_wo = torch.zeros(0)  # pseudo for ado_planned (only required for plotting)
 
-        if self.verbose > 2:
+        if __debug__ is True:
             ado_planned = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
             ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_trajectory.shape[0])
         self.log_append(ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo, tag=tag)
@@ -396,7 +391,7 @@ class Solver(ABC):
         raise NotImplementedError
 
     ###########################################################################
-    # Utility #################################################################
+    # Transformations #########################################################
     ###########################################################################
     @abstractmethod
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
@@ -414,6 +409,9 @@ class Solver(ABC):
     def ego_controls_to_z(self, ego_controls: torch.Tensor) -> np.ndarray:
         raise NotImplementedError
 
+    ###########################################################################
+    # Utility #################################################################
+    ###########################################################################
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES_DICT.keys() for name, _ in modules])
         assert all([0.0 <= weight for _, weight in modules])
@@ -432,7 +430,7 @@ class Solver(ABC):
     # Logging #################################################################
     ###########################################################################
     def intermediate_log(self, ego_controls_k: torch.Tensor):
-        if self.verbose > -1 and self.log is not None:
+        if __debug__ is True and self.log is not None:
             # For logging purposes unroll and predict the scene for the derived ego controls.
             ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
             self.log_append(ego_planned=ego_opt_planned, tag=LK_OPTIMAL)
@@ -478,11 +476,11 @@ class Solver(ABC):
 
         # Reset optimization log by re-creating dictionary with entries all keys in the planning horizon. During
         # optimization new values are then added to these created lists.
-        if self.verbose > -1:
+        if __debug__ is True:
             self._log = {f"{tag}_{k}": [] for k in range(log_horizon) for tag in self.log_keys_all()}
 
     def log_append(self, tag: str = TAG_DEFAULT, **kwargs):
-        if self.verbose > -1 and self.log is not None:
+        if __debug__ is True and self.log is not None:
             for key, value in kwargs.items():
                 x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()
                 self._log[f"{tag}/{key}_{self._iteration}"].append(x)
@@ -495,7 +493,7 @@ class Solver(ABC):
         e.g. the last value of the objective tensor `obj_overall` should be the smallest one. However it is hard to
         validate for the general logging key, therefore it is up to the user to implement it correctly.
         """
-        if self.verbose > -1:
+        if __debug__ is True:
             assert self.log is not None
             # Stack always the last values in the step-dictionaries (lists of logging values for each optimization
             # step), since it is assumed to be the most optimal one (e.g. for IPOPT).
@@ -520,8 +518,8 @@ class Solver(ABC):
     ###########################################################################
     def visualize_scenes(self, enforce: bool = False, interactive: bool = False, plot_path_only: bool = False):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
-        trajectories conditioned on the planned ego trajectory), if verbose > 1 or if `enforce = True`. """
-        if self.verbose > 1 or enforce:
+        trajectories conditioned on the planned ego trajectory), if __debug__ or if `enforce = True`. """
+        if __debug__ or enforce:
             from mantrap.evaluation.visualization import visualize
             assert self.log is not None
 
@@ -622,10 +620,6 @@ class Solver(ABC):
     @property
     def log(self) -> Dict[str, Union[torch.Tensor, List[torch.Tensor]]]:
         return self._log
-
-    @property
-    def verbose(self) -> bool:
-        return self._solver_params[PK_VERBOSE]
 
     @property
     def config_name(self) -> str:

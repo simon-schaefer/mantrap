@@ -47,7 +47,6 @@ class GraphBasedEnvironment(ABC):
     :param x_axis: environment environment limitation in x-direction.
     :param y_axis: environment environment limitation in y-direction.
     :param dt: environment time-step [s].
-    :param verbose: debugging flag (-1: nothing, 0: logging, 1: +printing, 2: +plot scenes, 3: +plot optimization).
     :param config_name: configuration name of initialized environment (for logging purposes only).
     """
 
@@ -99,12 +98,11 @@ class GraphBasedEnvironment(ABC):
         x_axis: Tuple[float, float] = ENV_X_AXIS_DEFAULT,
         y_axis: Tuple[float, float] = ENV_Y_AXIS_DEFAULT,
         dt: float = ENV_DT_DEFAULT,
-        verbose: int = -1,
         config_name: str = CONFIG_UNKNOWN
     ):
-        assert x_axis[0] < x_axis[1], "x axis must be in form (x_min, x_max)"
-        assert y_axis[0] < y_axis[1], "y axis must be in form (y_min, y_max)"
-        assert dt > 0.0, "time-step must be larger than 0"
+        assert x_axis[0] < x_axis[1]
+        assert y_axis[0] < y_axis[1]
+        assert dt > 0.0
 
         self._ego = ego_type(**ego_kwargs, is_robot=True, identifier=ID_EGO) if ego_type is not None else None
         self._ado_ghosts = []
@@ -117,7 +115,6 @@ class GraphBasedEnvironment(ABC):
         self._env_params[PK_X_AXIS] = x_axis
         self._env_params[PK_Y_AXIS] = y_axis
         self._env_params[PK_CONFIG] = config_name
-        self._env_params[PK_VERBOSE] = verbose
         self._dt = dt
         self._time = 0
 
@@ -682,7 +679,7 @@ class GraphBasedEnvironment(ABC):
         plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
         trajectory is repeated to the whole time horizon.
         """
-        if self.verbose > 1 or enforce:
+        if __debug__ is True or enforce:
             from mantrap.evaluation.visualization import visualize
             assert check_ego_trajectory(x=ego_trajectory)
             t_horizon = ego_trajectory.shape[0]
@@ -721,7 +718,7 @@ class GraphBasedEnvironment(ABC):
         plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
         trajectory is repeated to the whole time horizon.
         """
-        if self.verbose > 1 or enforce:
+        if __debug__ is True or enforce:
             from mantrap.evaluation.visualization import visualize
 
             # Predict the ado behaviour conditioned on the given ego trajectory.
@@ -804,10 +801,6 @@ class GraphBasedEnvironment(ABC):
     @property
     def axes(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         return self._env_params[PK_X_AXIS], self._env_params[PK_Y_AXIS]
-
-    @property
-    def verbose(self) -> int:
-        return self._env_params[PK_VERBOSE]
 
     @property
     def config_name(self) -> str:
