@@ -87,9 +87,7 @@ class DoubleIntegratorDTAgent(Agent):
         uy = 0.5 * d_vel * vy / v + vx * d_yaw
 
         # Ensure feasibility of control input given internal control limits.
-        lower, upper = self.control_limits()
-        ux = min(upper, max(lower, ux))
-        uy = min(upper, max(lower, uy))
+        ux, uy = self.make_controls_feasible_scalar(ux, uy)
 
         # Do simulation step, i.e. update agent with computed control input.
         px, py, vx, vy = self.dynamics_scalar(px, py, vx, vy, ux, uy, dt)

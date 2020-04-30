@@ -93,11 +93,7 @@ class Agent(ABC):
         assert dt > 0.0
 
         # Maximal control effort constraint.
-        _, control_limit = self.control_limits()
-        control_effort = torch.norm(action)
-        if control_effort > control_limit:
-            assert not torch.isinf(control_effort)
-            action = action / control_effort * control_limit
+        action = self.make_controls_feasible(controls=action)
 
         # Compute next state using internal dynamics.
         state_new = self.dynamics(self.state_with_time, action, dt=dt)
@@ -130,8 +126,13 @@ class Agent(ABC):
     # Trajectory ##############################################################
     ###########################################################################
     def unroll_trajectory(self, controls: torch.Tensor, dt: float) -> torch.Tensor:
-        """Build the trajectory from some controls and current state, by iteratively applying the model dynamics.
-        Thereby a perfect model i.e. without uncertainty and correct is assumed.
+        """Build the trajectory from some controls and current state, by iteratively applying the model
+        dynamics. Thereby a perfect model i.e. without uncertainty and correct is assumed.
+
+        To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
+        back-transformed to the controls, the same controls should occur. Therefore no checks for the
+        feasibility of the controls are made. Also this function is not updating the agent in fact,
+        it is rather determining the theoretical trajectory given the agent's dynamics and controls.
 
         :param controls: sequence of inputs to apply to the robot (N, input_size).
         :param dt: time interval [s] between discrete trajectory states.
@@ -157,6 +158,11 @@ class Agent(ABC):
     def roll_trajectory(self, trajectory: torch.Tensor, dt: float) -> torch.Tensor:
         """Determine the controls by iteratively applying the agent's model inverse dynamics.
         Thereby a perfect model i.e. without uncertainty and correct is assumed.
+
+        To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
+        back-transformed to the controls, the same controls should occur. Therefore no checks for the
+        feasibility of the controls are made. Also this function is not updating the agent in fact,
+        it is rather determining the theoretical trajectory given the agent's dynamics and controls.
 
         :param trajectory: sequence of states to apply to the robot (N, 4).
         :param dt: time interval [s] between discrete trajectory states.
@@ -228,6 +234,24 @@ class Agent(ABC):
         lower_checked = torch.all(torch.ge(controls, lower))
         upper_checked = torch.all(torch.le(controls, upper))
         return bool(lower_checked and upper_checked)
+
+    def make_controls_feasible(self, controls: torch.Tensor) -> torch.Tensor:
+        """Make controls feasible by clipping them between its lower and upper boundaries. Return
+        the transformed feasible controls. Since this is basically clamping each direction separately,
+        the overall direction of the control input might be changed !!
+        """
+        lower, upper = self.control_limits()
+        return controls.clamp(lower, upper)
+
+    def make_controls_feasible_scalar(self, control_x: float, control_y: float) -> Tuple[float, float]:
+        """Make single control feasible by clipping them between its lower and upper boundaries. Return
+        the transformed feasible controls. Since this is basically clamping each direction separately,
+        the overall direction of the control input might be changed !!
+        """
+        lower, upper = self.control_limits()
+        control_x = min(upper, max(lower, control_x))
+        control_y = min(upper, max(lower, control_y))
+        return control_x, control_y
 
     ###########################################################################
     # Reachability ############################################################
