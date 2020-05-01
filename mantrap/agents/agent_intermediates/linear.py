@@ -52,18 +52,15 @@ class LinearAgent(Agent, ABC):
     # Reachability ############################################################
     ###########################################################################
     def reachability_boundary(self, time_steps: int, dt: float) -> Circle:
-        """Double integrators cannot adapt their velocity instantly, but delayed by (instantly) changing
-        their acceleration in any direction. Similarly to the single integrator therefore the forward
-        reachable set within the number of time_steps is just a circle (in general ellipse, but agent is
-        assumed to be isotropic within this class, i.e. same bounds for both x- and y-direction), just
-        not around the current position, since the velocity the agent has acts as an "inertia", shifting
-        the center of the circle. The radius of the circle results from the double integrator dynamics,
-        the change of position with altering the acceleration to be exact. With `T = time_steps * dt`
-        being the time horizon, the reachability bounds are determined for, the circle has the following
-        parameters:
+        """Generally for linear agents the N-th can be easily expressed in terms of the controls and the
+        initial state by nesting the linear dynamics, resulting in
 
-        .. math:: center = x(0) + v(0) * T
-        .. math:: radius = 0.5 * a_{max} * T^2
+        .. math:: x_{i + N} = A^N x_i + \sum_{k = 0}^{N - 1} A^{N - k - 1} B u_{i + k}
+
+        Also linear agents are assumed to behave isotropic (here), i.e. the control input can change its direction
+        instantly and without limitation. Therefore the forward reachable set within the number of time_steps is
+        just a circle (in general ellipse, but agent has same control bounds for both x- and y-direction) around
+        the current position, with radius being the maximal allowed agent speed.
 
         :param time_steps: number of discrete time-steps in reachable time-horizon.
         :param dt: time interval which is assumed to be constant over full path sequence [s].
@@ -86,20 +83,3 @@ class LinearAgent(Agent, ABC):
             x_n_dict[name] = x_n[0] if "x_" in name else x_n[1]
 
         return Circle.from_min_max_2d(**x_n_dict)
-
-
-    # def reachability_boundary(self, time_steps: int, dt: float) -> Circle:
-    #     """Single integrators can adapt their velocity instantly in any direction. Therefore the forward
-    #     reachable set within the number of time_steps is just a circle (in general ellipse, but agent is
-    #     assumed to be isotropic within this class, i.e. same control bounds for both x- and y-direction)
-    #     around the current position, with radius being the maximal allowed agent speed.
-    #     With `T = time_steps * dt` being the time horizon, the reachability bounds are determined for,
-    #     the circle has the following parameters:
-    #
-    #     .. math:: center = x(0)
-    #     .. math:: radius = v_{max} * T
-    #
-    #     :param time_steps: number of discrete time-steps in reachable time-horizon.
-    #     :param dt: time interval which is assumed to be constant over full path sequence [s].
-    #     """
-    #     return Circle(center=self.position, radius=self.speed_max * dt * time_steps)

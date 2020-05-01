@@ -302,12 +302,6 @@ class Solver(ABC):
     def is_unconstrained(self) -> bool:
         return len(self._constraint_modules.keys()) == 0
 
-    def optimization_variable_bounds(self) -> Tuple[List, List]:
-        lower, upper = self._env.ego.control_limits()
-        lb = (np.ones(self.num_optimization_variables()) * lower).tolist()
-        ub = (np.ones(self.num_optimization_variables()) * upper).tolist()
-        return lb, ub
-
     ###########################################################################
     # Problem formulation - Objective #########################################
     ###########################################################################
