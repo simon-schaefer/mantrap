@@ -353,14 +353,14 @@ class Agent(ABC):
         speed: float,
         dt: float
     ) -> Tuple[Tuple[float, float, float, float], Tuple[float, float]]:
-        """Determine and execute the controls for going for the given state to some target point with respect to
-        the internal dynamics.
+        """Determine and execute the controls for going for the given state to some target point with respect
+        to the internal dynamics.
 
         :param state: pos_and_vel_only state vector i.e. (px, py, vx, vy) for starting state.
         :param target_point: 2D target point (px, py).
         :param speed: preferable speed for state update [m/s].
         :param dt: update time interval [s].
-        :return updated state at t = t0 + dt and used (cardinal) control input.
+        :returns: updated state at t = t0 + dt and used (cardinal) control input.
         """
         raise NotImplementedError
 
