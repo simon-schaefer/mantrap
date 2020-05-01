@@ -3,8 +3,9 @@ mantrap
 
 Minimal interferring Interactive Risk-aware Planning for multimodal and time-evolving obstacle behaviour
 
-## Description
-Planning safe human-robot interaction is a necessary towards the widespread integration of autonomous systems in the 
+Description
+-----------
+Planning safe human-robot interaction is a necessary towards the widespread integration of autonomous systems in the
 society. However, while instinctive to humans, socially compliant navigation is still difficult to quantify due to the 
 stochasticity in people’s behaviors. Previous approaches have either strongly simplified the multimodal and time-varying
 behaviour of humans, applied hardly tractable methods lacking safety guarantees or were simply not computationally 

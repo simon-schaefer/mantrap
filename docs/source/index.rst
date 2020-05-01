@@ -1,7 +1,5 @@
 .. mantrap documentation master file, created by
 
-mantrap
-=======================================
 .. include:: ../../README.rst
 
 .. toctree::
