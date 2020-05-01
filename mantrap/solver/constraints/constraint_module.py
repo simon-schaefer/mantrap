@@ -45,12 +45,8 @@ class ConstraintModule(ABC):
         constraints = constraints.detach().numpy() if constraints is not None else np.array([])
         return self._return_constraint(constraints)
 
-    def jacobian(
-        self,
-        ego_trajectory: torch.Tensor,
-        grad_wrt: torch.Tensor = None,
-        ado_ids: List[str] = None
-    ) -> np.ndarray:
+    def jacobian(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor = None, ado_ids: List[str] = None
+                 ) -> np.ndarray:
         """Determine jacobian matrix for passed ego trajectory. Therefore determine the constraint values by
         calling the internal `compute()` method and en passant build a computation graph. Then using the pytorch
         autograd library compute the jacobian matrix through the previously built computation graph.
@@ -86,7 +82,6 @@ class ConstraintModule(ABC):
                     grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)[0]
                     jacobian[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
             jacobian = jacobian.detach().numpy()
-
         return jacobian
 
     @abstractmethod
