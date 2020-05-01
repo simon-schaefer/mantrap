@@ -122,6 +122,8 @@ class Solver(ABC):
         for ghost in self.env.ghosts:
             m_ado, m_mode = self.env.convert_ghost_id(ghost_id=ghost.id)
             ado_trajectories[m_ado, 0, 0, :] = ghost.agent.state_with_time
+
+        # Initial evaluation of objective and constraint function as solver baseline.
         for z0, tag in zip(self.initial_values(), self.cores):
             self.objective(z=z0.detach().numpy(), tag=tag)
             self.constraints(z=z0.detach().numpy(), tag=tag)
@@ -148,8 +150,8 @@ class Solver(ABC):
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
             if torch.norm(ego_state[0:2] - self.goal) < SOLVER_GOAL_END_DISTANCE:
-                ego_trajectory_opt = ego_trajectory_opt[:k + 1, :].detach()
-                ado_trajectories = ado_trajectories[:, :, :k + 1, :].detach()
+                ego_trajectory_opt = ego_trajectory_opt[:k + 2, :].detach()
+                ado_trajectories = ado_trajectories[:, :, :k + 2, :].detach()
                 break
 
         logging.debug(f"solver {self.name}: logging trajectory optimization")
@@ -167,13 +169,22 @@ class Solver(ABC):
         :return: optimization dictionary of solution (containing objective, infeasibility scores, etc.).
         """
         logging.debug(f"solver: solving optimization problem in parallel = {multiprocessing}")
-        # Solve optimisation problem for each initial condition, either in multiprocessing or sequential.
-        initial_values = list(zip(self.initial_values(), self.cores))
+
+        # Find initial values for optimization variable and assign one to each core.
+        z0s = self.initial_values()
+        assert z0s.shape[0] == len(self.cores)
+        initial_values = list(zip(z0s, self.cores))
         logging.debug(f"solver: initial values = {initial_values}")
 
+        # Solve optimisation problem for each initial condition, either in multiprocessing or sequential.
+        # Requiring shared memory allows to run code in optimized manner over multiple processes, e.g. by
+        # sharing the "__debug__" flag between all processes. Also the processes do not change shared by
+        # (or making a deepcopy), so copying to every process the whole memory is not efficient (neither
+        # required at all).
         if multiprocessing:
-            results = joblib.Parallel(n_jobs=8)(joblib.delayed(self.optimize)
-                                                (z0, tag, **solver_kwargs) for z0, tag in initial_values)
+            results = joblib.Parallel(n_jobs=8, require="sharedmem")(joblib.delayed(self.optimize)
+                                                                     (z0, tag, **solver_kwargs)
+                                                                     for z0, tag in initial_values)
         else:
             results = [self.optimize(z0, tag, **solver_kwargs) for z0, tag in initial_values]
 
@@ -248,7 +259,6 @@ class Solver(ABC):
 
                 # Spline interpolation to build "continuous" path.
                 reference_path = spline_interpolation(control_points, num_samples=self.planning_horizon)
-                logging.debug(f"solver: initial reference path = {reference_path}")
 
                 # Determine controls to track the given trajectory. Afterwards check whether the determined
                 # controls are feasible in terms of the control limits of the ego agent.
@@ -269,13 +279,17 @@ class Solver(ABC):
                     controls = torch.cat((controls, delta_zeros), dim=0)
                 assert check_ego_controls(controls, t_horizon=self.planning_horizon)
                 assert self.env.ego.check_feasibility_controls(controls)
-                logging.debug(f"solver: initial control values = {controls}")
 
                 # Transform controls to z variable.
                 z0s.append(self.ego_controls_to_z(controls))
 
         z0s = torch.from_numpy(np.array(z0s)).view(3, -1)
+        logging.debug(f"solver: initial values z = {z0s}")
         return z0s if not just_one else z0s[1, :, :]
+
+    @staticmethod
+    def num_initial_values() -> int:
+        return 3
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
@@ -516,16 +530,18 @@ class Solver(ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_scenes(self, enforce: bool = False, interactive: bool = False, plot_path_only: bool = False):
+    def visualize_scenes(self, enforce: bool = False, plot_path_only: bool = False):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory), if __debug__ or if `enforce = True`. """
         if __debug__ or enforce:
+            from mantrap.utility.io import is_running_from_ipython
             from mantrap.evaluation.visualization import visualize
             assert self.log is not None
 
             # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
             # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
             # to None (interactive mode) or to an actual path (storing mode).
+            interactive = is_running_from_ipython()
             if not interactive:
                 output_path = build_os_path(VISUALIZATION_DIRECTORY, make_dir=True, free=False)
                 output_path = os.path.join(output_path, f"{self.name}:{self.env.name}:{LK_OPTIMAL}")
@@ -608,7 +624,7 @@ class Solver(ABC):
     ###########################################################################
     @property
     def cores(self) -> List[str]:
-        return [f"core{i}" for i in range(self.initial_values().shape[0])]
+        return [f"core{i}" for i in range(self.num_initial_values())]
 
     @property
     def core_opt(self) -> str:

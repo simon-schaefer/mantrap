@@ -39,3 +39,9 @@ def load_functions_from_module(module: str, prefix: str = None) -> Dict[str, Cal
         else:
             function_dict[function_name] = function_tuple[1]
     return function_dict
+
+
+def is_running_from_ipython():
+    """Determine whether code running in jupyter notebook."""
+    from IPython import get_ipython
+    return get_ipython() is not None

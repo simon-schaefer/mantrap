@@ -4,6 +4,8 @@ import sys
 import numpy as np
 import torch
 
+from mantrap.utility.io import is_running_from_ipython
+
 
 def remove_bytes_from_logging(fn):
     """Remove weird IPOPT callbacks logging output (byte strings) from log."""
@@ -23,7 +25,7 @@ torch.set_default_dtype(torch.float32)
 # Logging preferences #################
 #######################################
 logging.StreamHandler.emit = remove_bytes_from_logging(logging.StreamHandler.emit)
-logging.basicConfig(level=logging.DEBUG if __debug__ is True else logging.DEBUG,
+logging.basicConfig(level=logging.DEBUG if (__debug__ is True or is_running_from_ipython()) else logging.WARNING,
                     format="[%(asctime)-8s:%(msecs)03d %(levelname)-6s] %(message)-s",
                     datefmt="%H:%M:%S")
 logging.getLogger("matplotlib").setLevel(logging.ERROR)

@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from mantrap.constants import *
-from mantrap.agents import IntegratorDTAgent
+from mantrap.agents import DoubleIntegratorDTAgent, IntegratorDTAgent
 from mantrap.environment import ENVIRONMENTS
 from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver import *
@@ -229,3 +229,13 @@ class TestIPOPTSolvers:
             comp_times_jacobian.append(time.time() - start_time)
         assert np.mean(comp_times_jacobian) < 0.08 * num_modes  # faster than 13 Hz (!)
         assert np.mean(comp_times_gradient) < 0.08 * num_modes  # faster than 13 Hz (!)
+
+
+@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+def test_ignoring_solver(env_class):
+    env = env_class(DoubleIntegratorDTAgent, {"position": torch.tensor([-3, 0]), "velocity": torch.ones(2)})
+    solver = IgnoringSolver(env, goal=torch.tensor([7, 0]), t_planning=3)
+    ego_trajectory, _ = solver.solve(time_steps=40, multiprocessing=False)
+
+    # Check whether goal has been reached in acceptable closeness.
+    assert torch.all(torch.isclose(ego_trajectory[-1, 0:2], solver.goal, atol=SOLVER_GOAL_END_DISTANCE))

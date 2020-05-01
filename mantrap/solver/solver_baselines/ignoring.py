@@ -28,6 +28,10 @@ class IgnoringSolver(IPOPTIntermediate, ZControlIntermediate):
         z0s = super(IgnoringSolver, self).initial_values(just_one=just_one)
         return z0s[1:2, :] if not just_one else z0s
 
+    @staticmethod
+    def num_initial_values() -> int:
+        return 1
+
     ###########################################################################
     # Optimization formulation - Objective ####################################
     ###########################################################################

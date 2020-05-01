@@ -82,6 +82,10 @@ class ORCASolver(ZControlIntermediate):
         z0 = torch.zeros((1, self.planning_horizon, 2))
         return z0 if not just_one else z0[0, :, :]
 
+    @staticmethod
+    def num_initial_values() -> int:
+        return 1
+
     ###########################################################################
     # Problem formulation - Formulation #######################################
     ###########################################################################

@@ -9,7 +9,6 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.constants import *
-from mantrap.utility.io import build_os_path
 from mantrap.utility.shaping import (
     check_ego_action,
     check_ego_controls,
@@ -670,7 +669,7 @@ class GraphBasedEnvironment(ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_prediction(self, ego_trajectory: torch.Tensor, enforce: bool = False, interactive: bool = False):
+    def visualize_prediction(self, ego_trajectory: torch.Tensor, enforce: bool = False):
         """Visualize the predictions for the scene based on the given ego trajectory.
 
         In order to be use the general `visualize()` function defined in the `mantrap.evaluation` - package the ego
@@ -706,10 +705,10 @@ class GraphBasedEnvironment(ABC):
                 ado_planned_wo=ado_stretched_wo,
                 plot_path_only=True,
                 env=self,
-                file_path=self._visualize_output_format(interactive=interactive, name="prediction")
+                file_path=self._visualize_output_format(name="prediction")
             )
 
-    def visualize_prediction_wo_ego(self, t_horizon: int, enforce: bool = False, interactive: bool = False):
+    def visualize_prediction_wo_ego(self, t_horizon: int, enforce: bool = False):
         """Visualize the predictions for the scene based on the given ego trajectory.
 
         In order to be use the general `visualize()` function defined in the `mantrap.evaluation` - package the ego
@@ -730,13 +729,15 @@ class GraphBasedEnvironment(ABC):
                 ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
                 ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
 
-            output_path = self._visualize_output_format(interactive=interactive, name="prediction_wo_ego")
+            output_path = self._visualize_output_format(name="prediction_wo_ego")
             return visualize(ado_planned_wo=ado_stretched_wo, plot_path_only=True, env=self, file_path=output_path)
 
-    def _visualize_output_format(self, interactive: bool, name: str) -> Union[str, None]:
+    def _visualize_output_format(self, name: str) -> Union[str, None]:
         """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
         # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
         # to None (interactive mode) or to an actual path (storing mode). """
+        from mantrap.utility.io import build_os_path, is_running_from_ipython
+        interactive = is_running_from_ipython()
         if not interactive:
             output_path = build_os_path(VISUALIZATION_DIRECTORY, make_dir=True, free=False)
             output_path = os.path.join(output_path, f"{self.name}_{name}")

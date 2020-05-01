@@ -16,7 +16,7 @@ class ZControlIntermediate(Solver, ABC):
         return 2 * self.planning_horizon
 
     ###########################################################################
-    # Utility #################################################################
+    # Transformations #########################################################
     ###########################################################################
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
         ego_controls = torch.from_numpy(z).view(self.planning_horizon, 2)
