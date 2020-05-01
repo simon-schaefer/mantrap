@@ -38,7 +38,7 @@ class Trajectron(GraphBasedEnvironment):
         **env_kwargs
     ):
         # Load trajectron configuration dictionary and check against inputs.
-        self._config = self.load_and_check_configuration(config_path=build_os_path("config/trajectron.json"))
+        self._config = self.load_and_check_configuration(config_path=build_os_path("mantrap/trajectron.json"))
         assert dt == self.config["dt"]
 
         # Initialize environment mother class.
@@ -366,7 +366,7 @@ class Trajectron(GraphBasedEnvironment):
         from argument_parser import args
 
         # Load configuration files.
-        config = {"trajectron_model_path": build_os_path(f"config/trajectron_models/{TRAJECTRON_MODEL[0]}"),
+        config = {"trajectron_model_path": build_os_path(f"external/trajectron_models/{TRAJECTRON_MODEL[0]}"),
                   "trajectron_model_iteration": TRAJECTRON_MODEL[1]}
         with open(config_path) as trajectron_config_file:
             config.update(json.load(trajectron_config_file))

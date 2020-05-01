@@ -38,3 +38,6 @@ outputs/
 
 # Documentation files.
 *.pptx
+
+# Dataset files.
+ewap_dataset/
