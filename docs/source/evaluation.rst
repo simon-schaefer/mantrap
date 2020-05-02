@@ -6,7 +6,6 @@ Metrics
 .. automodule:: mantrap.evaluation.metrics
     :members:
 
-Scenarios
+Dataset API
 ----------------------------
-.. automodule:: mantrap_evaluation.scenarios
-    :members:
+.. include:: ../../mantrap_evaluation/datasets/README.rst
