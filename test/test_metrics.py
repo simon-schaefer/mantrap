@@ -3,7 +3,7 @@ import pytest
 
 from mantrap.agents import DoubleIntegratorDTAgent
 from mantrap.environment import ENVIRONMENTS
-from mantrap.evaluation.metrics import *
+from mantrap_evaluation.metrics import *
 from mantrap.utility.maths import straight_line
 
 

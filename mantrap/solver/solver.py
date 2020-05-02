@@ -529,7 +529,7 @@ class Solver(ABC):
         trajectories conditioned on the planned ego trajectory), if __debug__ or if `enforce = True`. """
         if __debug__ or enforce:
             from mantrap.utility.io import is_running_from_ipython
-            from mantrap.evaluation.visualization import visualize
+            from mantrap.visualization import visualize
             assert self.log is not None
 
             # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,

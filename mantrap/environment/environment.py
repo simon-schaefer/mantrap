@@ -672,14 +672,14 @@ class GraphBasedEnvironment(ABC):
     def visualize_prediction(self, ego_trajectory: torch.Tensor, enforce: bool = False):
         """Visualize the predictions for the scene based on the given ego trajectory.
 
-        In order to be use the general `visualize()` function defined in the `mantrap.evaluation` - package the ego
+        In order to be use the general `visualize()` function defined in the `mantrap.visualization` - package the ego
         and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
         visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
         plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
         trajectory is repeated to the whole time horizon.
         """
         if __debug__ is True or enforce:
-            from mantrap.evaluation.visualization import visualize
+            from mantrap.visualization import visualize
             assert check_ego_trajectory(x=ego_trajectory)
             t_horizon = ego_trajectory.shape[0]
 
@@ -711,14 +711,14 @@ class GraphBasedEnvironment(ABC):
     def visualize_prediction_wo_ego(self, t_horizon: int, enforce: bool = False):
         """Visualize the predictions for the scene based on the given ego trajectory.
 
-        In order to be use the general `visualize()` function defined in the `mantrap.evaluation` - package the ego
+        In order to be use the general `visualize()` function defined in the `mantrap.visualization` - package the ego
         and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
         visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
         plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
         trajectory is repeated to the whole time horizon.
         """
         if __debug__ is True or enforce:
-            from mantrap.evaluation.visualization import visualize
+            from mantrap.visualization import visualize
 
             # Predict the ado behaviour conditioned on the given ego trajectory.
             ado_trajectories_wo = self.predict_wo_ego(t_horizon=t_horizon)
