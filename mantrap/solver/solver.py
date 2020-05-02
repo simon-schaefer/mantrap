@@ -248,12 +248,12 @@ class Solver(ABC):
             z0s = []
 
             ego_pos, goal = self.env.ego.position, self.goal  # local variables for speed up looping
-            eg_distance = torch.norm(goal - ego_pos)  # distance between ego and goal
-            eg_direction = goal - ego_pos / eg_distance  # ego-goal-direction vector
+            ego_distance = torch.norm(goal - ego_pos)  # distance between ego and goal
+            ego_direction = goal - ego_pos / ego_distance  # ego-goal-direction vector
             normal = normal_line(ego_pos, goal)  # normal line to vector from ego to goal
 
-            for i, distance in enumerate([- eg_distance / 2, 0.0, eg_distance / 2.0]):
-                control_points = [ego_pos + eg_direction * eg_distance * f_point + f_distance * distance * normal
+            for i, distance in enumerate([- ego_distance / 2, 0.0, ego_distance / 2.0]):
+                control_points = [ego_pos + ego_direction * ego_distance * f_point + f_distance * distance * normal
                                   for f_point, f_distance in [(0, 0), (0.25, 0.5), (0.5, 1), (0.75, 0.5), (1, 0.0)]]
                 control_points = torch.stack(control_points, dim=0)
 
