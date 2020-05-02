@@ -1,0 +1,419 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Solver &#8212; mantrap 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Constraint Modules" href="constraints.html" />
+    <link rel="prev" title="Environment" href="environment.html" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head><body>
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="constraints.html" title="Constraint Modules"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="environment.html" title="Environment"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="solver">
+<h1>Solver<a class="headerlink" href="#solver" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-mantrap.solver.solver">
+<span id="abstract-solver"></span><h2>Abstract Solver<a class="headerlink" href="#module-mantrap.solver.solver" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.solver.Solver">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.solver.</code><code class="sig-name descname">Solver</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">t_planning</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">objectives</span><span class="p">:</span> <span class="n">List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">constraints</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filter_module</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'no_filter'</span></em>, <em class="sig-param"><span class="n">eval_env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">solver_params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.solver.Solver" title="Permalink to this definition">¶</a></dt>
+<dd><p>General abstract solver implementation.</p>
+<p>The idea of this general implementation is that in order to build a solver class only the <cite>optimize()</cite> method
+has to be implemented, that determines the “optimal” value for the optimization variable given its initial value
+and the internally stored scene, while the general solver implementation deals with multi-threading and provides
+methods for computing the objective and constraint values (given a list of modules which should be taken into
+account, see below).</p>
+<p>Initialise solver class by building objective and constraint modules as defined within the specific
+definition of the (optimisation) problem.</p>
+<p>Internally, the solver stores two environments, the environment it uses for planning (optimization etc) and
+the environment it uses for evaluation, i.e. which is actually unknown for the solver but encodes the way
+the scene actually changes from one time-step to another. If <cite>eval_env = None</cite> the planning and evaluation
+environment are the same.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – environment the solver’s forward simulations are based on.</p></li>
+<li><p><strong>goal</strong> – goal state (position) of the robot (2).</p></li>
+<li><p><strong>t_planning</strong> – planning horizon, i.e. how many future time-steps shall be taken into account in planning.</p></li>
+<li><p><strong>multiprocessing</strong> – use multiprocessing for optimization.</p></li>
+<li><p><strong>objectives</strong> – List of objective module names and according weights.</p></li>
+<li><p><strong>constraints</strong> – List of constraint module names.</p></li>
+<li><p><strong>filter_module</strong> – Filter module name (None = no filter).</p></li>
+<li><p><strong>eval_env</strong> – environment that should be used for evaluation (“real” environment).</p></li>
+<li><p><strong>config_name</strong> – name of solver configuration.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.constraints">
+<code class="sig-name descname">constraints</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">z</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'opt'</span></em>, <em class="sig-param"><span class="n">return_violation</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.solver.solver.Solver.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine constraints vector for some optimization vector <cite>z</cite>.</p>
+<p>This function generally defines the constraints vector for some input optimization vector <cite>z</cite>, and some
+list of ados that should be taken into account in this computation. Therefore all constraint modules
+are called, their results are concatenated.</p>
+<p>For logging purposes additionally the overall constraints violation, i.e. a scalar value representing the
+amount of how much each constraint is violated (zero if constraint is not active), summed over all
+constraints, is determined and logged, together with the violation by constraint module. Since the
+optimization parameters itself already have been logged in the <cite>objective()</cite> method, there are not logged
+within the <cite>constraints()</cite> method.</p>
+<p>If the optimization is unconstrained, an empty constraint vector as well as zero violation are returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> – optimization vector (shape depends on exact optimization formulation).</p></li>
+<li><p><strong>ado_ids</strong> – identifiers of ados that should be taken into account during optimization.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+<li><p><strong>return_violation</strong> – flag whether to return the overall constraint violation value as well.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>constraints vector w.r.t. <cite>z</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.constraints_defaults">
+<em class="property">static </em><code class="sig-name descname">constraints_defaults</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>str<span class="p">]</span><a class="headerlink" href="#mantrap.solver.solver.Solver.constraints_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of default constraints modules that should be taken into account during optimization (can be
+overwritten during solver initialization <cite>constraints</cite> - argument.</p>
+<p>Format: [constraint_name, …]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.determine_ego_controls">
+<code class="sig-name descname">determine_ego_controls</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">multiprocessing</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">solver_kwargs</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.solver.solver.Solver.determine_ego_controls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the ego control inputs for the internally stated problem and the current state of the environment.
+The implementation crucially depends on the solver class itself and is hence not implemented here.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>multiprocessing</strong> – use multiple threads for solving with each initial value in parallel.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>ego_controls: control inputs of ego agent for whole planning horizon.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>optimization dictionary of solution (containing objective, infeasibility scores, etc.).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.initial_values">
+<code class="sig-name descname">initial_values</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">just_one</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.solver.solver.Solver.initial_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize with three primitives, going from the current ego position to the goal point, following
+square shapes. The middle one (index = 1) is a straight line, the other two have some curvature,
+one positive and the other one negative curvature. When just one initial trajectory should be returned,
+then return straight line trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>just_one</strong> – flag whether to return just one trajectory or multiple.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.initialize">
+<code class="sig-name descname">initialize</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">solver_params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.solver.Solver.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method can be overwritten when further initialization is required.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.log_summarize">
+<code class="sig-name descname">log_summarize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.solver.Solver.log_summarize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summarize optimisation-step dictionaries to a single tensor per logging key, e.g. collapse all objective
+value tensors for k = 1, 2, …, N to one tensor for the whole optimisation process.</p>
+<p>Attention: It is assumed that the last value of each series is the optimal value for this kth optimisation,
+e.g. the last value of the objective tensor <cite>obj_overall</cite> should be the smallest one. However it is hard to
+validate for the general logging key, therefore it is up to the user to implement it correctly.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.objective">
+<code class="sig-name descname">objective</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">z</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'opt'</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.solver.solver.Solver.objective" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine objective value for some optimization vector <cite>z</cite>.</p>
+<p>This function generally defines the value of the objective function for some input optimization vector <cite>z</cite>,
+and some input list of ados that should be taken into account in this computation. Therefore all objective
+modules are called, their results are summed (module-internally weighted).</p>
+<p>Since the objective function is the only overlap between all solver classes, for logging purposes (and
+if the required verbosity level is met), after deriving the objective value the current optimization vector
+is logged, after being transformed into an understandable format (ego trajectory). Also the other parameters
+such as the objective values for every objective module are logged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> – optimization vector (shape depends on exact optimization formulation).</p></li>
+<li><p><strong>ado_ids</strong> – identifiers of ados that should be taken into account during optimization.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>weighted sum of objective values w.r.t. <cite>z</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.objective_defaults">
+<em class="property">static </em><code class="sig-name descname">objective_defaults</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.solver.solver.Solver.objective_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of default objective modules that should be taken into account during optimization (can be
+overwritten during solver initialization <cite>objectives</cite> - argument.</p>
+<p>Format: [(objective_name, weight), (…), …]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.solve">
+<code class="sig-name descname">solve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_steps</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">multiprocessing</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">solver_kwargs</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.solver.solver.Solver.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the ego trajectory given the internal environment with the current scene as initial condition.
+Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
+and the derived ego policy and repeat until t_k = <cite>horizon</cite> or until the goal has been reached.</p>
+<p>This method changes the internal environment by forward simulating it over the prediction horizon.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time_steps</strong> – how many time-steps shall be solved (not planning horizon !).</p></li>
+<li><p><strong>multiprocessing</strong> – use multiple threads for solving with each initial value in parallel.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>derived ego trajectory [horizon + 1, 5].</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>derived actual ado trajectories [num_ados, 1, horizon + 1, 5].</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver.Solver.visualize_scenes">
+<code class="sig-name descname">visualize_scenes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">enforce</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">plot_path_only</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.solver.Solver.visualize_scenes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
+trajectories conditioned on the planned ego trajectory), if __debug__ or if <cite>enforce = True</cite>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.solver.sgrad">
+<span id="s-grad-ipopt"></span><h2>S-GRAD-IPOPT<a class="headerlink" href="#module-mantrap.solver.sgrad" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.sgrad.SGradSolver">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.sgrad.</code><code class="sig-name descname">SGradSolver</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">t_planning</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">objectives</span><span class="p">:</span> <span class="n">List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">constraints</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filter_module</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'no_filter'</span></em>, <em class="sig-param"><span class="n">eval_env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">solver_params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.sgrad.SGradSolver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shooting NLP using IPOPT solver.</p>
+<div class="math notranslate nohighlight">
+\[z = controls\]</div>
+<div class="math notranslate nohighlight">
+\[J(z) = J_{goal} + J_{interaction}\]</div>
+<div class="math notranslate nohighlight">
+\[C(z) = [C_{max-speed}, C_{min-distance}]\]</div>
+<dl class="py method">
+<dt id="mantrap.solver.sgrad.SGradSolver.constraints_defaults">
+<em class="property">static </em><code class="sig-name descname">constraints_defaults</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>str<span class="p">]</span><a class="headerlink" href="#mantrap.solver.sgrad.SGradSolver.constraints_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of default constraints modules that should be taken into account during optimization (can be
+overwritten during solver initialization <cite>constraints</cite> - argument.</p>
+<p>Format: [constraint_name, …]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.sgrad.SGradSolver.objective_defaults">
+<em class="property">static </em><code class="sig-name descname">objective_defaults</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.solver.sgrad.SGradSolver.objective_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of default objective modules that should be taken into account during optimization (can be
+overwritten during solver initialization <cite>objectives</cite> - argument.</p>
+<p>Format: [(objective_name, weight), (…), …]</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.solver.solver_baselines.orca">
+<span id="baselines-orca"></span><h2>Baselines - ORCA<a class="headerlink" href="#module-mantrap.solver.solver_baselines.orca" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.solver_baselines.orca.ORCASolver">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.solver_baselines.orca.</code><code class="sig-name descname">ORCASolver</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">t_planning</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">objectives</span><span class="p">:</span> <span class="n">List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">constraints</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filter_module</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'no_filter'</span></em>, <em class="sig-param"><span class="n">eval_env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">solver_params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.solver_baselines.orca.ORCASolver" title="Permalink to this definition">¶</a></dt>
+<dd><p>ORCA-based solver.</p>
+<p>Based on the ORCA algorithm defined in <cite>ORCAEnvironment</cite> this solver finds the optimal trajectory by
+introducing the ego agent as another “normal” agent in the scene, solving for the optimal velocity update
+for every agent in the scene (by following the ORCA algorithm and assumptions) and returning the velocity
+which is associated to the agent representing the ego agent.</p>
+<dl class="py method">
+<dt id="mantrap.solver.solver_baselines.orca.ORCASolver.constraints_defaults">
+<em class="property">static </em><code class="sig-name descname">constraints_defaults</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>str<span class="p">]</span><a class="headerlink" href="#mantrap.solver.solver_baselines.orca.ORCASolver.constraints_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of default constraints modules that should be taken into account during optimization (can be
+overwritten during solver initialization <cite>constraints</cite> - argument.</p>
+<p>Format: [constraint_name, …]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver_baselines.orca.ORCASolver.initial_values">
+<code class="sig-name descname">initial_values</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">just_one</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.solver.solver_baselines.orca.ORCASolver.initial_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>As explained in <cite>_optimize()</cite> the optimization is independent from the initial value of z, therefore
+only return one value, to enforce single-threaded computations.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver_baselines.orca.ORCASolver.initialize">
+<code class="sig-name descname">initialize</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">solver_params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.solver_baselines.orca.ORCASolver.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method can be overwritten when further initialization is required.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver_baselines.orca.ORCASolver.objective_defaults">
+<em class="property">static </em><code class="sig-name descname">objective_defaults</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.solver.solver_baselines.orca.ORCASolver.objective_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of default objective modules that should be taken into account during optimization (can be
+overwritten during solver initialization <cite>objectives</cite> - argument.</p>
+<p>Format: [(objective_name, weight), (…), …]</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.solver.solver_baselines.ignoring">
+<span id="baselines-ignoring"></span><h2>Baselines - Ignoring<a class="headerlink" href="#module-mantrap.solver.solver_baselines.ignoring" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.solver_baselines.ignoring.IgnoringSolver">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.solver_baselines.ignoring.</code><code class="sig-name descname">IgnoringSolver</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">t_planning</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">objectives</span><span class="p">:</span> <span class="n">List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">constraints</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filter_module</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'no_filter'</span></em>, <em class="sig-param"><span class="n">eval_env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">solver_params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.solver_baselines.ignoring.IgnoringSolver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shooting NLP using IPOPT solver.</p>
+<div class="math notranslate nohighlight">
+\[z = controls\]</div>
+<div class="math notranslate nohighlight">
+\[J(z) = J_{goal}\]</div>
+<div class="math notranslate nohighlight">
+\[C(z) = [C_{max-speed}]\]</div>
+<dl class="py method">
+<dt id="mantrap.solver.solver_baselines.ignoring.IgnoringSolver.constraints_defaults">
+<em class="property">static </em><code class="sig-name descname">constraints_defaults</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>str<span class="p">]</span><a class="headerlink" href="#mantrap.solver.solver_baselines.ignoring.IgnoringSolver.constraints_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of default constraints modules that should be taken into account during optimization (can be
+overwritten during solver initialization <cite>constraints</cite> - argument.</p>
+<p>Format: [constraint_name, …]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver_baselines.ignoring.IgnoringSolver.initial_values">
+<code class="sig-name descname">initial_values</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">just_one</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.solver.solver_baselines.ignoring.IgnoringSolver.initial_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>For this solver only the goal distance is the objective to be minimized. Going there is
+fast as possible is following a straight line from start to goal, with maximal velocity
+which happens to be the second entry of the superclasses <cite>z0s_default()</cite> methods return.
+Having multiple starting positions does not make sense, since we know that this is the
+given the solvers objective, going straight is optimal !</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.solver_baselines.ignoring.IgnoringSolver.objective_defaults">
+<em class="property">static </em><code class="sig-name descname">objective_defaults</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.solver.solver_baselines.ignoring.IgnoringSolver.objective_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of default objective modules that should be taken into account during optimization (can be
+overwritten during solver initialization <cite>objectives</cite> - argument.</p>
+<p>Format: [(objective_name, weight), (…), …]</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Solver</a><ul>
+<li><a class="reference internal" href="#module-mantrap.solver.solver">Abstract Solver</a></li>
+<li><a class="reference internal" href="#module-mantrap.solver.sgrad">S-GRAD-IPOPT</a></li>
+<li><a class="reference internal" href="#module-mantrap.solver.solver_baselines.orca">Baselines - ORCA</a></li>
+<li><a class="reference internal" href="#module-mantrap.solver.solver_baselines.ignoring">Baselines - Ignoring</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="environment.html"
+                        title="previous chapter">Environment</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="constraints.html"
+                        title="next chapter">Constraint Modules</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/solver.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="constraints.html" title="Constraint Modules"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="environment.html" title="Environment"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Simon Schaefer.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+    </div>
+  </body>
+</html>

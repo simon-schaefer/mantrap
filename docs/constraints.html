@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Constraint Modules &#8212; mantrap 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Objective Modules" href="objectives.html" />
+    <link rel="prev" title="Solver" href="solver.html" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head><body>
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="objectives.html" title="Objective Modules"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="solver.html" title="Solver"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="constraint-modules">
+<h1>Constraint Modules<a class="headerlink" href="#constraint-modules" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-mantrap.solver.constraints.constraint_module">
+<span id="abstract-constraint"></span><h2>Abstract Constraint<a class="headerlink" href="#module-mantrap.solver.constraints.constraint_module" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.constraints.constraint_module.ConstraintModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.constraints.constraint_module.</code><code class="sig-name descname">ConstraintModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.constraints.constraint_module.ConstraintModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>General constraint class.</p>
+<p>For an unified and general implementation of the constraint function modules this superclass implements methods
+for computing and logging the constraint value as well as the jacobian matrix simply based on a single method,
+the <cite>_compute()</cite> method, which has to be implemented in the child classes. <cite>_compute()</cite> returns the constraint value
+given a planned ego trajectory, while building a torch computation graph, which is used later on to determine the
+jacobian matrix using the PyTorch autograd library.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t_horizon</strong> – planning time horizon in number of time-steps (&gt;= 1).</p></li>
+<li><p><strong>env</strong> – environment object reference.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="mantrap.solver.constraints.constraint_module.ConstraintModule.compute_violation">
+<code class="sig-name descname">compute_violation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.solver.constraints.constraint_module.ConstraintModule.compute_violation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine constraint violation based on some input ego trajectory and ado ids list.</p>
+<p>The violation is the amount how much the solution state is inside the constraint active region.
+When the constraint is not active, then the violation is zero. The calculation is based on the last
+(cached) evaluation of the constraint function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.constraints.constraint_module.ConstraintModule.compute_violation_internal">
+<code class="sig-name descname">compute_violation_internal</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.solver.constraints.constraint_module.ConstraintModule.compute_violation_internal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine constraint violation, i.e. how much the internal state is inside the constraint active region.
+When the constraint is not active, then the violation is zero. The calculation is based on the last (cached)
+evaluation of the constraint function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.constraints.constraint_module.ConstraintModule.constraint">
+<code class="sig-name descname">constraint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.solver.constraints.constraint_module.ConstraintModule.constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine constraint value for passed ego trajectory by calling the internal <cite>compute()</cite> method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.constraints.constraint_module.ConstraintModule.inf_current">
+<em class="property">property </em><code class="sig-name descname">inf_current</code><a class="headerlink" href="#mantrap.solver.constraints.constraint_module.ConstraintModule.inf_current" title="Permalink to this definition">¶</a></dt>
+<dd><p>Current infeasibility value (amount of constraint violation).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.solver.constraints.constraint_module.ConstraintModule.jacobian">
+<code class="sig-name descname">jacobian</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.solver.constraints.constraint_module.ConstraintModule.jacobian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine jacobian matrix for passed ego trajectory. Therefore determine the constraint values by
+calling the internal <cite>compute()</cite> method and en passant build a computation graph. Then using the pytorch
+autograd library compute the jacobian matrix through the previously built computation graph.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>grad_wrt</strong> – vector w.r.t. which the gradient should be determined.</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.solver.constraints.control_limits">
+<span id="control-limits"></span><h2>Control Limits<a class="headerlink" href="#module-mantrap.solver.constraints.control_limits" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.constraints.control_limits.ControlLimitModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.constraints.control_limits.</code><code class="sig-name descname">ControlLimitModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.constraints.control_limits.ControlLimitModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximal control input at every point in time.</p>
+<p>For computing this constraint simply the norm of the planned control input is determined and compared to the
+maximal agent’s control limit. For 0 &lt; t &lt; T_{planning}:</p>
+<div class="math notranslate nohighlight">
+\[||u(t)||_2 &lt; u_{max}\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.solver.constraints.min_distance">
+<span id="minimal-distance"></span><h2>Minimal Distance<a class="headerlink" href="#module-mantrap.solver.constraints.min_distance" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.constraints.min_distance.MinDistanceModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.constraints.min_distance.</code><code class="sig-name descname">MinDistanceModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.constraints.min_distance.MinDistanceModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraint for minimal distance between the robot (ego) and any other agent (ado) over all time.</p>
+<p>For computing the minimal distance between the ego and every ado the scene is forward simulated given the
+planned ego trajectory, using the <cite>build_connected_graph()</cite> method. Then the minimal distance between ego
+and every ado is computed for every time-step of the trajectory. For 0 &lt; t &lt; T_{planning}:</p>
+<div class="math notranslate nohighlight">
+\[min_t || pos(t) - pos^{ado}_{0:2}(t) || &gt; D\]</div>
+<p>In comparison to the <cite>norm_distance</cite> constraint, this constraint only includes the minimal value over all
+time-steps and agents (w.r.t. the ego agent) during the planning horizon. Thus, the <cite>min_distance</cite> constraint
+is a necessary condition for the <cite>norm_distance</cite> to be satisfied. However, although the <cite>min_distance</cite>
+constraint definitely is computationally way more efficient due to the decrease of  number of constraints
+(leading to way less backward passes), it gives a lot less information about where the optimization should go.
+In fact it reduces the problem of minimal distance to the “selected” agent and time-step, while the optimized
+trajectory has no gradients pointing to a certain distance from other agents at other points in time, so that
+the number of convergence steps might be increased.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Constraint Modules</a><ul>
+<li><a class="reference internal" href="#module-mantrap.solver.constraints.constraint_module">Abstract Constraint</a></li>
+<li><a class="reference internal" href="#module-mantrap.solver.constraints.control_limits">Control Limits</a></li>
+<li><a class="reference internal" href="#module-mantrap.solver.constraints.min_distance">Minimal Distance</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="solver.html"
+                        title="previous chapter">Solver</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="objectives.html"
+                        title="next chapter">Objective Modules</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/constraints.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="objectives.html" title="Objective Modules"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="solver.html" title="Solver"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Simon Schaefer.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,231 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Evaluation &#8212; mantrap 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Visualisation" href="visualisation.html" />
+    <link rel="prev" title="Controller" href="controllers.html" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head><body>
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="visualisation.html" title="Visualisation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="controllers.html" title="Controller"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="evaluation">
+<h1>Evaluation<a class="headerlink" href="#evaluation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-mantrap.evaluation.metrics">
+<span id="metrics"></span><h2>Metrics<a class="headerlink" href="#module-mantrap.evaluation.metrics" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="mantrap.evaluation.metrics.metric_ado_effort">
+<code class="sig-prename descclassname">mantrap.evaluation.metrics.</code><code class="sig-name descname">metric_ado_effort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ado_trajectories</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.evaluation.metrics.metric_ado_effort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the ado’s additional control effort introduced by the ego.</p>
+<p>For calculating the additional control effort of the ado agents their acceleration is approximately determined
+numerically and compared to the acceleration of the according ado in a scene without ego robot. Then accumulate
+the acceleration differences for the final score.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ado_trajectories</strong> – trajectories of ados (num_ados, num_modes, t_horizon, 5).</p></li>
+<li><p><strong>env</strong> – simulation environment (is copied within function, so not altered).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mantrap.evaluation.metrics.metric_directness">
+<code class="sig-prename descclassname">mantrap.evaluation.metrics.</code><code class="sig-name descname">metric_directness</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.evaluation.metrics.metric_directness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine how direct the robot is going from start to goal state.</p>
+<p>Metrics should be fairly independent to be really meaningful, however measuring the efficiency of the ego trajectory
+only based on the travel time from start to goad position is highly connected to the ego’s control effort.
+Therefore the ratio of every ego velocity vector going in the goal direction is determined, and normalized by the
+number of time-steps.</p>
+<div class="math notranslate nohighlight">
+\[score = \dfrac{\sum_t \overrightarrow{s}_t * \overrightarrow{v}_t}{T}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – trajectory of ego (t_horizon, 5).</p></li>
+<li><p><strong>goal</strong> – optimization goal state (may vary in size, but usually 2D position).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mantrap.evaluation.metrics.metric_ego_effort">
+<code class="sig-prename descclassname">mantrap.evaluation.metrics.</code><code class="sig-name descname">metric_ego_effort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">max_acceleration</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">2.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.evaluation.metrics.metric_ego_effort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the ego’s control effort (acceleration).</p>
+<p>For calculating the control effort of the ego agent approximate the acceleration by assuming the acceleration
+between two points in discrete time t0 and t1 as linear, i.e. a_t = (v_t - v_{t-1}) / dt. For normalization
+then compare the determined acceleration with the maximal acceleration the agent maximally would be capable of.
+The ego_effort score then is the ratio between the actual requested and maximally possible control effort.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – trajectory of ego (t_horizon, 5).</p></li>
+<li><p><strong>max_acceleration</strong> – maximal (possible) acceleration of ego robot.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mantrap.evaluation.metrics.metric_minimal_distance">
+<code class="sig-prename descclassname">mantrap.evaluation.metrics.</code><code class="sig-name descname">metric_minimal_distance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_trajectories</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">num_inter_points</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">100</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused_kwargs</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.evaluation.metrics.metric_minimal_distance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the minimal distance between the robot and any agent.
+Therefore the function expects to get a robot trajectory and positions for every ado (ghost) at every point of time,
+to determine the minimal distance in the continuous time. In order to transform the discrete to continuous time
+trajectories it is assumed that the robot as well as the other agents move linearly, as a single integrator, i.e.
+neglecting accelerations, from one discrete time-step to another, so that it’s positions can be interpolated
+in between using a first order interpolation method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – trajectory of ego (t_horizon, 5).</p></li>
+<li><p><strong>ado_trajectories</strong> – trajectories of ados (num_ados, num_modes, t_horizon, 5).</p></li>
+<li><p><strong>num_inter_points</strong> – number of interpolation points between each time-step.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="dataset-api">
+<h2>Dataset API<a class="headerlink" href="#dataset-api" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="mantrap-evaluation-dataset-api">
+<h2>Mantrap Evaluation Dataset API<a class="headerlink" href="#mantrap-evaluation-dataset-api" title="Permalink to this headline">¶</a></h2>
+<p>For a broad set of testing the mantrap project provides an API for integration of custom datasets.</p>
+<p>Currently the <a class="reference external" href="https://icu.ee.ethz.ch/research/datsets.html">ETH Pedestrian datasets</a> is supported for automatic
+evaluation, however other datasets can be added easily with the mantrap evaluation API. To continue with the
+ETH Pedestrian dataset, download it first by following these steps:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> mantrap_evaluation/datasets/eth
+bash download.bash
+</pre></div>
+</div>
+<p>In order to add other scenarios for evaluation you have to add a function with the following structure and add
+it to the dictionary of scenarios in <code class="code docutils literal notranslate"><span class="pre">__init__.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">foo</span><span class="p">(</span>
+    <span class="n">env_class</span><span class="p">:</span> <span class="n">GraphBasedEnvironment</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span>
+    <span class="n">ego_type</span><span class="p">:</span> <span class="n">Agent</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">=</span> <span class="n">DoubleIntegratorDTAgent</span><span class="p">,</span>
+    <span class="n">num_modes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">GraphBasedEnvironment</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]:</span>
+</pre></div>
+</div>
+<p>The function basically defines the initial state of the ego (robot) as well the initial state and state histories
+of the ados (pedestrian) in the scene, then calls the <code class="code docutils literal notranslate"><span class="pre">_create_environment()</span></code> method defined in <code class="code docutils literal notranslate"><span class="pre">api.py</span></code> to
+create an environment, which builds the first return argument. The second argument is the ego state (position) for
+the ego robot, the third the ground truth positions for the ados in the scene, i.e. how they would have moved if
+there wouldn’t be a robot in the scene. Being based on a perfect behaviour prediction model and grounded on a
+perfect optimization the ado trajectories conditioned on the robot trajectory should approach this ground-truth
+trajectories.</p>
+<p>An easy to understand example of the usage of the API can be found in <code class="code docutils literal notranslate"><span class="pre">custom/haruki.py</span></code>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Evaluation</a><ul>
+<li><a class="reference internal" href="#module-mantrap.evaluation.metrics">Metrics</a></li>
+<li><a class="reference internal" href="#dataset-api">Dataset API</a></li>
+<li><a class="reference internal" href="#mantrap-evaluation-dataset-api">Mantrap Evaluation Dataset API</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="controllers.html"
+                        title="previous chapter">Controller</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="visualisation.html"
+                        title="next chapter">Visualisation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/evaluation.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="visualisation.html" title="Visualisation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="controllers.html" title="Controller"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Simon Schaefer.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+    </div>
+  </body>
+</html>

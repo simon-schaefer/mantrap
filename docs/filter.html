@@ -1,0 +1,188 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Filter Modules &#8212; mantrap 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Controller" href="controllers.html" />
+    <link rel="prev" title="Objective Modules" href="objectives.html" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head><body>
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="controllers.html" title="Controller"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="objectives.html" title="Objective Modules"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="filter-modules">
+<h1>Filter Modules<a class="headerlink" href="#filter-modules" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-mantrap.solver.filter.filter_module">
+<span id="abstract-filter"></span><h2>Abstract Filter<a class="headerlink" href="#module-mantrap.solver.filter.filter_module" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.filter.filter_module.FilterModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.filter.filter_module.</code><code class="sig-name descname">FilterModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.filter.filter_module.FilterModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>General filter class.</p>
+<p>The filter selects the “important” ados/modes from the list of all ados in the scene. The selection is returned
+as list of indices of the chosen ados which should be taken into account in further computations.
+For a unified  and general implementation of the filter modules this superclass implements methods for computing
+and logging the filter, all based on the <cite>_compute()</cite> method which should be implemented in the child classes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t_horizon</strong> – planning time horizon in number of time-steps (&gt;= 1).</p></li>
+<li><p><strong>env</strong> – environment object reference.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.solver.filter.nofilter">
+<span id="no-filter"></span><h2>No Filter<a class="headerlink" href="#module-mantrap.solver.filter.nofilter" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.filter.nofilter.NoFilterModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.filter.nofilter.</code><code class="sig-name descname">NoFilterModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.filter.nofilter.NoFilterModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>No filter i.e. include all agents for planning.</p>
+<p>This module is created for easier treating of the exception of not applying a filter (filter = None).</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.solver.filter.euclidean">
+<span id="euclidean-distance"></span><h2>Euclidean Distance<a class="headerlink" href="#module-mantrap.solver.filter.euclidean" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.filter.euclidean.EuclideanModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.filter.euclidean.</code><code class="sig-name descname">EuclideanModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.filter.euclidean.EuclideanModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filter based on the euclidean distance between current ego’s and ado’s positions.</p>
+<p>The euclidean filter selects the ados that are close, i.e. in a certain euclidean distance from the ego position.
+Thereby merely the positions at time t = t_current are taken into account</p>
+<div class="math notranslate nohighlight">
+\[||pos_{ego}(t) - pos_{ado}(t)||_2 &lt; R_{attention}\]</div>
+<p>R_{attention} is called attention radius and is the maximal L2-distance for an ado from the ego to be taken into
+account for planning (nevertheless it will always be taken into account for forward simulations, in order to
+prevent deviating much from the actual full-agent planning due to possible behavioral changes of the ados with
+less agents in the scene).</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.solver.filter.reachability">
+<span id="forward-reachability"></span><h2>Forward Reachability<a class="headerlink" href="#module-mantrap.solver.filter.reachability" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.solver.filter.reachability.ReachabilityModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.solver.filter.reachability.</code><code class="sig-name descname">ReachabilityModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.solver.filter.reachability.ReachabilityModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filter based on forward reachability analysis between the ego and all ados.</p>
+<p>The reachability deals with the problem that simple euclidean-distance based filtering does not take the agents
+current velocity into account, merely the position. Forward reachability analysis the boundaries of the area
+an agent can reach within some time horizon based on its dynamics and current state (position + velocity).
+When the boundaries of two agents intersect, they could collide within the time-horizon, if they do not there
+is no way they could.</p>
+<p>However forward reachability is fully open-loop, ignoring every kind of interaction between the agents. Using
+backward reachability (closed-loop) would mean to solve the trajectory optimization problem in the filter itself
+and would go beyond the scope of the pre-optimization designed filter.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Filter Modules</a><ul>
+<li><a class="reference internal" href="#module-mantrap.solver.filter.filter_module">Abstract Filter</a></li>
+<li><a class="reference internal" href="#module-mantrap.solver.filter.nofilter">No Filter</a></li>
+<li><a class="reference internal" href="#module-mantrap.solver.filter.euclidean">Euclidean Distance</a></li>
+<li><a class="reference internal" href="#module-mantrap.solver.filter.reachability">Forward Reachability</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="objectives.html"
+                        title="previous chapter">Objective Modules</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="controllers.html"
+                        title="next chapter">Controller</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/filter.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="controllers.html" title="Controller"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="objectives.html" title="Objective Modules"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Simon Schaefer.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+    </div>
+  </body>
+</html>
