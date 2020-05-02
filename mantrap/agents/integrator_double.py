@@ -62,7 +62,7 @@ class DoubleIntegratorDTAgent(LinearAgent):
         :param dt: update time interval [s].
         :param pseudo_wheel_distance: distance between imaginary wheels [m].
         :param k_speed: speed control gain.
-        :return updated state at t = t0 + dt and used (cardinal) control input.
+        :returns: updated state at t = t0 + dt and used (cardinal) control input.
         """
         px, py, vx, vy = state
         target_point_x, target_point_y = target_point

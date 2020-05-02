@@ -63,7 +63,8 @@ class Agent(ABC):
         # so either append it or create it when not already the case.
         state_un_squeezed = self.state_with_time.unsqueeze(dim=0)
         if history is not None:
-            assert history.shape[1] == 5
+            assert check_ego_trajectory(history)
+            assert torch.isclose(history[-1, -1], self.state_with_time[-1])  # times synced ?
             history = history.float()
 
             if not torch.all(torch.isclose(history[-1, :], state_un_squeezed)):
@@ -83,6 +84,9 @@ class Agent(ABC):
         self._id = identifier if identifier is not None else "".join(random.choice(letters) for _ in range(3))
         logging.debug(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
 
+    ###########################################################################
+    # Update/Reset ############################################################
+    ###########################################################################
     def update(self, action: torch.Tensor, dt: float) -> Tuple[torch.Tensor, torch.Tensor]:
         """Update internal state (position, velocity and history) by forward integrating the agent's dynamics over
         the given time-step. The new state and time are then appended to the agent's state history.

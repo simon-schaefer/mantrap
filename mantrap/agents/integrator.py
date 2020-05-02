@@ -55,7 +55,7 @@ class IntegratorDTAgent(LinearAgent):
         :param target_point: 2D target point (px, py).
         :param speed: preferable speed for state update [m/s].
         :param dt: update time interval [s].
-        :return updated state at t = t0 + dt and used (cardinal) control input.
+        :returns: updated state at t = t0 + dt and used (cardinal) control input.
         """
         px, py, vx, vy = state
         target_point_x, target_point_y = target_point
