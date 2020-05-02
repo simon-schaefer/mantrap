@@ -36,6 +36,9 @@ class DoubleIntegratorDTAgent(LinearAgent):
         """
         return (state[2:4] - state_previous[2:4]) / dt
 
+    def _inverse_dynamics_batch(self, batch: torch.Tensor, dt: float) -> torch.Tensor:
+        return (batch[1:, 2:4] - batch[:-1, 2:4]) / dt
+
     ###########################################################################
     # Agent control functions #################################################
     ###########################################################################

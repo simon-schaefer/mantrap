@@ -85,6 +85,72 @@ class Agent(ABC):
         logging.debug(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
 
     ###########################################################################
+    # Dynamics ################################################################
+    ###########################################################################
+    def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
+        """Forward integrate the agent's motion given some state-action pair and an integration time-step.
+
+        Passing the state, instead of using the internal state, allows the method to be used for other state
+        vector than the internal state, e.g. for forward predicting over a time horizon > 1. Since every agent
+        type has different dynamics (like single-integrator or Dubins Car) this method is implemented abstractly.
+
+        :param state: state to be updated @ t = k (5).
+        :param action: control input @ t = k (size depending on agent type).
+        :param dt: forward integration time step [s].
+        :returns: updated state vector with time @ t = k + dt (5).
+        """
+        assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
+        assert check_ego_action(action)  # (vx, vy)
+        action = action.float()
+
+        state_new = self._dynamics(state, action, dt=dt)
+
+        assert check_ego_state(state_new, enforce_temporal=True)
+        return state_new
+
+    @abstractmethod
+    def _dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
+        raise NotImplementedError
+
+    @staticmethod
+    def dynamics_scalar(px: float, py: float, vx: float, vy: float, ux: float, uy: float, dt: float
+                        ) -> Tuple[float, float, float, float]:
+        """Forward integrate the agent's motion given some state-action pair and an integration time-step.
+
+        In comparison to the "normal" dynamics() method this method can be used for repeated scalar and non-
+        differentiable use cases. Since the agent's fundamental state tensor operations are "only" two-dimensional
+        using tensor arithmetic rather creates an overhead, instead of saving computational effort, compared to
+        native python scalar operations.
+
+        :returns: position x, position y, velocity x, velocity y of new state
+        """
+        raise NotImplementedError
+
+    def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
+        """Determine the agent's motion given its current and previous state.
+
+        Passing the state, instead of using the internal state, allows the method to be used for other state
+        vector than the internal state, e.g. for forward predicting over a time horizon > 1. Since every agent
+        type has different dynamics (like single-integrator or Dubins Car) this method is implemented abstractly.
+
+        :param state: state @ t = k (4 or 5).
+        :param state_previous: previous state @ t = k - dt (4 or 5).
+        :param dt: forward integration time step [s].
+        :returns: control input @ t = k (size depending on agent type).
+        """
+        assert check_ego_state(state, enforce_temporal=False)
+        assert check_ego_state(state_previous, enforce_temporal=False)
+
+        action = self._inverse_dynamics(state, state_previous, dt=dt)
+
+        assert check_ego_action(x=action)
+        return action
+
+    @abstractmethod
+    def _inverse_dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
+        raise NotImplementedError
+
+    ###########################################################################
     # Update/Reset ############################################################
     ###########################################################################
     def update(self, action: torch.Tensor, dt: float) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -177,7 +243,7 @@ class Agent(ABC):
         assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
         assert dt > 0.0
 
-        # every control input follows from robot's dynamics recursion, basically assuming no model uncertainty.
+        # Every control input follows from robot's dynamics recursion, basically assuming no model uncertainty.
         controls = torch.zeros((trajectory.shape[0] - 1, 2))  # assuming input_size = 2
         for k in range(trajectory.shape[0] - 1):
             controls[k, :] = self.inverse_dynamics(trajectory[k + 1, :], trajectory[k, :], dt=dt)
@@ -278,72 +344,6 @@ class Agent(ABC):
         :param time_steps: number of discrete time-steps in reachable time-horizon.
         :param dt: time interval which is assumed to be constant over full path sequence [s].
         """
-        raise NotImplementedError
-
-    ###########################################################################
-    # Dynamics ################################################################
-    ###########################################################################
-    def dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
-        """Forward integrate the agent's motion given some state-action pair and an integration time-step.
-
-        Passing the state, instead of using the internal state, allows the method to be used for other state
-        vector than the internal state, e.g. for forward predicting over a time horizon > 1. Since every agent
-        type has different dynamics (like single-integrator or Dubins Car) this method is implemented abstractly.
-
-        :param state: state to be updated @ t = k (5).
-        :param action: control input @ t = k (size depending on agent type).
-        :param dt: forward integration time step [s].
-        :returns: updated state vector with time @ t = k + dt (5).
-        """
-        assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
-        assert check_ego_action(action)  # (vx, vy)
-        action = action.float()
-
-        state_new = self._dynamics(state, action, dt=dt)
-
-        assert check_ego_state(state_new, enforce_temporal=True)
-        return state_new
-
-    @abstractmethod
-    def _dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
-        raise NotImplementedError
-
-    @staticmethod
-    def dynamics_scalar(px: float, py: float, vx: float, vy: float, ux: float, uy: float, dt: float
-                        ) -> Tuple[float, float, float, float]:
-        """Forward integrate the agent's motion given some state-action pair and an integration time-step.
-
-        In comparison to the "normal" dynamics() method this method can be used for repeated scalar and non-
-        differentiable use cases. Since the agent's fundamental state tensor operations are "only" two-dimensional
-        using tensor arithmetic rather creates an overhead, instead of saving computational effort, compared to
-        native python scalar operations.
-
-        :returns: position x, position y, velocity x, velocity y of new state
-        """
-        raise NotImplementedError
-
-    def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
-        """Determine the agent's motion given its current and previous state.
-
-        Passing the state, instead of using the internal state, allows the method to be used for other state
-        vector than the internal state, e.g. for forward predicting over a time horizon > 1. Since every agent
-        type has different dynamics (like single-integrator or Dubins Car) this method is implemented abstractly.
-
-        :param state: state @ t = k (4 or 5).
-        :param state_previous: previous state @ t = k - dt (4 or 5).
-        :param dt: forward integration time step [s].
-        :returns: control input @ t = k (size depending on agent type).
-        """
-        assert check_ego_state(state, enforce_temporal=False)
-        assert check_ego_state(state_previous, enforce_temporal=False)
-
-        action = self._inverse_dynamics(state, state_previous, dt=dt)
-
-        assert check_ego_action(x=action)
-        return action
-
-    @abstractmethod
-    def _inverse_dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         raise NotImplementedError
 
     ###########################################################################

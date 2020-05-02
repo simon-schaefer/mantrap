@@ -5,6 +5,7 @@ import torch
 
 from mantrap.agents.agent import Agent
 from mantrap.utility.maths import Circle
+from mantrap.utility.shaping import check_ego_controls, check_ego_trajectory
 
 
 class LinearAgent(Agent, ABC):
@@ -35,6 +36,9 @@ class LinearAgent(Agent, ABC):
             assert dt > 0
             self._dynamics_matrices_dict[dt] = self._dynamics_matrices(dt=dt)
 
+    ###########################################################################
+    # Dynamics ################################################################
+    ###########################################################################
     def _dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         # Check whether the dynamics matrices have been pre-computed, if not compute them now.
         if dt not in self._dynamics_matrices_dict.keys():
@@ -47,6 +51,44 @@ class LinearAgent(Agent, ABC):
     def _dynamics_matrices(self, dt: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Determine the state-space/dynamics matrices given integration time-step dt. """
         raise NotImplementedError
+
+    @abstractmethod
+    def _inverse_dynamics_batch(self, batch: torch.Tensor, dt: float) -> torch.Tensor:
+        """For linear agents (at least the ones used in this project) the inverse dynamics can
+        be batched, i.e. computed with one operation over a whole trajectory.
+
+        :param batch: trajectory-similar state batch (N, 5).
+        :returns: controls for the input batch.
+        """
+        raise NotImplementedError
+
+    ###########################################################################
+    # Trajectory ##############################################################
+    ###########################################################################
+    def roll_trajectory(self, trajectory: torch.Tensor, dt: float) -> torch.Tensor:
+        """Determine the controls by iteratively applying the agent's model inverse dynamics.
+        Thereby a perfect model i.e. without uncertainty and correct is assumed.
+
+        To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
+        back-transformed to the controls, the same controls should occur. Therefore no checks for the
+        feasibility of the controls are made. Also this function is not updating the agent in fact,
+        it is rather determining the theoretical trajectory given the agent's dynamics and controls.
+
+        For linear agents determining the controls from the trajectory is very straight-forward and
+        most importantly does not have to be done sequentially (at least not for the types of agents
+        used within this project). Therefore the `roll_trajectory()` method can be improved.
+
+        :param trajectory: sequence of states to apply to the robot (N, 4).
+        :param dt: time interval [s] between discrete trajectory states.
+        :return: inferred controls (no uncertainty in dynamics assumption !), (N, input_size).
+        """
+        assert check_ego_trajectory(trajectory, pos_and_vel_only=True)
+        assert dt > 0.0
+
+        controls = self._inverse_dynamics_batch(trajectory, dt=dt)
+
+        assert check_ego_controls(controls, t_horizon=trajectory.shape[0] - 1)
+        return controls
 
     ###########################################################################
     # Reachability ############################################################
