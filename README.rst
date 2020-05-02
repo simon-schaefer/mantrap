@@ -13,9 +13,9 @@ feasible. Therefore the goal of this work to develop a risk-aware planning metho
 minimizing the interaction between human and robot and taking account the actual multi-modality and time-evolving nature
 of the humans behaviour, based on the Trajectron model (Ivanovic 19).
 
-.. highlight::
+.. code-block:: bash
 
-   Documentation: `https://simon-schaefer.github.io/mantrap/ <https://simon-schaefer.github.io/mantrap/>`_
+   Documentation: https://simon-schaefer.github.io/mantrap/
 
 Installation
 ------------
