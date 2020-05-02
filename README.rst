@@ -11,7 +11,11 @@ stochasticity in people’s behaviors. Previous approaches have either strongly 
 behaviour of humans, applied hardly tractable methods lacking safety guarantees or were simply not computationally 
 feasible. Therefore the goal of this work to develop a risk-aware planning methodology with special regards on 
 minimizing the interaction between human and robot and taking account the actual multi-modality and time-evolving nature
-of the humans behaviour, based on the Trajectron model (Ivanovic 19).  
+of the humans behaviour, based on the Trajectron model (Ivanovic 19).
+
+.. highlight::
+
+   Documentation: `https://simon-schaefer.github.io/mantrap/ <https://simon-schaefer.github.io/mantrap/>`_
 
 Installation
 ------------
@@ -67,7 +71,7 @@ regarding this please read :code:`mantrap_evaluation/datasets/README`.
 Documentation
 -------------
 For code documentation the `Sphinx <https://www.sphinx-doc.org/en/master/>`_ engine has been used. For building the
-documentation locally setup the project and run :code:`make html` in the documentation folder. Then open the
+documentation locally setup the project and run :code:`make github` in the documentation folder. Then open the
 documentation by opening the :code:`index.html` file in the resulting documentation build directory.
 
 Running in optimized mode
