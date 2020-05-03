@@ -285,7 +285,7 @@ class Solver(ABC):
 
         z0s = torch.from_numpy(np.array(z0s)).view(3, -1)
         logging.debug(f"solver: initial values z = {z0s}")
-        return z0s if not just_one else z0s[1, :, :]
+        return z0s if not just_one else z0s[1, :]
 
     @staticmethod
     def num_initial_values() -> int:
