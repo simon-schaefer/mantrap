@@ -44,6 +44,9 @@ AGENT_ACC_MAX = 2.0  # maximal agent acceleration in [m/s^2].
 ROBOT_SPEED_MAX = 2.0  # maximal robot velocity in [m/s].
 ROBOT_ACC_MAX = 2.0  # maximal robot acceleration in [m/s^2].
 
+AGENT_MAX_PRE_COMPUTATION = 20  # maximal number of pre-computed time-steps for rolling
+# batched dynamics for linear agents (during agent initialization).
+
 #######################################
 # environment parameters ##############
 #######################################

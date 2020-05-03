@@ -213,7 +213,8 @@ class Agent(ABC):
         assert check_ego_controls(x=controls)
         assert dt > 0.0
 
-        if len(controls.shape) == 1:  # singe action as policy
+        # Un-squeeze controls if unrolling a single action.
+        if len(controls.shape) == 1:
             controls = controls.unsqueeze(dim=0)
 
         # initial trajectory point is the current state.
