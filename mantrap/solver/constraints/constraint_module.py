@@ -45,43 +45,56 @@ class ConstraintModule(ABC):
         constraints = constraints.detach().numpy() if constraints is not None else np.array([])
         return self._return_constraint(constraints)
 
-    def jacobian(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor = None, ado_ids: List[str] = None
+    def jacobian(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: List[str] = None
                  ) -> np.ndarray:
-        """Determine jacobian matrix for passed ego trajectory. Therefore determine the constraint values by
-        calling the internal `compute()` method and en passant build a computation graph. Then using the pytorch
-        autograd library compute the jacobian matrix through the previously built computation graph.
+        """Determine jacobian matrix for passed ego trajectory.
+
+        Therefore at first check whether an analytical solution is defined, if not determine the constraint values
+        by calling the internal `compute()` method and en passant build a computation graph. Then using the PyTorch
+        autograd library compute the jacobian matrix based on the constraints computation graph.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
         assert check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True, t_horizon=self.t_horizon + 1)
-        assert grad_wrt.requires_grad
-        assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
 
-        # Compute the constraint values and check whether a gradient between them and the ego_trajectory input (which
-        # has been assured to require a gradient) exists, if the module-conditions for that are met.
-        constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
+        # Analytical solutions are more exact and (usually more efficient) to compute, when known, compared
+        # to the numerical "graphical" solution. Therefore, first check whether an analytical solution is
+        # defined for this module.
+        jacobian_analytical = self._compute_jacobian_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids)
+        if jacobian_analytical is not None:
+            jacobian = jacobian_analytical
 
-        # If constraint vector is None, directly return empty jacobian vector.
-        if constraints is None or not self._constraints_gradient_condition():
-            jacobian = np.array([])
-
-        # Otherwise check for the existence of a gradient, as explained above.
-        # In general the constraints might not be affected by the `ego_trajectory`, then they does not have
-        # gradient function and the gradient is not defined. Then the jacobian is assumed to be zero.
+        # Otherwise compute the jacobian using torch auto-grad function, for each constraint individually.
         else:
-            assert constraints.requires_grad
-            grad_size = int(grad_wrt.numel())
-            constraint_size = int(constraints.numel())
-            if constraint_size == 1:
-                jacobian = torch.autograd.grad(constraints, grad_wrt, retain_graph=True)[0]
+            # Compute the constraint values and check whether a gradient between them and the ego_trajectory
+            # input (which has been assured to require a gradient) exists, if the module-conditions for
+            # that are met.
+            constraints = self._compute(ego_trajectory, ado_ids=ado_ids)
+
+            # If constraint vector is None, directly return empty jacobian vector.
+            assert grad_wrt.requires_grad
+            assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
+            if constraints is None or not self._constraints_gradient_condition():
+                jacobian = np.array([])
+
+            # Otherwise check for the existence of a gradient, as explained above.
+            # In general the constraints might not be affected by the `ego_trajectory`, then they does not have
+            # gradient function and the gradient is not defined. Then the jacobian is assumed to be zero.
             else:
-                jacobian = torch.zeros(constraint_size * grad_size)
-                for i, x in enumerate(constraints):
-                    grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)[0]
-                    jacobian[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
-            jacobian = jacobian.detach().numpy()
+                assert constraints.requires_grad
+                grad_size = int(grad_wrt.numel())
+                constraint_size = int(constraints.numel())
+                if constraint_size == 1:
+                    jacobian = torch.autograd.grad(constraints, grad_wrt, retain_graph=True)[0]
+                else:
+                    jacobian = torch.zeros(constraint_size * grad_size)
+                    for i, x in enumerate(constraints):
+                        grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)[0]
+                        jacobian[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
+                jacobian = jacobian.detach().numpy()
+
         return jacobian
 
     @abstractmethod
@@ -93,14 +106,25 @@ class ConstraintModule(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def _compute_jacobian_analytically(self, constraints: torch.Tensor) -> Union[np.ndarray, None]:
-        """While the Jacobian matrix of the constraint can be computed automatically using PyTorch's automatic
-        differentiation package there might be an analytic solution, which is when known for sure more
-        efficient to compute.
+    def _compute_jacobian_analytically(
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: List[str] = None
+    ) -> Union[np.ndarray, None]:
+        """Compute Jacobian matrix analytically.
 
-        :param constraints:
+        While the Jacobian matrix of the constraint can be computed automatically using PyTorch's automatic
+        differentiation package there might be an analytic solution, which is when known for sure more
+        efficient to compute. Although it is against the convention to use torch representations whenever
+        possible, this function returns numpy arrays, since the main jacobian() function has to return
+        a numpy array. Hence, not computing based on numpy arrays would just introduce an un-necessary
+        `.detach().numpy()`.
+
+        When no analytical solution is defined (or too hard to determine) return None.
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param grad_wrt: vector w.r.t. which the gradient should be determined.
+        :param ado_ids: ghost ids which should be taken into account for computation.
         """
+        return None
 
     @abstractmethod
     def _constraints_gradient_condition(self) -> bool:

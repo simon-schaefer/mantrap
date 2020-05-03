@@ -103,7 +103,7 @@ class GraphBasedEnvironment(ABC):
         assert y_axis[0] < y_axis[1]
         assert dt > 0.0
 
-        self._ego = ego_type(**ego_kwargs, is_robot=True, identifier=ID_EGO) if ego_type is not None else None
+        self._ego = ego_type(**ego_kwargs, is_robot=True, dt=dt, identifier=ID_EGO) if ego_type is not None else None
         self._ado_ghosts = []
         self._num_ado_modes = 0
         self._ado_ids = []
@@ -305,7 +305,7 @@ class GraphBasedEnvironment(ABC):
         :param arg_list: initialization arguments for each mode.
         """
         assert ado_type is not None and type(ado_type) == Agent.__class__
-        ado = ado_type(**ado_kwargs)
+        ado = ado_type(dt=self.dt, **ado_kwargs)
         self._ado_ids.append(ado.id)
 
         # Append ado to internal list of ados and rebuilt the graph (could be also extended but small computational

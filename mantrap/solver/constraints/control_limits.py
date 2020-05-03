@@ -1,8 +1,10 @@
 from typing import List, Tuple, Union
 
+import numpy as np
 import torch
 
 from mantrap.solver.constraints.constraint_module import ConstraintModule
+from mantrap.utility.shaping import check_ego_trajectory
 
 
 class ControlLimitModule(ConstraintModule):
@@ -24,8 +26,56 @@ class ControlLimitModule(ConstraintModule):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-        return torch.norm(controls, dim=1).flatten()
+        ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+        return torch.norm(ego_controls, dim=1).flatten()
+
+    def _compute_jacobian_analytically(
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: List[str] = None
+    ) -> Union[np.ndarray, None]:
+        """Compute Jacobian matrix analytically.
+
+        While the Jacobian matrix of the constraint can be computed automatically using PyTorch's automatic
+        differentiation package there might be an analytic solution, which is when known for sure more
+        efficient to compute. Although it is against the convention to use torch representations whenever
+        possible, this function returns numpy arrays, since the main jacobian() function has to return
+        a numpy array. Hence, not computing based on numpy arrays would just introduce an un-necessary
+        `.detach().numpy()`.
+
+        When no analytical solution is defined (or too hard to determine) return None.
+
+        When the gradient shall be computed with respect to the controls, then computing the gradient analytically
+        is very straight-forward, by just applying the following formula:
+
+        .. math::
+
+            \\frac{ d ||u|| }{ du_i } = \\frac{u_i}{||u||_2}
+
+        Otherwise the analytical jacobian is hard to compute analytically, for a general `grad_wrt`, then
+        return `None` in order to go on with numerical computations.
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param grad_wrt: vector w.r.t. which the gradient should be determined.
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        """
+        assert check_ego_trajectory(ego_trajectory)
+
+        with torch.no_grad():
+
+            # Compute controls from trajectory, if not equal to `grad_wrt` return None.
+            ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+            if not torch.all(torch.isclose(ego_controls, grad_wrt)):
+                return None
+
+            # Otherwise compute Jacobian using formula in method's description above.
+            t_horizon, u_size = ego_controls.shape
+            u_norm = torch.norm(ego_controls, dim=1).flatten().detach().numpy()
+            u_norm[u_norm == 0.0] = 1e-6  # remove nan values when computing (1 / u_norm)
+            u = ego_controls.flatten().numpy()
+
+            u_norm_stretched = np.repeat(u_norm, t_horizon * u_size)
+            u_stretched = np.concatenate([u] * t_horizon)
+            jacobian = np.repeat(np.eye(t_horizon), u_size) * 1 / u_norm_stretched * u_stretched
+            return jacobian.flatten()
 
     def _constraints_gradient_condition(self) -> bool:
         """Conditions for the existence of a gradient between the input of the constraint value computation
