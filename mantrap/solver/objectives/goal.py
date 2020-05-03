@@ -23,14 +23,17 @@ class GoalModule(ObjectiveModule):
     .. math:: objective = \\sum_{T} w_t(d_{goal}(t)) || v_t ||_2
 
     :param goal: goal state/position for robot agent (2).
+    :param include_velocity: include cost for zero velocity at goal state.
     """
-    def __init__(self, goal: torch.Tensor, **module_kwargs):
+    def __init__(self, goal: torch.Tensor, include_velocity: bool = True, **module_kwargs):
         assert check_goal(goal)
 
         super(GoalModule, self).__init__(**module_kwargs)
         self._goal = goal
+        self._include_velocity = include_velocity
         self._distribution = torch.linspace(0, 1, steps=self.t_horizon + 1) ** 3
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
+        self._distribution = self._distribution.detach()  # detach -> constant factor (!)
 
     def _compute(self, ego_trajectory: torch.Tensor, ado_ids: List[str] = None) -> Union[torch.Tensor, None]:
         """Determine objective value core method.
@@ -40,11 +43,20 @@ class GoalModule(ObjectiveModule):
         the end of the planning horizon) to be close to the goal position than the first position, multiply with
         a strictly increasing importance distribution, cubic in this case.
 
+        When the goal-velocity is included here, compute the speed as L2 norm per trajectory state. Then weight
+        the speeds at every time by its distance to the goal, as explained in the description of this module.
+
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
         goal_distances = torch.norm(ego_trajectory[:, 0:2] - self._goal, dim=1)
-        return goal_distances.dot(self._distribution)
+        cost = goal_distances.dot(self._distribution)
+
+        if self._include_velocity:
+            speeds = torch.norm(ego_trajectory[:, 2:4], dim=1)
+            cost += speeds.dot(torch.exp(- goal_distances * 0.5))
+
+        return cost
 
     def _objective_gradient_condition(self) -> bool:
         """Conditions for the existence of a gradient between the input of the objective value computation
