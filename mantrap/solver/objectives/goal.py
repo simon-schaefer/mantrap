@@ -14,7 +14,13 @@ class GoalModule(ObjectiveModule):
     minimized the faster the robot gets to the goal. However, it is more important for the last rather than the
     first trajectory points to be close to the goal, therefore the distance are weighted using a cubic distribution.
 
-    .. math:: objective = \sum_{T} w_t || pos_t - goal ||_2
+    .. math:: objective = \\sum_{T} w_t(t) || pos_t - goal ||_2
+
+    Additionally a cost for the velocity at the goal state can be included in this objective, a cost for non-zero
+    velocity to be exact. This cost is weighted continuously based on the distance to the goal, i.e. the closer
+    the a large speed (= velocity L2 norm) occurs, the higher its cost.
+
+    .. math:: objective = \\sum_{T} w_t(d_{goal}(t)) || v_t ||_2
 
     :param goal: goal state/position for robot agent (2).
     """

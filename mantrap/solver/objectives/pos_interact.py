@@ -18,7 +18,7 @@ class InteractionPositionModule(ObjectiveModule):
     effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
     that would occur, if the ego is not there from the beginning.
 
-    .. math:: objective = \sum_{T} \sum_{ghosts} || pos_{t,i} - pos_{t,i}^{wo} ||_2
+    .. math:: objective = \\sum_{T} \\sum_{ghosts} || pos_{t,i} - pos_{t,i}^{wo} ||_2
 
     :param env: solver's environment environment for predicting the behaviour without interaction.
     """

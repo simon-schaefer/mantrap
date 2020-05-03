@@ -30,7 +30,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
     velocity of each agent pair (in order to not alter close but non interfering agents, e.g. moving parallel to
     each other) the interaction term is constructed.
 
-    .. math:: V_{aB} (x) = V0_a exp(−x / \sigma_a)
+    .. math:: V_{aB} (x) = V0_a exp(−x / \\sigma_a)
     .. math:: F_{interaction} = - grad_{r_{ab}} V_{aB}(||r_{ab}||)
 
     To create multi-modality and stochastic effects several sets of environment parameters can be assigned to the ado,

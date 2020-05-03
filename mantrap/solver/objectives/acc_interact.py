@@ -20,7 +20,7 @@ class InteractionAccelerationModule(ObjectiveModule):
     effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
     that would occur, if the ego is not there from the beginning.
 
-    .. math:: objective = \sum_{T} \sum_{ghosts} || acc_{t,i} - acc_{t,i}^{wo} ||_2
+    .. math:: objective = \\sum_{T} \\sum_{ghosts} || acc_{t,i} - acc_{t,i}^{wo} ||_2
 
     :param env: environment for predicting the behaviour without interaction.
     """

@@ -239,7 +239,7 @@ class Trajectron(GraphBasedEnvironment):
         will be selected, by using the weight vector directly. The GMM is a multi-nominal distribution with weight
         parameters pi_i, i.e. we have
 
-        .. math:: z_1, ..., z_n \sim Mult_g(1, \pi_1, ..., \pi_g)
+        .. math:: z_1, ..., z_n \\sim Mult_g(1, \\pi_1, ..., \\pi_g)
 
         with z_i denoting the unobservable component-indicator vector, showing to which out of g clusters a drawn
         sample belongs to (https://books.google.de/books?id=-0mfDwAAQBAJ&pg=PA18&lpg=PA18&dq=Log+Mixing+Proportions).

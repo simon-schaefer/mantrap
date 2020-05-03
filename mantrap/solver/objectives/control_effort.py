@@ -15,7 +15,7 @@ class ControlEffortModule(ObjectiveModule):
     constraining the amount of control energy which the robot is able to use in every step might be sufficient,
     however for completeness (and comparison) this objective is implemented:
 
-    .. math:: objective =  \sum_{T} || u_t ||_2
+    .. math:: objective =  \\sum_{T} || u_t ||_2
 
     :param env: solver's environment environment for ego dynamics.
     """

@@ -15,7 +15,7 @@ class Derivative2:
     """Determine the 2nd derivative of some series of point numerically by using the Central Difference Expression
     (with error of order dt^2). Assuming smoothness we can extract the acceleration from the positions:
 
-    d^2/dt^2 x_i = \frac{ x_{i + 1} - 2 x_i + x_{i - 1}}{ dt^2 }.
+    d^2/dt^2 x_i = \\frac{ x_{i + 1} - 2 x_i + x_{i - 1}}{ dt^2 }.
 
     For computational efficiency this expression, summed up over the full horizon (e.g. the full time-horizon
     [1, T - 1]), can be regarded as single matrix operation b = Ax with A = diag([1, -2, 1]).

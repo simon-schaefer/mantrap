@@ -15,7 +15,7 @@ class LinearAgent(Agent, ABC):
     For linear state dynamics the dynamics can be computed very efficiently, using matrix-vector multiplication,
     with constant matrices (state-space matrices).
 
-    .. math:: x_{i + n} = A^n x_i + \sum_{k=0}^{n-1} A^{n-k-1} * B * u_{i+k}
+    .. math:: x_{i + n} = A^n x_i + \\sum_{k=0}^{n-1} A^{n-k-1} * B * u_{i+k}
 
     Passing the simulation time-step directly instead of passing it to every function individually surely is not
     nice, but it enables pre-computing of the agent's dynamics matrices, which speeds up computation of the dynamics
@@ -164,7 +164,7 @@ class LinearAgent(Agent, ABC):
         """Generally for linear agents the N-th can be easily expressed in terms of the controls and the
         initial state by nesting the linear dynamics, resulting in
 
-        .. math:: x_{i + N} = A^N x_i + \sum_{k = 0}^{N - 1} A^{N - k - 1} B u_{i + k}
+        .. math:: x_{i + N} = A^N x_i + \\sum_{k = 0}^{N - 1} A^{N - k - 1} B u_{i + k}
 
         Also linear agents are assumed to behave isotropic (here), i.e. the control input can change its direction
         instantly and without limitation. Therefore the forward reachable set within the number of time_steps is
