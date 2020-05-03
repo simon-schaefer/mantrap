@@ -1,5 +1,5 @@
 Visualisation
 =============
 
-.. automodule:: mantrap.evaluation.visualization
+.. automodule:: mantrap.visualization
     :members:

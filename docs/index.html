@@ -57,6 +57,9 @@ behaviour of humans, applied hardly tractable methods lacking safety guarantees 
 feasible. Therefore the goal of this work to develop a risk-aware planning methodology with special regards on
 minimizing the interaction between human and robot and taking account the actual multi-modality and time-evolving nature
 of the humans behaviour, based on the Trajectron model (Ivanovic 19).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>Documentation: https://simon-schaefer.github.io/mantrap/
+</pre></div>
+</div>
 </div>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
@@ -105,7 +108,7 @@ regarding this please read <code class="code docutils literal notranslate"><span
 <div class="section" id="documentation">
 <h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
 <p>For code documentation the <a class="reference external" href="https://www.sphinx-doc.org/en/master/">Sphinx</a> engine has been used. For building the
-documentation locally setup the project and run <code class="code docutils literal notranslate"><span class="pre">make</span> <span class="pre">html</span></code> in the documentation folder. Then open the
+documentation locally setup the project and run <code class="code docutils literal notranslate"><span class="pre">make</span> <span class="pre">github</span></code> in the documentation folder. Then open the
 documentation by opening the <code class="code docutils literal notranslate"><span class="pre">index.html</span></code> file in the resulting documentation build directory.</p>
 </div>
 <div class="section" id="running-in-optimized-mode">
@@ -115,8 +118,10 @@ in order to save runtime.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 -O evaluation.py
 </pre></div>
 </div>
+</div>
+<div class="section" id="code-in-detail">
+<h2>Code in Detail<a class="headerlink" href="#code-in-detail" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="agents.html">Agents</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="agents.html#module-mantrap.agents.agent">Abstract Agent</a></li>
@@ -168,7 +173,7 @@ in order to save runtime.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="evaluation.html">Evaluation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="evaluation.html#module-mantrap.evaluation.metrics">Metrics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="evaluation.html#module-mantrap_evaluation.metrics">Metrics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="evaluation.html#dataset-api">Dataset API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="evaluation.html#mantrap-evaluation-dataset-api">Mantrap Evaluation Dataset API</a></li>
 </ul>
@@ -193,6 +198,7 @@ in order to save runtime.</p>
 <li><a class="reference internal" href="#evaluation">Evaluation</a></li>
 <li><a class="reference internal" href="#documentation">Documentation</a></li>
 <li><a class="reference internal" href="#running-in-optimized-mode">Running in optimized mode</a></li>
+<li><a class="reference internal" href="#code-in-detail">Code in Detail</a></li>
 </ul>
 </li>
 </ul>

@@ -363,7 +363,7 @@ t in [0, t_horizon]. Read these states and controls to build a trajectory for th
 <dt id="mantrap.environment.environment.GraphBasedEnvironment.visualize_prediction">
 <code class="sig-name descname">visualize_prediction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">enforce</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.environment.GraphBasedEnvironment.visualize_prediction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Visualize the predictions for the scene based on the given ego trajectory.</p>
-<p>In order to be use the general <cite>visualize()</cite> function defined in the <cite>mantrap.evaluation</cite> - package the ego
+<p>In order to be use the general <cite>visualize()</cite> function defined in the <cite>mantrap.visualization</cite> - package the ego
 and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
 visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
 plotting the predicted trajectories, there are no changes in planned trajectories. That’s why the predicted
@@ -374,7 +374,7 @@ trajectory is repeated to the whole time horizon.</p>
 <dt id="mantrap.environment.environment.GraphBasedEnvironment.visualize_prediction_wo_ego">
 <code class="sig-name descname">visualize_prediction_wo_ego</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">enforce</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.environment.GraphBasedEnvironment.visualize_prediction_wo_ego" title="Permalink to this definition">¶</a></dt>
 <dd><p>Visualize the predictions for the scene based on the given ego trajectory.</p>
-<p>In order to be use the general <cite>visualize()</cite> function defined in the <cite>mantrap.evaluation</cite> - package the ego
+<p>In order to be use the general <cite>visualize()</cite> function defined in the <cite>mantrap.visualization</cite> - package the ego
 and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
 visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
 plotting the predicted trajectories, there are no changes in planned trajectories. That’s why the predicted

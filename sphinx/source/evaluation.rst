@@ -3,7 +3,7 @@ Evaluation
 
 Metrics
 ----------------------------
-.. automodule:: mantrap.evaluation.metrics
+.. automodule:: mantrap_evaluation.metrics
     :members:
 
 Dataset API

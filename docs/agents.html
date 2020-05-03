@@ -351,10 +351,12 @@ the given time-step. The new state and time are then appended to the agent’s s
 <span id="linear-agent"></span><h2>Linear Agent<a class="headerlink" href="#module-mantrap.agents.agent_intermediates.linear" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt id="mantrap.agents.agent_intermediates.linear.LinearAgent">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.agent_intermediates.linear.</code><code class="sig-name descname">LinearAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.agent_intermediates.linear.LinearAgent" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.agent_intermediates.linear.</code><code class="sig-name descname">LinearAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.agent_intermediates.linear.LinearAgent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Intermediate agent class for agents having linear state dynamics.</p>
 <p>For linear state dynamics the dynamics can be computed very efficiently, using matrix-vector multiplication,
 with constant matrices (state-space matrices).</p>
+<div class="math notranslate nohighlight">
+\[x_{i + n} = A^n x_i + \sum_{k=0}^{n-1} A^{n-k-1} * B * u_{i+k}\]</div>
 <p>Passing the simulation time-step directly instead of passing it to every function individually surely is not
 nice, but it enables pre-computing of the agent’s dynamics matrices, which speeds up computation of the dynamics
 by at least factor 5 (see examples/tools/timing), especially since the dynamics() method is the most called
@@ -364,7 +366,10 @@ solution a dictionary of dynamics matrices is built, enabling handling multiple 
 once only.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>dt</strong> – default dynamics time-step [s], default none (no dynamics pre-computation).</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt</strong> – default dynamics time-step [s], default none (no dynamics pre-computation).</p></li>
+<li><p><strong>max_steps</strong> – maximal number of pre-computed rolling steps.</p></li>
+</ul>
 </dd>
 </dl>
 <dl class="py method">
@@ -388,6 +393,53 @@ the current position, with radius being the maximal allowed agent speed.</p>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt id="mantrap.agents.agent_intermediates.linear.LinearAgent.roll_trajectory">
+<code class="sig-name descname">roll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent_intermediates.linear.LinearAgent.roll_trajectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the controls by iteratively applying the agent’s model inverse dynamics.
+Thereby a perfect model i.e. without uncertainty and correct is assumed.</p>
+<p>To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
+back-transformed to the controls, the same controls should occur. Therefore no checks for the
+feasibility of the controls are made. Also this function is not updating the agent in fact,
+it is rather determining the theoretical trajectory given the agent’s dynamics and controls.</p>
+<p>For linear agents determining the controls from the trajectory is very straight-forward and
+most importantly does not have to be done sequentially (at least not for the types of agents
+used within this project). Therefore the <cite>roll_trajectory()</cite> method can be improved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trajectory</strong> – sequence of states to apply to the robot (N, 4).</p></li>
+<li><p><strong>dt</strong> – time interval [s] between discrete trajectory states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>inferred controls (no uncertainty in dynamics assumption !), (N, input_size).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.agents.agent_intermediates.linear.LinearAgent.unroll_trajectory">
+<code class="sig-name descname">unroll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent_intermediates.linear.LinearAgent.unroll_trajectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the trajectory from some controls and current state, by iteratively applying the model
+dynamics. Thereby a perfect model i.e. without uncertainty and correct is assumed.</p>
+<p>To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
+back-transformed to the controls, the same controls should occur. Therefore no checks for the
+feasibility of the controls are made. Also this function is not updating the agent in fact,
+it is rather determining the theoretical trajectory given the agent’s dynamics and controls.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>controls</strong> – sequence of inputs to apply to the robot (N, input_size).</p></li>
+<li><p><strong>dt</strong> – time interval [s] between discrete trajectory states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>resulting trajectory (no uncertainty in dynamics assumption !), (N, 4).</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -395,7 +447,7 @@ the current position, with radius being the maximal allowed agent speed.</p>
 <span id="single-integrator"></span><h2>Single Integrator<a class="headerlink" href="#module-mantrap.agents.integrator" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt id="mantrap.agents.integrator.IntegratorDTAgent">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.integrator.</code><code class="sig-name descname">IntegratorDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.integrator.IntegratorDTAgent" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.integrator.</code><code class="sig-name descname">IntegratorDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.integrator.IntegratorDTAgent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Linear single integrator dynamics:</p>
 <div class="math notranslate nohighlight">
 \[vel_{t+1} = action\]</div>
@@ -459,7 +511,7 @@ adapting the controls to go in the right direction.</p>
 <span id="double-integrator"></span><h2>Double Integrator<a class="headerlink" href="#module-mantrap.agents.integrator_double" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt id="mantrap.agents.integrator_double.DoubleIntegratorDTAgent">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.integrator_double.</code><code class="sig-name descname">DoubleIntegratorDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.integrator_double.DoubleIntegratorDTAgent" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.integrator_double.</code><code class="sig-name descname">DoubleIntegratorDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.integrator_double.DoubleIntegratorDTAgent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Linear double integrator dynamics:</p>
 <div class="math notranslate nohighlight">
 \[vel_{t+1} = vel_t + action * dt\]</div>

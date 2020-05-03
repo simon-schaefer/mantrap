@@ -51,11 +51,11 @@
             
   <div class="section" id="evaluation">
 <h1>Evaluation<a class="headerlink" href="#evaluation" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-mantrap.evaluation.metrics">
-<span id="metrics"></span><h2>Metrics<a class="headerlink" href="#module-mantrap.evaluation.metrics" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap_evaluation.metrics">
+<span id="metrics"></span><h2>Metrics<a class="headerlink" href="#module-mantrap_evaluation.metrics" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
-<dt id="mantrap.evaluation.metrics.metric_ado_effort">
-<code class="sig-prename descclassname">mantrap.evaluation.metrics.</code><code class="sig-name descname">metric_ado_effort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ado_trajectories</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.evaluation.metrics.metric_ado_effort" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap_evaluation.metrics.metric_ado_effort">
+<code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_ado_effort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.environment.GraphBasedEnvironment" title="mantrap.environment.environment.GraphBasedEnvironment">mantrap.environment.environment.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ado_trajectories</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_ado_effort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine the ado’s additional control effort introduced by the ego.</p>
 <p>For calculating the additional control effort of the ado agents their acceleration is approximately determined
 numerically and compared to the acceleration of the according ado in a scene without ego robot. Then accumulate
@@ -71,8 +71,8 @@ the acceleration differences for the final score.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="mantrap.evaluation.metrics.metric_directness">
-<code class="sig-prename descclassname">mantrap.evaluation.metrics.</code><code class="sig-name descname">metric_directness</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.evaluation.metrics.metric_directness" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap_evaluation.metrics.metric_directness">
+<code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_directness</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_directness" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine how direct the robot is going from start to goal state.</p>
 <p>Metrics should be fairly independent to be really meaningful, however measuring the efficiency of the ego trajectory
 only based on the travel time from start to goad position is highly connected to the ego’s control effort.
@@ -91,8 +91,8 @@ number of time-steps.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="mantrap.evaluation.metrics.metric_ego_effort">
-<code class="sig-prename descclassname">mantrap.evaluation.metrics.</code><code class="sig-name descname">metric_ego_effort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">max_acceleration</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">2.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.evaluation.metrics.metric_ego_effort" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap_evaluation.metrics.metric_ego_effort">
+<code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_ego_effort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">max_acceleration</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">2.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_ego_effort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine the ego’s control effort (acceleration).</p>
 <p>For calculating the control effort of the ego agent approximate the acceleration by assuming the acceleration
 between two points in discrete time t0 and t1 as linear, i.e. a_t = (v_t - v_{t-1}) / dt. For normalization
@@ -109,8 +109,8 @@ The ego_effort score then is the ratio between the actual requested and maximall
 </dd></dl>
 
 <dl class="py function">
-<dt id="mantrap.evaluation.metrics.metric_minimal_distance">
-<code class="sig-prename descclassname">mantrap.evaluation.metrics.</code><code class="sig-name descname">metric_minimal_distance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_trajectories</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">num_inter_points</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">100</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused_kwargs</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.evaluation.metrics.metric_minimal_distance" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap_evaluation.metrics.metric_minimal_distance">
+<code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_minimal_distance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_trajectories</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">num_inter_points</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">100</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused_kwargs</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_minimal_distance" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine the minimal distance between the robot and any agent.
 Therefore the function expects to get a robot trajectory and positions for every ado (ghost) at every point of time,
 to determine the minimal distance in the continuous time. In order to transform the discrete to continuous time
@@ -171,7 +171,7 @@ trajectories.</p>
   <h3><a href="index.html">Table of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Evaluation</a><ul>
-<li><a class="reference internal" href="#module-mantrap.evaluation.metrics">Metrics</a></li>
+<li><a class="reference internal" href="#module-mantrap_evaluation.metrics">Metrics</a></li>
 <li><a class="reference internal" href="#dataset-api">Dataset API</a></li>
 <li><a class="reference internal" href="#mantrap-evaluation-dataset-api">Mantrap Evaluation Dataset API</a></li>
 </ul>

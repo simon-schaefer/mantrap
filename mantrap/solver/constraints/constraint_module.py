@@ -94,6 +94,15 @@ class ConstraintModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def _compute_jacobian_analytically(self, constraints: torch.Tensor) -> Union[np.ndarray, None]:
+        """While the Jacobian matrix of the constraint can be computed automatically using PyTorch's automatic
+        differentiation package there might be an analytic solution, which is when known for sure more
+        efficient to compute.
+
+        :param constraints:
+        """
+
+    @abstractmethod
     def _constraints_gradient_condition(self) -> bool:
         """Determine constraint violation based on the last constraint evaluation.
 

@@ -2,8 +2,10 @@
 
 .. include:: ../../README.rst
 
+Code in Detail
+--------------
+
 .. toctree::
-   :caption: Contents:
 
    agents.rst
    environment.rst

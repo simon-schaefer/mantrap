@@ -180,7 +180,7 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="agents.html#mantrap.agents.integrator_double.DoubleIntegratorDTAgent">DoubleIntegratorDTAgent (class in mantrap.agents.integrator_double)</a>
 </li>
-      <li><a href="visualisation.html#mantrap.evaluation.visualization.draw_trajectories">draw_trajectories() (in module mantrap.evaluation.visualization)</a>
+      <li><a href="visualisation.html#mantrap.visualization.draw_trajectories">draw_trajectories() (in module mantrap.visualization)</a>
 </li>
       <li><a href="agents.html#mantrap.agents.agent.Agent.dynamics">dynamics() (mantrap.agents.agent.Agent method)</a>
 </li>
@@ -397,20 +397,6 @@
 </li>
       </ul></li>
       <li>
-    mantrap.evaluation.metrics
-
-      <ul>
-        <li><a href="evaluation.html#module-mantrap.evaluation.metrics">module</a>
-</li>
-      </ul></li>
-      <li>
-    mantrap.evaluation.visualization
-
-      <ul>
-        <li><a href="visualisation.html#module-mantrap.evaluation.visualization">module</a>
-</li>
-      </ul></li>
-      <li>
     mantrap.solver.constraints.constraint_module
 
       <ul>
@@ -480,8 +466,6 @@
         <li><a href="objectives.html#module-mantrap.solver.objectives.goal">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     mantrap.solver.objectives.objective_module
 
@@ -496,6 +480,8 @@
         <li><a href="objectives.html#module-mantrap.solver.objectives.pos_interact">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     mantrap.solver.sgrad
 
@@ -524,13 +510,27 @@
         <li><a href="solver.html#module-mantrap.solver.solver_baselines.orca">module</a>
 </li>
       </ul></li>
-      <li><a href="evaluation.html#mantrap.evaluation.metrics.metric_ado_effort">metric_ado_effort() (in module mantrap.evaluation.metrics)</a>
+      <li>
+    mantrap.visualization
+
+      <ul>
+        <li><a href="visualisation.html#module-mantrap.visualization">module</a>
 </li>
-      <li><a href="evaluation.html#mantrap.evaluation.metrics.metric_directness">metric_directness() (in module mantrap.evaluation.metrics)</a>
+      </ul></li>
+      <li>
+    mantrap_evaluation.metrics
+
+      <ul>
+        <li><a href="evaluation.html#module-mantrap_evaluation.metrics">module</a>
 </li>
-      <li><a href="evaluation.html#mantrap.evaluation.metrics.metric_ego_effort">metric_ego_effort() (in module mantrap.evaluation.metrics)</a>
+      </ul></li>
+      <li><a href="evaluation.html#mantrap_evaluation.metrics.metric_ado_effort">metric_ado_effort() (in module mantrap_evaluation.metrics)</a>
 </li>
-      <li><a href="evaluation.html#mantrap.evaluation.metrics.metric_minimal_distance">metric_minimal_distance() (in module mantrap.evaluation.metrics)</a>
+      <li><a href="evaluation.html#mantrap_evaluation.metrics.metric_directness">metric_directness() (in module mantrap_evaluation.metrics)</a>
+</li>
+      <li><a href="evaluation.html#mantrap_evaluation.metrics.metric_ego_effort">metric_ego_effort() (in module mantrap_evaluation.metrics)</a>
+</li>
+      <li><a href="evaluation.html#mantrap_evaluation.metrics.metric_minimal_distance">metric_minimal_distance() (in module mantrap_evaluation.metrics)</a>
 </li>
       <li><a href="constraints.html#mantrap.solver.constraints.min_distance.MinDistanceModule">MinDistanceModule (class in mantrap.solver.constraints.min_distance)</a>
 </li>
@@ -561,10 +561,6 @@
         <li><a href="environment.html#module-mantrap.environment.social_forces">mantrap.environment.social_forces</a>
 </li>
         <li><a href="environment.html#module-mantrap.environment.trajectron">mantrap.environment.trajectron</a>
-</li>
-        <li><a href="evaluation.html#module-mantrap.evaluation.metrics">mantrap.evaluation.metrics</a>
-</li>
-        <li><a href="visualisation.html#module-mantrap.evaluation.visualization">mantrap.evaluation.visualization</a>
 </li>
         <li><a href="constraints.html#module-mantrap.solver.constraints.constraint_module">mantrap.solver.constraints.constraint_module</a>
 </li>
@@ -597,6 +593,10 @@
         <li><a href="solver.html#module-mantrap.solver.solver_baselines.ignoring">mantrap.solver.solver_baselines.ignoring</a>
 </li>
         <li><a href="solver.html#module-mantrap.solver.solver_baselines.orca">mantrap.solver.solver_baselines.orca</a>
+</li>
+        <li><a href="visualisation.html#module-mantrap.visualization">mantrap.visualization</a>
+</li>
+        <li><a href="evaluation.html#module-mantrap_evaluation.metrics">mantrap_evaluation.metrics</a>
 </li>
       </ul></li>
   </ul></td>
@@ -671,14 +671,18 @@
         <li><a href="agents.html#mantrap.agents.agent_intermediates.linear.LinearAgent.reachability_boundary">(mantrap.agents.agent_intermediates.linear.LinearAgent method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="filter.html#mantrap.solver.filter.reachability.ReachabilityModule">ReachabilityModule (class in mantrap.solver.filter.reachability)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="agents.html#mantrap.agents.agent.Agent.reset">reset() (mantrap.agents.agent.Agent method)</a>
 </li>
       <li><a href="agents.html#mantrap.agents.agent.Agent.roll_trajectory">roll_trajectory() (mantrap.agents.agent.Agent method)</a>
+
+      <ul>
+        <li><a href="agents.html#mantrap.agents.agent_intermediates.linear.LinearAgent.roll_trajectory">(mantrap.agents.agent_intermediates.linear.LinearAgent method)</a>
 </li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -730,7 +734,11 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="agents.html#mantrap.agents.agent.Agent.unroll_trajectory">unroll_trajectory() (mantrap.agents.agent.Agent method)</a>
+
+      <ul>
+        <li><a href="agents.html#mantrap.agents.agent_intermediates.linear.LinearAgent.unroll_trajectory">(mantrap.agents.agent_intermediates.linear.LinearAgent method)</a>
 </li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="agents.html#mantrap.agents.agent.Agent.update">update() (mantrap.agents.agent.Agent method)</a>
