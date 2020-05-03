@@ -55,7 +55,7 @@
 #     # Utility #################################################################
 #     ###########################################################################
 #     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-#         mid = torch.tensor(z).view(self.num_control_points, 2).float()
+#         mid = torch.tensor(z).view(self.num_control_points, 2).double()
 #         mid.requires_grad = True
 #
 #         start_point = self._env.ego.position.unsqueeze(0)

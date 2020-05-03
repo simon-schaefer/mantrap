@@ -19,10 +19,10 @@ class DoubleIntegratorDTAgent(LinearAgent):
                           [0, 1, 0, dt, 0],
                           [0, 0, 1, 0, 0],
                           [0, 0, 0, 1, 0],
-                          [0, 0, 0, 0, 1]]).float()
+                          [0, 0, 0, 0, 1]])
         B = torch.tensor([[0, 0, dt, 0, 0],
-                          [0, 0, 0, dt, 0]]).t().float()
-        T = torch.tensor([0, 0, 0, 0, dt]).t().float()
+                          [0, 0, 0, dt, 0]]).t()
+        T = torch.tensor([0, 0, 0, 0, dt]).t()
         return A, B, T
 
     @staticmethod

@@ -57,7 +57,7 @@ class Agent(ABC):
         assert check_2d_vector(velocity)  # (vx, vy)
         assert time >= 0
 
-        self._state = torch.cat((position.float(), velocity.float(), torch.ones(1) * time))
+        self._state = torch.cat((position.double(), velocity.double(), torch.ones(1) * time))
 
         # Initialize (and/or append) history vector. The current state must be at the end of the internal history,
         # so either append it or create it when not already the case.
@@ -65,7 +65,7 @@ class Agent(ABC):
         if history is not None:
             assert check_ego_trajectory(history)
             assert torch.isclose(history[-1, -1], self.state_with_time[-1])  # times synced ?
-            history = history.float()
+            history = history.double()
 
             if not torch.all(torch.isclose(history[-1, :], state_un_squeezed)):
                 self._history = torch.cat((history, state_un_squeezed), dim=0)
@@ -101,7 +101,7 @@ class Agent(ABC):
         """
         assert check_ego_state(state, enforce_temporal=True)  # (x, y, theta, vx, vy, t)
         assert check_ego_action(action)  # (vx, vy)
-        action = action.float()
+        action = action.double()
 
         state_new = self._dynamics(state, action, dt=dt)
 

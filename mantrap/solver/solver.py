@@ -62,7 +62,7 @@ class Solver(ABC):
         **solver_params
     ):
         assert check_goal(goal)
-        self._goal = goal.float()
+        self._goal = goal.double()
 
         # Set planning and evaluation environment.
         self._env = env.copy()

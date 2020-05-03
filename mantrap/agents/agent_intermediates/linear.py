@@ -38,8 +38,10 @@ class LinearAgent(Agent, ABC):
         self._dynamics_matrices_rolling_dict = {}
         if dt is not None:
             assert dt > 0
-            self._dynamics_matrices_dict[dt] = self._dynamics_matrices(dt=dt)
-            self._dynamics_matrices_rolling_dict[dt] = self._dynamics_rolling_matrices(dt=dt, max_steps=max_steps)
+            A, B, T = self._dynamics_matrices(dt=dt)
+            self._dynamics_matrices_dict[dt] = (A.double(), B.double(), T.double())
+            An, Bn = self._dynamics_rolling_matrices(dt=dt, max_steps=max_steps)
+            self._dynamics_matrices_rolling_dict[dt] = (An.double(), Bn.double())
 
     ###########################################################################
     # Dynamics ################################################################
