@@ -26,7 +26,7 @@ import mantrap
 from mantrap_evaluation.datasets import SCENARIOS
 
 configurations = list(product(*[
-    ["ignoring"],  # solver type
+    mantrap.solver.SOLVERS_DICT.keys(),  # solver type
     SCENARIOS.keys(),  # scenario
     mantrap.environment.ENVIRONMENTS_DICT.keys(),  # environment type
     mantrap.agents.AGENTS_DICT.keys(),  # ego_type

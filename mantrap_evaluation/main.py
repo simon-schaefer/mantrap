@@ -54,11 +54,11 @@ def main():
             results.update(config_kwargs)
             results_df = results_df.append(results, ignore_index=True)
 
+            output_path = build_os_path(os.path.join(VISUALIZATION_DIRECTORY, "evaluation.csv"))
+            results_df.to_csv(output_path, index=False)
+
         except:
             print(config_kwargs)
-
-    output_path = build_os_path(os.path.join(VISUALIZATION_DIRECTORY, "evaluation.csv"))
-    results_df.to_csv(output_path)
 
 
 if __name__ == '__main__':
