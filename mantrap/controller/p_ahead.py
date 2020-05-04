@@ -40,6 +40,19 @@ def p_ahead_controller(
     assert check_ego_path(path)
     num_path_points = path.shape[0]
 
+    # If the path length is one (aka greedy look-ahead) we steer to the next point directly.
+    if num_path_points == 1:
+        px, py, vx, vy = agent.state.detach().numpy()
+        target_point = path.flatten().detach().numpy().tolist()
+
+        _, (ux, uy) = agent.go_to_point(
+            (px, py, vx, vy), target_point=target_point, speed=speed_reference, dt=dtc
+        )
+
+        controls = torch.tensor([ux, uy]).view(1, 2)
+        assert check_ego_controls(controls, t_horizon=1)
+        return controls.float()
+
     # Controller parameters.
     speed_reference = speed_reference if speed_reference is not None else agent.speed_max
     breaking_acc = breaking_acc if breaking_acc is not None else agent.acceleration_max

@@ -85,7 +85,8 @@ class IterativeEnvironment(GraphBasedEnvironment, ABC):
         t_horizon = len(ego_trajectory)  # works for list and torch.Tensor (= .shape[0])
         for t in range(1, t_horizon):
             for m_ghost, ghost in enumerate(self._ado_ghosts):
-                self._ado_ghosts[m_ghost].agent.update(graph[f"{ghost.id}_{t - 1}_{GK_CONTROL}"], dt=self.dt)
+                ado_action = graph[f"{ghost.id}_{t - 1}_{GK_CONTROL}"]
+                self._ado_ghosts[m_ghost].agent.update(ado_action, dt=self.dt)
 
             # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are
             # used for the ego motion, as guesses for the final trajectory i.e. starting points for optimization.

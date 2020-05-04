@@ -310,12 +310,16 @@ class Agent(ABC):
         return bool(lower_checked and upper_checked)
 
     def make_controls_feasible(self, controls: torch.Tensor) -> torch.Tensor:
-        """Make controls feasible by clipping them between its lower and upper boundaries. Return
-        the transformed feasible controls. The direction of controls is thereby not changed, since
-        just the length of the control vector is adapted.
+        """Make controls feasible by clipping them between its lower and upper boundaries.
+
+        Return the transformed feasible controls. The direction of controls is thereby not changed, since
+        just the length of the control vector is adapted. If the controls are just zeros then return
+        them as they are.
         """
         lower, upper = self.control_limits()
         controls_norm = torch.norm(controls, dim=-1, keepdim=True).detach()
+        if torch.all(torch.le(controls_norm, 1e-6)):
+            return controls
         controls_norm_clamped = controls_norm.clamp(lower, upper)
         return controls.div(controls_norm) * controls_norm_clamped
 

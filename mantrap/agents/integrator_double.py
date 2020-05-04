@@ -4,7 +4,6 @@ from typing import Tuple
 import torch
 
 from mantrap.agents.agent_intermediates.linear import LinearAgent
-from mantrap.utility.maths import Circle
 
 
 class DoubleIntegratorDTAgent(LinearAgent):
@@ -70,6 +69,8 @@ class DoubleIntegratorDTAgent(LinearAgent):
         px, py, vx, vy = state
         target_point_x, target_point_y = target_point
         target_distance = math.hypot(px - target_point_x, py - target_point_y)
+        if math.isclose(target_distance, 0.0):
+            return (px, py, vx, vy), (0.0, 0.0)
 
         # Determine pseudo-vehicle state (speed and orientation).
         v = math.hypot(vx, vy)
@@ -82,8 +83,14 @@ class DoubleIntegratorDTAgent(LinearAgent):
         d_yaw = v / pseudo_wheel_distance * math.tan(delta)
 
         # Transform pure pursuit control commands to control commands fitting the agent type.
-        ux = 0.5 * d_vel * vx / v - vy * d_yaw
-        uy = 0.5 * d_vel * vy / v + vx * d_yaw
+        # If velocity is zero (which means v = vx = vy = 0), the transformation is not defined. In this
+        # situation just accelerate in direction of the current agent's orientation.
+        if not math.isclose(v, 0.0):
+            ux = 0.5 * d_vel * vx / v - vy * d_yaw
+            uy = 0.5 * d_vel * vy / v + vx * d_yaw
+        else:
+            ux = d_vel * math.cos(yaw)
+            uy = d_vel * math.sin(yaw)
 
         # Ensure feasibility of control input given internal control limits.
         ux, uy = self.make_controls_feasible_scalar(ux, uy)

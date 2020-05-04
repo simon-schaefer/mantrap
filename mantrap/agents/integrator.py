@@ -62,6 +62,9 @@ class IntegratorDTAgent(LinearAgent):
         """
         px, py, vx, vy = state
         target_point_x, target_point_y = target_point
+        target_distance = math.hypot(px - target_point_x, py - target_point_y)
+        if math.isclose(target_distance, 0.0):
+            return (px, py, vx, vy), (0.0, 0.0)
 
         # Determine cartesian controls with "infinite" speed. Then adapt the controls to the given reference
         # speed value (while keeping the direction).
