@@ -8,7 +8,7 @@ from mantrap.utility.shaping import check_ego_state, check_ego_trajectory, check
 
 
 def _create_environment(
-    env_class: GraphBasedEnvironment.__class__,
+    env_type: GraphBasedEnvironment.__class__,
     config_name: str,
     ado_histories: List[torch.Tensor],
     ego_type: Agent.__class__ = None,
@@ -27,7 +27,7 @@ def _create_environment(
     assert num_modes >= 1
 
     ego_kwargs = {"position": ego_state[0:2], "velocity": ego_state[2:4]} if ego_type is not None else None
-    env = env_class(ego_type=ego_type, ego_kwargs=ego_kwargs, config_name=config_name, **env_kwargs)
+    env = env_type(ego_type=ego_type, ego_kwargs=ego_kwargs, config_name=config_name, **env_kwargs)
     for m_ado, history in enumerate(ado_histories):
         ado_kwargs = {
             "position": history[-1, 0:2].float(),

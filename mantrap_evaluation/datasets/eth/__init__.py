@@ -13,7 +13,7 @@ from mantrap_evaluation.datasets.api import _create_environment
 
 
 def scenario_eth(
-    env_class: GraphBasedEnvironment.__class__,
+    env_type: GraphBasedEnvironment.__class__,
     ego_type: Agent.__class__ = DoubleIntegratorDTAgent,
     t_dataset: float = 0.0,
     num_modes: int = 1
@@ -23,7 +23,7 @@ def scenario_eth(
     The argument `t_dataset` determines the time of the dateset (video) in which the pedestrian has to be present,
     in order to be taken into account for the created scenario.
 
-    :param env_class: type of created environment.
+    :param env_type: type of created environment.
     :param ego_type: type of created ego agent (robot).
     :param t_dataset: dataset starting time around which pedestrian should be used [s].
     """
@@ -90,7 +90,7 @@ def scenario_eth(
 
     # Create environment using api.
     env = _create_environment(
-        env_class=env_class,
+        env_type=env_type,
         config_name="eth",
         ado_histories=ado_histories,
         ado_ids=ado_ids,

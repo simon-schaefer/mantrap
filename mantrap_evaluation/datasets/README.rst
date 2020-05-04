@@ -17,7 +17,7 @@ it to the dictionary of scenarios in :code:`__init__.py`:
 .. code-block:: python
 
     def foo(
-        env_class: GraphBasedEnvironment.__class__,
+        env_type: GraphBasedEnvironment.__class__,
         ego_type: Agent.__class__ = DoubleIntegratorDTAgent,
         num_modes: int = 1
     ) -> Tuple[GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
