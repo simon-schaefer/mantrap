@@ -1,19 +1,16 @@
 from typing import Dict, Tuple, Union
 
+import mantrap
 import torch
-
-from mantrap.agents.agent import Agent
-from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.environment.environment import GraphBasedEnvironment
 
 from mantrap_evaluation.datasets.api import _create_environment
 
 
 def scenario_custom_haruki(
-    env_type: GraphBasedEnvironment.__class__,
-    ego_type: Agent.__class__ = DoubleIntegratorDTAgent,
+    env_type: mantrap.environment.GraphBasedEnvironment.__class__,
+    ego_type: mantrap.agents.Agent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
     num_modes: int = 1
-) -> Tuple[GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
+) -> Tuple[mantrap.environment.GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
     """Scenario haruki.
 
     Three ado agents, having 2 modes each, and the ego agent. All starting at rest, start at both "sides" of the

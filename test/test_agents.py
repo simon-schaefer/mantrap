@@ -1,7 +1,6 @@
 import pytest
 import torch
 
-from mantrap.agents.agent import Agent
 from mantrap.agents import *
 from mantrap.utility.maths import Circle
 

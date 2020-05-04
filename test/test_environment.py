@@ -7,7 +7,6 @@ import torch
 
 from mantrap.agents import IntegratorDTAgent
 from mantrap.constants import *
-from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.environment.iterative import IterativeEnvironment
 from mantrap.environment import *
 from mantrap.utility.maths import straight_line

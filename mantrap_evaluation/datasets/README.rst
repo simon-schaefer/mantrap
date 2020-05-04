@@ -17,10 +17,10 @@ it to the dictionary of scenarios in :code:`__init__.py`:
 .. code-block:: python
 
     def foo(
-        env_type: GraphBasedEnvironment.__class__,
-        ego_type: Agent.__class__ = DoubleIntegratorDTAgent,
+        env_type: mantrap.environment.GraphBasedEnvironment.__class__,
+        ego_type: mantrap.agents.Agent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
         num_modes: int = 1
-    ) -> Tuple[GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
+    ) -> Tuple[mantrap.environment.GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
 
 
 The function basically defines the initial state of the ego (robot) as well the initial state and state histories

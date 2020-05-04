@@ -1,13 +1,9 @@
+import mantrap
 import torch
-
-from mantrap.constants import AGENT_ACC_MAX, ROBOT_ACC_MAX
-from mantrap.environment.environment import GraphBasedEnvironment
-from mantrap.utility.maths import Derivative2, straight_line
-from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories
 
 
 def metric_minimal_distance(
-    ego_trajectory: torch.Tensor, ado_trajectories: torch.Tensor, num_inter_points: int = 100, **unused_kwargs
+    ego_trajectory: torch.Tensor, ado_trajectories: torch.Tensor, num_inter_points: int = 100, **unused
 ) -> float:
     """Determine the minimal distance between the robot and any agent.
     Therefore the function expects to get a robot trajectory and positions for every ado (ghost) at every point of time,
@@ -21,19 +17,23 @@ def metric_minimal_distance(
     :param num_inter_points: number of interpolation points between each time-step.
     """
     ego_trajectory = ego_trajectory.detach()
-    assert check_ego_trajectory(ego_trajectory, pos_only=True)
+    assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_only=True)
     ado_trajectories = ado_trajectories.detach()
     horizon = ego_trajectory.shape[0]
     num_ados = ado_trajectories.shape[0]
-    assert check_ado_trajectories(ado_trajectories, t_horizon=horizon, pos_only=True, modes=1)
+    assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon=horizon, pos_only=True, modes=1)
 
     minimal_distance = float("Inf")
     for t in range(1, horizon):
-        ego_dense = straight_line(ego_trajectory[t - 1, 0:2], ego_trajectory[t, 0:2], steps=num_inter_points)
+        ego_dense = mantrap.utility.maths.straight_line(ego_trajectory[t - 1, 0:2],
+                                                        ego_trajectory[t, 0:2],
+                                                        steps=num_inter_points)
         for m in range(num_ados):
             ado_position_t0 = ado_trajectories[m, 0, t-1, 0:2]
             ado_position_t1 = ado_trajectories[m, 0, t, 0:2]
-            ado_dense = straight_line(ado_position_t0, ado_position_t1, steps=num_inter_points)
+            ado_dense = mantrap.utility.maths.straight_line(ado_position_t0,
+                                                            ado_position_t1,
+                                                            steps=num_inter_points)
             min_distance_current = torch.min(torch.norm(ego_dense - ado_dense, dim=1)).item()
             if min_distance_current < minimal_distance:
                 minimal_distance = min_distance_current
@@ -41,7 +41,8 @@ def metric_minimal_distance(
     return float(minimal_distance)
 
 
-def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = ROBOT_ACC_MAX, **unused) -> float:
+def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = mantrap.constants.ROBOT_ACC_MAX, **unused
+                      ) -> float:
     """Determine the ego's control effort (acceleration).
 
     For calculating the control effort of the ego agent approximate the acceleration by assuming the acceleration
@@ -53,21 +54,22 @@ def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = RO
     :param max_acceleration: maximal (possible) acceleration of ego robot.
     """
     ego_trajectory = ego_trajectory.detach()
-    assert check_ego_trajectory(ego_trajectory)
+    assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
 
     # Determine integral over ego acceleration (= ego speed). Similarly for single integrator ego type.
     ego_effort = 0.0
     max_effort = 0.0
     for t in range(1, ego_trajectory.shape[0]):
         dt = float(ego_trajectory[t, -1] - ego_trajectory[t - 1, -1])
-        dd = Derivative2(dt=dt, horizon=2, velocity=True)
+        dd = mantrap.utility.maths.Derivative2(dt=dt, horizon=2, velocity=True)
         ego_effort += torch.norm(dd.compute(ego_trajectory[t-1:t+1, 2:4])).item()
         max_effort += max_acceleration
 
     return float(ego_effort / max_effort)
 
 
-def metric_ado_effort(env: GraphBasedEnvironment, ado_trajectories: torch.Tensor, **unused) -> float:
+def metric_ado_effort(env: mantrap.environment.GraphBasedEnvironment, ado_trajectories: torch.Tensor, **unused
+                      ) -> float:
     """Determine the ado's additional control effort introduced by the ego.
 
     For calculating the additional control effort of the ado agents their acceleration is approximately determined
@@ -80,7 +82,7 @@ def metric_ado_effort(env: GraphBasedEnvironment, ado_trajectories: torch.Tensor
     ado_traj = ado_trajectories.detach()
     t_horizon = ado_traj.shape[2]
     num_ados = ado_traj.shape[0]
-    assert check_ado_trajectories(ado_traj, modes=1)  # deterministic (!)
+    assert mantrap.utility.shaping.check_ado_trajectories(ado_traj, modes=1)  # deterministic (!)
 
     # Copy environment to not alter passed env object when resetting its state. Also check whether the initial
     # state in the environment and the ado trajectory tensor are equal.
@@ -97,11 +99,11 @@ def metric_ado_effort(env: GraphBasedEnvironment, ado_trajectories: torch.Tensor
 
             # Predicting ado trajectories without interaction for current state.
             ado_traj_wo = env_metric.predict_wo_ego(t_horizon=2).detach()
-            assert check_ado_trajectories(ado_traj_wo, ados=num_ados, t_horizon=2)
+            assert mantrap.utility.shaping.check_ado_trajectories(ado_traj_wo, ados=num_ados, t_horizon=2)
 
             # Determine acceleration difference between actual and without scene w.r.t. ados.
             dt = float(ado_traj[m, :, t, -1] - ado_traj[m, :, t - 1, -1])
-            dd = Derivative2(horizon=2, dt=dt, velocity=True)
+            dd = mantrap.utility.maths.Derivative2(horizon=2, dt=dt, velocity=True)
             ado_acc = torch.norm(dd.compute(ado_traj[m, :, t-1:t+1, 2:4]))
             ado_acc_wo = torch.norm(dd.compute(ado_traj_wo[m, :, 0:2, 2:4]))
 
@@ -119,13 +121,13 @@ def metric_directness(ego_trajectory: torch.Tensor, goal: torch.Tensor, **unused
     Therefore the ratio of every ego velocity vector going in the goal direction is determined, and normalized by the
     number of time-steps.
 
-    .. math:: score = \dfrac{\sum_t \overrightarrow{s}_t * \overrightarrow{v}_t}{T}
+    .. math:: score = \\dfrac{\\sum_t \\overrightarrow{s}_t * \\overrightarrow{v}_t}{T}
 
     :param ego_trajectory: trajectory of ego (t_horizon, 5).
     :param goal: optimization goal state (may vary in size, but usually 2D position).
     """
     ego_trajectory = ego_trajectory.detach()
-    assert check_ego_trajectory(ego_trajectory)
+    assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
     goal = goal.float()
     t_horizon = ego_trajectory.shape[0]
 

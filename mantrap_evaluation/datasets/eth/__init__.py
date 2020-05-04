@@ -1,23 +1,19 @@
 import os
 from typing import Dict, Tuple, Union
 
+import mantrap
 import numpy as np
 import torch
-
-from mantrap.agents.agent import Agent
-from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.environment.environment import GraphBasedEnvironment
-from mantrap.utility.io import build_os_path
 
 from mantrap_evaluation.datasets.api import _create_environment
 
 
 def scenario_eth(
-    env_type: GraphBasedEnvironment.__class__,
-    ego_type: Agent.__class__ = DoubleIntegratorDTAgent,
+    env_type: mantrap.environment.GraphBasedEnvironment.__class__,
+    ego_type: mantrap.agents.Agent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
     t_dataset: float = 0.0,
     num_modes: int = 1
-) -> Tuple[GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
+) -> Tuple[mantrap.environment.GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
     """ETH - Computer Vision Lab - Pedestrian movement dataset at ETH.
 
     The argument `t_dataset` determines the time of the dateset (video) in which the pedestrian has to be present,
@@ -26,6 +22,7 @@ def scenario_eth(
     :param env_type: type of created environment.
     :param ego_type: type of created ego agent (robot).
     :param t_dataset: dataset starting time around which pedestrian should be used [s].
+    :param num_modes: number of output modes.
     """
     # Dataset parameters.
     eth_dt = 0.4  # [s] time-step.
@@ -36,7 +33,7 @@ def scenario_eth(
 
     # Read trajectories information file from dataset into numpy array using `loadtxt` function.
     dataset_file = os.path.join("mantrap_evaluation", "datasets", "eth", "ewap_dataset", "seq_eth", "obsmat.txt")
-    dataset_file = build_os_path(dataset_file)
+    dataset_file = mantrap.utility.io.build_os_path(dataset_file)
     data = np.loadtxt(dataset_file)
 
     # Normalize file i.e. shift positions to mean over all position and reset time-step by subtracting the first

@@ -21,22 +21,19 @@ Specific Comparisons
 """
 from itertools import product
 
-from mantrap.constants import ENV_DT_DEFAULT
-from mantrap.agents import AGENTS_DICT
-from mantrap.environment import ENVIRONMENTS_DICT
-from mantrap.solver import SOLVERS_DICT
+import mantrap
+
 from mantrap_evaluation.datasets import SCENARIOS
-from mantrap.solver.filter import FILTER_DICT
 
 configurations = list(product(*[
     ["ignoring"],  # solver type
     SCENARIOS.keys(),  # scenario
-    ENVIRONMENTS_DICT.keys(),  # environment type
-    AGENTS_DICT.keys(),  # ego_type
-    FILTER_DICT.keys(),  # filter types
+    mantrap.environment.ENVIRONMENTS_DICT.keys(),  # environment type
+    mantrap.agents.AGENTS_DICT.keys(),  # ego_type
+    mantrap.solver.filter.FILTER_DICT.keys(),  # filter types
     [1, 3, 5],  # planning horizon
     [None],  # evaluation environments,
-    [ENV_DT_DEFAULT],  # time-steps,
+    [mantrap.constants.ENV_DT_DEFAULT],  # time-steps,
     [True, False]  # multi-processing
 ]))
 
