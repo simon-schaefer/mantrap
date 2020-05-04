@@ -139,7 +139,7 @@ class Trajectron(GraphBasedEnvironment):
         The Trajectron model directly predicts the whole path of every ado in the scene, conditioned on the
         ego's trajectory. Thereby it assumes every single point of the path to be modelled by a GMM (Gaussian Mixture
         Model). While the mean positions of the N most important modes are used to build the ado's trajectory, their
-        uncertainty (`log_sigmas`) are used to determine the weight and thereby the choice of these modes.
+        weights (`log_pi`) are used to determine the weight and thereby the choice of these modes.
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
         :return: dictionary over every state of every agent in the scene for t in [0, t_horizon].
