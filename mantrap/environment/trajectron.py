@@ -159,7 +159,8 @@ class Trajectron(GraphBasedEnvironment):
         for node in self._gt_scene.nodes:
             agent_id = self.agent_id_from_node_id(node.__str__())
             if agent_id == ID_EGO:
-                node_state_dict[node] = ego_trajectory[0, 0:2].detach()  # first state of trajectory is current state!
+                # first state of trajectory is current state!
+                node_state_dict[node] = ego_trajectory[0, 0:2].detach()
             else:
                 m_ado = self.index_ado_id(agent_id)
                 node_state_dict[node] = ado_states[m_ado, 0:2].detach()
@@ -257,8 +258,8 @@ class Trajectron(GraphBasedEnvironment):
         t_start = float(ado_state[-1])
 
         # Bring distribution from Trajectron to internal shape (hidden shape check).
-        mus = gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2]
-        log_pis = gmm.log_pis.permute(0, 1, 3, 2)[0, 0, :, :]
+        mus = gmm.mus.permute(0, 1, 3, 2, 4)[0, 0, :, :, 0:2].float()
+        log_pis = gmm.log_pis.permute(0, 1, 3, 2)[0, 0, :, :].float()
 
         assert mus.shape[0] == log_pis.shape[0]  # num_modes
         assert mus.shape[1] == log_pis.shape[1] == t_horizon - 1

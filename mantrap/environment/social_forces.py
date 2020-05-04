@@ -52,7 +52,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
         assert check_goal(goal)
-        goal = goal.detach().double()
+        goal = goal.detach().float()
 
         # In order to introduce multi-modality and stochastic effects the underlying parameters of the social forces
         # environment are sampled from distributions, each for one mode. If not stated the default parameters are

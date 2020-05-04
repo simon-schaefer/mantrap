@@ -44,7 +44,7 @@ class ORCAEnvironment(IterativeEnvironment):
     ###########################################################################
     def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> Agent:
         assert check_goal(goal)
-        params = [{PK_GOAL: goal.detach().double()}]
+        params = [{PK_GOAL: goal.detach().float()}]
         return super(ORCAEnvironment, self).add_ado(IntegratorDTAgent, arg_list=params, **ado_kwargs)
 
     ###########################################################################

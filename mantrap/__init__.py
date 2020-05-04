@@ -19,7 +19,7 @@ def remove_bytes_from_logging(fn):
 #######################################
 # Default tensor precision ############
 #######################################
-torch.set_default_dtype(torch.float64)
+torch.set_default_dtype(torch.float32)
 
 #######################################
 # Logging preferences #################

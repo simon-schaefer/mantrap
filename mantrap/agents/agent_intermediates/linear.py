@@ -39,9 +39,9 @@ class LinearAgent(Agent, ABC):
         if dt is not None:
             assert dt > 0
             A, B, T = self._dynamics_matrices(dt=dt)
-            self._dynamics_matrices_dict[dt] = (A.double(), B.double(), T.double())
+            self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
             An, Bn = self._dynamics_rolling_matrices(dt=dt, max_steps=max_steps)
-            self._dynamics_matrices_rolling_dict[dt] = (An.double(), Bn.double())
+            self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float())
 
     ###########################################################################
     # Dynamics ################################################################
@@ -68,7 +68,8 @@ class LinearAgent(Agent, ABC):
 
         :param max_steps: maximal number of pre-computed steps.
         """
-        A, B, T = self._dynamics_matrices(dt=dt)
+        A, B, _ = self._dynamics_matrices(dt=dt)
+        A, B = A.float(), B.float()
         x_size = 5  # state size
         u_size = 2  # control size
 

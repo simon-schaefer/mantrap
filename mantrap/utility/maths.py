@@ -89,7 +89,7 @@ def spline_interpolation(control_points: torch.Tensor, num_samples: int = 100):
         control_points_np = control_points.detach().numpy()
         tck, _ = splprep([control_points_np[:, 0], control_points_np[:, 1]], s=0.0)
         x_path, y_path = splev(np.linspace(0, 1, num_samples), tck)
-        path = torch.stack((torch.tensor(x_path), torch.tensor(y_path)), dim=1).double()
+        path = torch.stack((torch.tensor(x_path), torch.tensor(y_path)), dim=1).float()
 
     assert check_ego_path(path, t_horizon=num_samples)
     return path
@@ -114,7 +114,7 @@ class Circle(Shape2D):
         assert check_2d_vector(center)
         assert radius > 0.0
 
-        self.center = center.double()
+        self.center = center.float()
         self.radius = float(radius)
 
     @classmethod

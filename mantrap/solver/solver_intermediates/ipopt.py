@@ -82,8 +82,8 @@ class IPOPTIntermediate(Solver, ABC):
         nlp.addOption("print_level", 5 if __debug__ is True else 0)
         if __debug__ is True:
             nlp.addOption("print_timing_statistics", "yes")
-            nlp.addOption("derivative_test", "first-order")
-            nlp.addOption("derivative_test_tol", 1e-4)
+            # nlp.addOption("derivative_test", "first-order")
+            # nlp.addOption("derivative_test_tol", 1e-4)
 
         # Solve optimization problem for "optimal" ego trajectory `x_optimized`.
         z_opt, info = nlp.solve(z0_flat)
