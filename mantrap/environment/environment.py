@@ -809,13 +809,13 @@ class GraphBasedEnvironment(ABC):
 
     @property
     def name(self) -> str:
-        return self.environment_name + "_" + self.config_name
+        return self.environment_name() + "_" + self.config_name
 
     ###########################################################################
     # Simulation properties ###################################################
     ###########################################################################
-    @property
-    def environment_name(self) -> str:
+    @staticmethod
+    def environment_name() -> str:
         raise NotImplementedError
 
     @property

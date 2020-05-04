@@ -100,6 +100,6 @@ class ORCASolver(ZControlIntermediate):
     ###########################################################################
     # Solver properties #######################################################
     ###########################################################################
-    @property
-    def solver_name(self) -> str:
+    @staticmethod
+    def solver_name() -> str:
         return "orca"

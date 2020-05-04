@@ -637,11 +637,11 @@ class Solver(ABC):
 
     @property
     def name(self) -> str:
-        return self.solver_name + "_" + self.config_name
+        return self.solver_name() + "_" + self.config_name
 
     ###########################################################################
     # Solver properties #######################################################
     ###########################################################################
-    @property
-    def solver_name(self) -> str:
+    @staticmethod
+    def solver_name() -> str:
         raise NotImplementedError

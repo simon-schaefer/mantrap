@@ -181,8 +181,8 @@ class SocialForcesEnvironment(IterativeEnvironment):
     ###########################################################################
     # Simulation properties ###################################################
     ###########################################################################
-    @property
-    def environment_name(self) -> str:
+    @staticmethod
+    def environment_name() -> str:
         return "social_forces"
 
     @property

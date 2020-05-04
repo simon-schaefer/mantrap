@@ -11,3 +11,4 @@ ENVIRONMENTS = [
     ORCAEnvironment,
     PotentialFieldEnvironment
 ]
+ENVIRONMENTS_DICT = {env.environment_name(): env for env in ENVIRONMENTS}

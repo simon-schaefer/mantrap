@@ -327,8 +327,8 @@ class ORCAEnvironment(IterativeEnvironment):
     ###########################################################################
     # Simulation parameters ###################################################
     ###########################################################################
-    @property
-    def environment_name(self) -> str:
+    @staticmethod
+    def environment_name() -> str:
         return "orca"
 
     @property
