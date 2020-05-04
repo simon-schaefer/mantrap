@@ -31,7 +31,7 @@ from mantrap.solver.filter import FILTER_DICT
 configurations = list(product(*[
     ["ignoring"],  # solver type
     SCENARIOS.keys(),  # scenario
-    ["trajectron"],  # ENVIRONMENTS_DICT.keys(),  # environment type
+    ENVIRONMENTS_DICT.keys(),  # environment type
     AGENTS_DICT.keys(),  # ego_type
     FILTER_DICT.keys(),  # filter types
     [1, 3, 5],  # planning horizon

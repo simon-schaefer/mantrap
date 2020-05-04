@@ -1,23 +1,22 @@
+import os
 import time
 from typing import Dict
 
 import pandas as pd
 import tqdm
 
+from mantrap.constants import *
 from mantrap.agents import AGENTS_DICT
 from mantrap.environment import ENVIRONMENTS_DICT
-from mantrap.environment.environment import GraphBasedEnvironment
 from mantrap.solver import SOLVERS_DICT
-from mantrap.solver.solver import Solver
-
+from mantrap.utility.io import build_os_path
 
 from mantrap_evaluation import get_metrics, evaluate_metrics
 from mantrap_evaluation.datasets import SCENARIOS
 from mantrap_evaluation.configurations import configurations, config_keys
 
 
-def run_evaluation(solver: Solver, env_original: GraphBasedEnvironment, time_steps: int = 5, **solver_kwargs
-                   ) -> Dict[str, float]:
+def run_evaluation(solver, env_original, time_steps: int = 5, **solver_kwargs) -> Dict[str, float]:
     start_time = time.time()
 
     # Run experiment, i.e. solve for ego and ado trajectories for N time-steps.
@@ -46,12 +45,20 @@ def main():
         ego_type = AGENTS_DICT[config_kwargs["ego_type"]]
         env, goal, _ = SCENARIOS[config_kwargs["scenario"]](env_type=env_type, ego_type=ego_type)
         solver = SOLVERS_DICT[config_kwargs["solver"]](env, goal=goal, **config_kwargs)
-        results = run_evaluation(solver, env_original=env, multiprocessing=config_kwargs["multiprocessing"])
-        results.update(config_kwargs)
 
-        results_df = results_df.append(results, ignore_index=True)
+        try:
+            results = run_evaluation(solver,
+                                     env_original=env,
+                                     multiprocessing=config_kwargs["multiprocessing"]
+                                     )
+            results.update(config_kwargs)
+            results_df = results_df.append(results, ignore_index=True)
 
-    print(results_df)
+        except:
+            print(config_kwargs)
+
+    output_path = build_os_path(os.path.join(VISUALIZATION_DIRECTORY, "evaluation.csv"))
+    results_df.to_csv(output_path)
 
 
 if __name__ == '__main__':
