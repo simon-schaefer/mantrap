@@ -480,3 +480,7 @@ class Agent(ABC):
     @property
     def id(self) -> str:
         return self._id
+
+    @staticmethod
+    def agent_type() -> str:
+        raise NotImplementedError

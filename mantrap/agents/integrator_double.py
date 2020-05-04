@@ -97,3 +97,10 @@ class DoubleIntegratorDTAgent(LinearAgent):
         .. math:: [- a_{max}, a_{max}]
         """
         return -self.acceleration_max, self.acceleration_max
+
+    ###########################################################################
+    # Agent Properties ########################################################
+    ###########################################################################
+    @staticmethod
+    def agent_type() -> str:
+        return "double_int"

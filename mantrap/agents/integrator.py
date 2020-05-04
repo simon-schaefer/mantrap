@@ -90,3 +90,7 @@ class IntegratorDTAgent(LinearAgent):
         """Since single integrators are assumed to react instantly, their maximal acceleration
         is in fact infinite !"""
         return math.inf
+
+    @staticmethod
+    def agent_type() -> str:
+        return "single_int"
