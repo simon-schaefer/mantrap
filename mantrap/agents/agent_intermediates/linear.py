@@ -179,6 +179,7 @@ class LinearAgent(Agent, ABC):
             self._dynamics_matrices_dict[dt] = self._dynamics_matrices(dt=dt)
 
         A, B, _ = self._dynamics_matrices_dict[dt]
+        A, B = A.float(), B.float()
         x = self.state_with_time
         n = time_steps
         lower, upper = self.control_limits()
