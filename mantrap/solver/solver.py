@@ -42,6 +42,7 @@ class Solver(ABC):
     :param env: environment the solver's forward simulations are based on.
     :param goal: goal state (position) of the robot (2).
     :param t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
+    :param optimize_speed: include robot's speed in optimization.
     :param multiprocessing: use multiprocessing for optimization.
     :param objectives: List of objective module names and according weights.
     :param constraints: List of constraint module names.
@@ -54,6 +55,7 @@ class Solver(ABC):
         env: GraphBasedEnvironment,
         goal: torch.Tensor,
         t_planning: int = SOLVER_HORIZON_DEFAULT,
+        optimize_speed: bool = True,
         objectives: List[Tuple[str, float]] = None,
         constraints: List[str] = None,
         filter_module: str = FILTER_NO_FILTER,
@@ -73,6 +75,7 @@ class Solver(ABC):
         # Dictionary of solver parameters.
         self._solver_params = solver_params
         self._solver_params[PK_T_PLANNING] = t_planning
+        self._solver_params[PK_OPTIMIZE_SPEED] = optimize_speed
         self._solver_params[PK_CONFIG] = config_name
 
         # The objective and constraint functions (and their gradients) are packed into objectives, for a more compact
@@ -423,7 +426,10 @@ class Solver(ABC):
     def _build_objective_modules(self, modules: List[Tuple[str, float]]) -> Dict[str, ObjectiveModule]:
         assert all([name in OBJECTIVES_DICT.keys() for name, _ in modules])
         assert all([0.0 <= weight for _, weight in modules])
-        objective_kwargs = {"t_horizon": self.planning_horizon, "env": self.env, "goal": self.goal}
+        objective_kwargs = {"t_horizon": self.planning_horizon,
+                            "env": self.env,
+                            "goal": self.goal,
+                            "optimize_speed": self.optimize_speed}
         return {m: OBJECTIVES_DICT[m](weight=w, **objective_kwargs) for m, w in modules}
 
     def _build_constraint_modules(self, modules: List[str]) -> Dict[str, ConstraintModule]:
@@ -582,6 +588,10 @@ class Solver(ABC):
     @property
     def planning_horizon(self) -> int:
         return self._solver_params[PK_T_PLANNING]
+
+    @property
+    def optimize_speed(self) -> bool:
+        return self._solver_params[PK_OPTIMIZE_SPEED]
 
     ###########################################################################
     # Optimization formulation parameters #####################################

@@ -23,14 +23,14 @@ class GoalModule(ObjectiveModule):
     .. math:: objective = \\sum_{T} w_t(d_{goal}(t)) || v_t ||_2
 
     :param goal: goal state/position for robot agent (2).
-    :param include_velocity: include cost for zero velocity at goal state.
+    :param optimize_speed: include cost for zero velocity at goal state.
     """
-    def __init__(self, goal: torch.Tensor, include_velocity: bool = True, **module_kwargs):
+    def __init__(self, goal: torch.Tensor, optimize_speed: bool = True, **module_kwargs):
         assert check_goal(goal)
 
         super(GoalModule, self).__init__(**module_kwargs)
         self._goal = goal
-        self._include_velocity = include_velocity
+        self._include_velocity = optimize_speed
         self._distribution = torch.linspace(0, 1, steps=self.t_horizon + 1) ** 3
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
         self._distribution = self._distribution.detach()  # detach -> constant factor (!)
