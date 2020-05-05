@@ -1,16 +1,18 @@
 import collections
 import typing
 
+import numpy as np
 import torch
 
 import mantrap.agents
 import mantrap.constants
-import mantrap.environment
-import mantrap.environment.intermediates
 import mantrap.utility.shaping
 
+from ..base.graph_based import GraphBasedEnvironment
+from ..base.iterative import IterativeEnvironment
 
-class ORCAEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
+
+class ORCAEnvironment(IterativeEnvironment):
     """ORCA-based environment.
 
     Implementation enviornment according to 'Reciprocal n-body Collision Avoidance' by Jur van den Berg,
@@ -41,7 +43,7 @@ class ORCAEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> mantrap.agents.DTAgent:
+    def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> mantrap.agents.base.DTAgent:
         assert mantrap.utility.shaping.check_goal(goal)
         params = [{mantrap.constants.PK_GOAL: goal.detach().float()}]
         return super(ORCAEnvironment, self).add_ado(mantrap.agents.IntegratorDTAgent, arg_list=params, **ado_kwargs)
@@ -257,7 +259,7 @@ class ORCAEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
         constraints = []
 
         for other_id in other_ids:
-            self_pos = graph[f"{self_id}_{k}_{mantrap.constants.GK_POSITION}"],
+            self_pos = graph[f"{self_id}_{k}_{mantrap.constants.GK_POSITION}"]
             self_vel = graph[f"{self_id}_{k}_{mantrap.constants.GK_VELOCITY}"]
 
             rel_pos = graph[f"{other_id}_{k}_{mantrap.constants.GK_POSITION}"] - self_pos
@@ -311,8 +313,7 @@ class ORCAEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def _copy_ados(self, env_copy: mantrap.environment.GraphBasedEnvironment
-                   ) -> mantrap.environment.GraphBasedEnvironment:
+    def _copy_ados(self, env_copy: GraphBasedEnvironment) -> GraphBasedEnvironment:
         for i in range(self.num_ados):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
@@ -321,7 +322,7 @@ class ORCAEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
                 velocity=ghosts_ado[0].agent.velocity,  # uni-modal !
                 history=ghosts_ado[0].agent.history,  # uni-modal !
                 time=self.time,
-                weights=[ghost.weight for ghost in ghosts_ado],
+                weights=np.array([ghost.weight for ghost in ghosts_ado]),
                 num_modes=self.num_modes,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
                 goal=ghosts_ado[0].params[mantrap.constants.PK_GOAL],

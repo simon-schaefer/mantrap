@@ -21,7 +21,7 @@ class ConstraintModule(abc.ABC):
     :param t_horizon: planning time horizon in number of time-steps (>= 1).
     :param env: environment object reference.
     """
-    def __init__(self, t_horizon: int, env: mantrap.environment.GraphBasedEnvironment):
+    def __init__(self, t_horizon: int, env: mantrap.environment.base.GraphBasedEnvironment):
         assert t_horizon >= 1
         self._t_horizon = t_horizon
         self._env = env

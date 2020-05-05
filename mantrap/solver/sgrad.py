@@ -1,11 +1,12 @@
 import typing
 
 import mantrap.constants
-import mantrap.solver.solver_intermediates
+
+from .base.ipopt import IPOPTIntermediate
+from .base.z_controls import ZControlIntermediate
 
 
-class SGradSolver(mantrap.solver.solver_intermediates.IPOPTIntermediate,
-                  mantrap.solver.solver_intermediates.ZControlIntermediate):
+class SGradSolver(IPOPTIntermediate, ZControlIntermediate):
     """Shooting NLP using IPOPT solver.
 
     .. math:: z = controls

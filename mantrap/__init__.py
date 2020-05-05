@@ -13,6 +13,7 @@ import mantrap.utility
 #######################################
 def __set_type_defaults():
     import torch
+
     torch.set_default_dtype(torch.float32)
 
 
@@ -23,7 +24,7 @@ def __set_logging_preferences():
     import logging
     import sys
 
-    import numpy as np
+    import numpy
     import torch
 
     def remove_bytes_from_logging(fn):
@@ -36,6 +37,7 @@ def __set_logging_preferences():
 
         return remove_bytes
 
+    import mantrap.utility.io
     is_debug = __debug__ is True and not mantrap.utility.io.is_running_from_ipython()
     logging.StreamHandler.emit = remove_bytes_from_logging(logging.StreamHandler.emit)
     logging.basicConfig(
@@ -46,9 +48,9 @@ def __set_logging_preferences():
     logging.getLogger("matplotlib").setLevel(logging.ERROR)
     logging.getLogger("numpy").setLevel(logging.WARNING)
     torch.set_printoptions(precision=4)
-    np.set_printoptions(precision=4)
-    np.set_printoptions(threshold=sys.maxsize)  # dont collapse arrays while printing
-    np.seterr(divide='ignore', invalid='ignore')
+    numpy.set_printoptions(precision=4)
+    numpy.set_printoptions(threshold=sys.maxsize)  # dont collapse arrays while printing
+    numpy.seterr(divide='ignore', invalid='ignore')
 
 
 __set_type_defaults()

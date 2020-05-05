@@ -3,10 +3,11 @@ import typing
 import torch
 
 import mantrap.constants
-import mantrap.constraints
+
+from .constraint_module import ConstraintModule
 
 
-class NormDistanceModule(mantrap.constraints.ConstraintModule):
+class NormDistanceModule(ConstraintModule):
     """Constraint for norm distance between the robot (ego) and any other agent (ado) at any point in time.
 
     For computing the norm distance between the ego and every ado the scene is forward simulated given the
@@ -57,6 +58,7 @@ class NormDistanceModule(mantrap.constraints.ConstraintModule):
                     ado_position = graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"]
                     ego_position = ego_trajectory[t, 0:2]
                     constraints[m, t] = torch.norm(ado_position - ego_position)
+
         return constraints.flatten()
 
     def _constraints_gradient_condition(self) -> bool:

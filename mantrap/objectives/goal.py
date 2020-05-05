@@ -2,11 +2,12 @@ import typing
 
 import torch
 
-import mantrap.objectives
 import mantrap.utility.shaping
 
+from .objective_module import ObjectiveModule
 
-class GoalModule(mantrap.objectives.ObjectiveModule):
+
+class GoalModule(ObjectiveModule):
     """Loss based on goal distance of every point of planned robot trajectory.
 
     Next to avoiding interaction with other agents the robot should reach the goal state in a finite amount of

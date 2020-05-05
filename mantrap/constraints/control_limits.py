@@ -3,11 +3,12 @@ import typing
 import numpy as np
 import torch
 
-import mantrap.constraints
 import mantrap.utility.shaping
 
+from .constraint_module import ConstraintModule
 
-class ControlLimitModule(mantrap.constraints.ConstraintModule):
+
+class ControlLimitModule(ConstraintModule):
     """Maximal control input at every point in time.
 
     For computing this constraint simply the norm of the planned control input is determined and compared to the
@@ -64,7 +65,7 @@ class ControlLimitModule(mantrap.constraints.ConstraintModule):
 
             # Compute controls from trajectory, if not equal to `grad_wrt` return None.
             ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-            if not torch.all(torch.isclose(ego_controls, grad_wrt)):
+            if not ego_controls.shape == grad_wrt.shape and torch.all(torch.isclose(ego_controls, grad_wrt)):
                 return None
 
             # Otherwise compute Jacobian using formula in method's description above.

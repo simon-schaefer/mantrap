@@ -5,28 +5,28 @@ import pytest
 from scipy.stats import uniform
 import torch
 
-from mantrap.agents import IntegratorDTAgent
-from mantrap.constants import *
-from mantrap.environment.intermediates.iterative import IterativeEnvironment
-from mantrap.environment import *
-from mantrap.utility.maths import straight_line
-from mantrap.utility.shaping import check_ado_trajectories, check_ado_states, check_ego_state
+import mantrap.agents
+import mantrap.constants
+import mantrap.environment
+import mantrap.utility.maths
+import mantrap.utility.shaping
 
 
 ###########################################################################
 # Tests - All Environment #################################################
 ###########################################################################
-@pytest.mark.parametrize("environment_class", ENVIRONMENTS)
+@pytest.mark.parametrize("environment_class", mantrap.environment.ENVIRONMENTS)
 @pytest.mark.parametrize("num_modes", [1, 2, 5])
 class TestEnvironment:
 
     @staticmethod
-    def test_initialization(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([4, 6])})
+    def test_initialization(environment_class, num_modes: int):
+        ego_position = torch.rand(2).float()
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
 
-        assert torch.all(torch.eq(env.ego.position, torch.tensor([4, 6]).float()))
+        assert torch.all(torch.eq(env.ego.position, ego_position))
         assert env.num_ados == 0
         assert env.time == 0.0
         env.add_ado(position=torch.tensor([6, 7]), velocity=torch.ones(2), num_modes=num_modes)
@@ -35,11 +35,11 @@ class TestEnvironment:
         assert torch.all(torch.eq(env.ghosts[0].agent.velocity, torch.ones(2)))
 
     @staticmethod
-    def test_step(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
+    def test_step(environment_class, num_modes: int):
         ado_init_position = torch.zeros(2)
         ado_init_velocity = torch.ones(2)
         ego_init_position = torch.tensor([-4, 6])
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_init_position})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_init_position})
 
         # In order to be able to verify the generated trajectories easily, we assume uni-modality here.
         env.add_ado(position=ado_init_position, velocity=ado_init_velocity, num_modes=1)
@@ -60,11 +60,12 @@ class TestEnvironment:
 
             # While the exact value of the ado agent's states depends on the environment dynamics used, all of them
             # are based on the ego state (control), which is thought to be enforced while forwarding the environment.
-            assert all(torch.eq(ego_t, ego_trajectory[t+1, :]))
+            assert all(torch.isclose(ego_t, ego_trajectory[t+1, :]))
 
     @staticmethod
-    def test_step_reset(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-4, 6])})
+    def test_step_reset(environment_class, num_modes: int):
+        ego_position = torch.rand(2)
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
 
         # In order to be able to verify the generated trajectories easily, we assume uni-modality here.
         env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), num_modes=1)
@@ -79,7 +80,7 @@ class TestEnvironment:
             assert torch.all(torch.eq(env.ghosts[i].agent.state_with_time, ado_next_states[i]))
 
     @staticmethod
-    def test_prediction_trajectories_shape(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
+    def test_prediction_trajectories_shape(environment_class, num_modes: int):
         env = environment_class()
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
@@ -90,11 +91,12 @@ class TestEnvironment:
         env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), num_modes=num_modes, history=history)
 
         ado_trajectories = env.predict_wo_ego(t_horizon=t_horizon)
-        assert check_ado_trajectories(ado_trajectories, t_horizon=t_horizon, modes=num_modes, ados=2)
+        assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon, modes=num_modes, ados=2)
 
     @staticmethod
-    def test_build_connected_graph(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
+    def test_build_connected_graph(environment_class, num_modes: int):
+        ego_position = torch.rand(2)
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([3, 0]), goal=torch.tensor([-4, 0]), num_modes=num_modes)
@@ -108,24 +110,26 @@ class TestEnvironment:
         assert env.check_graph(graph=graphs, include_ego=True, t_horizon=prediction_horizon)
 
     @staticmethod
-    def test_ego_graph_updates(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
+    def test_ego_graph_updates(environment_class, num_modes: int):
         position = torch.tensor([-5, 0])
         goal = torch.tensor([5, 0])
-        path = straight_line(start=position, end=goal, steps=11)
+        path = mantrap.utility.maths.straight_line(start=position, end=goal, steps=11)
 
         ego_kwargs = {"position": position, "velocity": torch.zeros(2)}
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs=ego_kwargs)
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs=ego_kwargs)
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([3, 0]), velocity=torch.ones(2), goal=torch.zeros(2), num_modes=num_modes)
 
         graphs = env.build_connected_graph(ego_trajectory=torch.cat((path, torch.zeros((11, 2))), dim=1))
         for k in range(path.shape[0]):
-            assert torch.all(torch.eq(path[k, :], graphs[f"{ID_EGO}_{k}_{GK_POSITION}"]))
+            path_point = graphs[f"{mantrap.constants.ID_EGO}_{k}_{mantrap.constants.GK_POSITION}"]
+            assert torch.all(torch.eq(path[k, :], path_point))
 
     @staticmethod
-    def test_detaching(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
+    def test_detaching(environment_class, num_modes: int):
+        ego_position = torch.rand(2)
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([3, 0]), goal=torch.tensor([-4, 0]), num_modes=num_modes)
@@ -148,14 +152,14 @@ class TestEnvironment:
         assert env.ghosts[0].agent.position.grad_fn is None
 
     @staticmethod
-    def test_copy(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
+    def test_copy(environment_class, num_modes: int):
         ego_init_pos = torch.tensor([-5, 0])
         ados_init_pos = torch.stack([torch.tensor([1.0, 0.0]), torch.tensor([-6, 2.5])])
         ados_init_vel = torch.stack([torch.tensor([4.2, -1]), torch.tensor([-7, -2.0])])
         ados_goal = torch.stack([torch.zeros(2), torch.ones(2)])
 
         # Create example environment scene to  copy later on. Then copy the example environment.
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": ego_init_pos})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_init_pos})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=ados_init_pos[0], velocity=ados_init_vel[0], goal=ados_goal[0], num_modes=num_modes)
@@ -198,16 +202,17 @@ class TestEnvironment:
         assert not torch.all(torch.eq(ado_states_original, ado_states_copy))
 
     @staticmethod
-    def test_states(environment_class: GraphBasedEnvironment.__class__, num_modes: int):
-        env = environment_class(ego_type=IntegratorDTAgent, ego_kwargs={"position": torch.tensor([-5, 0])})
+    def test_states(environment_class, num_modes: int):
+        ego_position = torch.tensor([-5, 0])
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([3, 0]), velocity=torch.rand(2), goal=torch.rand(2), num_modes=num_modes)
         env.add_ado(position=torch.tensor([-4, 2]), velocity=torch.ones(2), goal=torch.rand(2), num_modes=num_modes)
 
         ego_state, ado_states = env.states()
-        assert check_ego_state(x=ego_state, enforce_temporal=True)
-        assert check_ado_states(x=ado_states, enforce_temporal=True)
+        assert mantrap.utility.shaping.check_ego_state(x=ego_state, enforce_temporal=True)
+        assert mantrap.utility.shaping.check_ado_states(x=ado_states, enforce_temporal=True)
 
         # The first entry of every predicted trajectory should be the current state, check that.
         ado_trajectories = env.predict_wo_ego(t_horizon=2)
@@ -224,11 +229,12 @@ class TestEnvironment:
 ###########################################################################
 # Test - Iterative Environments ###########################################
 ###########################################################################
-@pytest.mark.parametrize("env_class", [PotentialFieldEnvironment, SocialForcesEnvironment])
+@pytest.mark.parametrize("env_class", [mantrap.environment.PotentialFieldEnvironment,
+                                       mantrap.environment.SocialForcesEnvironment])
 class TestParametrized:
 
     @staticmethod
-    def test_parametrized_ghosts_init(env_class: IterativeEnvironment.__class__):
+    def test_parametrized_ghosts_init(env_class: mantrap.environment.base.IterativeEnvironment.__class__):
         position = torch.tensor([-1, 0])
         velocity = torch.tensor([0.1, 0.2])
         num_modes = 2
@@ -254,7 +260,7 @@ class TestParametrized:
 ###########################################################################
 @pytest.mark.parametrize("goal_position", [torch.tensor([2.0, 2.0]), torch.tensor([0.0, -2.0])])
 def test_social_forces_single_ado_prediction(goal_position: torch.Tensor):
-    env = SocialForcesEnvironment()
+    env = mantrap.environment.SocialForcesEnvironment()
     env.add_ado(goal=goal_position, position=torch.tensor([-1, -5]), velocity=torch.ones(2) * 0.8, num_modes=1)
 
     trajectory = torch.squeeze(env.predict_wo_ego(t_horizon=100))
@@ -263,7 +269,7 @@ def test_social_forces_single_ado_prediction(goal_position: torch.Tensor):
 
 
 def test_social_forces_static_ado_pair_prediction():
-    env = SocialForcesEnvironment()
+    env = mantrap.environment.SocialForcesEnvironment()
     env.add_ado(goal=torch.zeros(2), position=torch.tensor([-1, 0]), velocity=torch.tensor([0.1, 0]), num_modes=1)
     env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), velocity=torch.tensor([-0.1, 0]), num_modes=1)
 
@@ -286,17 +292,17 @@ def test_social_forces_static_ado_pair_prediction():
     ],
 )
 def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
-    env_1 = PotentialFieldEnvironment(IntegratorDTAgent, {"position": pos_1})
-    env_2 = PotentialFieldEnvironment(IntegratorDTAgent, {"position": pos_2})
+    env_1 = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, {"position": pos_1})
+    env_2 = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, {"position": pos_2})
 
     forces = torch.zeros((2, 2))
     gradients = torch.zeros((2, 2))
     for i, env in enumerate([env_1, env_2]):
         env.add_ado(position=torch.zeros(2), v0s=np.ones(1), weights=np.ones(1))
         graph = env.build_graph(ego_state=env.ego.state)
-        forces[i, :] = graph[f"{env.ghosts[0].id}_0_{GK_CONTROL}"]
+        forces[i, :] = graph[f"{env.ghosts[0].id}_0_{mantrap.constants.GK_CONTROL}"]
         ado_force_norm_0 = torch.norm(forces[i, :])
-        ego_position_0 = graph[f"{ID_EGO}_0_{GK_POSITION}"]
+        ego_position_0 = graph[f"{mantrap.constants.ID_EGO}_0_{mantrap.constants.GK_POSITION}"]
         gradients[i, :] = torch.autograd.grad(ado_force_norm_0, ego_position_0, retain_graph=True)[0].detach()
 
     # The force is distance based, so more distant agents should affect a smaller force.
@@ -326,7 +332,7 @@ def test_trajectron_mode_selection():
     # simulation, however when predicting based on the applied controls of the ego then `t_horizon` is one step longer
     # than the number of control inputs, since the current state is prepended to the trajectories. Similarly, the
     # network prediction is one step longer, therefore we have to pass `t_horizon = 1 + 1 = 2` here.
-    _, _, weight_indices = Trajectron.trajectory_from_distribution(
+    _, _, weight_indices = mantrap.environment.Trajectron.trajectory_from_distribution(
         gmm=gmm, num_output_modes=num_modes, dt=1.0, t_horizon=2, return_more=True, ado_state=torch.zeros(5)
     )
 
@@ -347,7 +353,7 @@ def test_trajectron_mode_selection():
 # sim_dt = 0.25
 # sim_speed_max = 4.0
 def test_orca_single_agent():
-    env = ORCAEnvironment(dt=0.25)
+    env = mantrap.environment.ORCAEnvironment(dt=0.25)
     env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), goal=torch.ones(2) * 4)
 
     pos_expected = torch.tensor([[0, 0], [0.70710, 0.70710], [1.4142, 1.4142], [2.1213, 2.1213], [2.8284, 2.8284]])
@@ -357,7 +363,7 @@ def test_orca_single_agent():
 
 @pytest.mark.xfail(raises=AssertionError)
 def test_orca_two_agents():
-    env = ORCAEnvironment(dt=0.25)
+    env = mantrap.environment.ORCAEnvironment(dt=0.25)
     env.add_ado(position=torch.tensor([-5, 0.1]), velocity=torch.zeros(2), goal=torch.tensor([5, 0]))
     env.add_ado(position=torch.tensor([5, -0.1]), velocity=torch.zeros(2), goal=torch.tensor([-5, 0]))
 

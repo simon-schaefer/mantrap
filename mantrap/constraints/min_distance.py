@@ -3,10 +3,11 @@ import typing
 import torch
 
 import mantrap.constants
-import mantrap.constraints
+
+from .constraint_module import ConstraintModule
 
 
-class MinDistanceModule(mantrap.constraints.ConstraintModule):
+class MinDistanceModule(ConstraintModule):
     """Constraint for minimal distance between the robot (ego) and any other agent (ado) over all time.
 
     For computing the minimal distance between the ego and every ado the scene is forward simulated given the

@@ -3,10 +3,10 @@ import typing
 
 import torch
 
-import mantrap.agents.agent_intermediates
+from .base.linear import LinearDTAgent
 
 
-class DoubleIntegratorDTAgent(mantrap.agents.agent_intermediates.LinearDTAgent):
+class DoubleIntegratorDTAgent(LinearDTAgent):
     """ Linear double integrator dynamics:
 
     .. math:: vel_{t+1} = vel_t + action * dt

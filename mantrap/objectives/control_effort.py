@@ -2,10 +2,12 @@ import typing
 
 import torch
 
-import mantrap.objectives
+import mantrap.environment
+
+from .objective_module import ObjectiveModule
 
 
-class ControlEffortModule(mantrap.solver.objectivesObjectiveModule):
+class ControlEffortModule(ObjectiveModule):
     """Loss based on ego control effort.
 
     A typical objective in control theory is to reach some goal using a minimal amount of control energy (effort).
@@ -18,7 +20,7 @@ class ControlEffortModule(mantrap.solver.objectivesObjectiveModule):
 
     :param env: solver's environment environment for ego dynamics.
     """
-    def __init__(self, env: mantrap.environment.GraphBasedEnvironment, **module_kwargs):
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **module_kwargs):
         super(ControlEffortModule, self).__init__(**module_kwargs)
         self.initialize_env(env=env)
 

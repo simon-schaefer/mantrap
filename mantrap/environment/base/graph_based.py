@@ -51,14 +51,14 @@ class GraphBasedEnvironment(abc.ABC):
         Treating the modes as independent objects grants the chance to quickly iterate over all modes, easily include
         the interaction between different permutations of modes and detaching from computation graphs.
         """
-        def __init__(self, agent: mantrap.agents.DTAgent, weight: float, identifier: str, **params):
+        def __init__(self, agent: mantrap.agents.base.DTAgent, weight: float, identifier: str, **params):
             self._agent = agent
             self._weight = weight
             self._identifier = identifier
             self._params = params
 
         @property
-        def agent(self) -> mantrap.agents.DTAgent:
+        def agent(self) -> mantrap.agents.base.DTAgent:
             return self._agent
 
         @property
@@ -83,7 +83,7 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     def __init__(
         self,
-        ego_type: mantrap.agents.DTAgent.__class__ = None,
+        ego_type: mantrap.agents.base.DTAgent.__class__ = None,
         ego_kwargs: typing.Dict[str, typing.Any] = None,
         x_axis: typing.Tuple[float, float] = mantrap.constants.ENV_X_AXIS_DEFAULT,
         y_axis: typing.Tuple[float, float] = mantrap.constants.ENV_Y_AXIS_DEFAULT,
@@ -288,12 +288,12 @@ class GraphBasedEnvironment(abc.ABC):
 
     def add_ado(
         self,
-        ado_type: mantrap.agents.DTAgent.__class__ = None,
+        ado_type: mantrap.agents.base.DTAgent.__class__ = None,
         num_modes: int = 1,
         weights: np.ndarray = None,
         arg_list: typing.List[typing.Dict] = None,
         **ado_kwargs
-    ) -> mantrap.agents.DTAgent:
+    ) -> mantrap.agents.base.DTAgent:
         """Add (multi-modal) ado (i.e. non-robot) agent to environment.
         While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
         individually. To do so for each mode an agent is initialized using the passed initialization arguments and
@@ -306,7 +306,7 @@ class GraphBasedEnvironment(abc.ABC):
         :param weights: mode weight vector, default = uniform distribution.
         :param arg_list: initialization arguments for each mode.
         """
-        assert ado_type is not None and type(ado_type) == mantrap.agents.DTAgent.__class__
+        assert ado_type is not None and type(ado_type) == mantrap.agents.base.DTAgent.__class__
         ado = ado_type(dt=self.dt, **ado_kwargs)
         self._ado_ids.append(ado.id)
 
@@ -339,7 +339,7 @@ class GraphBasedEnvironment(abc.ABC):
         assert self.sanity_check()
         return ado
 
-    def ados(self) -> typing.List[mantrap.agents.DTAgent]:
+    def ados(self) -> typing.List[mantrap.agents.base.DTAgent]:
         """Return a list of ado agents associated to each ghost.
 
         Due to construction during ado initialization and as asserted in `sanity_check()` the agent of all
@@ -794,7 +794,7 @@ class GraphBasedEnvironment(abc.ABC):
     # Ego properties ##########################################################
     ###########################################################################
     @property
-    def ego(self) -> typing.Union[mantrap.agents.DTAgent, None]:
+    def ego(self) -> typing.Union[mantrap.agents.base.DTAgent, None]:
         return self._ego
 
     ###########################################################################

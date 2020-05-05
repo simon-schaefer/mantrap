@@ -1,4 +1,5 @@
 from abc import ABC
+import typing
 
 import numpy as np
 import torch
@@ -6,14 +7,22 @@ import torch
 import mantrap.solver
 import mantrap.utility.shaping
 
+from .trajopt import TrajOptSolver
 
-class ZControlIntermediate(mantrap.solver.BaseSolver, ABC):
+
+class ZControlIntermediate(TrajOptSolver, ABC):
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
     ###########################################################################
     def num_optimization_variables(self) -> int:
         return 2 * self.planning_horizon
+
+    def optimization_variable_bounds(self) -> typing.Tuple[typing.List, typing.List]:
+        limits = self._env.ego.control_limits()
+        lb = (np.ones(self.num_optimization_variables()) * limits[0]).tolist()
+        ub = (np.ones(self.num_optimization_variables()) * limits[1]).tolist()
+        return lb, ub
 
     ###########################################################################
     # Transformations #########################################################

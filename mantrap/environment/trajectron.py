@@ -9,13 +9,14 @@ import torch
 
 import mantrap.agents
 import mantrap.constants
-import mantrap.environment
 import mantrap.utility.io
 import mantrap.utility.maths
 import mantrap.utility.shaping
 
+from .base.graph_based import GraphBasedEnvironment
 
-class Trajectron(mantrap.environment.GraphBasedEnvironment):
+
+class Trajectron(GraphBasedEnvironment):
     """Trajectron-based environment model (B. Ivanovic, T. Salzmann, M. Pavone).
 
     The Trajectron model requires to get some robot position. Therefore, in order to minimize the
@@ -31,7 +32,7 @@ class Trajectron(mantrap.environment.GraphBasedEnvironment):
     """
     def __init__(
         self,
-        ego_type: mantrap.agents.DTAgent.__class__ = None,
+        ego_type: mantrap.agents.base.DTAgent.__class__ = None,
         ego_kwargs: typing.Dict[str, typing.Any] = None,
         dt: float = mantrap.constants.ENV_DT_DEFAULT,
         **env_kwargs
@@ -67,7 +68,7 @@ class Trajectron(mantrap.environment.GraphBasedEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, **ado_kwargs) -> mantrap.agents.DTAgent:
+    def add_ado(self, **ado_kwargs) -> mantrap.agents.base.DTAgent:
         """Add a new ado and its mode to the scene.
 
         For the Trajectron model the multi-modality evolves at the output, not the input. Therefore instead of
@@ -103,7 +104,7 @@ class Trajectron(mantrap.environment.GraphBasedEnvironment):
         # Re-Create online environment with recently appended node.
         self._online_env = self.create_online_env(env=self._gt_env, scene=self._gt_scene)
 
-    def _add_ego_to_graph(self, ego: mantrap.agents.DTAgent):
+    def _add_ego_to_graph(self, ego: mantrap.agents.base.DTAgent):
         from data import Node
 
         # Add the ego as robot-type agent to the scene integrating its state history and passing the pre-build

@@ -8,7 +8,7 @@ import mantrap.utility.shaping
 
 
 def p_ahead_controller(
-    agent: mantrap.agents.DTAgent,
+    agent: mantrap.agents.base.DTAgent,
     path: torch.Tensor,
     max_sim_time: float,
     dtc: float,

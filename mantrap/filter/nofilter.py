@@ -1,9 +1,9 @@
 import numpy as np
 
-import mantrap.filter
+from .filter_module import FilterModule
 
 
-class NoFilterModule(mantrap.filter.FilterModule):
+class NoFilterModule(FilterModule):
     """No filter i.e. include all agents for planning.
 
     This module is created for easier treating of the exception of not applying a filter (filter = None).

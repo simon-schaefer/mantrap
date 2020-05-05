@@ -32,7 +32,7 @@ class ObjectiveModule(abc.ABC):
         # appending multiple values within one optimization step.
         self._obj_current, self._grad_current = 0.0, np.zeros(2)
 
-    def initialize_env(self, env: mantrap.environment.GraphBasedEnvironment):
+    def initialize_env(self, env: mantrap.environment.base.GraphBasedEnvironment):
         assert env.ego is not None
         self._env = env
 

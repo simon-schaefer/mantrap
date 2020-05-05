@@ -8,11 +8,12 @@ import scipy.stats
 import torch
 
 import mantrap.constants
-import mantrap.environment
 import mantrap.utility.shaping
 
+from .graph_based import GraphBasedEnvironment
 
-class IterativeEnvironment(mantrap.environment.GraphBasedEnvironment, abc.ABC):
+
+class IterativeEnvironment(GraphBasedEnvironment, abc.ABC):
 
     ###########################################################################
     # Scene ###################################################################

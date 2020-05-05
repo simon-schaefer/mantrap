@@ -4,12 +4,13 @@ import typing
 import torch
 
 import mantrap.constants
-import mantrap.agents
 import mantrap.utility.maths
 import mantrap.utility.shaping
 
+from .discrete import DTAgent
 
-class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
+
+class LinearDTAgent(DTAgent, abc.ABC):
     """Intermediate agent class for agents having linear state dynamics.
 
     For linear state dynamics the dynamics can be computed very efficiently, using matrix-vector multiplication,
@@ -28,6 +29,7 @@ class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
     :param dt: default dynamics time-step [s], default none (no dynamics pre-computation).
     :param max_steps: maximal number of pre-computed rolling steps.
     """
+
     def __init__(self, dt: float = None, max_steps: int = mantrap.constants.AGENT_MAX_PRE_COMPUTATION, **agent_kwargs):
         super(LinearDTAgent, self).__init__(**agent_kwargs)
 
@@ -40,8 +42,8 @@ class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
             assert dt > 0
             A, B, T = self._dynamics_matrices(dt=dt)
             self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
-            An, Bn = self._dynamics_rolling_matrices(dt=dt, max_steps=max_steps)
-            self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float())
+            An, Bn, Tn = self._dynamics_rolling_matrices(dt=dt, max_steps=max_steps)
+            self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float(), Tn.float())
 
     ###########################################################################
     # Dynamics ################################################################
@@ -49,7 +51,8 @@ class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
     def _dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
         # Check whether the dynamics matrices have been pre-computed, if not compute them now.
         if dt not in self._dynamics_matrices_dict.keys():
-            self._dynamics_matrices_dict[dt] = self._dynamics_matrices(dt=dt)
+            A, B, T = self._dynamics_matrices(dt=dt)
+            self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
 
         A, B, T = self._dynamics_matrices_dict[dt]
         return torch.mv(A, state) + torch.mv(B, action) + T
@@ -59,12 +62,14 @@ class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
         """Determine the state-space/dynamics matrices given integration time-step dt. """
         raise NotImplementedError
 
-    def _dynamics_rolling_matrices(self, dt: float, max_steps: int):
+    def _dynamics_rolling_matrices(self, dt: float, max_steps: int
+                                   ) -> typing.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Determine matrices for batched trajectory-rolling dynamics using equation shown in the
         definition of the class, stacked to two matrices An and Bn.
 
         .. math:: A = [I, A, A^2, ..., A^n]
         .. math:: Bn = [[B, 0, ..., 0], [AB, B, 0, ..., 0], ..., [A^{n-1} B, ..., B]]
+        .. math:: Tn = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 1], ..., [0, 0, 0, 0, n]]
 
         :param max_steps: maximal number of pre-computed steps.
         """
@@ -77,9 +82,14 @@ class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
         Bn = torch.zeros((x_size * (max_steps + 1), u_size * (max_steps + 1)))
         for n in range(1, max_steps + 1):
             C = torch.cat([torch.mm(A.matrix_power(k), B) for k in range(max_steps + 1 - n)])
-            Bn[x_size * n:, u_size * n : u_size * (n + 1)] = C
+            Bn[x_size * n:, u_size * n: u_size * (n + 1)] = C
 
-        return An, Bn
+        # Correct for delta time updates (which have been ignored so far).
+        Tn = torch.zeros(x_size * (max_steps + 1))
+        time_indexes = torch.linspace(1, max_steps + 1, steps=max_steps + 1).long()
+        Tn[time_indexes * x_size - 1] = time_indexes.float() - 1  # [0, 1, 2, ...]
+
+        return An, Bn, Tn
 
     @abc.abstractmethod
     def _inverse_dynamics_batch(self, batch: torch.Tensor, dt: float) -> torch.Tensor:
@@ -112,10 +122,12 @@ class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
         x_size = 5
         u_size = 2
         t_horizon = controls.shape[0]
+        controls = controls.float()
 
         # Check whether the dynamics matrices have been pre-computed, if not compute them now.
         if dt not in self._dynamics_matrices_rolling_dict.keys():
-            self._dynamics_matrices_rolling_dict[dt] = self._dynamics_rolling_matrices(dt=dt, max_steps=t_horizon)
+            An, Bn, Tn = self._dynamics_rolling_matrices(dt=dt, max_steps=t_horizon)
+            self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float(), Tn.float())
 
         # Un-squeeze controls if unrolling a single action.
         if len(controls.shape) == 1:
@@ -123,11 +135,14 @@ class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
         controls_padded = torch.cat((torch.zeros((1, u_size)), controls), dim=0)
 
         # Determine whole trajectory in single batch computation.
-        An, Bn = self._dynamics_matrices_rolling_dict[dt]
-        An_horizon = An[:x_size*(t_horizon + 1), :]  # 5 = state-size
-        Bn_horizon = Bn[:x_size*(t_horizon + 1), :u_size*(t_horizon + 1)]  # 2 = control-size
+        An, Bn, Tn = self._dynamics_matrices_rolling_dict[dt]
+        An_horizon = An[:x_size * (t_horizon + 1), :]  # 5 = state-size
+        Bn_horizon = Bn[:x_size * (t_horizon + 1), :u_size * (t_horizon + 1)]
+        Tn_horizon = Tn[:x_size * (t_horizon + 1)]
 
-        trajectory = torch.mv(An_horizon, self.state_with_time) + torch.mv(Bn_horizon, controls_padded.flatten())
+        trajectory = torch.mv(An_horizon, self.state_with_time) + \
+            torch.mv(Bn_horizon, controls_padded.flatten()) + \
+            Tn_horizon * dt
         trajectory = trajectory.view(t_horizon + 1, x_size)
 
         assert mantrap.utility.shaping.check_ego_trajectory(trajectory, t_horizon + 1, pos_and_vel_only=False)
@@ -176,7 +191,8 @@ class LinearDTAgent(mantrap.agents.DTAgent, abc.ABC):
         :param dt: time interval which is assumed to be constant over full path sequence [s].
         """
         if dt not in self._dynamics_matrices_dict.keys():
-            self._dynamics_matrices_dict[dt] = self._dynamics_matrices(dt=dt)
+            A, B, T = self._dynamics_matrices(dt=dt)
+            self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
 
         A, B, _ = self._dynamics_matrices_dict[dt]
         A, B = A.float(), B.float()

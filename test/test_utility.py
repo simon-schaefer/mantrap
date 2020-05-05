@@ -1,14 +1,14 @@
 import pytest
+import torch
 
-from mantrap.utility.maths import *
-from mantrap.utility.maths import straight_line
+import mantrap.utility.maths
 
 
 ###########################################################################
 # Straight Line Testing ###################################################
 ###########################################################################
 def test_build_trajectory_from_positions():
-    path = straight_line(start=torch.zeros(2), end=torch.ones(2) * 10, steps=11)
+    path = mantrap.utility.maths.straight_line(start=torch.zeros(2), end=torch.ones(2) * 10, steps=11)
     velocities = torch.cat(((path[1:, 0:2] - path[:-1, 0:2]) / 1.0, torch.zeros((1, 2))))
     trajectory = torch.cat((path, velocities), dim=1)
 
@@ -21,13 +21,13 @@ def test_build_trajectory_from_positions():
 ###########################################################################
 @pytest.mark.parametrize("horizon", [7, 10])
 def test_derivative_2(horizon: int):
-    diff = Derivative2(horizon=horizon, dt=1.0)
+    diff = mantrap.utility.maths.Derivative2(horizon=horizon, dt=1.0)
 
     for k in range(1, horizon - 1):
         assert torch.all(torch.eq(diff._diff_mat[k, k - 1: k + 2], torch.tensor([1, -2, 1]).float()))
 
     # Constant velocity -> zero acceleration (first and last point are skipped (!)).
-    x = straight_line(torch.zeros(2), torch.tensor([horizon - 1, 0]), horizon)
+    x = mantrap.utility.maths.straight_line(torch.zeros(2), torch.tensor([horizon - 1, 0]), horizon)
     assert torch.all(torch.eq(diff.compute(x), torch.zeros((horizon, 2))))
 
     t_step = int(horizon / 2)
@@ -44,7 +44,7 @@ def test_derivative_2(horizon: int):
 
 def test_derivative_2_conserve_shape():
     x = torch.zeros((1, 1, 10, 6))
-    diff = Derivative2(horizon=10, dt=1.0, num_axes=4)
+    diff = mantrap.utility.maths.Derivative2(horizon=10, dt=1.0, num_axes=4)
     x_ddt = diff.compute(x)
 
     assert x.shape == x_ddt.shape
@@ -52,7 +52,7 @@ def test_derivative_2_conserve_shape():
 
 def test_derivative_2_velocity():
     x = torch.rand((2, 5))
-    diff = Derivative2(horizon=2, dt=1.0, velocity=True)
+    diff = mantrap.utility.maths.Derivative2(horizon=2, dt=1.0, velocity=True)
     x_ddt = diff.compute(x[:, 2:4])
 
     assert torch.all(torch.isclose(x_ddt[0, :], torch.zeros(2)))
@@ -76,7 +76,7 @@ def test_lagrange_interpolation():
     end = torch.tensor([10.0, 0.0])
     points = torch.stack((start, mid, end))
 
-    points_up = lagrange_interpolation(control_points=points, num_samples=100, deg=3)
+    points_up = mantrap.utility.maths.lagrange_interpolation(control_points=points, num_samples=100, deg=3)
 
     # Test trajectory shape and it itself.
     assert len(points_up.shape) == 2 and points_up.shape[1] == 2 and points_up.shape[0] == 100
@@ -100,7 +100,7 @@ def test_lagrange_singularity():
     end = torch.tensor([10.0, 0.0])
     points = torch.stack((start, mid, end))  # singular matrix (!)
 
-    points_up = lagrange_interpolation(control_points=points, num_samples=10)
+    points_up = mantrap.utility.maths.lagrange_interpolation(control_points=points, num_samples=10)
     for n in range(1, 10):
         torch.autograd.grad(points_up[n, 0], mid, retain_graph=True)
         torch.autograd.grad(points_up[n, 1], mid, retain_graph=True)
@@ -110,7 +110,7 @@ def test_lagrange_singularity():
 # Shapes Testing ##########################################################
 ###########################################################################
 def test_circle_sampling():
-    circle = Circle(center=torch.rand(2), radius=3.0)
+    circle = mantrap.utility.maths.Circle(center=torch.rand(2), radius=3.0)
     samples = circle.samples(num_samples=100)
 
     assert samples.shape == (100, 2)
@@ -124,12 +124,12 @@ def test_circle_sampling():
 
 
 def test_circle_intersection():
-    circle = Circle(center=torch.tensor([4, 5]), radius=2.0)
+    circle = mantrap.utility.maths.Circle(center=torch.tensor([4, 5]), radius=2.0)
 
     # These circles do not intersect, since the distance between the centers is larger than 1 + 2 = 3.
-    circle_not = Circle(center=torch.tensor([0, 5]), radius=1.0)
+    circle_not = mantrap.utility.maths.Circle(center=torch.tensor([0, 5]), radius=1.0)
     assert not circle.does_intersect(circle_not)
 
     # These circles do intersect, since the distance between the centers is smaller than 3 + 2 = 5.
-    circle_is = Circle(center=torch.tensor([2, 3]), radius=3.0)
+    circle_is = mantrap.utility.maths.Circle(center=torch.tensor([2, 3]), radius=3.0)
     assert circle.does_intersect(circle_is)

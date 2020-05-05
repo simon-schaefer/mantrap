@@ -1,10 +1,10 @@
 import numpy as np
 import torch
 
-import mantrap.filter
+from .filter_module import FilterModule
 
 
-class ReachabilityModule(mantrap.filter.FilterModule):
+class ReachabilityModule(FilterModule):
     """Filter based on forward reachability analysis between the ego and all ados.
 
     The reachability deals with the problem that simple euclidean-distance based filtering does not take the agents

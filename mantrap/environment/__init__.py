@@ -1,4 +1,4 @@
-from mantrap.environment.base.graph_based import GraphBasedEnvironment
+import mantrap.environment.base
 
 from mantrap.environment.social_forces import SocialForcesEnvironment
 from mantrap.environment.trajectron import Trajectron

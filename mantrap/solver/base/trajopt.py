@@ -49,14 +49,14 @@ class TrajOptSolver(abc.ABC):
     """
     def __init__(
         self,
-        env: mantrap.environment.GraphBasedEnvironment,
+        env: mantrap.environment.base.GraphBasedEnvironment,
         goal: torch.Tensor,
         t_planning: int = mantrap.constants.SOLVER_HORIZON_DEFAULT,
         optimize_speed: bool = True,
         objectives: typing.List[typing.Tuple[str, float]] = None,
         constraints: typing.List[str] = None,
         filter_module: str = mantrap.constants.FILTER_NO_FILTER,
-        eval_env: mantrap.environment.GraphBasedEnvironment = None,
+        eval_env: mantrap.environment.base.GraphBasedEnvironment = None,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN,
         **solver_params
     ):
@@ -303,6 +303,10 @@ class TrajOptSolver(abc.ABC):
     @property
     def is_unconstrained(self) -> bool:
         return len(self._constraint_modules.keys()) == 0
+
+    @abc.abstractmethod
+    def optimization_variable_bounds(self) -> typing.Tuple[typing.List, typing.List]:
+        raise NotImplementedError
 
     ###########################################################################
     # Problem formulation - Objective #########################################
@@ -584,15 +588,15 @@ class TrajOptSolver(abc.ABC):
     # Solver parameters #######################################################
     ###########################################################################
     @property
-    def env(self) -> mantrap.environment.GraphBasedEnvironment:
+    def env(self) -> mantrap.environment.base.GraphBasedEnvironment:
         return self._env
 
     @env.setter
-    def env(self, env: mantrap.environment.GraphBasedEnvironment):
+    def env(self, env: mantrap.environment.base.GraphBasedEnvironment):
         self._env = env
 
     @property
-    def eval_env(self) -> mantrap.environment.GraphBasedEnvironment:
+    def eval_env(self) -> mantrap.environment.base.GraphBasedEnvironment:
         return self._eval_env
 
     @property

@@ -5,11 +5,12 @@ import torch
 import mantrap.constants
 import mantrap.agents
 import mantrap.environment
-import mantrap.solver.solver_intermediates
 import mantrap.utility.shaping
 
+from ..base.z_controls import ZControlIntermediate
 
-class ORCASolver(mantrap.solver.solver_intermediates.ZControlIntermediate):
+
+class ORCASolver(ZControlIntermediate):
     """ORCA-based solver.
 
     Based on the ORCA algorithm defined in `ORCAEnvironment` this solver finds the optimal trajectory by
@@ -80,8 +81,8 @@ class ORCASolver(mantrap.solver.solver_intermediates.ZControlIntermediate):
     def initial_values(self, just_one: bool = False) -> torch.Tensor:
         """As explained in `_optimize()` the optimization is independent from the initial value of z, therefore
         only return one value, to enforce single-threaded computations. """
-        z0 = torch.zeros((1, self.planning_horizon, 2))
-        return z0 if not just_one else z0[0, :, :]
+        z0 = torch.zeros((1, self.planning_horizon * 2))
+        return z0 if not just_one else z0[0, :]
 
     @staticmethod
     def num_initial_values() -> int:

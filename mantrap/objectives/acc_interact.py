@@ -4,11 +4,12 @@ import torch
 
 import mantrap.constants
 import mantrap.environment
-import mantrap.objectives
 import mantrap.utility.maths
 
+from .objective_module import ObjectiveModule
 
-class InteractionAccelerationModule(mantrap.objectives.ObjectiveModule):
+
+class InteractionAccelerationModule(ObjectiveModule):
     """Loss based on accelerational interaction between robot and ados.
 
     As a proxy for interaction based on the acceleration of every ado is computed in a (fictional) scene without an
@@ -24,7 +25,7 @@ class InteractionAccelerationModule(mantrap.objectives.ObjectiveModule):
 
     :param env: environment for predicting the behaviour without interaction.
     """
-    def __init__(self, env: mantrap.environment.GraphBasedEnvironment, **module_kwargs):
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **module_kwargs):
         super(InteractionAccelerationModule, self).__init__(**module_kwargs)
         self.initialize_env(env=env)
         assert env.num_ghosts > 0

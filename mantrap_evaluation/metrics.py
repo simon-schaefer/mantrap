@@ -68,7 +68,7 @@ def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = ma
     return float(ego_effort / max_effort)
 
 
-def metric_ado_effort(env: mantrap.environment.GraphBasedEnvironment, ado_trajectories: torch.Tensor, **unused
+def metric_ado_effort(env: mantrap.environment.base.GraphBasedEnvironment, ado_trajectories: torch.Tensor, **unused
                       ) -> float:
     """Determine the ado's additional control effort introduced by the ego.
 

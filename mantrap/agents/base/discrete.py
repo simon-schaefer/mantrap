@@ -57,7 +57,6 @@ class DTAgent(abc.ABC):
         state_un_squeezed = self.state_with_time.unsqueeze(dim=0)
         if history is not None:
             assert mantrap.utility.shaping.check_ego_trajectory(history)
-            assert torch.isclose(history[-1, -1], self.state_with_time[-1])  # times synced ?
             history = history.float()
 
             if not torch.all(torch.isclose(history[-1, :], state_un_squeezed)):
@@ -66,6 +65,7 @@ class DTAgent(abc.ABC):
                 self._history = history
         else:
             self._history = state_un_squeezed
+        assert torch.isclose(self._history[-1, -1], self.state_with_time[-1])  # times synced ?
 
         # Initialize agent properties.
         self._is_robot = is_robot
@@ -294,7 +294,7 @@ class DTAgent(abc.ABC):
 
         :param controls: controls to be checked (N, 2).
         """
-        assert mantrap.utility.shaping.check_ego_controls(controls)
+        controls = controls.float()
 
         lower, upper = self.control_limits()
         controls_norm = torch.norm(controls, dim=-1)
@@ -309,6 +309,8 @@ class DTAgent(abc.ABC):
         just the length of the control vector is adapted. If the controls are just zeros then return
         them as they are.
         """
+        controls = controls.float()
+
         lower, upper = self.control_limits()
         controls_norm = torch.norm(controls, dim=-1, keepdim=True).detach()
         if torch.all(torch.le(controls_norm, 1e-6)):

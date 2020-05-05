@@ -1,38 +1,39 @@
 import numpy as np
 import pytest
 
-from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.environment import ENVIRONMENTS, GraphBasedEnvironment
-from mantrap.utility.maths import straight_line
+import mantrap.agents
+import mantrap.environment
+import mantrap.utility.maths
 
 from mantrap_evaluation.metrics import *
 
 
 def test_minimal_distance_principle():
-    ego_trajectory = straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
+    ego_trajectory = mantrap.utility.maths.straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
 
     ado_traj_1 = torch.zeros((1, 1, 10, 2))
     distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_traj_1)
     assert np.isclose(distance, 0.1, atol=1e-3)
 
-    ado_traj_2 = torch.cat((ado_traj_1, straight_line(torch.ones(2), torch.ones(2) * 10, steps=10).view(1, 1, -1, 2)))
+    ado_traj_2 = mantrap.utility.maths.straight_line(torch.ones(2), torch.ones(2) * 10, steps=10).view(1, 1, -1, 2)
+    ado_traj_2 = torch.cat((ado_traj_1, ado_traj_2))
     distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_traj_2)
     assert np.isclose(distance, 0.1, atol=1e-3)
 
-    ado_traj_3 = straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
+    ado_traj_3 = mantrap.utility.maths.straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
     ado_traj_3[5, :] = torch.tensor([5, 0.1])
     distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_traj_3.view(1, 1, -1, 2))
     assert not np.isclose(distance, 0.0, atol=1e-3)  # tolerance, not time-equivalent at (5, 0.1) (!)
 
-    ado_traj_3 = straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
+    ado_traj_3 = mantrap.utility.maths.straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
     ado_traj_3[-1, :] = torch.tensor([5, 0.1])
     distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_traj_3.view(1, 1, -1, 2))
     assert np.isclose(distance, 0.0, atol=1e-3)  # now time-equivalent at (5, 0.1) (!)
 
 
 def test_minimal_distance_interpolation():
-    ego_traj = straight_line(torch.tensor([-5, 0.0]), torch.tensor([5, 0.0]), steps=10)
-    ado_traj = straight_line(torch.tensor([0.0, -5]), torch.tensor([0.0, 5]), steps=10)
+    ego_traj = mantrap.utility.maths.straight_line(torch.tensor([-5, 0.0]), torch.tensor([5, 0.0]), steps=10)
+    ado_traj = mantrap.utility.maths.straight_line(torch.tensor([0.0, -5]), torch.tensor([0.0, 5]), steps=10)
 
     # Both trajectories dont pass through the origin in discrete space due to the discretization pattern, therefore
     # it's minimal distance in discrete time should be larger than zero.
@@ -54,7 +55,7 @@ def test_minimal_distance_interpolation():
     ]
 )
 def test_ego_effort(controls: torch.Tensor, effort_score: float):
-    ego = DoubleIntegratorDTAgent(position=torch.zeros(2))
+    ego = mantrap.agents.DoubleIntegratorDTAgent(position=torch.zeros(2))
     ego_trajectory = ego.unroll_trajectory(controls=controls, dt=1.0)
 
     metric_score = metric_ego_effort(ego_trajectory=ego_trajectory, max_acceleration=2.0)
@@ -80,9 +81,9 @@ def test_directness(velocity_profiles: torch.Tensor, directness_score: float):
     assert np.isclose(metric_score, directness_score)
 
 
-@pytest.mark.parametrize("env_class", ENVIRONMENTS)
-def test_ado_effort(env_class: GraphBasedEnvironment.__class__):
-    env = env_class(DoubleIntegratorDTAgent, {"position": torch.tensor([5, 0])})
+@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
+    env = env_class(mantrap.agents.DoubleIntegratorDTAgent, {"position": torch.tensor([5, 0])})
     env.add_ado(position=torch.zeros(2), velocity=torch.tensor([1, 0]))
 
     # When the ado trajectories are exactly the same as predicting them without an ego, the score should be zero.
@@ -112,4 +113,4 @@ def test_ado_effort(env_class: GraphBasedEnvironment.__class__):
     ado_traj_12[:, :, :, -1] = torch.linspace(0, 7 * env.dt, steps=8)
     metric_score_12 = metric_ado_effort(ado_trajectories=ado_traj_12, env=env)
     if env.is_deterministic:
-        assert np.isclose(metric_score_1, metric_score_12)
+        assert np.isclose(metric_score_1, metric_score_12, atol=1e-3)

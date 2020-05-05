@@ -112,7 +112,7 @@ class Shape2D(abc.ABC):
 class Circle(Shape2D):
     def __init__(self, center: torch.Tensor, radius: float):
         assert mantrap.utility.shaping.check_2d_vector(center)
-        assert radius > 0.0
+        assert radius >= 0.0  # 0 => zero velocity
 
         self.center = center.float()
         self.radius = float(radius)

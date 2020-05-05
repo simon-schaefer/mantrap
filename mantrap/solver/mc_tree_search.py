@@ -5,10 +5,11 @@ import numpy as np
 import torch
 
 import mantrap.constants
-import mantrap.solver.solver_intermediates
+
+from .base.z_controls import ZControlIntermediate
 
 
-class MonteCarloTreeSearch(mantrap.solver.solver_intermediates.ZControlIntermediate):
+class MonteCarloTreeSearch(ZControlIntermediate):
 
     def _optimize(
         self,

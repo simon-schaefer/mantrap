@@ -9,8 +9,10 @@ import torch
 import mantrap.constants
 import mantrap.solver
 
+from ..base.trajopt import TrajOptSolver
 
-class IPOPTIntermediate(mantrap.solver.BaseSolver, ABC):
+
+class IPOPTIntermediate(TrajOptSolver, ABC):
 
     def _optimize(
         self,
@@ -96,6 +98,12 @@ class IPOPTIntermediate(mantrap.solver.BaseSolver, ABC):
     ###########################################################################
     def gradient(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = mantrap.constants.TAG_DEFAULT
                  ) -> np.ndarray:
+        """Gradient computation function.
+
+        Compute the objectives gradient for some value of the optimization variable `z` based on the
+        gradient implementations of the objective modules. Sum all these gradients together for the
+        final gradient estimate.
+        """
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
         gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.objective_modules]
         gradient = np.sum(gradient, axis=0)
@@ -112,6 +120,12 @@ class IPOPTIntermediate(mantrap.solver.BaseSolver, ABC):
     ###########################################################################
     def jacobian(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = mantrap.constants.TAG_DEFAULT
                  ) -> np.ndarray:
+        """Jacobian computation function.
+
+        Compute the constraints jacobian for some value of the optimization variable `z` based on the
+        jacobian implementations of the constraints modules. Concatenate all these gradients together
+        for the final jacobian estimate.
+        """
         if self.is_unconstrained:
             return np.array([])
 

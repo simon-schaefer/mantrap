@@ -6,12 +6,13 @@ import torch
 
 import mantrap.agents
 import mantrap.constants
-import mantrap.environment
-import mantrap.environment.intermediates
 import mantrap.utility.shaping
 
+from .base.graph_based import GraphBasedEnvironment
+from .base.iterative import IterativeEnvironment
 
-class SocialForcesEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
+
+class SocialForcesEnvironment(IterativeEnvironment):
     """Social Forces Simulation.
     Pedestrian Dynamics based on to "Social Force Model for Pedestrian Dynamics" (D. Helbling, P. Molnar). The idea
     of Social Forces is to determine interaction forces by taking into account the following entities:
@@ -49,7 +50,7 @@ class SocialForcesEnvironment(mantrap.environment.intermediates.IterativeEnviron
                              np.ndarray] = None,
         weights: np.ndarray = None,
         **ado_kwargs,
-    ) -> mantrap.agents.DTAgent:
+    ) -> mantrap.agents.base.DTAgent:
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
         assert mantrap.utility.shaping.check_goal(goal)
@@ -174,8 +175,7 @@ class SocialForcesEnvironment(mantrap.environment.intermediates.IterativeEnviron
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def _copy_ados(self, env_copy: mantrap.environment.GraphBasedEnvironment
-                   ) -> mantrap.environment.GraphBasedEnvironment:
+    def _copy_ados(self, env_copy: GraphBasedEnvironment) -> GraphBasedEnvironment:
         for i in range(self.num_ados):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)

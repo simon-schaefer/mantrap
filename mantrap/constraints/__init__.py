@@ -1,8 +1,10 @@
 import mantrap.constants
 
-from mantrap.constraints import ControlLimitModule
-from mantrap.constraints import MinDistanceModule
-from mantrap.constraints import NormDistanceModule
+from mantrap.constraints.constraint_module import ConstraintModule
+
+from mantrap.constraints.control_limits import ControlLimitModule
+from mantrap.constraints.min_distance import MinDistanceModule
+from mantrap.constraints.norm_distance import NormDistanceModule
 
 CONSTRAINTS_DICT = {
     mantrap.constants.CONSTRAINT_CONTROL_LIMIT: ControlLimitModule,

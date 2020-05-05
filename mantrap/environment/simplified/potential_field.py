@@ -6,11 +6,12 @@ import torch
 
 import mantrap.agents
 import mantrap.constants
-import mantrap.environment
-import mantrap.environment.intermediates
+
+from ..base.graph_based import GraphBasedEnvironment
+from ..base.iterative import IterativeEnvironment
 
 
-class PotentialFieldEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
+class PotentialFieldEnvironment(IterativeEnvironment):
     """Simplified version of social forces environment class.
 
     The simplified model assumes static agents (ados) in the scene, having zero velocity (if not stated otherwise)
@@ -30,7 +31,7 @@ class PotentialFieldEnvironment(mantrap.environment.intermediates.IterativeEnvir
                           np.ndarray] = None,
         weights: np.ndarray = None,
         **ado_kwargs
-    ) -> mantrap.agents.DTAgent:
+    ) -> mantrap.agents.base.DTAgent:
         # In order to introduce multi-modality and stochastic effects the underlying v0 parameters of the potential
         # field environment are sampled from distributions, each for one mode. If not stated the default parameters
         # are used as Gaussian distribution around the default value.
@@ -79,8 +80,7 @@ class PotentialFieldEnvironment(mantrap.environment.intermediates.IterativeEnvir
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def _copy_ados(self, env_copy: mantrap.environment.GraphBasedEnvironment
-                   ) -> mantrap.environment.GraphBasedEnvironment:
+    def _copy_ados(self, env_copy: GraphBasedEnvironment) -> GraphBasedEnvironment:
         for i in range(self.num_ados):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)

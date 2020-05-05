@@ -4,10 +4,11 @@ import torch
 
 import mantrap.agents
 import mantrap.constants
-import mantrap.environment.intermediates
+
+from ..base.iterative import IterativeEnvironment
 
 
-class KalmanEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
+class KalmanEnvironment(IterativeEnvironment):
     """Kalman (Filter) - based Environment.
 
     The Kalman environment implements the update rules, defined in the Kalman Filter, to update the agents
@@ -20,7 +21,7 @@ class KalmanEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, **ado_kwargs) -> mantrap.agents.DTAgent:
+    def add_ado(self, **ado_kwargs) -> mantrap.agents.base.DTAgent:
         return super(KalmanEnvironment, self).add_ado(mantrap.agents.IntegratorDTAgent, **ado_kwargs)
 
     ###########################################################################

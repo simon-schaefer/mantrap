@@ -1,22 +1,24 @@
+import math
 import time
 
 import numpy as np
 import pytest
 import torch
 
-from mantrap.agents import IntegratorDTAgent
-from mantrap.environment import ENVIRONMENTS
-from mantrap.constraints import *
-from mantrap.filter import *
-from mantrap.objectives import *
-from mantrap.utility.maths import straight_line
+import mantrap.agents
+import mantrap.environment
+import mantrap.constraints
+import mantrap.filter
+import mantrap.objectives
+import mantrap.utility.maths
 
 
 ###########################################################################
 # Objectives ##############################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", [InteractionPositionModule, InteractionAccelerationModule])
-@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("module_class", [mantrap.objectives.InteractionPositionModule,
+                                          mantrap.objectives.InteractionAccelerationModule])
+@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestObjectiveInteraction:
 
@@ -24,14 +26,17 @@ class TestObjectiveInteraction:
     def test_far_and_near(module_class, env_class, num_modes):
         """Every interaction-based objective should be larger the closer the interacting agents are, so having the
         ego agent close to some ado should affect the ado more than when the ego agent is far away. """
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 100.0])}, y_axis=(-100, 100))
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 100.0])}, y_axis=(-100, 100))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), num_modes=num_modes)
 
-        ego_path_near = straight_line(start=torch.tensor([-5, 0.1]), end=torch.tensor([5, 0.1]), steps=11)
+        start_near, end_near = torch.tensor([-5, 0.1]), torch.tensor([5, 0.1])
+        ego_path_near = mantrap.utility.maths.straight_line(start=start_near, end=end_near, steps=11)
         ego_trajectory_near = env.ego.expand_trajectory(ego_path_near, dt=env.dt)
-        ego_path_far = straight_line(start=torch.tensor([-5, 100.0]), end=torch.tensor([5, 10.0]), steps=11)
+
+        start_far, end_far = torch.tensor([-5, 100.0]), torch.tensor([5, 10.0])
+        ego_path_far = mantrap.utility.maths.straight_line(start=start_far, end=end_far, steps=11)
         ego_trajectory_far = env.ego.expand_trajectory(ego_path_far, dt=env.dt)
 
         module = module_class(t_horizon=10, env=env)
@@ -40,7 +45,7 @@ class TestObjectiveInteraction:
 
     @staticmethod
     def test_multimodal_support(module_class, env_class, num_modes):
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2),
@@ -55,7 +60,7 @@ class TestObjectiveInteraction:
 
     @staticmethod
     def test_output(module_class, env_class, num_modes):
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), num_modes=num_modes)
@@ -68,7 +73,7 @@ class TestObjectiveInteraction:
 
     @staticmethod
     def test_runtime(module_class, env_class, num_modes):
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
@@ -92,7 +97,7 @@ class TestObjectiveInteraction:
 
     @staticmethod
     def test_internal_env_update(module_class, env_class, num_modes):
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
@@ -117,25 +122,26 @@ def test_objective_goal_distribution():
     goal_state = torch.tensor([4.1, 8.9])
     ego_trajectory = torch.rand((11, 4))
 
-    module = GoalModule(goal=goal_state, t_horizon=10, weight=1.0)
+    module = mantrap.objectives.GoalModule(goal=goal_state, t_horizon=10, weight=1.0)
     module.importance_distribution = torch.zeros(module.importance_distribution.size())
     module.importance_distribution[3] = 1.0
 
     objective = module.objective(ego_trajectory)
-    assert objective == torch.norm(ego_trajectory[3, 0:2] - goal_state)
+    distance  = torch.norm(ego_trajectory[3, 0:2] - goal_state).item()
+    assert math.isclose(objective, distance, abs_tol=0.1)
 
 
 ###########################################################################
 # Constraints #############################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", CONSTRAINT_MODULES)
-@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("module_class", mantrap.constraints.CONSTRAINT_MODULES)
+@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestConstraints:
 
     @staticmethod
     def test_runtime(module_class, env_class, num_modes):
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
@@ -162,7 +168,7 @@ class TestConstraints:
         """In order to test the constraint violation in general test it in a scene with static and far-distant
         agent(s), with  respect to the ego, and static ego robot. In this configurations all constraints should
         be met. """
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.ones(2) * 9, goal=torch.ones(2) * 9, num_modes=num_modes)
@@ -174,7 +180,7 @@ class TestConstraints:
 
     @staticmethod
     def test_internal_env_update(module_class, env_class, num_modes):
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
@@ -195,13 +201,15 @@ class TestConstraints:
         assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
 
 
-@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
 @pytest.mark.parametrize("num_modes", [1, 2])
 def test_max_speed_constraint_violation(env_class, num_modes):
-    env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1]), "velocity": torch.zeros(2)})
+    position, velocity = torch.tensor([-5, 0.1]), torch.zeros(2)
+    env = env_class(mantrap.agents.IntegratorDTAgent, {"position": position, "velocity": velocity})
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
-    module = ControlLimitModule(env=env, t_horizon=5)
+
+    module = mantrap.constraints.ControlLimitModule(env=env, t_horizon=5)
     _, upper_bound = module._constraint_boundaries()
 
     # In this first scenario the ego has zero velocity over the full horizon.
@@ -225,20 +233,22 @@ def test_max_speed_constraint_violation(env_class, num_modes):
     assert violation > 0
 
 
-@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
 @pytest.mark.parametrize("num_modes", [1, 2])
 def test_min_distance_constraint_violation(env_class, num_modes):
-    env = env_class(IntegratorDTAgent, {"position": torch.ones(2) * 9, "velocity": torch.zeros(2)})
+    position, velocity = torch.ones(2) * 9, torch.zeros(2)
+    env = env_class(mantrap.agents.IntegratorDTAgent, {"position": position, "velocity": velocity})
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
     ado_kwargs = {"goal": torch.tensor([9, -9]), "num_modes": num_modes}
     env.add_ado(position=torch.ones(2) * (-9), velocity=torch.tensor([1, 0]), **ado_kwargs)
+
     controls = torch.stack((torch.ones(10) * (-1), torch.zeros(10))).view(10, 2)
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
 
     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
-    module = NormDistanceModule(env=env, t_horizon=controls.shape[0])
-    lower_bound, _ = module._constraint_boundaries
+    module = mantrap.constraints.NormDistanceModule(env=env, t_horizon=controls.shape[0])
+    lower_bound, _ = module._constraint_boundaries()
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation == 0
 
@@ -246,8 +256,9 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ado_start_pos = env.ego.position - (lower_bound * 0.5) * torch.ones(2)
     ado_kwargs = {"goal": ado_start_pos, "num_modes": num_modes}
     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
-    module = NormDistanceModule(env=env, t_horizon=controls.shape[0])
-    lower_bound, _ = module._constraint_boundaries
+
+    module = mantrap.constraints.NormDistanceModule(env=env, t_horizon=controls.shape[0])
+    lower_bound, _ = module._constraint_boundaries()
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation > 0
 
@@ -255,14 +266,14 @@ def test_min_distance_constraint_violation(env_class, num_modes):
 ###########################################################################
 # Filter ##################################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", FILTER_MODULES)
-@pytest.mark.parametrize("env_class", ENVIRONMENTS)
+@pytest.mark.parametrize("module_class", mantrap.filter.FILTER_MODULES)
+@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestFilter:
 
     @staticmethod
     def test_runtime(module_class, env_class, num_modes):
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
@@ -279,7 +290,7 @@ class TestFilter:
 
     @staticmethod
     def test_internal_env_update(module_class, env_class, num_modes):
-        env = env_class(IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)

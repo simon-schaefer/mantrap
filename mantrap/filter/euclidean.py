@@ -2,10 +2,11 @@ import numpy as np
 import torch
 
 import mantrap.constants
-import mantrap.filter
+
+from .filter_module import FilterModule
 
 
-class EuclideanModule(mantrap.filter.FilterModule):
+class EuclideanModule(FilterModule):
     """Filter based on the euclidean distance between current ego's and ado's positions.
 
     The euclidean filter selects the ados that are close, i.e. in a certain euclidean distance from the ego position.
