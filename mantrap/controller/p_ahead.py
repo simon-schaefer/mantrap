@@ -3,12 +3,12 @@ import math
 import numpy as np
 import torch
 
-from mantrap.agents.agent import Agent
-from mantrap.utility.shaping import check_ego_path, check_ego_controls
+import mantrap.agents
+import mantrap.utility.shaping
 
 
 def p_ahead_controller(
-    agent: Agent,
+    agent: mantrap.agents.DTAgent,
     path: torch.Tensor,
     max_sim_time: float,
     dtc: float,
@@ -37,7 +37,7 @@ def p_ahead_controller(
     :param speed_reference: reference speed (constant phase of speed profile), max agent's speed per default [m/s].
     :param breaking_acc: maximal acceleration during breaking, max agent's acceleration per default [m/s^2].
     """
-    assert check_ego_path(path)
+    assert mantrap.utility.shaping.check_ego_path(path)
     num_path_points = path.shape[0]
 
     # If the path length is one (aka greedy look-ahead) we steer to the next point directly.
@@ -50,7 +50,7 @@ def p_ahead_controller(
         )
 
         controls = torch.tensor([ux, uy]).view(1, 2)
-        assert check_ego_controls(controls, t_horizon=1)
+        assert mantrap.utility.shaping.check_ego_controls(controls, t_horizon=1)
         return controls.float()
 
     # Controller parameters.
@@ -103,7 +103,7 @@ def p_ahead_controller(
 
     # Convert controls to torch tensor, validate and return them.
     controls = torch.from_numpy(np.array(controls))
-    assert check_ego_controls(controls, t_horizon=int(sim_time / dtc))
+    assert mantrap.utility.shaping.check_ego_controls(controls, t_horizon=int(sim_time / dtc))
     return controls.float()
 
 

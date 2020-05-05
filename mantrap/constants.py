@@ -55,11 +55,9 @@ ENV_DT_DEFAULT = 0.4
 ENV_X_AXIS_DEFAULT = (-10, 10)
 ENV_Y_AXIS_DEFAULT = (-10, 10)
 
-SOCIAL_FORCES_DEFAULTS = {
-    PK_TAU: 0.4,  # [s] relaxation time (assumed to be uniform over all agents).
-    PK_V0: 4.0,  # [m2s-2] repulsive field constant.
-    PK_SIGMA: 0.9,  # [m] repulsive field exponent constant.
-}
+SOCIAL_FORCES_DEFAULT_TAU = 0.4  # [s] relaxation time (assumed to be uniform over all agents).
+SOCIAL_FORCES_DEFAULT_V0 = 4.0  # [m2s-2] repulsive field constant.
+SOCIAL_FORCES_DEFAULT_SIGMA = 0.9  # [m] repulsive field exponent constant.
 SOCIAL_FORCES_MAX_GOAL_DISTANCE = 0.3  # [m] maximal distance to goal to have zero goal traction force.
 SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between agents for interaction force.
 

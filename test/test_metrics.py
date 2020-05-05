@@ -2,9 +2,10 @@ import numpy as np
 import pytest
 
 from mantrap.agents import DoubleIntegratorDTAgent
-from mantrap.environment import ENVIRONMENTS
-from mantrap_evaluation.metrics import *
+from mantrap.environment import ENVIRONMENTS, GraphBasedEnvironment
 from mantrap.utility.maths import straight_line
+
+from mantrap_evaluation.metrics import *
 
 
 def test_minimal_distance_principle():

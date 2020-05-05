@@ -1,11 +1,11 @@
-from typing import List, Tuple
+import typing
 
-from mantrap.constants import *
-from mantrap.solver.solver_intermediates.ipopt import IPOPTIntermediate
-from mantrap.solver.solver_intermediates.z_controls import ZControlIntermediate
+import mantrap.constants
+import mantrap.solver.solver_intermediates
 
 
-class SGradSolver(IPOPTIntermediate, ZControlIntermediate):
+class SGradSolver(mantrap.solver.solver_intermediates.IPOPTIntermediate,
+                  mantrap.solver.solver_intermediates.ZControlIntermediate):
     """Shooting NLP using IPOPT solver.
 
     .. math:: z = controls
@@ -17,15 +17,17 @@ class SGradSolver(IPOPTIntermediate, ZControlIntermediate):
     # Optimization formulation - Objective ####################################
     ###########################################################################
     @staticmethod
-    def objective_defaults() -> List[Tuple[str, float]]:
-        return [(OBJECTIVE_GOAL, 1.0), (OBJECTIVE_INTERACTION_POS, 10.0)]
+    def objective_defaults() -> typing.List[typing.Tuple[str, float]]:
+        return [(mantrap.constants.OBJECTIVE_GOAL, 1.0),
+                (mantrap.constants.OBJECTIVE_INTERACTION_POS, 10.0)]
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
     @staticmethod
-    def constraints_defaults() -> List[str]:
-        return [CONSTRAINT_CONTROL_LIMIT, CONSTRAINT_NORM_DISTANCE]
+    def constraints_defaults() -> typing.List[str]:
+        return [mantrap.constants.CONSTRAINT_CONTROL_LIMIT,
+                mantrap.constants.CONSTRAINT_NORM_DISTANCE]
 
     ###########################################################################
     # Solver properties #######################################################

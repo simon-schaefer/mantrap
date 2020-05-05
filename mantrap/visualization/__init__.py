@@ -1,24 +1,24 @@
-from typing import Dict, List, Union
+import typing
 
-from matplotlib.animation import FuncAnimation
+import matplotlib.animation
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from mantrap.environment.environment import GraphBasedEnvironment
-from mantrap.utility.maths import Derivative2
-from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories, check_ego_state
+import mantrap.environment
+import mantrap.utility.maths
+import mantrap.utility.shaping
 
 
 def visualize(
     ado_planned_wo: torch.Tensor,
-    env: GraphBasedEnvironment,
+    env: mantrap.environment.GraphBasedEnvironment,
     ego_planned: torch.Tensor = None,
     ado_planned: torch.Tensor = None,
     file_path: str = None,
-    obj_dict: Dict[str, List[torch.Tensor]] = None,
-    inf_dict: Dict[str, List[torch.Tensor]] = None,
-    ego_trials: List[List[torch.Tensor]] = None,
+    obj_dict: typing.Dict[str, typing.List[torch.Tensor]] = None,
+    inf_dict: typing.Dict[str, typing.List[torch.Tensor]] = None,
+    ego_trials: typing.List[typing.List[torch.Tensor]] = None,
     plot_path_only: bool = False
 ):
     num_vertical_plots = 2  # paths (2)
@@ -92,15 +92,15 @@ def visualize(
             ado_trajectories = ado_planned[:, :, :, 0, :].permute(1, 2, 0, 3).detach()
             t_horizon = ego_trajectory.shape[0]
 
-            assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-            assert check_ado_trajectories(ado_trajectories, ados=env.num_ados, t_horizon=t_horizon)
+            assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+            assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon, ados=env.num_ados)
 
             time_axis = ego_trajectory[:, -1].detach().numpy()
 
             # Determine velocity norm (L2) at every point of time for ado and ego trajectories.
             ado_velocity_norm = np.linalg.norm(ado_trajectories[:, :, :, 2:4].detach().numpy(), axis=3)
             # Determine acceleration norm (L2) at every point of time for ado and ego trajectories.
-            dd = Derivative2(horizon=t_horizon, dt=env.dt, velocity=True)
+            dd = mantrap.utility.maths.Derivative2(horizon=t_horizon, dt=env.dt, velocity=True)
             ado_acceleration_norm = np.linalg.norm(dd.compute(ado_trajectories[:, :, :, 2:4]).detach().numpy(), axis=3)
             # Determine ego controls norm (L2) at every point of time for ado and ego trajectories.
             ego_controls = env.ego.roll_trajectory(trajectory=ego_trajectory, dt=env.dt)
@@ -143,7 +143,7 @@ def visualize(
         axs[0].set_title(f"step {k}")
         return axs
 
-    anim = FuncAnimation(fig, update, frames=num_env_steps - 1, interval=300)
+    anim = matplotlib.animation.FuncAnimation(fig, update, frames=num_env_steps - 1, interval=300)
 
     # In interactive mode (when file_path is not set), return the video itself, otherwise save the video at
     # the given directory as a ".gif"-file.
@@ -157,19 +157,19 @@ def visualize(
 # ##########################################################################
 def draw_trajectories(
     ado_trajectories_wo: torch.Tensor,
-    env: GraphBasedEnvironment,
+    env: mantrap.environment.GraphBasedEnvironment,
     ax: plt.Axes,
     ego_trajectory: torch.Tensor = None,
     ado_trajectories: torch.Tensor = None,
-    ego_traj_trials: List[torch.Tensor] = None
+    ego_traj_trials: typing.List[torch.Tensor] = None
 ):
     """Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as the
     resulting ado trajectories based on some environment."""
 
-    def draw_agent_representation(state: torch.Tensor, color: np.ndarray, name: Union[str, None]):
+    def draw_agent_representation(state: torch.Tensor, color: np.ndarray, name: typing.Union[str, None]):
         """Add circle for agent and agent id description. If the state (position) is outside of the scene, just
         do not plot it, return directly instead."""
-        assert check_ego_state(state, enforce_temporal=False)
+        assert mantrap.utility.shaping.check_ego_state(state, enforce_temporal=False)
 
         if not (env.axes[0][0] < state[0] < env.axes[0][1]) or not (env.axes[1][0] < state[1] < env.axes[1][1]):
             return
@@ -179,12 +179,12 @@ def draw_trajectories(
         if id is not None:
             ax.text(state[0], state[1], name, fontsize=8)
 
-    assert check_ado_trajectories(ado_trajectories_wo, ados=env.num_ados)
+    assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories_wo, ados=env.num_ados)
     planning_horizon = ado_trajectories_wo.shape[2]
 
     # Plot ego trajectory.
     if ego_trajectory is not None:
-        assert check_ego_trajectory(ego_trajectory, pos_and_vel_only=True, t_horizon=planning_horizon)
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, planning_horizon, pos_and_vel_only=True)
         ego_trajectory_np = ego_trajectory.detach().numpy()
         ax.plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label=env.ego.id)
         draw_agent_representation(ego_trajectory[0, :], color=env.ego.color, name=env.ego.id)
@@ -203,7 +203,7 @@ def draw_trajectories(
 
         ax.plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "--", color=ado_color, label=f"{ado_id}_wo")
         if ado_trajectories is not None:
-            assert check_ado_trajectories(ado_trajectories, ados=env.num_ados, t_horizon=planning_horizon)
+            assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, planning_horizon, ados=env.num_ados)
             ado_pos = ado_trajectories[i_ado, i_mode, :, 0:2].detach().numpy()
             ax.plot(ado_pos[:, 0], ado_pos[:, 1], "-*", color=ado_color, label=f"{ado_id}")
             agent_rep_state = ado_trajectories[i_ado, i_mode, 0, :]
@@ -224,8 +224,8 @@ def draw_values(
     time_axis: np.ndarray,
     ax: plt.Axes,
     color: np.ndarray = np.zeros(3),
-    label: Union[str, None] = None,
-    k: Union[int, None] = 0
+    label: typing.Union[str, None] = None,
+    k: typing.Union[int, None] = 0
 ):
     assert len(values.shape) == 1  # one-dimensional vector (!)
 

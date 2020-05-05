@@ -1,16 +1,18 @@
-from typing import Dict, Tuple, Union
+import typing
 
 import mantrap
 import torch
 
-from mantrap_evaluation.datasets.api import _create_environment
+import mantrap_evaluation.datasets.api
 
 
 def scenario_custom_parallel(
     env_type: mantrap.environment.GraphBasedEnvironment.__class__,
-    ego_type: mantrap.agents.Agent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
+    ego_type: mantrap.agents.DTAgent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
     num_modes: int = 1
-) -> Tuple[mantrap.environment.GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
+) -> typing.Tuple[mantrap.environment.GraphBasedEnvironment,
+                  torch.Tensor,
+                  typing.Union[typing.Dict[str, torch.Tensor], None]]:
     """Scenario parallel.
 
     Three ado agents, having one mode each, and the ego agent. All starting at the left side and going to the
@@ -24,7 +26,7 @@ def scenario_custom_parallel(
     ado_histories = [history.unsqueeze(dim=0) for history in ado_histories]  # shape (5) -> (1, 5)
     ado_goals = [torch.tensor([7, -5]), torch.tensor([7, 5])]
 
-    return _create_environment(
+    return mantrap_evaluation.datasets.api.create_environment(
         config_name="custom_haruki",
         env_type=env_type,
         ado_histories=ado_histories,

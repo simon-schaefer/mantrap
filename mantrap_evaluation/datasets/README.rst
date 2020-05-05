@@ -24,7 +24,7 @@ it to the dictionary of scenarios in :code:`__init__.py`:
 
 
 The function basically defines the initial state of the ego (robot) as well the initial state and state histories
-of the ados (pedestrian) in the scene, then calls the :code:`_create_environment()` method defined in :code:`api.py` to
+of the ados (pedestrian) in the scene, then calls the :code:`create_environment()` method defined in :code:`api.py` to
 create an environment, which builds the first return argument. The second argument is the ego state (position) for
 the ego robot, the third the ground truth positions for the ados in the scene, i.e. how they would have moved if 
 there wouldn't be a robot in the scene. Being based on a perfect behaviour prediction model and grounded on a 

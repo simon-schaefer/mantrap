@@ -12,7 +12,7 @@ from mantrap.utility.maths import Circle
 class TestAgent:
 
     @staticmethod
-    def test_dynamics(agent_class: Agent.__class__):
+    def test_dynamics(agent_class: DTAgent.__class__):
         control = torch.rand(2)
         agent = agent_class(position=torch.rand(2), velocity=torch.rand(2))
         state_next = agent.dynamics(state=agent.state_with_time, action=control, dt=1.0)
@@ -20,7 +20,7 @@ class TestAgent:
         assert torch.all(torch.isclose(control, control_output))
 
     @staticmethod
-    def test_history(agent_class: Agent.__class__):
+    def test_history(agent_class: DTAgent.__class__):
         agent = agent_class(position=torch.tensor([-1, 4]), velocity=torch.ones(2))
         for _ in range(4):
             agent.update(action=torch.ones(2), dt=1.0)
@@ -29,21 +29,21 @@ class TestAgent:
         assert agent.history.shape[1] == 5
 
     @staticmethod
-    def test_reset(agent_class: Agent.__class__):
+    def test_reset(agent_class: DTAgent.__class__):
         agent = agent_class(position=torch.tensor([5, 6]))
         agent.reset(state=torch.tensor([1, 5, 4, 2, 1.0]), history=None)
         assert torch.all(torch.eq(agent.position, torch.tensor([1, 5]).float()))
         assert torch.all(torch.eq(agent.velocity, torch.tensor([4, 2]).float()))
 
     @staticmethod
-    def test_rolling(agent_class: Agent.__class__):
+    def test_rolling(agent_class: DTAgent.__class__):
         agent = agent_class(position=torch.zeros(2))
         controls = torch.tensor([[1, 1], [2, 2], [4, 4]]).float()
         trajectory = agent.unroll_trajectory(controls, dt=1.0)
         assert torch.all(torch.isclose(controls, agent.roll_trajectory(trajectory, dt=1.0)))
 
     @staticmethod
-    def test_initialization(agent_class: Agent.__class__):
+    def test_initialization(agent_class: DTAgent.__class__):
         # history initial value = None.
         agent = agent_class(position=torch.zeros(2), velocity=torch.zeros(2), history=None)
         assert torch.all(torch.eq(agent.history, torch.zeros((1, 5))))
@@ -56,7 +56,7 @@ class TestAgent:
         assert torch.all(torch.eq(agent.history, history_exp))
 
     @staticmethod
-    def test_update(agent_class: Agent.__class__):
+    def test_update(agent_class: DTAgent.__class__):
         """Test agent `update()` using the `dynamics()` which has been tested independently so is fairly safe
         to use for testing since it grants generality over agent types. """
         state_init = torch.rand(4)
@@ -71,7 +71,7 @@ class TestAgent:
         assert torch.all(torch.isclose(agent.history[1, :], state_next))
 
     @staticmethod
-    def test_forward_reachability(agent_class: Agent.__class__):
+    def test_forward_reachability(agent_class: DTAgent.__class__):
         agent = agent_class(position=torch.rand(2) * 5, velocity=torch.rand(2) * 2)
         num_samples, time_steps = 100, 4
         control_min, control_max = agent.control_limits()
@@ -107,7 +107,7 @@ class TestAgent:
             assert torch.isclose(torch.tensor(boundary.radius), radius_numeric, atol=0.1)  # same circle ?
 
     @staticmethod
-    def test_feasibility_check(agent_class: Agent.__class__):
+    def test_feasibility_check(agent_class: DTAgent.__class__):
         # Only check the feasibility controls function since the feasibility trajectory function simply
         # adds a rolling of the trajectory to a set of controls, which has been tested before.
         agent = agent_class(position=torch.rand(2) * 5, velocity=torch.rand(2) * 2)

@@ -1,14 +1,13 @@
-from typing import Dict
+import typing
 
 import torch
 
-from mantrap.agents import IntegratorDTAgent
-from mantrap.agents.agent import Agent
-from mantrap.constants import *
-from mantrap.environment.iterative import IterativeEnvironment
+import mantrap.agents
+import mantrap.constants
+import mantrap.environment.intermediates
 
 
-class KalmanEnvironment(IterativeEnvironment):
+class KalmanEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
     """Kalman (Filter) - based Environment.
 
     The Kalman environment implements the update rules, defined in the Kalman Filter, to update the agents
@@ -21,13 +20,14 @@ class KalmanEnvironment(IterativeEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, **ado_kwargs) -> Agent:
-        return super(KalmanEnvironment, self).add_ado(IntegratorDTAgent, **ado_kwargs)
+    def add_ado(self, **ado_kwargs) -> mantrap.agents.DTAgent:
+        return super(KalmanEnvironment, self).add_ado(mantrap.agents.IntegratorDTAgent, **ado_kwargs)
 
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
-    def build_graph(self, ego_state: torch.Tensor = None, k: int = 0,  **graph_kwargs) -> Dict[str, torch.Tensor]:
+    def build_graph(self, ego_state: torch.Tensor = None, k: int = 0,  **graph_kwargs
+                    ) -> typing.Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph = self.write_state_to_graph(ego_state, k=k, **graph_kwargs)
 
@@ -35,7 +35,8 @@ class KalmanEnvironment(IterativeEnvironment):
         # no interaction interferences with other agents the only update the Kalman environment has to do
         # is their state-mean update, with the current position as control input for their dynamics.
         for ghost in self.ghosts:
-            graph[f"{ghost.id}_{k}_{GK_CONTROL}"] = graph[f"{ghost.id}_{k}_{GK_VELOCITY}"]
+            ghost_velocity_k = graph[f"{ghost.id}_{k}_{mantrap.constants.GK_VELOCITY}"]
+            graph[f"{ghost.id}_{k}_{mantrap.constants.GK_CONTROL}"] = ghost_velocity_k
 
         return graph
 

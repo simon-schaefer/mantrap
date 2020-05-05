@@ -1,24 +1,24 @@
 import time
-from typing import Dict, List, Tuple
+import typing
 
 import numpy as np
 import torch
 
-from mantrap.constants import *
-from mantrap.solver.solver_intermediates.z_controls import ZControlIntermediate
+import mantrap.constants
+import mantrap.solver.solver_intermediates
 
 
-class MonteCarloTreeSearch(ZControlIntermediate):
+class MonteCarloTreeSearch(mantrap.solver.solver_intermediates.ZControlIntermediate):
 
     def _optimize(
         self,
         z0: torch.Tensor,
-        ado_ids: List[str],
-        tag: str = TAG_DEFAULT,
-        max_iter: int = MCTS_MAX_STEPS,
-        max_cpu_time: float = MCTS_MAX_CPU_TIME,
+        ado_ids: typing.List[str],
+        tag: str = mantrap.constants.TAG_DEFAULT,
+        max_iter: int = mantrap.constants.MCTS_MAX_STEPS,
+        max_cpu_time: float = mantrap.constants.MCTS_MAX_CPU_TIME,
         **solver_kwargs
-    ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
+    ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.
 
         Given some initial value `z0` find the optimal allocation for z with respect to the internally defined
@@ -53,7 +53,7 @@ class MonteCarloTreeSearch(ZControlIntermediate):
             z_sample = np.random.uniform(lb, ub)
             objective, constraint_violation = self._evaluate(z=z_sample, tag=tag, ado_ids=ado_ids)
 
-            if obj_best > objective and constraint_violation < SOLVER_CONSTRAINT_LIMIT:
+            if obj_best > objective and constraint_violation < mantrap.constants.SOLVER_CONSTRAINT_LIMIT:
                 obj_best = objective
                 z_best = z_sample
             sampling_iteration += 1
@@ -63,7 +63,7 @@ class MonteCarloTreeSearch(ZControlIntermediate):
         self._evaluate(z=z_best, tag=tag, ado_ids=ado_ids)
         return self.z_to_ego_controls(z=z_best), obj_best, self.log
 
-    def _evaluate(self, z: np.ndarray, ado_ids: List[str], tag: str) -> Tuple[float, float]:
+    def _evaluate(self, z: np.ndarray, ado_ids: typing.List[str], tag: str) -> typing.Tuple[float, float]:
         objective = self.objective(z, tag=tag, ado_ids=ado_ids)
         _, constraint_violation = self.constraints(z, ado_ids=ado_ids, return_violation=True, tag=tag)
         return objective, constraint_violation
@@ -72,15 +72,15 @@ class MonteCarloTreeSearch(ZControlIntermediate):
     # Problem formulation - Objective #########################################
     ###########################################################################
     @staticmethod
-    def objective_defaults() -> List[Tuple[str, float]]:
-        return [(OBJECTIVE_GOAL, 1.0), (OBJECTIVE_INTERACTION_POS, 1.0)]
+    def objective_defaults() -> typing.List[typing.Tuple[str, float]]:
+        return [(mantrap.constants.OBJECTIVE_GOAL, 1.0), (mantrap.constants.OBJECTIVE_INTERACTION_POS, 1.0)]
 
     ###########################################################################
     # Problem formulation - Constraints #######################################
     ###########################################################################
     @staticmethod
-    def constraints_defaults() -> List[str]:
-        return [CONSTRAINT_CONTROL_LIMIT, CONSTRAINT_NORM_DISTANCE]
+    def constraints_defaults() -> typing.List[str]:
+        return [mantrap.constants.CONSTRAINT_CONTROL_LIMIT, mantrap.constants.CONSTRAINT_NORM_DISTANCE]
 
     ###########################################################################
     # Solver properties #######################################################

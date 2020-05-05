@@ -1,19 +1,19 @@
 import math
-from typing import Tuple
+import typing
 
 import torch
 
-from mantrap.agents.agent_intermediates.linear import LinearAgent
+import mantrap.agents.agent_intermediates
 
 
-class DoubleIntegratorDTAgent(LinearAgent):
+class DoubleIntegratorDTAgent(mantrap.agents.agent_intermediates.LinearDTAgent):
     """ Linear double integrator dynamics:
 
     .. math:: vel_{t+1} = vel_t + action * dt
     .. math:: pos_{t+1} = pos_t + vel_{t+1} * dt
     """
 
-    def _dynamics_matrices(self, dt: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _dynamics_matrices(self, dt: float) -> typing.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         A = torch.tensor([[1, 0, dt, 0, 0],
                           [0, 1, 0, dt, 0],
                           [0, 0, 1, 0, 0],
@@ -26,7 +26,7 @@ class DoubleIntegratorDTAgent(LinearAgent):
 
     @staticmethod
     def dynamics_scalar(px: float, py: float, vx: float, vy: float, ux: float, uy: float, dt: float
-                        ) -> Tuple[float, float, float, float]:
+                        ) -> typing.Tuple[float, float, float, float]:
         return px + vx * dt, py + vy * dt, vx + ux * dt, vy + uy * dt
 
     def _inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
@@ -43,13 +43,13 @@ class DoubleIntegratorDTAgent(LinearAgent):
     ###########################################################################
     def go_to_point(
         self,
-        state: Tuple[float, float, float, float],
-        target_point: Tuple[float, float],
+        state: typing.Tuple[float, float, float, float],
+        target_point: typing.Tuple[float, float],
         speed: float,
         dt: float,
         pseudo_wheel_distance: float = 0.05,
         k_speed: float = 1.0,
-    ) -> Tuple[Tuple[float, float, float, float], Tuple[float, float]]:
+    ) -> typing.Tuple[typing.Tuple[float, float, float, float], typing.Tuple[float, float]]:
         """Determine and execute the controls for going for the given state to some target point with respect to
         the internal dynamics.
 
@@ -99,7 +99,7 @@ class DoubleIntegratorDTAgent(LinearAgent):
         px, py, vx, vy = self.dynamics_scalar(px, py, vx, vy, ux, uy, dt)
         return (px, py, vx, vy), (ux, uy)
 
-    def control_limits(self) -> Tuple[float, float]:
+    def control_limits(self) -> typing.Tuple[float, float]:
         """
         .. math:: [- a_{max}, a_{max}]
         """

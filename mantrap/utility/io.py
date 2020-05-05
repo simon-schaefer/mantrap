@@ -2,7 +2,7 @@ import importlib
 import inspect
 import glob
 import os
-from typing import Callable, Dict
+import typing
 
 
 def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> str:
@@ -25,7 +25,7 @@ def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> 
     return path
 
 
-def load_functions_from_module(module: str, prefix: str = None) -> Dict[str, Callable]:
+def load_functions_from_module(module: str, prefix: str = None) -> typing.Dict[str, typing.Callable]:
     """Using importlib and inspect libraries load all functions (with prefix) from given module."""
     function_dict = {}
     module = importlib.import_module(module)

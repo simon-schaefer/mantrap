@@ -1,34 +1,41 @@
-import logging
-import sys
-
-import numpy as np
-import torch
-
 import mantrap.agents
 import mantrap.constants
+import mantrap.constraints
 import mantrap.environment
+import mantrap.filter
+import mantrap.objectives
 import mantrap.solver
 import mantrap.utility
+
 
 #######################################
 # Default tensor precision ############
 #######################################
-torch.set_default_dtype(torch.float32)
+def __set_type_defaults():
+    import torch
+    torch.set_default_dtype(torch.float32)
 
 
 #######################################
 # Logging preferences #################
 #######################################
-def remove_bytes_from_logging(fn):
-    """Remove weird IPOPT callbacks logging output (byte strings) from log."""
-    def remove_bytes(*args):
-        if type(args[1]) == logging.LogRecord and type(args[1].msg) == bytes:
-            return
-        return fn(*args)
-    return remove_bytes
+def __set_logging_preferences():
+    import logging
+    import sys
 
+    import numpy as np
+    import torch
 
-def set_logging_preferences():
+    def remove_bytes_from_logging(fn):
+        """Remove weird IPOPT callbacks logging output (byte strings) from log."""
+
+        def remove_bytes(*args):
+            if type(args[1]) == logging.LogRecord and type(args[1].msg) == bytes:
+                return
+            return fn(*args)
+
+        return remove_bytes
+
     is_debug = __debug__ is True and not mantrap.utility.io.is_running_from_ipython()
     logging.StreamHandler.emit = remove_bytes_from_logging(logging.StreamHandler.emit)
     logging.basicConfig(
@@ -44,4 +51,5 @@ def set_logging_preferences():
     np.seterr(divide='ignore', invalid='ignore')
 
 
-set_logging_preferences()
+__set_type_defaults()
+__set_logging_preferences()

@@ -1,11 +1,11 @@
-from abc import ABC, abstractmethod
+import abc
 import math
 
 import numpy as np
-from scipy.interpolate import splev, splprep
+import scipy.interpolate
 import torch
 
-from mantrap.utility.shaping import check_ego_path, check_2d_vector
+import mantrap.utility.shaping
 
 
 ###########################################################################
@@ -82,36 +82,36 @@ def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100,
 
 
 def spline_interpolation(control_points: torch.Tensor, num_samples: int = 100):
-    assert check_ego_path(x=control_points)
+    assert mantrap.utility.shaping.check_ego_path(x=control_points)
 
     # B-Spline is not differentiable anyway.
     with torch.no_grad():
         control_points_np = control_points.detach().numpy()
-        tck, _ = splprep([control_points_np[:, 0], control_points_np[:, 1]], s=0.0)
-        x_path, y_path = splev(np.linspace(0, 1, num_samples), tck)
+        tck, _ = scipy.interpolate.splprep([control_points_np[:, 0], control_points_np[:, 1]], s=0.0)
+        x_path, y_path = scipy.interpolate.splev(np.linspace(0, 1, num_samples), tck)
         path = torch.stack((torch.tensor(x_path), torch.tensor(y_path)), dim=1).float()
 
-    assert check_ego_path(path, t_horizon=num_samples)
+    assert mantrap.utility.shaping.check_ego_path(path, t_horizon=num_samples)
     return path
 
 
 ###########################################################################
 # Shapes ##################################################################
 ###########################################################################
-class Shape2D(ABC):
+class Shape2D(abc.ABC):
 
-    @abstractmethod
+    @abc.abstractmethod
     def does_intersect(self, other: 'Shape2D') -> bool:
         raise NotImplementedError
 
-    @abstractmethod
+    @abc.abstractmethod
     def samples(self, num_samples: int = 100) -> torch.Tensor:
         raise NotImplementedError
 
 
 class Circle(Shape2D):
     def __init__(self, center: torch.Tensor, radius: float):
-        assert check_2d_vector(center)
+        assert mantrap.utility.shaping.check_2d_vector(center)
         assert radius > 0.0
 
         self.center = center.float()
@@ -147,7 +147,7 @@ def straight_line(start: torch.Tensor, end: torch.Tensor, steps: int):
     line[:, 0] = torch.linspace(start[0].item(), end[0].item(), steps)
     line[:, 1] = torch.linspace(start[1].item(), end[1].item(), steps)
 
-    assert check_ego_path(line, t_horizon=steps)
+    assert mantrap.utility.shaping.check_ego_path(line, t_horizon=steps)
     return line
 
 

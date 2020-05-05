@@ -85,9 +85,9 @@ def check_ado_controls(x: torch.Tensor, t_horizon: int = None, num_ados: int = N
 
 def check_ado_trajectories(
     x: torch.Tensor,
+    t_horizon: int = None,
     ados: int = None,
     modes: int = None,
-    t_horizon: int = None,
     pos_only: bool = False,
     pos_and_vel_only: bool = False
 ) -> bool:

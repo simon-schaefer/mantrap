@@ -19,18 +19,18 @@ X filter: no_filter, uni-modal, attention radius
 Specific Comparisons
 - control effort objective vs  max control constraint only
 """
-from itertools import product
+import itertools
 
 import mantrap
 
-from mantrap_evaluation.datasets import SCENARIOS
+import mantrap_evaluation.datasets
 
-configurations = list(product(*[
+configurations = list(itertools.product(*[
     mantrap.solver.SOLVERS_DICT.keys(),  # solver type
-    SCENARIOS.keys(),  # scenario
+    mantrap_evaluation.datasets.SCENARIOS.keys(),  # scenario
     mantrap.environment.ENVIRONMENTS_DICT.keys(),  # environment type
     mantrap.agents.AGENTS_DICT.keys(),  # ego_type
-    mantrap.solver.filter.FILTER_DICT.keys(),  # filter types
+    mantrap.filter.FILTER_DICT.keys(),  # filter types
     [1, 3, 5],  # planning horizon
     [None],  # evaluation environments,
     [mantrap.constants.ENV_DT_DEFAULT],  # time-steps,

@@ -7,15 +7,15 @@ import torch
 from mantrap.constants import *
 from mantrap.agents import DoubleIntegratorDTAgent, IntegratorDTAgent
 from mantrap.environment import ENVIRONMENTS
-from mantrap.environment.environment import GraphBasedEnvironment
+from mantrap.environment.base.graph_based import GraphBasedEnvironment
 from mantrap.solver import *
-from mantrap.solver.filter import FILTERS
-from mantrap.solver.solver import Solver
+from mantrap.filter import FILTERS
+from mantrap.solver.base import BaseSolver
 from mantrap.utility.shaping import check_ego_trajectory, check_ado_trajectories
 
 
 def scenario(
-    solver_class: Solver.__class__,
+    solver_class: BaseSolver.__class__,
     env_class: GraphBasedEnvironment.__class__,
     num_modes: int = 1,
     filter_class: str = FILTER_NO_FILTER,

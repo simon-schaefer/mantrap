@@ -1,17 +1,17 @@
-from typing import List
+import typing
 
 import mantrap
 import torch
 
 
-def _create_environment(
+def create_environment(
     env_type: mantrap.environment.GraphBasedEnvironment.__class__,
     config_name: str,
-    ado_histories: List[torch.Tensor],
-    ego_type: mantrap.agents.Agent.__class__ = None,
+    ado_histories: typing.List[torch.Tensor],
+    ego_type: mantrap.agents.DTAgent.__class__ = None,
     ego_state: torch.Tensor = None,
-    ado_ids: List[str] = None,
-    ado_goals: List[torch.Tensor] = None,
+    ado_ids: typing.List[str] = None,
+    ado_goals: typing.List[torch.Tensor] = None,
     num_modes: int = 1,
     **env_kwargs
 ) -> mantrap.environment.GraphBasedEnvironment:

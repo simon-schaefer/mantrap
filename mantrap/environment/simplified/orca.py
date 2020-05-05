@@ -1,17 +1,16 @@
-from collections import namedtuple
-from typing import Dict, List, Tuple, Union
+import collections
+import typing
 
 import torch
 
-from mantrap.agents.agent import Agent
-from mantrap.agents import IntegratorDTAgent
-from mantrap.constants import *
-from mantrap.environment.environment import GraphBasedEnvironment
-from mantrap.environment.iterative import IterativeEnvironment
-from mantrap.utility.shaping import check_goal
+import mantrap.agents
+import mantrap.constants
+import mantrap.environment
+import mantrap.environment.intermediates
+import mantrap.utility.shaping
 
 
-class ORCAEnvironment(IterativeEnvironment):
+class ORCAEnvironment(mantrap.environment.intermediates.IterativeEnvironment):
     """ORCA-based environment.
 
     Implementation enviornment according to 'Reciprocal n-body Collision Avoidance' by Jur van den Berg,
@@ -37,15 +36,15 @@ class ORCAEnvironment(IterativeEnvironment):
     computational effort to compute gradient).
     """
 
-    LineConstraint = namedtuple("LineConstraint", ["point", "direction"])
+    LineConstraint = collections.namedtuple("LineConstraint", ["point", "direction"])
 
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> Agent:
-        assert check_goal(goal)
-        params = [{PK_GOAL: goal.detach().float()}]
-        return super(ORCAEnvironment, self).add_ado(IntegratorDTAgent, arg_list=params, **ado_kwargs)
+    def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> mantrap.agents.DTAgent:
+        assert mantrap.utility.shaping.check_goal(goal)
+        params = [{mantrap.constants.PK_GOAL: goal.detach().float()}]
+        return super(ORCAEnvironment, self).add_ado(mantrap.agents.IntegratorDTAgent, arg_list=params, **ado_kwargs)
 
     ###########################################################################
     # Simulation Graph ########################################################
@@ -54,9 +53,9 @@ class ORCAEnvironment(IterativeEnvironment):
         self,
         ego_state: torch.Tensor = None,
         k: int = 0,
-        safe_time: float = ORCA_SAFE_TIME,
+        safe_time: float = mantrap.constants.ORCA_SAFE_TIME,
         **graph_kwargs
-    ) -> Dict[str, torch.Tensor]:
+    ) -> typing.Dict[str, torch.Tensor]:
         # Graph initialization - Add ados and ego to graph (position, velocity and goals).
         graph_k = self.write_state_to_graph(ego_state, k=k, **graph_kwargs)
 
@@ -64,9 +63,9 @@ class ORCAEnvironment(IterativeEnvironment):
         # to be quite low, < 0.1 s. Since the simulation runs quite fast, we can split the actual simulation
         # time-step in smaller sub-steps. This improves the result while being independent from the user-defined
         # simulation time-step, at a comparably low computational cost.
-        assert (self.dt / ORCA_SUB_TIME_STEP).is_integer()
+        assert (self.dt / mantrap.constants.ORCA_SUB_TIME_STEP).is_integer()
         graph_kk = graph_k.copy()
-        for _ in range(int(self.dt // ORCA_SUB_TIME_STEP)):
+        for _ in range(int(self.dt // mantrap.constants.ORCA_SUB_TIME_STEP)):
             for m_ghost, ghost in enumerate(self.ghosts):
                 # Find set of line constraint for (current iteration) agent to be safe. Important here is that
                 # uni-modality is assumed (and enforced during agent initialization). Therefore no inter-mode
@@ -79,8 +78,8 @@ class ORCAEnvironment(IterativeEnvironment):
                     k=k,
                     self_id=ghost.id,
                     other_ids=others_ids,
-                    dt=ORCA_SUB_TIME_STEP,
-                    agent_radius=ORCA_AGENT_RADIUS,
+                    dt=mantrap.constants.ORCA_SUB_TIME_STEP,
+                    agent_radius=mantrap.constants.ORCA_AGENT_RADIUS,
                     agent_safe_dt=safe_time
                 )
 
@@ -88,9 +87,9 @@ class ORCAEnvironment(IterativeEnvironment):
                 # current position to the goal directly with maximal speed. However when the goal has been reached
                 # set the preferred velocity to zero (not original ORCA).
                 speed_max = ghost.agent.speed_max
-                vel_preferred = ghost.params[PK_GOAL] - ghost.agent.position
+                vel_preferred = ghost.params[mantrap.constants.PK_GOAL] - ghost.agent.position
                 goal_distance = torch.norm(vel_preferred)
-                if goal_distance.item() < ORCA_MAX_GOAL_DISTANCE:
+                if goal_distance.item() < mantrap.constants.ORCA_MAX_GOAL_DISTANCE:
                     vel_preferred = torch.zeros(2)
                 else:
                     vel_preferred = vel_preferred / goal_distance * speed_max
@@ -104,16 +103,17 @@ class ORCAEnvironment(IterativeEnvironment):
                 # time-step, creating a differentiable chain since the next sub-time-step is then using these
                 # updated values.
                 trajectory = ghost.agent.unroll_trajectory(controls=vel_new.unsqueeze(dim=0),
-                                                           dt=ORCA_SUB_TIME_STEP)
-                graph_kk[f"{ghost.id}_{k}_{GK_POSITION}"] = trajectory[-1, 0:2]
-                graph_kk[f"{ghost.id}_{k}_{GK_VELOCITY}"] = trajectory[-1, 2:4]
-                graph_kk[f"{ghost.id}_{k}_{GK_CONTROL}"] = vel_new  # single integrator !
+                                                           dt=mantrap.constants.ORCA_SUB_TIME_STEP)
+                graph_kk[f"{ghost.id}_{k}_{mantrap.constants.GK_POSITION}"] = trajectory[-1, 0:2]
+                graph_kk[f"{ghost.id}_{k}_{mantrap.constants.GK_VELOCITY}"] = trajectory[-1, 2:4]
+                graph_kk[f"{ghost.id}_{k}_{mantrap.constants.GK_CONTROL}"] = vel_new  # single integrator !
 
         # The result of all the computation above is to compute the control input for every ado in the
         # scene conditioned on the ego movement. The other graph-dict-entries has been written into
         # the graph during initialization as they represent the current internal state.
         for ghost_id in self.ghost_ids:
-            graph_k[f"{ghost_id}_{k}_{GK_CONTROL}"] = graph_kk[f"{ghost_id}_{k}_{GK_CONTROL}"]
+            control_kk = graph_kk[f"{ghost_id}_{k}_{mantrap.constants.GK_CONTROL}"]
+            graph_k[f"{ghost_id}_{k}_{mantrap.constants.GK_CONTROL}"] = control_kk
 
         return graph_k
 
@@ -122,11 +122,11 @@ class ORCAEnvironment(IterativeEnvironment):
     ###########################################################################
     def linear_solver_2d(
         self,
-        constraints: List[LineConstraint],
+        constraints: typing.List[LineConstraint],
         velocity_opt: torch.Tensor,
         speed_max: float,
         optimize_direction: bool = False,
-    ) -> Tuple[int, torch.Tensor]:
+    ) -> typing.Tuple[int, torch.Tensor]:
         # Optimize closest point and outside circle if preferred velocity too fast (so normalize it to max speed).
         # Otherwise initialise the new velocity with preferred velocity.
         velocity_new = velocity_opt
@@ -150,7 +150,7 @@ class ORCAEnvironment(IterativeEnvironment):
 
     def linear_solver_3d(
         self,
-        constraints: List[LineConstraint],
+        constraints: typing.List[LineConstraint],
         i_start: int,
         velocity_new: torch.Tensor,
         speed_max: float
@@ -165,7 +165,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 for j in range(0, i):
                     determinant = torch.det(torch.stack((constraints[i].direction, constraints[j].direction)))
 
-                    if torch.abs(determinant) < ORCA_EPS_NUMERIC:
+                    if torch.abs(determinant) < mantrap.constants.ORCA_EPS_NUMERIC:
                         # Line i and line j point in the same direction.
                         if constraints[i].direction.dot(constraints[j].direction) > 0:
                             continue
@@ -192,12 +192,12 @@ class ORCAEnvironment(IterativeEnvironment):
 
     @staticmethod
     def linear_program(
-        constraints: List[LineConstraint],
+        constraints: typing.List[LineConstraint],
         i: int,
         velocity_opt: torch.Tensor,
         speed_max: float,
         optimize_direction: bool = False,
-    ) -> Union[torch.Tensor, None]:
+    ) -> typing.Union[torch.Tensor, None]:
         dot = constraints[i].point.dot(constraints[i].direction)
         discriminant = dot ** 2 + speed_max ** 2 - torch.norm(constraints[i].point) ** 2
         # Max speed circle fully invalidates line i.
@@ -213,7 +213,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 torch.stack((constraints[j].direction, constraints[i].point - constraints[j].point)))
 
             # Lines (constraint lines) i and j are (almost) parallel.
-            if torch.abs(denominator) < ORCA_EPS_NUMERIC:
+            if torch.abs(denominator) < mantrap.constants.ORCA_EPS_NUMERIC:
                 if numerator < 0.0:
                     return None
                 continue
@@ -243,22 +243,25 @@ class ORCAEnvironment(IterativeEnvironment):
 
     @staticmethod
     def line_constraints(
-        graph: Dict[str, torch.Tensor],
+        graph: typing.Dict[str, torch.Tensor],
         k: int,
         self_id: str,
-        other_ids: List[str],
+        other_ids: typing.List[str],
         dt: float,
         agent_radius: float,
         agent_safe_dt: float
-    ) -> List[LineConstraint]:
+    ) -> typing.List[LineConstraint]:
         # We only want to find a new velocity for the self agent, therefore we merely determine constraints
         # between the others agents in the scene and the self, not inter-ado constraints (as we cannot control
         # them anyway).
         constraints = []
 
         for other_id in other_ids:
-            rel_pos = graph[f"{other_id}_{k}_{GK_POSITION}"] - graph[f"{self_id}_{k}_{GK_POSITION}"]
-            rel_vel = graph[f"{self_id}_{k}_{GK_VELOCITY}"] - graph[f"{other_id}_{k}_{GK_VELOCITY}"]
+            self_pos = graph[f"{self_id}_{k}_{mantrap.constants.GK_POSITION}"],
+            self_vel = graph[f"{self_id}_{k}_{mantrap.constants.GK_VELOCITY}"]
+
+            rel_pos = graph[f"{other_id}_{k}_{mantrap.constants.GK_POSITION}"] - self_pos
+            rel_vel = self_vel - graph[f"{other_id}_{k}_{mantrap.constants.GK_VELOCITY}"]
             distance_sq = torch.norm(rel_pos) ** 2
             combined_radius = agent_radius + agent_radius
             combined_radius_sq = combined_radius ** 2
@@ -301,14 +304,15 @@ class ORCAEnvironment(IterativeEnvironment):
                 u = w * (combined_radius / dt / torch.norm(w) - 1)
 
             # usually 0.5 but we want to avoid interaction therefore 1.0
-            point = graph[f"{self_id}_{k}_{GK_VELOCITY}"] + 0.5 * u
+            point = graph[f"{self_id}_{k}_{mantrap.constants.GK_VELOCITY}"] + 0.5 * u
             constraints.append(ORCAEnvironment.LineConstraint(point=point, direction=direction))
         return constraints
 
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def _copy_ados(self, env_copy: 'GraphBasedEnvironment') -> 'GraphBasedEnvironment':
+    def _copy_ados(self, env_copy: mantrap.environment.GraphBasedEnvironment
+                   ) -> mantrap.environment.GraphBasedEnvironment:
         for i in range(self.num_ados):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
@@ -320,7 +324,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 weights=[ghost.weight for ghost in ghosts_ado],
                 num_modes=self.num_modes,
                 identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
-                goal=ghosts_ado[0].params[PK_GOAL],
+                goal=ghosts_ado[0].params[mantrap.constants.PK_GOAL],
             )
         return env_copy
 

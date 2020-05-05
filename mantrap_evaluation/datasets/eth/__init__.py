@@ -1,19 +1,21 @@
 import os
-from typing import Dict, Tuple, Union
+import typing
 
 import mantrap
 import numpy as np
 import torch
 
-from mantrap_evaluation.datasets.api import _create_environment
+import mantrap_evaluation.datasets.api
 
 
 def scenario_eth(
     env_type: mantrap.environment.GraphBasedEnvironment.__class__,
-    ego_type: mantrap.agents.Agent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
+    ego_type: mantrap.agents.DTAgent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
     t_dataset: float = 0.0,
     num_modes: int = 1
-) -> Tuple[mantrap.environment.GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
+) -> typing.Tuple[mantrap.environment.GraphBasedEnvironment,
+                  torch.Tensor,
+                  typing.Union[typing.Dict[str, torch.Tensor], None]]:
     """ETH - Computer Vision Lab - Pedestrian movement dataset at ETH.
 
     The argument `t_dataset` determines the time of the dateset (video) in which the pedestrian has to be present,
@@ -86,7 +88,7 @@ def scenario_eth(
     ego_goal = torch.zeros(2)
 
     # Create environment using api.
-    env = _create_environment(
+    env = mantrap_evaluation.datasets.api.create_environment(
         env_type=env_type,
         config_name="eth",
         ado_histories=ado_histories,

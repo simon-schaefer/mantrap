@@ -1,22 +1,17 @@
 import os
 import time
-from typing import Dict
+import typing
 
+import mantrap
 import pandas as pd
 import tqdm
-
-from mantrap.constants import *
-from mantrap.agents import AGENTS_DICT
-from mantrap.environment import ENVIRONMENTS_DICT
-from mantrap.solver import SOLVERS_DICT
-from mantrap.utility.io import build_os_path
 
 from mantrap_evaluation import get_metrics, evaluate_metrics
 from mantrap_evaluation.datasets import SCENARIOS
 from mantrap_evaluation.configurations import configurations, config_keys
 
 
-def run_evaluation(solver, env_original, time_steps: int = 5, **solver_kwargs) -> Dict[str, float]:
+def run_evaluation(solver, env_original, time_steps: int = 5, **solver_kwargs) -> typing.Dict[str, float]:
     start_time = time.time()
 
     # Run experiment, i.e. solve for ego and ado trajectories for N time-steps.
@@ -41,10 +36,10 @@ def main():
     for config in tqdm.tqdm(configurations):
         config_kwargs = dict(zip(config_keys, config))
 
-        env_type = ENVIRONMENTS_DICT[config_kwargs["env_type"]]
-        ego_type = AGENTS_DICT[config_kwargs["ego_type"]]
+        env_type = mantrap.environment.ENVIRONMENTS_DICT[config_kwargs["env_type"]]
+        ego_type = mantrap.agents.AGENTS_DICT[config_kwargs["ego_type"]]
         env, goal, _ = SCENARIOS[config_kwargs["scenario"]](env_type=env_type, ego_type=ego_type)
-        solver = SOLVERS_DICT[config_kwargs["solver"]](env, goal=goal, **config_kwargs)
+        solver = mantrap.solver.SOLVERS_DICT[config_kwargs["solver"]](env, goal=goal, **config_kwargs)
 
         try:
             results = run_evaluation(solver,
@@ -54,7 +49,8 @@ def main():
             results.update(config_kwargs)
             results_df = results_df.append(results, ignore_index=True)
 
-            output_path = build_os_path(os.path.join(VISUALIZATION_DIRECTORY, "evaluation.csv"))
+            output_path = mantrap.constants.VISUALIZATION_DIRECTORY
+            output_path = mantrap.utility.io.build_os_path(os.path.join(output_path, "evaluation.csv"))
             results_df.to_csv(output_path, index=False)
 
         except:
