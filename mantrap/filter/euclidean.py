@@ -27,3 +27,10 @@ class EuclideanModule(FilterModule):
             in_indices = np.nonzero(in_attention)[0]
 
         return in_indices
+
+    ###########################################################################
+    # Filter properties #######################################################
+    ###########################################################################
+    @property
+    def name(self) -> str:
+        return "euclidean"

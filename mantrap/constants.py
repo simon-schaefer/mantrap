@@ -1,15 +1,7 @@
 #######################################
 # names/strings #######################
 #######################################
-CONSTRAINT_CONTROL_LIMIT = "control_limits"
-CONSTRAINT_MIN_DISTANCE = "min_distance"
-CONSTRAINT_NORM_DISTANCE = "norm_distance"
-
 ID_EGO = "ego"
-
-FILTER_EUCLIDEAN = "euclidean"
-FILTER_NO_FILTER = "no_filter"
-FILTER_REACHABILITY = "reachability"
 
 GK_CONTROL = "control"  # GK = Graph-Key
 GK_POSITION = "position"
@@ -20,11 +12,6 @@ LK_CONSTRAINT = "inf"
 LK_OBJECTIVE = "obj"
 LK_OPTIMAL = "opt"
 LK_OVERALL_PERFORMANCE = "overall"
-
-OBJECTIVE_CONTROL_EFFORT = "control_effort"
-OBJECTIVE_GOAL = "goal"
-OBJECTIVE_INTERACTION_POS = "interaction_pos"
-OBJECTIVE_INTERACTION_ACC = "interaction_acc"
 
 PK_CONFIG = "config_name"  # PK = Parameter-Key
 PK_NUM_CONTROL_POINTS = "num_control_points"

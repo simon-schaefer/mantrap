@@ -132,3 +132,7 @@ class ObjectiveModule(abc.ABC):
     @property
     def weight(self) -> float:
         return self._weight
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError

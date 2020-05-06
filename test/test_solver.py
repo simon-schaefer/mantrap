@@ -12,12 +12,20 @@ import mantrap.filter
 import mantrap.solver
 import mantrap.utility.shaping
 
+environments = [mantrap.environment.KalmanEnvironment,
+                mantrap.environment.PotentialFieldEnvironment,
+                mantrap.environment.SocialForcesEnvironment,
+                mantrap.environment.ORCAEnvironment,
+                mantrap.environment.Trajectron]
+filters = [mantrap.filter.EuclideanModule,
+           mantrap.filter.ReachabilityModule]
+
 
 def scenario(
     solver_class: mantrap.solver.base.TrajOptSolver.__class__,
     env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
     num_modes: int = 1,
-    filter_class: str = mantrap.constants.FILTER_NO_FILTER,
+    filter_class: str = None,
     **solver_kwargs
 ):
     env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 2])})
@@ -32,10 +40,13 @@ def scenario(
 ###########################################################################
 # Tests - All Solvers #####################################################
 ###########################################################################
-@pytest.mark.parametrize("solver_class", mantrap.solver.SOLVERS)
-@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver,
+                                          mantrap.solver.IgnoringSolver,
+                                          mantrap.solver.MonteCarloTreeSearch,
+                                          mantrap.solver.ORCASolver])
+@pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 3])
-@pytest.mark.parametrize("filter_class", mantrap.filter.FILTERS)
+@pytest.mark.parametrize("filter_class", filters)
 class TestSolvers:
 
     @staticmethod
@@ -156,9 +167,9 @@ class TestSolvers:
 # Test - IPOPT Solver #####################################################
 ###########################################################################
 @pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver])
-@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 3])
-@pytest.mark.parametrize("filter_class", mantrap.filter.FILTERS)
+@pytest.mark.parametrize("filter_class", filters)
 class TestIPOPTSolvers:
 
     @staticmethod
@@ -197,7 +208,7 @@ class TestIPOPTSolvers:
         assert np.mean(comp_times_gradient) < 0.08 * num_modes  # faster than 13 Hz (!)
 
 
-@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("env_class", environments)
 def test_ignoring_solver(env_class):
     ego_position = torch.tensor([-3, 0])
     ego_velocity = torch.ones(2)
@@ -212,42 +223,3 @@ def test_ignoring_solver(env_class):
     # Check whether goal has been reached in acceptable closeness.
     goal_distance = torch.norm(ego_trajectory[-1,  0:2] - solver.goal)
     assert torch.le(goal_distance, mantrap.constants.SOLVER_GOAL_END_DISTANCE * 2)
-
-
-# ###########################################################################
-# # Tests - Evaluation Environment ##########################################
-# ###########################################################################
-# def test_eval_environment():
-#     from mantrap.environment import KalmanEnvironment, PotentialFieldEnvironment
-#     env = PotentialFieldEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
-#     env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0.2]))
-#     env.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]))
-#
-#     # Since the determine ego controls are predictable in the constant solver, the output ego trajectory basically
-#     # is the unrolled trajectory by applying the same controls again and again.
-#     time_steps = 5
-#     ego_controls = torch.tensor([1, 0] * time_steps).view(-1, 2)
-#     ego_trajectory_opt_exp = env.ego.unroll_trajectory(controls=ego_controls, dt=env.dt)
-#     ado_trajectories_exp_sim = env.predict_w_controls(ego_controls=ego_controls)
-#
-#     # First dont pass evaluation environment, then it planning and evaluation environment should be equal.
-#     # Ado Trajectories -> just the actual positions (first entry of planning trajectory at every time-step)
-#     solver = ConstantSolver(env, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
-#     ego_trajectory_opt, ado_trajectories = solver.solve(time_steps=time_steps)
-#     assert torch.all(torch.isclose(ego_trajectory_opt, ego_trajectory_opt_exp))
-#     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_sim, atol=0.1))
-#
-#     # Second pass evaluation environment. Since the environment updates should be performed using the evaluation
-#     # environment the ado trajectories should be equal to predicting the ado behaviour given the (known) ego controls.
-#     # To test multi-modality but still have a deterministic mode collapse all weight is put on one mode.
-#     # However, since the agents themselves are the same, especially the ego agent, the ego trajectory should be the
-#     # same as in the first test ==> (only one mode since deterministic)
-#     eval_env = SocialForcesEnvironment(IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
-#     mode_kwargs = {"num_modes": 2, "weights": [1.0, 0.0]}
-#     eval_env.add_ado(position=torch.zeros(2), velocity=torch.tensor([-1, 0.2]), goal=torch.ones(2) * 10, **mode_kwargs)
-#     eval_env.add_ado(position=torch.ones(2), velocity=torch.tensor([-5, 4.2]), goal=torch.ones(2) * 10, **mode_kwargs)
-#     ado_trajectories_exp_eval = eval_env.predict_w_controls(ego_controls=ego_controls)[:, :1, :, :]  # first mode only
-#     solver = ConstantSolver(env, eval_env=eval_env, goal=torch.zeros(2), t_planning=2, objectives=[], constraints=[])
-#     ego_trajectory_opt, ado_trajectories = solver.solve(time_steps=time_steps)
-#     assert torch.all(torch.isclose(ego_trajectory_opt, ego_trajectory_opt_exp))
-#     assert torch.all(torch.isclose(ado_trajectories, ado_trajectories_exp_eval, atol=0.1))

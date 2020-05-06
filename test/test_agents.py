@@ -8,7 +8,8 @@ import mantrap.utility.maths
 ###########################################################################
 # Tests - All Agents ######################################################
 ###########################################################################
-@pytest.mark.parametrize("agent_class", mantrap.agents.AGENTS)
+@pytest.mark.parametrize("agent_class", [mantrap.agents.IntegratorDTAgent,
+                                         mantrap.agents.DoubleIntegratorDTAgent])
 class TestAgent:
 
     @staticmethod

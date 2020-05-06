@@ -44,8 +44,8 @@ class KalmanEnvironment(IterativeEnvironment):
     ###########################################################################
     # Simulation parameters ###################################################
     ###########################################################################
-    @staticmethod
-    def environment_name() -> str:
+    @property
+    def name(self) -> str:
         return "kalman"
 
     @property

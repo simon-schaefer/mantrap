@@ -93,3 +93,10 @@ class MinDistanceModule(ConstraintModule):
 
     def num_constraints(self, ado_ids: typing.List[str] = None) -> int:
         return 1
+
+    ###########################################################################
+    # Constraint Properties ###################################################
+    ###########################################################################
+    @property
+    def name(self) -> str:
+        return "min_distance"

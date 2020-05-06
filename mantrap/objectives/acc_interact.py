@@ -84,3 +84,10 @@ class InteractionAccelerationModule(ObjectiveModule):
         resulting objective value must have a gradient as well.
         """
         return self._env.is_differentiable_wrt_ego
+
+    ###########################################################################
+    # Objective Properties ####################################################
+    ###########################################################################
+    @property
+    def name(self) -> str:
+        return "interact_acc"

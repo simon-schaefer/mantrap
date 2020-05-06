@@ -1,11 +1,12 @@
 import typing
 
-import mantrap
+import mantrap_evaluation.utility.modules
 
 
 # Aggregate all metric names from metrics module.
 def get_metrics() -> typing.Dict[str, typing.Callable]:
-    return mantrap.utility.io.load_functions_from_module(module="mantrap_evaluation.metrics", prefix="metric_")
+    metrics_module = "mantrap_evaluation.metrics"
+    return mantrap_evaluation.utility.modules.load_functions_from_module(metrics_module, prefix="metric_")
 
 
 # Aggregate metrics automatically as dictionary mapping the metric names to its function call,

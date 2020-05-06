@@ -78,3 +78,10 @@ class GoalModule(ObjectiveModule):
     def importance_distribution(self, weights: torch.Tensor):
         assert weights.numel() == self.t_horizon + 1
         self._distribution = weights
+
+    ###########################################################################
+    # Objective Properties ####################################################
+    ###########################################################################
+    @property
+    def name(self) -> str:
+        return "goal"

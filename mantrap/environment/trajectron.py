@@ -418,8 +418,8 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     # Simulation parameters ###################################################
     ###########################################################################
-    @staticmethod
-    def environment_name() -> str:
+    @property
+    def name(self) -> str:
         return "trajectron"
 
     @property

@@ -1,8 +1,5 @@
-import importlib
-import inspect
 import glob
 import os
-import typing
 
 
 def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> str:
@@ -23,22 +20,6 @@ def build_os_path(filepath: str, make_dir: bool = False, free: bool = False) -> 
         for f in files:
             os.remove(f)
     return path
-
-
-def load_functions_from_module(module: str, prefix: str = None) -> typing.Dict[str, typing.Callable]:
-    """Using importlib and inspect libraries load all functions (with prefix) from given module."""
-    function_dict = {}
-    module = importlib.import_module(module)
-    functions = [o for o in inspect.getmembers(module) if inspect.isfunction(o[1])]
-    for function_tuple in functions:
-        function_name, _ = function_tuple
-        if prefix is not None:
-            if function_name.startswith(prefix):
-                function_tag = function_name.replace(prefix, "")
-                function_dict[function_tag] = function_tuple[1]
-        else:
-            function_dict[function_name] = function_tuple[1]
-    return function_dict
 
 
 def is_running_from_ipython():

@@ -211,3 +211,7 @@ class ConstraintModule(abc.ABC):
     @property
     def t_horizon(self) -> int:
         return self._t_horizon
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError

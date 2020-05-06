@@ -1,6 +1,7 @@
 import typing
 
-import mantrap.constants
+import mantrap.constraints
+import mantrap.objectives
 
 from .base.ipopt import IPOPTIntermediate
 from .base.z_controls import ZControlIntermediate
@@ -18,21 +19,19 @@ class SGradSolver(IPOPTIntermediate, ZControlIntermediate):
     # Optimization formulation - Objective ####################################
     ###########################################################################
     @staticmethod
-    def objective_defaults() -> typing.List[typing.Tuple[str, float]]:
-        return [(mantrap.constants.OBJECTIVE_GOAL, 1.0),
-                (mantrap.constants.OBJECTIVE_INTERACTION_POS, 10.0)]
+    def objective_defaults() -> typing.List[typing.Tuple[mantrap.objectives.ObjectiveModule.__class__, float]]:
+        return [(mantrap.objectives.GoalModule, 1.0), (mantrap.objectives.InteractionPositionModule, 10.0)]
 
     ###########################################################################
     # Optimization formulation - Constraints ##################################
     ###########################################################################
     @staticmethod
-    def constraints_defaults() -> typing.List[str]:
-        return [mantrap.constants.CONSTRAINT_CONTROL_LIMIT,
-                mantrap.constants.CONSTRAINT_NORM_DISTANCE]
+    def constraints_defaults() -> typing.List[mantrap.constraints.ConstraintModule.__class__]:
+        return [mantrap.constraints.ControlLimitModule, mantrap.constraints.NormDistanceModule]
 
     ###########################################################################
     # Solver properties #######################################################
     ###########################################################################
-    @staticmethod
-    def solver_name() -> str:
+    @property
+    def name(self) -> str:
         return "sgrad"

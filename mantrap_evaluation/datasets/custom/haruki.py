@@ -7,10 +7,10 @@ import mantrap_evaluation.datasets.api
 
 
 def scenario_custom_haruki(
-    env_type: mantrap.environment.GraphBasedEnvironment.__class__,
-    ego_type: mantrap.agents.DTAgent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
+    env_type: mantrap.environment.base.GraphBasedEnvironment.__class__,
+    ego_type: mantrap.agents.base.DTAgent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
     num_modes: int = 1
-) -> typing.Tuple[mantrap.environment.GraphBasedEnvironment,
+) -> typing.Tuple[mantrap.environment.base.GraphBasedEnvironment,
                   torch.Tensor,
                   typing.Union[typing.Dict[str, torch.Tensor], None]]:
     """Scenario haruki.

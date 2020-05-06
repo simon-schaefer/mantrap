@@ -99,8 +99,8 @@ class PotentialFieldEnvironment(IterativeEnvironment):
     ###########################################################################
     # Simulation parameters ###################################################
     ###########################################################################
-    @staticmethod
-    def environment_name() -> str:
+    @property
+    def name(self) -> str:
         return "potential_field"
 
     @property

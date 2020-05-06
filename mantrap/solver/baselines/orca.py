@@ -2,9 +2,10 @@ import typing
 
 import torch
 
-import mantrap.constants
 import mantrap.agents
+import mantrap.constraints
 import mantrap.environment
+import mantrap.objectives
 import mantrap.utility.shaping
 
 from ..base.z_controls import ZControlIntermediate
@@ -92,16 +93,16 @@ class ORCASolver(ZControlIntermediate):
     # Problem formulation - Formulation #######################################
     ###########################################################################
     @staticmethod
-    def objective_defaults() -> typing.List[typing.Tuple[str, float]]:
-        return [(mantrap.constants.OBJECTIVE_GOAL, 1.0)]
+    def objective_defaults() -> typing.List[typing.Tuple[mantrap.objectives.ObjectiveModule.__class__, float]]:
+        return [(mantrap.objectives.GoalModule, 1.0)]
 
     @staticmethod
-    def constraints_defaults() -> typing.List[str]:
-        return [mantrap.constants.CONSTRAINT_CONTROL_LIMIT]
+    def constraints_defaults() -> typing.List[mantrap.constraints.ConstraintModule.__class__]:
+        return [mantrap.constraints.ControlLimitModule]
 
     ###########################################################################
     # Solver properties #######################################################
     ###########################################################################
-    @staticmethod
-    def solver_name() -> str:
+    @property
+    def name(self) -> str:
         return "orca"

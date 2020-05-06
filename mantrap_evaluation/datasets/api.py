@@ -5,16 +5,16 @@ import torch
 
 
 def create_environment(
-    env_type: mantrap.environment.GraphBasedEnvironment.__class__,
+    env_type: mantrap.environment.base.GraphBasedEnvironment.__class__,
     config_name: str,
     ado_histories: typing.List[torch.Tensor],
-    ego_type: mantrap.agents.DTAgent.__class__ = None,
+    ego_type: mantrap.agents.base.DTAgent.__class__ = None,
     ego_state: torch.Tensor = None,
     ado_ids: typing.List[str] = None,
     ado_goals: typing.List[torch.Tensor] = None,
     num_modes: int = 1,
     **env_kwargs
-) -> mantrap.environment.GraphBasedEnvironment:
+) -> mantrap.environment.base.GraphBasedEnvironment:
     """Create an environment based on given state and state-histories of all agents in the scene as well as
     several environment properties such as the number of modes and it's type.
     """

@@ -13,12 +13,19 @@ import mantrap.objectives
 import mantrap.utility.maths
 
 
+environments = [mantrap.environment.KalmanEnvironment,
+                mantrap.environment.PotentialFieldEnvironment,
+                mantrap.environment.SocialForcesEnvironment,
+                mantrap.environment.ORCAEnvironment,
+                mantrap.environment.Trajectron]
+
+
 ###########################################################################
 # Objectives ##############################################################
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.objectives.InteractionPositionModule,
                                           mantrap.objectives.InteractionAccelerationModule])
-@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestObjectiveInteraction:
 
@@ -127,15 +134,21 @@ def test_objective_goal_distribution():
     module.importance_distribution[3] = 1.0
 
     objective = module.objective(ego_trajectory)
-    distance  = torch.norm(ego_trajectory[3, 0:2] - goal_state).item()
+    distance = torch.norm(ego_trajectory[3, 0:2] - goal_state).item()
     assert math.isclose(objective, distance, abs_tol=0.1)
 
 
 ###########################################################################
 # Constraints #############################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", mantrap.constraints.CONSTRAINT_MODULES)
-@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("module_class", [mantrap.constraints.ControlLimitModule,
+                                          mantrap.constraints.NormDistanceModule,
+                                          mantrap.constraints.MinDistanceModule])
+@pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
+                                       mantrap.environment.PotentialFieldEnvironment,
+                                       mantrap.environment.SocialForcesEnvironment,
+                                       mantrap.environment.ORCAEnvironment,
+                                       mantrap.environment.Trajectron])
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestConstraints:
 
@@ -201,7 +214,7 @@ class TestConstraints:
         assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
 
 
-@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
 def test_max_speed_constraint_violation(env_class, num_modes):
     position, velocity = torch.tensor([-5, 0.1]), torch.zeros(2)
@@ -233,7 +246,11 @@ def test_max_speed_constraint_violation(env_class, num_modes):
     assert violation > 0
 
 
-@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
+                                       mantrap.environment.PotentialFieldEnvironment,
+                                       mantrap.environment.SocialForcesEnvironment,
+                                       mantrap.environment.ORCAEnvironment,
+                                       mantrap.environment.Trajectron])
 @pytest.mark.parametrize("num_modes", [1, 2])
 def test_min_distance_constraint_violation(env_class, num_modes):
     position, velocity = torch.ones(2) * 9, torch.zeros(2)
@@ -266,8 +283,9 @@ def test_min_distance_constraint_violation(env_class, num_modes):
 ###########################################################################
 # Filter ##################################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", mantrap.filter.FILTER_MODULES)
-@pytest.mark.parametrize("env_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("module_class", [mantrap.filter.EuclideanModule,
+                                          mantrap.filter.ReachabilityModule])
+@pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestFilter:
 

@@ -46,3 +46,10 @@ class ControlEffortModule(ObjectiveModule):
         resulting objective value must have a gradient as well.
         """
         return True
+
+    ###########################################################################
+    # Objective Properties ####################################################
+    ###########################################################################
+    @property
+    def name(self) -> str:
+        return "control_effort"

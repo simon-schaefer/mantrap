@@ -1,3 +1,25 @@
+"""
+Environment:
+X environment types
+X initial conditions
+- ego agent type
+- simulation time-step
+
+Solver
+X solver types
+X environment types
+X evaluation environment types
+X planning horizon: greed (T=1), medium (T=1s), long (T=2s)
+- objectives: (goal, interaction), goal only, interaction only
+- objectives weight distribution (for non-single permutations)
+- constraints: (max_speed, min_distance), max_speed only
+X filter: no_filter, uni-modal, attention radius
+- IPOPT configuration: automatic Jacobian estimate, manual Jacobian estimate
+
+Specific Comparisons
+- control effort objective vs  max control constraint only
+"""
+import itertools
 import os
 import time
 import typing
@@ -7,8 +29,23 @@ import pandas as pd
 import tqdm
 
 from mantrap_evaluation import get_metrics, evaluate_metrics
-from mantrap_evaluation.datasets import SCENARIOS
-from mantrap_evaluation.configurations import configurations, config_keys
+from mantrap_evaluation.utility.modules import load_class_from_module, load_functions_from_module
+
+
+def configurations() -> typing.Tuple[typing.List, typing.List]:
+    configurations_list = [
+        load_class_from_module("mantrap.solver", as_tuples=True),  # solver type
+        load_functions_from_module("mantrap_evaluation.datasets", as_tuples=True),  # scenario
+        load_class_from_module("mantrap.environment", as_tuples=True),  # environment type
+        load_class_from_module("mantrap.agents", as_tuples=True),  # ego_type
+        load_class_from_module("mantrap.filter", as_tuples=True),  # filter types
+        [("greedy", 1), ("medium", 3), ("long", 5)],  # planning horizon
+        [("none", None)],  # evaluation environments,
+        [("true", True), ("false", False)]  # multi-processing
+    ]
+    configurations_list = list(itertools.product(*configurations_list))
+    config_keys = ["solver", "scenario", "env_type", "ego_type", "filter", "t_planning", "eval_env", "multiprocessing"]
+    return configurations_list, config_keys
 
 
 def run_evaluation(solver, env_original, time_steps: int = 5, **solver_kwargs) -> typing.Dict[str, float]:
@@ -30,16 +67,18 @@ def run_evaluation(solver, env_original, time_steps: int = 5, **solver_kwargs) -
 
 
 def main():
+    configs, config_keys = configurations()
     metrics = list(get_metrics().keys()) + ["runtime"]
 
     results_df = pd.DataFrame(None, columns=config_keys + metrics)
-    for config in tqdm.tqdm(configurations):
-        config_kwargs = dict(zip(config_keys, config))
 
-        env_type = mantrap.environment.ENVIRONMENTS_DICT[config_kwargs["env_type"]]
-        ego_type = mantrap.agents.AGENTS_DICT[config_kwargs["ego_type"]]
-        env, goal, _ = SCENARIOS[config_kwargs["scenario"]](env_type=env_type, ego_type=ego_type)
-        solver = mantrap.solver.SOLVERS_DICT[config_kwargs["solver"]](env, goal=goal, **config_kwargs)
+    print(len(configs))
+    for config in tqdm.tqdm(configs):
+        config_names, config_objects = zip(*config)
+        config_kwargs = dict(zip(config_keys, config_objects))
+        env, goal, _ = config_kwargs["scenario"](env_type=config_kwargs["env_type"],
+                                                 ego_type=config_kwargs["ego_type"])
+        solver = config_kwargs["solver"](env, goal=goal, **config_kwargs)
 
         try:
             results = run_evaluation(solver,

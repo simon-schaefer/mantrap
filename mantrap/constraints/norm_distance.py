@@ -85,3 +85,10 @@ class NormDistanceModule(ConstraintModule):
     def num_constraints(self, ado_ids: typing.List[str] = None) -> int:
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
         return (self.t_horizon + 1) * len(ado_ids) * self._env.num_modes
+
+    ###########################################################################
+    # Constraint Properties ###################################################
+    ###########################################################################
+    @property
+    def name(self) -> str:
+        return "norm_distance"

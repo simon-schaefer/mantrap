@@ -1,11 +1,14 @@
-import mantrap.agents
 import mantrap.constants
-import mantrap.constraints
+import mantrap.utility
+
+import mantrap.agents
 import mantrap.environment
+
+import mantrap.constraints
 import mantrap.filter
 import mantrap.objectives
+
 import mantrap.solver
-import mantrap.utility
 
 
 #######################################

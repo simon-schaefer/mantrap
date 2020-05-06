@@ -14,9 +14,7 @@ import mantrap.environment
 import mantrap.constraints
 import mantrap.filter
 import mantrap.objectives
-import mantrap.utility.io
-import mantrap.utility.maths
-import mantrap.utility.shaping
+import mantrap.utility
 
 
 class TrajOptSolver(abc.ABC):
@@ -53,15 +51,22 @@ class TrajOptSolver(abc.ABC):
         goal: torch.Tensor,
         t_planning: int = mantrap.constants.SOLVER_HORIZON_DEFAULT,
         optimize_speed: bool = True,
-        objectives: typing.List[typing.Tuple[str, float]] = None,
-        constraints: typing.List[str] = None,
-        filter_module: str = mantrap.constants.FILTER_NO_FILTER,
+        objectives: typing.List[typing.Tuple[mantrap.objectives.ObjectiveModule.__class__, float]] = None,
+        constraints: typing.List[mantrap.constraints.ConstraintModule.__class__] = None,
+        filter_module: mantrap.filter.FilterModule.__class__ = None,
         eval_env: mantrap.environment.base.GraphBasedEnvironment = None,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN,
         **solver_params
     ):
+        # Dictionary of solver parameters.
+        self._solver_params = solver_params
+        self._solver_params[mantrap.constants.PK_T_PLANNING] = t_planning
+        self._solver_params[mantrap.constants.PK_OPTIMIZE_SPEED] = optimize_speed
+        self._solver_params[mantrap.constants.PK_CONFIG] = config_name
+
+        # Check and add goal state to solver's parameters.
         assert mantrap.utility.shaping.check_goal(goal)
-        self._goal = goal.float()
+        self._solver_params[mantrap.constants.PK_GOAL] = goal.float()
 
         # Set planning and evaluation environment.
         self._env = env.copy()
@@ -69,22 +74,21 @@ class TrajOptSolver(abc.ABC):
         assert self._env.same_initial_conditions(other=self._eval_env)
         assert self._env.ego is not None
 
-        # Dictionary of solver parameters.
-        self._solver_params = solver_params
-        self._solver_params[mantrap.constants.PK_T_PLANNING] = t_planning
-        self._solver_params[mantrap.constants.PK_OPTIMIZE_SPEED] = optimize_speed
-        self._solver_params[mantrap.constants.PK_CONFIG] = config_name
-
         # The objective and constraint functions (and their gradients) are packed into objectives, for a more compact
         # representation, the ease of switching between different objective functions and to simplify logging and
         # visualization.
         objective_modules = self.objective_defaults() if objectives is None else objectives
-        self._objective_modules = self._build_objective_modules(modules=objective_modules)
+        assert all([0.0 <= weight for _, weight in objective_modules])
+        self._objective_modules = {m.name(): m(weight=w, env=self.env, t_horizon=self.planning_horizon, **solver_params)
+                                   for m, w in objective_modules}
+
         constraint_modules = self.constraints_defaults() if constraints is None else constraints
-        self._constraint_modules = self._build_constraint_modules(modules=constraint_modules)
+        self._constraint_modules = {m.name(): m(env=self.env, t_horizon=self.planning_horizon)
+                                    for m in constraint_modules}
 
         # Filter module for "importance" selection of which ados to include into optimization.
-        self._filter_module = self._build_filter_module(module=filter_module)
+        if filter_module is not None:
+            self._filter_module = filter_module(env=self.env, t_horizon=self.planning_horizon)
 
         # Logging variables. Using default-dict(deque) whenever a new entry is created, it does not have to be checked
         # whether the related key is already existing, since if it is not existing, it is created with a queue as
@@ -131,12 +135,12 @@ class TrajOptSolver(abc.ABC):
 
         logging.debug(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
-            logging.debug("#" * 30 + f"solver {self.name} @k={k}: initializing optimization")
+            logging.debug("#" * 30 + f"solver {self.log_name} @k={k}: initializing optimization")
             self._iteration = k
 
             # Solve optimisation problem.
             ego_controls_k = self.determine_ego_controls(multiprocessing=multiprocessing, **solver_kwargs)
-            logging.debug(f"solver {self.name} @k={k}: finishing optimization")
+            logging.debug(f"solver {self.log_name} @k={k}: finishing optimization")
 
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
@@ -154,10 +158,10 @@ class TrajOptSolver(abc.ABC):
                 ado_trajectories = ado_trajectories[:, :, :k + 2, :].detach()
                 break
 
-        logging.debug(f"solver {self.name}: logging trajectory optimization")
+        logging.debug(f"solver {self.log_name}: logging trajectory optimization")
         self.env.detach()
         self.log_summarize()
-        logging.debug(f"solver {self.name}: finishing up optimization process")
+        logging.debug(f"solver {self.log_name}: finishing up optimization process")
         return ego_trajectory_opt, ado_trajectories
 
     def determine_ego_controls(self, multiprocessing: bool = True, **solver_kwargs) -> torch.Tensor:
@@ -205,8 +209,11 @@ class TrajOptSolver(abc.ABC):
     def optimize(self, z0: torch.Tensor, tag: str, **kwargs
                  ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
         # Filter the important ghost indices from the current scene state.
-        ado_ids = self._filter_module.compute()
-        logging.debug(f"solver [{tag}]: optimizing w.r.t. important ado ids = {ado_ids}")
+        if self._filter_module is not None:
+            ado_ids = self._filter_module.compute()
+            logging.debug(f"solver [{tag}]: optimizing w.r.t. important ado ids = {ado_ids}")
+        else:
+            ado_ids = self.env.ado_ids  # all ado ids (not filtered)
 
         # Computation is done in `_optimize()` class that is implemented in child class.
         return self._optimize(z0, ado_ids=ado_ids, tag=tag, **kwargs)
@@ -302,7 +309,7 @@ class TrajOptSolver(abc.ABC):
 
     @property
     def is_unconstrained(self) -> bool:
-        return len(self._constraint_modules.keys()) == 0
+        return len(self._constraint_modules) == 0
 
     @abc.abstractmethod
     def optimization_variable_bounds(self) -> typing.Tuple[typing.List, typing.List]:
@@ -332,7 +339,7 @@ class TrajOptSolver(abc.ABC):
         ego_trajectory = self.z_to_ego_trajectory(z)
         objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids) for m in self.objective_modules])
 
-        logging.debug(f"solver {self.name}:{tag} Objective function = {objective}")
+        logging.debug(f"solver {self.log_name}:{tag} Objective function = {objective}")
         ado_planned = ado_planned_wo = torch.zeros(0)  # pseudo for ado_planned (only required for plotting)
 
         if __debug__ is True:
@@ -346,7 +353,7 @@ class TrajOptSolver(abc.ABC):
         return float(objective)
 
     @staticmethod
-    def objective_defaults() -> typing.List[typing.Tuple[str, float]]:
+    def objective_defaults() -> typing.List[typing.Tuple[mantrap.objectives.ObjectiveModule.__class__, float]]:
         """List of default objective modules that should be taken into account during optimization (can be
         overwritten during solver initialization `objectives` - argument.
 
@@ -391,7 +398,7 @@ class TrajOptSolver(abc.ABC):
         constraints = np.concatenate([m.constraint(ego_trajectory, ado_ids=ado_ids) for m in self.constraint_modules])
         violation = float(np.sum([m.compute_violation_internal() for m in self.constraint_modules]))
 
-        logging.debug(f"solver {self.name}:{tag}: Constraints vector = {constraints}")
+        logging.debug(f"solver {self.log_name}:{tag}: Constraints vector = {constraints}")
         self.log_append(inf_overall=violation, tag=tag)
         module_log = {f"{mantrap.constants.LK_CONSTRAINT}_{key}": mod.inf_current
                       for key, mod in self.constraint_module_dict.items()}
@@ -399,7 +406,7 @@ class TrajOptSolver(abc.ABC):
         return constraints if not return_violation else (constraints, violation)
 
     @staticmethod
-    def constraints_defaults() -> typing.List[str]:
+    def constraints_defaults() -> typing.List[mantrap.constraints.ConstraintModule.__class__]:
         """List of default constraints modules that should be taken into account during optimization (can be
         overwritten during solver initialization `constraints` - argument.
 
@@ -425,30 +432,6 @@ class TrajOptSolver(abc.ABC):
     @abc.abstractmethod
     def ego_controls_to_z(self, ego_controls: torch.Tensor) -> np.ndarray:
         raise NotImplementedError
-
-    ###########################################################################
-    # Utility #################################################################
-    ###########################################################################
-    def _build_objective_modules(self, modules: typing.List[typing.Tuple[str, float]]
-                                 ) -> typing.Dict[str, mantrap.objectives.ObjectiveModule]:
-        assert all([name in mantrap.objectives.OBJECTIVES_DICT.keys() for name, _ in modules])
-        assert all([0.0 <= weight for _, weight in modules])
-        objective_kwargs = {"t_horizon": self.planning_horizon,
-                            "env": self.env,
-                            "goal": self.goal,
-                            "optimize_speed": self.optimize_speed}
-        return {m: mantrap.objectives.OBJECTIVES_DICT[m](weight=w, **objective_kwargs) for m, w in modules}
-
-    def _build_constraint_modules(self, modules: typing.List[str]
-                                  ) -> typing.Dict[str, mantrap.constraints.ConstraintModule]:
-        assert all([name in mantrap.constraints.CONSTRAINTS_DICT.keys() for name in modules])
-        constraint_kwargs = {"t_horizon": self.planning_horizon, "env": self.env}
-        return {m: mantrap.constraints.CONSTRAINTS_DICT[m](**constraint_kwargs) for m in modules}
-
-    def _build_filter_module(self, module: str) -> mantrap.filter.FilterModule:
-        assert module in mantrap.filter.FILTER_DICT.keys()
-        filter_kwargs = {"t_horizon": self.planning_horizon, "env": self.env}
-        return mantrap.filter.FILTER_DICT[module](**filter_kwargs)
 
     ###########################################################################
     # Logging #################################################################
@@ -479,8 +462,8 @@ class TrajOptSolver(abc.ABC):
                 log = {key: f"{log[key][0]:.4f} => {log[key][-1]:.4f}" for key in self.constraint_module_dict}
                 logging.debug(f"solver [{tag}] - infeasibility: {log}")
 
-            logging.debug(f"solver {self.name} @k={k}: ego optimized controls = {ego_controls_k.tolist()}")
-            logging.debug(f"solver {self.name} @k={k}: ego optimized path = {ego_opt_planned[:, 0:2].tolist()}")
+            logging.debug(f"solver {self.log_name} @k={k}: ego optimized controls = {ego_controls_k.tolist()}")
+            logging.debug(f"solver {self.log_name} @k={k}: ego optimized path = {ego_opt_planned[:, 0:2].tolist()}")
 
     @staticmethod
     def log_keys() -> typing.List[str]:
@@ -536,7 +519,7 @@ class TrajOptSolver(abc.ABC):
             # first using the `map(dtype, list)` function.
             output_path = mantrap.constants.VISUALIZATION_DIRECTORY
             output_path = mantrap.utility.io.build_os_path(output_path, make_dir=True, free=False)
-            output_path = os.path.join(output_path, f"{self.name}:{self.env.name}:logging.csv")
+            output_path = os.path.join(output_path, f"{self.log_name}.{self.env.log_name}.logging.csv")
             csv_log_k_keys = [f"{key}_{k}" for key in self.log_keys_performance() for k in range(self._iteration + 1)]
             csv_log_k_keys += self.log_keys_performance()
             csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys}
@@ -560,7 +543,7 @@ class TrajOptSolver(abc.ABC):
             if not interactive:
                 output_path = mantrap.constants.VISUALIZATION_DIRECTORY
                 output_path = mantrap.utility.io.build_os_path(output_path, make_dir=True, free=False)
-                output_path = os.path.join(output_path, f"{self.name}:{self.env.name}:{mantrap.constants.LK_OPTIMAL}")
+                output_path = os.path.join(output_path, f"{self.log_name}.{self.env.log_name}")
             else:
                 output_path = None
 
@@ -601,7 +584,7 @@ class TrajOptSolver(abc.ABC):
 
     @property
     def goal(self) -> torch.Tensor:
-        return self._goal
+        return self._solver_params[mantrap.constants.PK_GOAL]
 
     @property
     def planning_horizon(self) -> int:
@@ -639,7 +622,7 @@ class TrajOptSolver(abc.ABC):
         return [mantrap.constants.LK_OVERALL_PERFORMANCE] + list(self.constraint_module_dict.keys())
 
     def filter_module(self) -> str:
-        return self._filter_module.__str__()
+        return self._filter_module.name() if self._filter_module is not None else "none"
 
     ###########################################################################
     # Utility parameters ######################################################
@@ -664,12 +647,12 @@ class TrajOptSolver(abc.ABC):
         return self._solver_params[mantrap.constants.PK_CONFIG]
 
     @property
-    def name(self) -> str:
-        return self.solver_name() + "_" + self.config_name
+    def log_name(self) -> str:
+        return self.name + "_" + self.config_name
 
     ###########################################################################
     # Solver properties #######################################################
     ###########################################################################
-    @staticmethod
-    def solver_name() -> str:
+    @property
+    def name(self) -> str:
         raise NotImplementedError

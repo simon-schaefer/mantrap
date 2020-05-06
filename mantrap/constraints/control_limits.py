@@ -107,3 +107,10 @@ class ControlLimitModule(ConstraintModule):
 
     def num_constraints(self, ado_ids: typing.List[str] = None) -> int:
         return self.t_horizon
+
+    ###########################################################################
+    # Constraint Properties ###################################################
+    ###########################################################################
+    @property
+    def name(self) -> str:
+        return "control_limits"

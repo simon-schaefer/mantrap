@@ -15,7 +15,11 @@ import mantrap.utility.shaping
 ###########################################################################
 # Tests - All Environment #################################################
 ###########################################################################
-@pytest.mark.parametrize("environment_class", mantrap.environment.ENVIRONMENTS)
+@pytest.mark.parametrize("environment_class", [mantrap.environment.KalmanEnvironment,
+                                               mantrap.environment.PotentialFieldEnvironment,
+                                               mantrap.environment.SocialForcesEnvironment,
+                                               mantrap.environment.ORCAEnvironment,
+                                               mantrap.environment.Trajectron])
 @pytest.mark.parametrize("num_modes", [1, 2, 5])
 class TestEnvironment:
 
