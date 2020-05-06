@@ -2,9 +2,11 @@
 [submodule "external/ORCA"]
 	path = external/ORCA
 	url = https://github.com/snape/RVO2
+	
 [submodule "external/GenTrajectron"]
  	path = external/GenTrajectron
     url = https://github.com/simon-schaefer/GenTrajectron
+    
 [submodule "external/HJReachibility"]
     path = external/HJReachibility
     url = https://github.com/simon-schaefer/HJReachibility
