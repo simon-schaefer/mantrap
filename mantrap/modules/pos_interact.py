@@ -5,10 +5,10 @@ import torch
 import mantrap.constants
 import mantrap.environment
 
-from .objective_module import ObjectiveModule
+from .base import PureObjectiveModule
 
 
-class InteractionPositionModule(ObjectiveModule):
+class InteractionPositionModule(PureObjectiveModule):
     """Loss based on positional interaction between robot and ados.
 
     As a proxy for interaction based on the position of every ado is computed in a (fictional) scene without an
@@ -27,11 +27,11 @@ class InteractionPositionModule(ObjectiveModule):
         super(InteractionPositionModule, self).__init__(**module_kwargs)
         self.initialize_env(env=env)
 
-        assert env.num_ghosts > 0
-        self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]
+        if env.num_ghosts > 0:
+            self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]
 
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
-                 ) -> typing.Union[torch.Tensor, None]:
+    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+                           ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         To compute the objective value first predict the behaviour of all agents (and modes) in the scene in the
@@ -46,7 +46,7 @@ class InteractionPositionModule(ObjectiveModule):
         # Per default (i.e. if `ado_ids`) is None use all ado ids defined in the environment.
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
         # The objective can only work if any ado agents are taken into account, otherwise return None.
-        if len(ado_ids) == 0:
+        if len(ado_ids) == 0 or self._env.num_ghosts == 0:
             return None
 
         # If more than zero ado agents are taken into account, compute the objective as described.
@@ -65,10 +65,11 @@ class InteractionPositionModule(ObjectiveModule):
 
         return objective
 
-    def _objective_gradient_condition(self) -> bool:
-        """Conditions for the existence of a gradient between the input of the objective value computation
-        (which is the ego_trajectory) and the objective value itself. If returns True and the ego_trajectory
-        itself requires a gradient, the objective value output has to require a gradient as well.
+    def _gradient_condition(self) -> bool:
+        """Condition for back-propagating through the objective/constraint in order to obtain the
+        objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
+        itself requires a gradient, the objective/constraint value, stored from the last computation
+        (`_current_`-variables) has to require a gradient as well.
 
         If the internal environment is itself differentiable with respect to the ego (trajectory) input, the
         resulting objective value must have a gradient as well.

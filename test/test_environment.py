@@ -171,7 +171,7 @@ class TestEnvironment:
         env_copy = env.copy()
 
         # Test equality of basic environment properties and states.
-        assert env.environment_name == env_copy.environment_name
+        assert env.name == env_copy.name
         assert env.time == env_copy.time
         assert env.dt == env_copy.dt
 

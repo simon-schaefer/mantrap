@@ -3,9 +3,8 @@ import typing
 import torch
 
 import mantrap.agents
-import mantrap.constraints
 import mantrap.environment
-import mantrap.objectives
+import mantrap.modules
 import mantrap.utility.shaping
 
 from ..base.z_controls import ZControlIntermediate
@@ -90,15 +89,11 @@ class ORCASolver(ZControlIntermediate):
         return 1
 
     ###########################################################################
-    # Problem formulation - Formulation #######################################
+    # Optimization Formulation ################################################
     ###########################################################################
-    @staticmethod
-    def objective_defaults() -> typing.List[typing.Tuple[mantrap.objectives.ObjectiveModule.__class__, float]]:
-        return [(mantrap.objectives.GoalModule, 1.0)]
-
-    @staticmethod
-    def constraints_defaults() -> typing.List[mantrap.constraints.ConstraintModule.__class__]:
-        return [mantrap.constraints.ControlLimitModule]
+    def module_defaults(self) -> typing.List[typing.Tuple]:
+        return [(mantrap.modules.GoalModule, {"optimize_speed": False, "weight": 1.0}),
+                (mantrap.modules.ControlLimitModule, None)]
 
     ###########################################################################
     # Solver properties #######################################################

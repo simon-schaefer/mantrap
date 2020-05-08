@@ -4,8 +4,7 @@ import typing
 import numpy as np
 import torch
 
-import mantrap.constraints
-import mantrap.objectives
+import mantrap.modules
 
 from .base.z_controls import ZControlIntermediate
 
@@ -71,18 +70,13 @@ class MonteCarloTreeSearch(ZControlIntermediate):
         return objective, constraint_violation
 
     ###########################################################################
-    # Problem formulation - Objective #########################################
+    # Optimization formulation  ###############################################
     ###########################################################################
-    @staticmethod
-    def objective_defaults() -> typing.List[typing.Tuple[mantrap.objectives.ObjectiveModule.__class__, float]]:
-        return [(mantrap.objectives.GoalModule, 1.0), (mantrap.objectives.InteractionPositionModule, 1.0)]
-
-    ###########################################################################
-    # Problem formulation - Constraints #######################################
-    ###########################################################################
-    @staticmethod
-    def constraints_defaults() -> typing.List[mantrap.constraints.ConstraintModule.__class__]:
-        return [mantrap.constraints.ControlLimitModule, mantrap.constraints.MinDistanceModule]
+    def module_defaults(self) -> typing.List[typing.Tuple]:
+        return [(mantrap.modules.GoalModule, {"optimize_speed": False, "weight": 1.0}),
+                (mantrap.modules.InteractionPositionModule, {"weight": 1.0}),
+                (mantrap.modules.ControlLimitModule, None),
+                (mantrap.modules.MinDistanceModule, None)]
 
     ###########################################################################
     # Solver properties #######################################################

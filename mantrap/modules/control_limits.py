@@ -5,10 +5,10 @@ import torch
 
 import mantrap.utility.shaping
 
-from .constraint_module import ConstraintModule
+from .base import PureConstraintModule
 
 
-class ControlLimitModule(ConstraintModule):
+class ControlLimitModule(PureConstraintModule):
     """Maximal control input at every point in time.
 
     For computing this constraint simply the norm of the planned control input is determined and compared to the
@@ -16,9 +16,12 @@ class ControlLimitModule(ConstraintModule):
 
     .. math:: ||u(t)||_2 < u_{max}
     """
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **module_kwargs):
+        super(ControlLimitModule, self).__init__(**module_kwargs)
+        self.initialize_env(env=env)
 
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
-                 ) -> typing.Union[torch.Tensor, None]:
+    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+                            ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         The max control constraints simply are computed by transforming the given trajectory to control input
@@ -79,10 +82,11 @@ class ControlLimitModule(ConstraintModule):
             jacobian = np.repeat(np.eye(t_horizon), u_size) * 1 / u_norm_stretched * u_stretched
             return jacobian.flatten()
 
-    def _constraints_gradient_condition(self) -> bool:
-        """Conditions for the existence of a gradient between the input of the constraint value computation
-        (which is the ego_trajectory) and the constraint values itself. If returns True and the ego_trajectory
-        itself requires a gradient, the constraint output has to require a gradient as well.
+    def _gradient_condition(self) -> bool:
+        """Condition for back-propagating through the objective/constraint in order to obtain the
+        objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
+        itself requires a gradient, the objective/constraint value, stored from the last computation
+        (`_current_`-variables) has to require a gradient as well.
 
         Since the velocities are part of the given ego_trajectory, the gradient should always exist.
         """

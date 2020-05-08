@@ -45,7 +45,6 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
                   optimization_log (logging dictionary for this optimization = self.log)
         """
         # Clean up & detaching graph for deleting previous gradients.
-        self._goal = self._goal.detach()
         self._env.detach()
 
         # Build constraint boundary values (optimisation variables + constraints). The number of constraints
@@ -54,8 +53,8 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         # optimization.
         lb, ub = None, None
         logging.debug(f"Optimization variable constraint has bounds lower = {lb} & upper = {ub}")
-        cl, cu = list(), list()
-        for name, constraint in self.constraint_module_dict.items():
+        cl, cu = self.optimization_variable_bounds()
+        for name, constraint in self.module_dict.items():
             lower, upper = constraint.constraint_boundaries(ado_ids=ado_ids)
             cl += list(lower)
             cu += list(upper)
@@ -105,13 +104,13 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         final gradient estimate.
         """
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.objective_modules]
+        gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.modules]
         gradient = np.sum(gradient, axis=0)
 
         logging.debug(f"solver [{tag}]: Gradient function = {gradient}")
         self.log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
         module_log = {f"{mantrap.constants.LK_GRADIENT}_{key}": mod.grad_current
-                      for key, mod in self._objective_modules.items()}
+                      for key, mod in self.module_dict.items()}
         self.log_append(**module_log, tag=tag)
         return gradient
 
@@ -126,11 +125,8 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         jacobian implementations of the constraints modules. Concatenate all these gradients together
         for the final jacobian estimate.
         """
-        if self.is_unconstrained:
-            return np.array([])
-
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.constraint_modules]
+        jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.modules]
         jacobian = np.concatenate(jacobian)
 
         logging.debug(f"solver [{tag}]: Constraint jacobian function computed")
@@ -148,7 +144,7 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
     def log_keys_performance(self) -> List[str]:
         log_keys = super(IPOPTIntermediate, self).log_keys_performance()
         gradient_keys = [f"{tag}/{mantrap.constants.LK_GRADIENT}_{key}"
-                         for key in self.objective_names for tag in self.cores]
+                         for key in self.module_names for tag in self.cores]
         return log_keys + gradient_keys
 
 

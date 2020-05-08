@@ -4,9 +4,8 @@ import mantrap.utility
 import mantrap.agents
 import mantrap.environment
 
-import mantrap.constraints
 import mantrap.filter
-import mantrap.objectives
+import mantrap.modules
 
 import mantrap.solver
 

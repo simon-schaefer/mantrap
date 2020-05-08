@@ -4,11 +4,11 @@ import torch
 
 import mantrap.utility.shaping
 
-from .objective_module import ObjectiveModule
+from .base import PureObjectiveModule
 
 
-class GoalModule(ObjectiveModule):
-    """Loss based on goal distance of every point of planned robot trajectory.
+class GoalModule(PureObjectiveModule):
+    """Objective based on goal distance of every point of planned robot trajectory.
 
     Next to avoiding interaction with other agents the robot should reach the goal state in a finite amount of
     time. Therefore the distance of every trajectory point to the goal state is taken to account, which is
@@ -26,18 +26,20 @@ class GoalModule(ObjectiveModule):
     :param goal: goal state/position for robot agent (2).
     :param optimize_speed: include cost for zero velocity at goal state.
     """
-    def __init__(self, goal: torch.Tensor, optimize_speed: bool = True, **module_kwargs):
-        assert mantrap.utility.shaping.check_goal(goal)
 
+    def __init__(self, goal: torch.Tensor, optimize_speed: bool = True, **module_kwargs):
         super(GoalModule, self).__init__(**module_kwargs)
+
+        assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
         self._include_velocity = optimize_speed
+
         self._distribution = torch.linspace(0, 1, steps=self.t_horizon + 1) ** 3
         self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
         self._distribution = self._distribution.detach()  # detach -> constant factor (!)
 
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
-                 ) -> typing.Union[torch.Tensor, None]:
+    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+                           ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         To compute the goal-based objective simply take the L2 norm between all positions on the ego trajectory
@@ -60,10 +62,11 @@ class GoalModule(ObjectiveModule):
 
         return cost
 
-    def _objective_gradient_condition(self) -> bool:
-        """Conditions for the existence of a gradient between the input of the objective value computation
-        (which is the ego_trajectory) and the objective value itself. If returns True and the ego_trajectory
-        itself requires a gradient, the objective value output has to require a gradient as well.
+    def _gradient_condition(self) -> bool:
+        """Condition for back-propagating through the objective/constraint in order to obtain the
+        objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
+        itself requires a gradient, the objective/constraint value, stored from the last computation
+        (`_current_`-variables) has to require a gradient as well.
 
         Since the objective value computation depends on the ego_trajectory (and the ego goal) only, this
         should always hold.

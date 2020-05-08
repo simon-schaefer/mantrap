@@ -1,5 +1,4 @@
 import math
-import time
 
 import numpy as np
 import pytest
@@ -9,6 +8,7 @@ import mantrap.constants
 import mantrap.agents
 import mantrap.environment
 import mantrap.filter
+import mantrap.modules
 import mantrap.solver
 import mantrap.utility.shaping
 
@@ -41,7 +41,6 @@ def scenario(
 # Tests - All Solvers #####################################################
 ###########################################################################
 @pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver,
-                                          mantrap.solver.IgnoringSolver,
                                           mantrap.solver.MonteCarloTreeSearch,
                                           mantrap.solver.ORCASolver])
 @pytest.mark.parametrize("env_class", environments)
@@ -76,7 +75,7 @@ class TestSolvers:
         objective = solver.objective(z=z0, tag="core0")
         assert type(objective) == float
         constraints = solver.constraints(z=z0, tag="core0", return_violation=False)
-        assert constraints.size == sum([c.num_constraints() for c in solver.constraint_modules])
+        assert constraints.size == sum([c.num_constraints() for c in solver.modules])
 
     @staticmethod
     def test_z_to_ego_trajectory(solver_class, env_class, num_modes, filter_class):
@@ -101,23 +100,6 @@ class TestSolvers:
 
         z0 = solver.initial_values(just_one=True)
         assert len(z0.shape) == 1
-
-    @staticmethod
-    def test_runtime(solver_class, env_class, num_modes, filter_class):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes, filter_class=filter_class)
-
-        comp_times_objective = []
-        comp_times_constraints = []
-        for _ in range(10):
-            start_time = time.time()
-            solver.constraints(z=z0, tag="core0")
-            comp_times_constraints.append(time.time() - start_time)
-            start_time = time.time()
-            solver.objective(z=z0, tag="core0")
-            comp_times_objective.append(time.time() - start_time)
-
-        assert np.mean(comp_times_objective) < 0.04  # faster than 25 Hz (!)
-        assert np.mean(comp_times_constraints) < 0.04  # faster than 25 Hz (!)
 
     @staticmethod
     def test_solve(solver_class, env_class, num_modes, filter_class):
@@ -158,8 +140,8 @@ class TestSolvers:
         # the optimized trajectory, therefore the violation has to be zero (i.e. all constraints are not active).
         # Since the constraint modules have been tested independently, for generalization, the module-internal
         # violation computation can be used for this check.
-        for constraint_module in solver.constraint_modules:
-            violation = constraint_module.compute_violation(ego_trajectory_opt, ado_ids=None)
+        for module in solver.modules:
+            violation = module.compute_violation(ego_trajectory_opt, ado_ids=None)
             assert math.isclose(violation, 0.0, abs_tol=1e-3)
 
 
@@ -182,30 +164,14 @@ class TestIPOPTSolvers:
         assert grad.size == z0.flatten().size
 
         jacobian = solver.jacobian(z0)
-        num_constraints = sum([c.num_constraints() for c in solver.constraint_module_dict.values()])
+        num_constraints = sum([c.num_constraints() for c in solver.modules])
 
         # Jacobian is only defined if the environment
-        if all([module._constraints_gradient_condition() for module in solver.constraint_modules]):
+        if all([module._gradient_condition() for module in solver.modules]):
             assert jacobian.size == num_constraints * z0.size
         else:
             print(jacobian.size, num_constraints * z0.size)
             assert jacobian.size <= num_constraints * z0.size
-
-    @staticmethod
-    def test_runtime(solver_class, env_class, num_modes, filter_class):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes, filter_class=filter_class)
-
-        comp_times_jacobian = []
-        comp_times_gradient = []
-        for _ in range(10):
-            start_time = time.time()
-            solver.gradient(z=z0)
-            comp_times_gradient.append(time.time() - start_time)
-            start_time = time.time()
-            solver.jacobian(z=z0)
-            comp_times_jacobian.append(time.time() - start_time)
-        assert np.mean(comp_times_jacobian) < 0.08 * num_modes  # faster than 13 Hz (!)
-        assert np.mean(comp_times_gradient) < 0.08 * num_modes  # faster than 13 Hz (!)
 
 
 @pytest.mark.parametrize("env_class", environments)
@@ -217,7 +183,10 @@ def test_ignoring_solver(env_class):
                     dt=0.4)
     env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
 
-    solver = mantrap.solver.IgnoringSolver(env, goal=torch.tensor([1, 0]), t_planning=3)
+    modules = [(mantrap.modules.GoalModule, {"optimize_speed": False}),
+               (mantrap.modules.ControlLimitModule, None)]
+
+    solver = mantrap.solver.SGradSolver(env, goal=torch.tensor([1, 0]), t_planning=3, modules=modules)
     ego_trajectory, _ = solver.solve(time_steps=20, multiprocessing=False)
 
     # Check whether goal has been reached in acceptable closeness.

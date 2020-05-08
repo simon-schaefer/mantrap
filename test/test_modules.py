@@ -7,9 +7,8 @@ import torch
 
 import mantrap.agents
 import mantrap.environment
-import mantrap.constraints
 import mantrap.filter
-import mantrap.objectives
+import mantrap.modules
 import mantrap.utility.maths
 
 
@@ -23,8 +22,8 @@ environments = [mantrap.environment.KalmanEnvironment,
 ###########################################################################
 # Objectives ##############################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", [mantrap.objectives.InteractionPositionModule,
-                                          mantrap.objectives.InteractionAccelerationModule])
+@pytest.mark.parametrize("module_class", [mantrap.modules.InteractionPositionModule,
+                                          mantrap.modules.InteractionAccelerationModule])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestObjectiveInteraction:
@@ -129,7 +128,7 @@ def test_objective_goal_distribution():
     goal_state = torch.tensor([4.1, 8.9])
     ego_trajectory = torch.rand((11, 4))
 
-    module = mantrap.objectives.GoalModule(goal=goal_state, t_horizon=10, weight=1.0)
+    module = mantrap.modules.GoalModule(goal=goal_state, t_horizon=10, weight=1.0)
     module.importance_distribution = torch.zeros(module.importance_distribution.size())
     module.importance_distribution[3] = 1.0
 
@@ -141,9 +140,8 @@ def test_objective_goal_distribution():
 ###########################################################################
 # Constraints #############################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", [mantrap.constraints.ControlLimitModule,
-                                          mantrap.constraints.NormDistanceModule,
-                                          mantrap.constraints.MinDistanceModule])
+@pytest.mark.parametrize("module_class", [mantrap.modules.ControlLimitModule,
+                                          mantrap.modules.MinDistanceModule])
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
                                        mantrap.environment.PotentialFieldEnvironment,
                                        mantrap.environment.SocialForcesEnvironment,
@@ -222,7 +220,7 @@ def test_max_speed_constraint_violation(env_class, num_modes):
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
 
-    module = mantrap.constraints.ControlLimitModule(env=env, t_horizon=5)
+    module = mantrap.modules.ControlLimitModule(env=env, t_horizon=5)
     _, upper_bound = module._constraint_boundaries()
 
     # In this first scenario the ego has zero velocity over the full horizon.
@@ -264,7 +262,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
 
     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
-    module = mantrap.constraints.NormDistanceModule(env=env, t_horizon=controls.shape[0])
+    module = mantrap.modules.MinDistanceModule(env=env, t_horizon=controls.shape[0])
     lower_bound, _ = module._constraint_boundaries()
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation == 0
@@ -274,7 +272,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ado_kwargs = {"goal": ado_start_pos, "num_modes": num_modes}
     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
 
-    module = mantrap.constraints.NormDistanceModule(env=env, t_horizon=controls.shape[0])
+    module = mantrap.modules.MinDistanceModule(env=env, t_horizon=controls.shape[0])
     lower_bound, _ = module._constraint_boundaries()
     violation = module.compute_violation(ego_trajectory=ego_trajectory)
     assert violation > 0

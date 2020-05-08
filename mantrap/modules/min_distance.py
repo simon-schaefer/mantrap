@@ -4,10 +4,10 @@ import torch
 
 import mantrap.constants
 
-from .constraint_module import ConstraintModule
+from .base import PureConstraintModule
 
 
-class MinDistanceModule(ConstraintModule):
+class MinDistanceModule(PureConstraintModule):
     """Constraint for minimal distance between the robot (ego) and any other agent (ado) over all time.
 
     For computing the minimal distance between the ego and every ado the scene is forward simulated given the
@@ -25,9 +25,12 @@ class MinDistanceModule(ConstraintModule):
     trajectory has no gradients pointing to a certain distance from other agents at other points in time, so that
     the number of convergence steps might be increased.
     """
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **module_kwargs):
+        super(MinDistanceModule, self).__init__(**module_kwargs)
+        self.initialize_env(env=env)
 
-    def _compute(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
-                 ) -> typing.Union[torch.Tensor, None]:
+    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+                            ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         Since predicting trajectories in the future the time-steps of the resulting time-discrete trajectories
@@ -46,6 +49,7 @@ class MinDistanceModule(ConstraintModule):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
+
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
         num_constraints_per_step = len(ado_ids) * self._env.num_modes
         horizon = ego_trajectory.shape[0]
@@ -68,12 +72,13 @@ class MinDistanceModule(ConstraintModule):
                     ado_position = graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"]
                     ego_position = ego_trajectory[t, 0:2]
                     constraints[m, t] = torch.norm(ado_position - ego_position)
-        return torch.min(constraints.flatten())
+        return torch.min(constraints.flatten()).view(1, )
 
-    def _constraints_gradient_condition(self) -> bool:
-        """Conditions for the existence of a gradient between the input of the constraint value computation
-        (which is the ego_trajectory) and the constraint values itself. If returns True and the ego_trajectory
-        itself requires a gradient, the constraint output has to require a gradient as well.
+    def _gradient_condition(self) -> bool:
+        """Condition for back-propagating through the objective/constraint in order to obtain the
+        objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
+        itself requires a gradient, the objective/constraint value, stored from the last computation
+        (`_current_`-variables) has to require a gradient as well.
 
         The gradient between constraint values only exists if the internal environment is differentiable
         with respect to the ego (trajectory), the computation is conditioned on-
