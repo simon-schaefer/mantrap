@@ -125,12 +125,6 @@ class TrajOptSolver(abc.ABC):
             m_ado, m_mode = self.env.convert_ghost_id(ghost_id=ghost.id)
             ado_trajectories[m_ado, 0, 0, :] = ghost.agent.state_with_time
 
-        # Initial evaluation of objective and constraint function as solver baseline.
-        for z0, tag in zip(self.initial_values(), self.cores):
-            self.objective(z=z0.detach().numpy(), tag=tag)
-            self.constraints(z=z0.detach().numpy(), tag=tag)
-        self.intermediate_log(ego_controls_k=torch.zeros((self.planning_horizon, 2)))
-
         logging.debug(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
             logging.debug("#" * 30 + f"solver {self.log_name} @k={k}: initializing optimization")
