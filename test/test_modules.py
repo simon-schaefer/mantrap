@@ -208,6 +208,31 @@ class TestConstraints:
         assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
         assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
 
+    @staticmethod
+    def test_jacobian_analytical(module_class, env_class, num_modes):
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=1)
+        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=1)
+
+        ego_controls = torch.rand((5, 2)) / 10.0
+        ego_controls.requires_grad = True
+        ego_trajectory = env.ego.unroll_trajectory(controls=ego_controls, dt=env.dt)
+
+        # Compute analytical jacobian, if it is not defined (= returning `None`) just skip this
+        # test since there is nothing to test here anymore.
+        module = module_class(env=env, t_horizon=5)
+        jacobian_analytical = module._compute_jacobian_analytically(ego_trajectory=ego_trajectory,
+                                                                    grad_wrt=ego_controls,
+                                                                    ado_ids=None)
+        if jacobian_analytical is None:
+            pytest.skip()
+
+        # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
+        # Then assert equality (or numerical equality) between both results.
+        constraints = module._compute_constraint(ego_trajectory, ado_ids=None)
+        jacobian_auto_grad = module._compute_gradient_autograd(constraints, grad_wrt=ego_controls)
+        assert np.allclose(jacobian_analytical, jacobian_auto_grad, atol=0.01)
+
 
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])

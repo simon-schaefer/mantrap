@@ -99,16 +99,14 @@ class OptimizationModule(abc.ABC):
         objective = self._compute_objective(ego_trajectory, ado_ids=ado_ids)
 
         # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
+        # In general the objective might not be affected by the `ego_trajectory`, then it does not have a gradient
+        # function and the gradient is not defined. Then the objective gradient is assumed to be zero.
         if objective is None or not self._gradient_condition():
             gradient = np.zeros(grad_wrt.numel())
 
-        # Otherwise check for the existence of a gradient, as explained above.
-        # In general the objective might not be affected by the `ego_trajectory`, then it does not have a gradient
-        # function and the gradient is not defined. Then the objective gradient is assumed to be zero.
+        # Otherwise compute the gradient "numerically" using the PyTorch autograd package.
         else:
-            assert objective.requires_grad
-            gradient = torch.autograd.grad(objective, grad_wrt, retain_graph=True, allow_unused=False)[0]
-            gradient = gradient.flatten().detach().numpy()
+            gradient = self._compute_gradient_autograd(objective, grad_wrt=grad_wrt)
 
         return self._return_gradient(gradient)
 
@@ -168,11 +166,10 @@ class OptimizationModule(abc.ABC):
             # Compute the constraint values and check whether a gradient between them and the ego_trajectory
             # input (which has been assured to require a gradient) exists, if the module-conditions for
             # that are met.
+            assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
             constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids)
 
             # If constraint vector is None, directly return empty jacobian vector.
-            assert grad_wrt.requires_grad
-            assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
             if constraints is None:
                 jacobian = np.array([])
 
@@ -180,25 +177,16 @@ class OptimizationModule(abc.ABC):
             # In general the constraints might not be affected by the `ego_trajectory`, then they does not have
             # gradient function and the gradient is not defined. Then the jacobian is assumed to be zero.
             else:
-                grad_size = int(grad_wrt.numel())
-                constraint_size = int(constraints.numel())
-
                 # If constraints are not None (exist) but the gradient cannot be computed, e.g. since the
                 # constraints do not depend on the ego_trajectory, then return a zero jacobian.
                 if not self._gradient_condition():
+                    grad_size = int(grad_wrt.numel())
+                    constraint_size = int(constraints.numel())
                     jacobian = np.zeros(grad_size * constraint_size)
 
                 # Otherwise determine the jacobian numerically using the PyTorch autograd package.
                 else:
-                    assert constraints.requires_grad
-                    if constraint_size == 1:
-                        jacobian = torch.autograd.grad(constraints, grad_wrt, retain_graph=True)[0]
-                    else:
-                        jacobian = torch.zeros(constraint_size * grad_size)
-                        for i, x in enumerate(constraints):
-                            grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)[0]
-                            jacobian[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
-                    jacobian = jacobian.flatten().detach().numpy()
+                    jacobian = self._compute_gradient_autograd(constraints, grad_wrt=grad_wrt)
 
         return jacobian
 
@@ -221,6 +209,38 @@ class OptimizationModule(abc.ABC):
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
         return None
+
+    ###########################################################################
+    # Autograd Differentiation ################################################
+    ###########################################################################
+    @staticmethod
+    def _compute_gradient_autograd(x: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
+        """Compute derivative of x with respect to grad_wrt.
+
+        Compute the gradient/jacobian/etc. of some vector x with respect to some tensor `grad_wrt`
+        using the PyTorch autograd, automatic differentiation package. Here we assume that both are
+        connected by some computational graph (PyTorch graph) that can be used for differentiation.
+
+        :params x: gradient input flat vector.
+        :param grad_wrt: tensor with respect to gradients should be computed.
+        :returns: flattened gradient tensor (x.size * grad_wrt.size)
+        """
+        grad_size = int(grad_wrt.numel())
+        x_size = int(x.numel())
+        assert x.requires_grad
+        assert grad_wrt.requires_grad
+
+        # Compute gradient batched, i.e. per element of x over the full `grad_wrt` tensor. However further
+        # batching unfortunately is not possible using the autograd framework.
+        if x_size == 1:
+            gradient = torch.autograd.grad(x, grad_wrt, retain_graph=True)[0]
+        else:
+            gradient = torch.zeros(x_size * grad_size)
+            for i, element in enumerate(x):
+                grad = torch.autograd.grad(element, grad_wrt, retain_graph=True)[0]
+                gradient[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
+
+        return gradient.flatten().detach().numpy()
 
     ###########################################################################
     # Constraint Bounds #######################################################
