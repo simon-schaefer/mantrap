@@ -157,8 +157,14 @@ class TrajOptSolver(abc.ABC):
         # Cleaning up solver environment and summarizing logging.
         logging.debug(f"solver {self.log_name}: logging trajectory optimization")
         self.env.detach()  # detach environment from computation graph
-        self.env = env_copy  # reset environment to initial state
         self.log_summarize()
+
+        # Reset environment to initial state. Some modules are also connected to the old environment,
+        # which has been forward predicted now. Reset these to the original environment copy.
+        self.env = env_copy
+        for module in self.modules:
+            module.reset_env(env=self.env)
+
         logging.debug(f"solver {self.log_name}: finishing up optimization process")
         return ego_trajectory_opt, ado_trajectories
 

@@ -42,6 +42,10 @@ class OptimizationModule(abc.ABC):
         assert env.ego is not None
         self._env = env
 
+    def reset_env(self, env: mantrap.environment.base.GraphBasedEnvironment):
+        if self._env is not None:
+            self.initialize_env(env=env)
+
     ###########################################################################
     # Objective ###############################################################
     ###########################################################################
@@ -259,12 +263,20 @@ class OptimizationModule(abc.ABC):
     def _violation(self, constraint: typing.Union[np.ndarray, None]) -> float:
         if constraint is None:
             return 0.0
+
         num_constraints = constraint.size
         no_violation = np.zeros(num_constraints)
         lower, upper = self._constraint_boundaries()
         violation_lower = lower * np.ones(num_constraints) - constraint if lower is not None else no_violation
         violation_upper = constraint - upper * np.ones(num_constraints) if upper is not None else no_violation
-        return float(np.sum(np.maximum(no_violation, violation_lower) + np.maximum(no_violation, violation_upper)))
+
+        # Due to numerical (precision) errors the violation might be non-zero, although the derived optimization
+        # variable is just at the constraint border (as for example in linear programming). Ignore these violations.
+        violation = np.sum(np.maximum(no_violation, violation_lower) + np.maximum(no_violation, violation_upper))
+        if np.abs(violation) < mantrap.constants.CONSTRAINT_VIOLATION_PRECISION:
+            return 0.0
+        else:
+            return float(violation)
 
     ###########################################################################
     # Utility #################################################################

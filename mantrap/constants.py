@@ -73,6 +73,7 @@ IPOPT_AUTOMATIC_JACOBIAN = "finite-difference-values"  # method for Jacobian app
 IPOPT_AUTOMATIC_HESSIAN = "limited-memory"  # method for Hessian approximation.
 
 CONSTRAINT_MIN_L2_DISTANCE = 0.5  # [m] minimal distance constraint between ego and every ado ghost
+CONSTRAINT_VIOLATION_PRECISION = 1e-5  # allowed precision error when determining constraint violation.
 
 FILTER_EUCLIDEAN_RADIUS = 7.0  # [m] attention radius of ego for planning
 
