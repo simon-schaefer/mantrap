@@ -117,6 +117,7 @@ class TrajOptSolver(abc.ABC):
         ado_trajectories = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
         self.log_reset(log_horizon=time_steps)
         env_copy = self.env.copy()
+        eval_env_copy = self.eval_env.copy()
 
         # Initialize trajectories with current state and environment time.
         ego_trajectory_opt[0] = self._env.ego.state_with_time
@@ -161,7 +162,8 @@ class TrajOptSolver(abc.ABC):
 
         # Reset environment to initial state. Some modules are also connected to the old environment,
         # which has been forward predicted now. Reset these to the original environment copy.
-        self.env = env_copy
+        self._env = env_copy
+        self._eval_env = eval_env_copy
         for module in self.modules:
             module.reset_env(env=self.env)
 

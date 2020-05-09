@@ -173,24 +173,32 @@ class OptimizationModule(abc.ABC):
             # If constraint vector is None, directly return empty jacobian vector.
             assert grad_wrt.requires_grad
             assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
-            if constraints is None or not self._gradient_condition():
+            if constraints is None:
                 jacobian = np.array([])
 
             # Otherwise check for the existence of a gradient, as explained above.
             # In general the constraints might not be affected by the `ego_trajectory`, then they does not have
             # gradient function and the gradient is not defined. Then the jacobian is assumed to be zero.
             else:
-                assert constraints.requires_grad
                 grad_size = int(grad_wrt.numel())
                 constraint_size = int(constraints.numel())
-                if constraint_size == 1:
-                    jacobian = torch.autograd.grad(constraints, grad_wrt, retain_graph=True)[0]
+
+                # If constraints are not None (exist) but the gradient cannot be computed, e.g. since the
+                # constraints do not depend on the ego_trajectory, then return a zero jacobian.
+                if not self._gradient_condition():
+                    jacobian = np.zeros(grad_size * constraint_size)
+
+                # Otherwise determine the jacobian numerically using the PyTorch autograd package.
                 else:
-                    jacobian = torch.zeros(constraint_size * grad_size)
-                    for i, x in enumerate(constraints):
-                        grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)[0]
-                        jacobian[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
-                jacobian = jacobian.flatten().detach().numpy()
+                    assert constraints.requires_grad
+                    if constraint_size == 1:
+                        jacobian = torch.autograd.grad(constraints, grad_wrt, retain_graph=True)[0]
+                    else:
+                        jacobian = torch.zeros(constraint_size * grad_size)
+                        for i, x in enumerate(constraints):
+                            grad = torch.autograd.grad(x, grad_wrt, retain_graph=True)[0]
+                            jacobian[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
+                    jacobian = jacobian.flatten().detach().numpy()
 
         return jacobian
 

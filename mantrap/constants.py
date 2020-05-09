@@ -90,4 +90,4 @@ VISUALIZATION_DIRECTORY = "outputs/"
 VISUALIZATION_FRAME_DELAY = 500  # [ms]
 VISUALIZATION_RESTART_DELAY = 1000  # [ms]
 
-COLORS = [[1, 0, 0], [0, 0, 1], [0.5, 0.5, 0.5], [1, 1, 0], [0, 1, 1], [1, 0, 1]]
+COLORS = [[1, 0, 0], [0, 0, 1], [0.5, 0.5, 0.5], [0, 1, 1], [1, 0, 1]]
