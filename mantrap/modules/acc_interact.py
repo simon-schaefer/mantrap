@@ -63,7 +63,7 @@ class InteractionAccelerationModule(PureObjectiveModule):
         objective = torch.zeros(1)
         for ado_id in ado_ids:
             for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
-                for t in range(1, self.t_horizon - 1):
+                for t in range(1, ego_trajectory.shape[0] - 2):
                     i_ado, i_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
                     ado_acceleration = self._derivative_2.compute_single(
                         graph[f"{ghost.id}_{t - 1}_{mantrap.constants.GK_POSITION}"],

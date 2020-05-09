@@ -51,11 +51,11 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         # depends on the filter, that was selected, as it (might) result in a few number of other agents in
         # the "optimization scene", especially it might lead to zero agents (so an interactively) unconstrained
         # optimization.
-        lb, ub = None, None
+        lb, ub = self.optimization_variable_bounds()
         logging.debug(f"Optimization variable constraint has bounds lower = {lb} & upper = {ub}")
-        cl, cu = self.optimization_variable_bounds()
-        for name, constraint in self.module_dict.items():
-            lower, upper = constraint.constraint_boundaries(ado_ids=ado_ids)
+        cl, cu = list(), list()
+        for name, module in self.module_dict.items():
+            lower, upper = module.constraint_boundaries(ado_ids=ado_ids)
             cl += list(lower)
             cu += list(upper)
             logging.debug(f"Constraint {name} has bounds lower = {lower} & upper = {upper}")

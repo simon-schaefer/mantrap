@@ -19,26 +19,25 @@ class ZControlIntermediate(TrajOptSolver, ABC):
         return 2 * self.planning_horizon
 
     def optimization_variable_bounds(self) -> typing.Tuple[typing.List, typing.List]:
-        limits = self._env.ego.control_limits()
-        lb = (np.ones(self.num_optimization_variables()) * limits[0]).tolist()
-        ub = (np.ones(self.num_optimization_variables()) * limits[1]).tolist()
+        lower, upper = self._env.ego.control_limits()
+        lb = (np.ones(self.num_optimization_variables()) * lower).tolist()
+        ub = (np.ones(self.num_optimization_variables()) * upper).tolist()
         return lb, ub
 
     ###########################################################################
     # Transformations #########################################################
     ###########################################################################
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        ego_controls = torch.from_numpy(z).view(self.planning_horizon, 2).float()
+        ego_controls = torch.from_numpy(z).view(-1, 2).float()
         ego_controls.requires_grad = True
         ego_trajectory = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt)
-        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, self.planning_horizon + 1,
-                                                            pos_and_vel_only=True)
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         return ego_trajectory if not return_leaf else (ego_trajectory, ego_controls)
 
     def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        ego_controls = torch.from_numpy(z).view(self.planning_horizon, 2).float()
+        ego_controls = torch.from_numpy(z).view(-1, 2).float()
         ego_controls.requires_grad = True
-        assert mantrap.utility.shaping.check_ego_controls(ego_controls, t_horizon=self.planning_horizon)
+        assert mantrap.utility.shaping.check_ego_controls(ego_controls)
         return ego_controls if not return_leaf else (ego_controls, ego_controls)
 
     def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:

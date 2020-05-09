@@ -57,7 +57,7 @@ class InteractionPositionModule(PureObjectiveModule):
         objective = torch.zeros(1)
         for ado_id in ado_ids:
             for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
-                for t in range(1, self.t_horizon - 1):
+                for t in range(1, ego_trajectory.shape[0] - 2):
                     m_ado, m_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
                     ado_position = graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"]
                     ado_position_wo = self._ado_positions_wo[m_ado, m_mode, t, :]

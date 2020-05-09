@@ -51,7 +51,7 @@ class OptimizationModule(abc.ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, self.t_horizon + 1, pos_and_vel_only=True)
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids)
         if obj_value is None:
             obj_value = 0.0  # if objective not defined simply return 0.0
@@ -86,7 +86,7 @@ class OptimizationModule(abc.ABC):
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, self.t_horizon + 1, pos_and_vel_only=True)
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         assert grad_wrt.requires_grad
         assert ego_trajectory.requires_grad  # otherwise objective cannot have gradient function
 
@@ -117,7 +117,7 @@ class OptimizationModule(abc.ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, self.t_horizon + 1, pos_and_vel_only=True)
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids)
         if constraints is None:
             constraints = np.array([])
@@ -150,7 +150,7 @@ class OptimizationModule(abc.ABC):
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
-        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, self.t_horizon + 1, pos_and_vel_only=True)
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
 
         # Analytical solutions are more exact and (usually more efficient) to compute, when known, compared
         # to the numerical "graphical" solution. Therefore, first check whether an analytical solution is
