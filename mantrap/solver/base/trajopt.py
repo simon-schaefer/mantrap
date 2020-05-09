@@ -78,10 +78,8 @@ class TrajOptSolver(abc.ABC):
             module = module_tuple[0]
             module_kwargs = {} if len(module_tuple) < 2 else module_tuple[1]
             module_kwargs = {} if module_kwargs is None else module_kwargs
-            module_kwargs["t_horizon"] = self.planning_horizon
-            module_kwargs["env"] = self.env
-            module_kwargs["goal"] = self.goal
-            self._module_dict[module.name] = module(**module_kwargs)
+            module_object = module(t_horizon=self.planning_horizon, goal=self.goal, env=self.env, **module_kwargs)
+            self._module_dict[module_object.name] = module_object
 
         # Filter module for "importance" selection of which ados to include into optimization.
         self._filter_module = None
@@ -486,21 +484,9 @@ class TrajOptSolver(abc.ABC):
     def visualize_scenes(self, enforce: bool = False, plot_path_only: bool = False):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory), if __debug__ or if `enforce = True`. """
-        if __debug__ or enforce:
-            from mantrap.utility.io import is_running_from_ipython
+        if __debug__ is True or enforce:
             from mantrap.visualization import visualize
             assert self.log is not None
-
-            # The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
-            # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
-            # to None (interactive mode) or to an actual path (storing mode).
-            interactive = is_running_from_ipython()
-            if not interactive:
-                output_path = mantrap.constants.VISUALIZATION_DIRECTORY
-                output_path = mantrap.utility.io.build_os_path(output_path, make_dir=True, free=False)
-                output_path = os.path.join(output_path, f"{self.log_name}.{self.env.log_name}")
-            else:
-                output_path = None
 
             # From optimization log extract the core (initial condition) which has resulted in the best objective
             # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
@@ -519,8 +505,95 @@ class TrajOptSolver(abc.ABC):
                 ado_planned=self.log[f"{mantrap.constants.LK_OPTIMAL}/ado_planned"],
                 ado_planned_wo=self.log[f"{mantrap.constants.LK_OPTIMAL}/ado_planned_wo"],
                 ego_trials=ego_trials, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
-                plot_path_only=plot_path_only, file_path=output_path
+                plot_path_only=plot_path_only, file_path=self._visualize_output_format("scenes")
             )
+
+    def visualize_heat_map(self, enforce: bool = False, resolution: float = 0.1):
+        """Visualize heat map of objective and constraint function for planned ego trajectory at initial
+        state of the system.
+
+        Therefore span a grid over the full (usually 2D) optimization state space and compute the objective
+        value as well as the constraint violation for each grid point. Overlaying the grid point values
+        computed for each optimization module creates the shown heatmap.
+
+        Plot only if __debug__ = True or if the function's argument `enforce = True`.
+        """
+        if __debug__ is True or enforce:
+            from mantrap.visualization import visualize_heat_map
+            assert self.log is not None
+
+            lower, upper = self.optimization_variable_bounds()
+            assert len(lower) == len(upper) == 2 * self.planning_horizon  # 2D (!)
+
+            # Create optimization variable mesh grid with given resolution.
+            # Assumption: Same optimization variable bounds over full time horizon
+            # and over all optimization variables, strong assumption but should hold
+            # within this project (!).
+            x_grid, y_grid = np.meshgrid(np.arange(lower[0], upper[0], step=resolution),
+                                         np.arange(lower[1], upper[1], step=resolution))
+            points = np.stack((x_grid, y_grid)).transpose().reshape(-1, 2)
+            grid_shape = x_grid.shape
+
+            # Receive planned ego trajectories from log.
+            ego_planned = self.log[f"{mantrap.constants.LK_OPTIMAL}/ego_planned"]
+            ego_planned = ego_planned[0, :, :]  # initial system state
+            z_values = self.ego_trajectory_to_z(ego_trajectory=ego_planned)
+            num_time_steps = self.planning_horizon
+            assert z_values.size == self.planning_horizon * 2  # 2D !
+
+            # Iterate over all points, compute objective and constraint violation and write
+            # both in images. For simplification take all ados into account for this  visualization,
+            # by setting `ado_ids = None`.
+            images = np.zeros((num_time_steps, *grid_shape))
+            for t in range(num_time_steps):
+                objective_values = np.zeros(grid_shape)
+                constraint_values = np.zeros(grid_shape)
+                for i, point in enumerate(points):
+                    ix = i % grid_shape[1]
+                    iy = i // grid_shape[1]
+
+                    # Use the chosen optimization variable state trajectory until the current state,
+                    # then add the current point to it and transform back to ego trajectory, which
+                    # can be used to determine the objective/constraint values.
+                    zs = np.concatenate((z_values[:t*2], point))  # cat flat z values to flat point
+                    ego_trajectory = self.z_to_ego_trajectory(zs)
+
+                    # Most objective function (and constraint violations) are additive over time. For semi-positive
+                    # objectives does that mean, that they are increased over the length of the trajectory by design.
+
+                    # Compute the objective/constraint values and add to images.
+                    objective = np.sum([m.objective(ego_trajectory, ado_ids=None) for m in self.modules])
+                    violation = np.sum([m.compute_violation(ego_trajectory, ado_ids=None) for m in self.modules])
+                    objective_values[ix, iy] = float(objective)
+                    constraint_values[ix, iy] = float(violation)
+
+                # Merge objective and constraint values by setting all values in an infeasible region
+                # (= constraint violation > 0) to nan value, that will be assigned to a special color
+                # in the heat-map later on.
+                objective_values[constraint_values > 0.0] = np.nan
+
+                # Copy resulting objective values into results image.
+                images[t, :, :] = objective_values.copy()
+
+            # Finally draw all the created images in plot using the `visualize_heat_map` function
+            # defined in the internal visualization package.
+            path = self._visualize_output_format(name="heat_map")
+            bounds = (lower[:2], upper[:2])
+            zs = z_values.reshape(-1, 2)
+            return visualize_heat_map(images, z_bounds=bounds, z_values=zs, resolution=resolution, file_path=path)
+
+    def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
+        """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
+        # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
+        # to None (interactive mode) or to an actual path (storing mode). """
+        from mantrap.utility.io import build_os_path, is_running_from_ipython
+        interactive = is_running_from_ipython()
+        if not interactive:
+            output_path = build_os_path(mantrap.constants.VISUALIZATION_DIRECTORY, make_dir=True, free=False)
+            output_path = os.path.join(output_path, f"{self.log_name}.{self.env.log_name}_{name}")
+        else:
+            output_path = None
+        return output_path
 
     ###########################################################################
     # Solver parameters #######################################################

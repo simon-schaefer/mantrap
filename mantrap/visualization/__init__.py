@@ -1,6 +1,7 @@
 import typing
 
 import matplotlib.animation
+import matplotlib.cm
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -12,7 +13,7 @@ import mantrap.utility.shaping
 
 def visualize(
     ado_planned_wo: torch.Tensor,
-    env: mantrap.environment.GraphBasedEnvironment,
+    env: mantrap.environment.base.GraphBasedEnvironment,
     ego_planned: torch.Tensor = None,
     ado_planned: torch.Tensor = None,
     file_path: str = None,
@@ -75,7 +76,7 @@ def visualize(
         # Draw trajectories in uppermost (quadratic) plot, thereby differentiate the actual trajectories from the
         # baseline trajectories using a different line markup. Also add little dots (`plt.Circle`) at the
         # agents current positions.
-        axs[0] = draw_trajectories(
+        axs[0] = __draw_trajectories(
             ego_trajectory=ego_planned_k,
             ado_trajectories=ado_planned_k,
             ado_trajectories_wo=ado_planned_wo_k,
@@ -111,8 +112,8 @@ def visualize(
             for ghost in env.ghosts:
                 i_ado, i_mode = env.convert_ghost_id(ghost_id=ghost.id)
                 ado_kwargs = {"color": ghost.agent.color, "label": f"{ghost.id}_current"}
-                draw_values(ado_velocity_norm[i_ado, i_mode, :], time_axis, ax=axs[1], k=k, **ado_kwargs)
-                draw_values(ado_acceleration_norm[i_ado, i_mode, :], time_axis, ax=axs[2], k=k, **ado_kwargs)
+                __draw_values(ado_velocity_norm[i_ado, i_mode, :], time_axis, ax=axs[1], k=k, **ado_kwargs)
+                __draw_values(ado_acceleration_norm[i_ado, i_mode, :], time_axis, ax=axs[2], k=k, **ado_kwargs)
             axs[1].set_title("velocities [m/s]")
             axs[2].set_title("accelerations [m/s^2]")
             for i in [1, 2]:
@@ -124,7 +125,7 @@ def visualize(
             lower, upper = env.ego.control_limits()
             axs[3].plot(time_axis, np.ones(time_axis.size) * lower, "--", label="lower")
             axs[3].plot(time_axis, np.ones(time_axis.size) * upper, "--", label="upper")
-            draw_values(ego_controls_norm, time_axis, ax=axs[3], k=k, **ego_kwargs)
+            __draw_values(ego_controls_norm, time_axis, ax=axs[3], k=k, **ego_kwargs)
             axs[3].set_title("control input")
 
             # Draw objective and constraint violation values in line plot.
@@ -134,10 +135,10 @@ def visualize(
                     return np.log(np.asarray(raw_data) + 1e-8)
 
                 for key, values in obj_dict.items():
-                    axs[4] = draw_values(transform_data(values[k]), time_axis, label=key, ax=axs[4], k=k)
+                    axs[4] = __draw_values(transform_data(values[k]), time_axis, label=key, ax=axs[4], k=k)
                 axs[4].set_title("log-objectives")
                 for key, values in inf_dict.items():
-                    axs[5] = draw_values(transform_data(values[k]), time_axis, label=key, ax=axs[5], k=k)
+                    axs[5] = __draw_values(transform_data(values[k]), time_axis, label=key, ax=axs[5], k=k)
                 axs[5].set_title("log-constraints")
 
         axs[0].set_title(f"step {k}")
@@ -145,8 +146,68 @@ def visualize(
 
     anim = matplotlib.animation.FuncAnimation(fig, update, frames=num_env_steps - 1, interval=300)
 
-    # In interactive mode (when file_path is not set), return the video itself, otherwise save the video at
-    # the given directory as a ".gif"-file.
+    # In interactive mode (when file_path is not set), return the video itself, otherwise save
+    # the video in the given directory as a ".gif"-file.
+    if file_path is not None:
+        anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
+    return True if file_path is not None else anim.to_html5_video()
+
+
+# ##########################################################################
+# Optimization Heat Map ####################################################
+# ##########################################################################
+def visualize_heat_map(
+    images: np.ndarray,
+    z_bounds: typing.Tuple[typing.List, typing.List],
+    z_values: np.ndarray,
+    resolution: float = 0.1,
+    file_path: str = None,
+):
+    # Derive image ticks from bounds and resolution data.
+    lower, upper = z_bounds
+    assert len(lower) == len(upper) == 2  # 2D (!)
+    num_grid_points_x = int((upper[0] - lower[0]) / resolution)
+    num_grid_points_y = int((upper[1] - lower[1]) / resolution)
+    assert len(images.shape) == 3
+    assert images.shape[1] == num_grid_points_x
+    assert images.shape[2] == num_grid_points_y
+    assert len(z_values.shape) == 2
+    assert images.shape[0] == z_values.shape[0]
+    assert z_values.shape[1] == 2
+
+    # Plot resulting objective value and constraints plot.
+    fig, ax = plt.subplots(figsize=(8, 8))
+    num_ticks = 8
+    ax.set_xticks(np.linspace(0, num_grid_points_x, num=num_ticks))
+    ax.set_xticklabels(np.round(np.linspace(lower[0], upper[0], num=num_ticks), 1))
+    ax.set_yticks(np.linspace(0, num_grid_points_y, num=num_ticks))
+    ax.set_yticklabels(np.round(np.linspace(lower[1], upper[1], num=num_ticks), 1))
+    ax.set_xlabel("z1")
+    ax.set_ylabel("z2")
+
+    # Color map and image definition. However due to a shift in the range of the image data
+    # (min, max) and therefore in the colormap, the image has to be re-drawn in every step.
+    color_map = matplotlib.cm.get_cmap()
+    color_map.set_bad(color="black")
+    im = ax.imshow(images[0, :, :], interpolation="none", animated=True)
+    cb = fig.colorbar(im)
+
+    # Line plot definition, which is also updated during iteration.
+    z_values_coords = (z_values - np.array(lower)) / resolution
+    line, = ax.plot(z_values_coords[0, 0], z_values_coords[0, 1], 'rx')
+
+    def update(k):
+        im = ax.imshow(images[k, :, :], interpolation="none", animated=True)
+        line.set_xdata(z_values_coords[k, 0])
+        line.set_ydata(z_values_coords[k, 1])
+        ax.set_title(f"optimization landscape - step {k}")
+        return ax
+
+    # Start matplotlib animation with an image per time-step.
+    anim = matplotlib.animation.FuncAnimation(fig, update, frames=images.shape[0] - 1, interval=2000, repeat_delay=2000)
+
+    # In interactive mode (when file_path is not set), return the video itself, otherwise save
+    # the video in the given directory as a ".gif"-file.
     if file_path is not None:
         anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
     return True if file_path is not None else anim.to_html5_video()
@@ -155,9 +216,9 @@ def visualize(
 # ##########################################################################
 # Atomic plotting functions ################################################
 # ##########################################################################
-def draw_trajectories(
+def __draw_trajectories(
     ado_trajectories_wo: torch.Tensor,
-    env: mantrap.environment.GraphBasedEnvironment,
+    env: mantrap.environment.base.GraphBasedEnvironment,
     ax: plt.Axes,
     ego_trajectory: torch.Tensor = None,
     ado_trajectories: torch.Tensor = None,
@@ -219,7 +280,7 @@ def draw_trajectories(
     return ax
 
 
-def draw_values(
+def __draw_values(
     values: np.ndarray,
     time_axis: np.ndarray,
     ax: plt.Axes,
