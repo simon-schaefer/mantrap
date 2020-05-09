@@ -147,6 +147,11 @@ class TrajOptSolver(abc.ABC):
             if torch.norm(ego_state[0:2] - self.goal) < mantrap.constants.SOLVER_GOAL_END_DISTANCE:
                 ego_trajectory_opt = ego_trajectory_opt[:k + 2, :].detach()
                 ado_trajectories = ado_trajectories[:, :, :k + 2, :].detach()
+
+                # Log a last time in order to log the final state, after the environment has executed it
+                # its update step. However since the controls have not changed, but still the planned
+                # trajectories should  all have the same shape, the concatenate no action (zero controls).
+                self.intermediate_log(ego_controls_k=torch.cat((ego_controls_k[1:, :], torch.zeros((1, 2)))))
                 break
 
         # Cleaning up solver environment and summarizing logging.
@@ -333,7 +338,6 @@ class TrajOptSolver(abc.ABC):
         """
         ego_trajectory = self.z_to_ego_trajectory(z)
         objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids) for m in self.modules])
-        logging.debug(f"solver {self.log_name}:{tag} Objective function = {objective}")
 
         if __debug__ is True:
             ado_planned = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
@@ -381,7 +385,6 @@ class TrajOptSolver(abc.ABC):
         violation = float(np.sum([m.compute_violation_internal() for m in self.modules]))
 
         if __debug__ is True:
-            logging.debug(f"solver {self.log_name}:{tag}: Constraints vector = {constraints}")
             self.log_append(inf_overall=violation, tag=tag)
             module_log = {f"{mantrap.constants.LK_CONSTRAINT}_{key}": mod.inf_current
                           for key, mod in self.module_dict.items()}
@@ -466,9 +469,10 @@ class TrajOptSolver(abc.ABC):
             # step), since it is assumed to be the most optimal one (e.g. for IPOPT).
             for key in self.log_keys_all():
                 assert all([f"{key}_{k}" in self.log.keys() for k in range(self._iteration + 1)])
-                assert all([len(self.log[f"{key}_{k}"]) > 0 for k in range(self._iteration + 1)])
-                summary = [self.log[f"{key}_{k}"][-1] for k in range(self._iteration + 1)]
-                self._log[key] = torch.stack(summary)
+                summary = [self.log[f"{key}_{k}"][-1] for k in range(self._iteration + 1)
+                           if len(self.log[f"{key}_{k}"]) > 0]
+                if len(summary) > 0:
+                    self._log[key] = torch.stack(summary)
 
             # Save the optimization performance for every optimization step into logging file. Since the
             # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
@@ -478,16 +482,16 @@ class TrajOptSolver(abc.ABC):
             output_path = os.path.join(output_path, f"{self.log_name}.{self.env.log_name}.logging.csv")
             csv_log_k_keys = [f"{key}_{k}" for key in self.log_keys_performance() for k in range(self._iteration + 1)]
             csv_log_k_keys += self.log_keys_performance()
-            csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys}
+            csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys if key in self.log.keys()}
             pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
 
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_scenes(self, enforce: bool = False, plot_path_only: bool = False):
+    def visualize_scenes(self, plot_path_only: bool = False):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
-        trajectories conditioned on the planned ego trajectory), if __debug__ or if `enforce = True`. """
-        if __debug__ is True or enforce:
+        trajectories conditioned on the planned ego trajectory), if __debug__ is True (otherwise no logging). """
+        if __debug__ is True:
             from mantrap.visualization import visualize
             assert self.log is not None
 
@@ -501,27 +505,26 @@ class TrajOptSolver(abc.ABC):
                         for key in self.module_names}
             inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.module_names}
 
-            ego_trials = [self._log[f"{self.core_opt}/ego_planned_{k}"] for k in range(self._iteration)]
-
             return visualize(
                 ego_planned=self.log[f"{mantrap.constants.LK_OPTIMAL}/ego_planned"],
                 ado_planned=self.log[f"{mantrap.constants.LK_OPTIMAL}/ado_planned"],
                 ado_planned_wo=self.log[f"{mantrap.constants.LK_OPTIMAL}/ado_planned_wo"],
-                ego_trials=ego_trials, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
+                ego_trials=[self._log[f"{self.core_opt}/ego_planned_{k}"] for k in range(self._iteration + 1)],
+                ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
                 plot_path_only=plot_path_only, file_path=self._visualize_output_format("scenes")
             )
 
-    def visualize_heat_map(self, enforce: bool = False, resolution: float = 0.1):
+    def visualize_heat_map(self, resolution: float = 0.1):
         """Visualize heat map of objective and constraint function for planned ego trajectory at initial
         state of the system.
 
         Therefore span a grid over the full (usually 2D) optimization state space and compute the objective
         value as well as the constraint violation for each grid point. Overlaying the grid point values
-        computed for each optimization module creates the shown heatmap.
+        computed for each optimization module creates the shown heat-map.
 
-        Plot only if __debug__ = True or if the function's argument `enforce = True`.
+        Plot only if __debug__ is True (otherwise no logging).
         """
-        if __debug__ is True or enforce:
+        if __debug__ is True:
             from mantrap.visualization import visualize_heat_map
             assert self.log is not None
 
@@ -532,8 +535,9 @@ class TrajOptSolver(abc.ABC):
             # Assumption: Same optimization variable bounds over full time horizon
             # and over all optimization variables, strong assumption but should hold
             # within this project (!).
-            x_grid, y_grid = np.meshgrid(np.arange(lower[0], upper[0], step=resolution),
-                                         np.arange(lower[1], upper[1], step=resolution))
+            # + resolution since otherwise np.arange will stop at upper - resolution (!)
+            x_grid, y_grid = np.meshgrid(np.arange(lower[0], upper[0] + resolution, step=resolution),
+                                         np.arange(lower[1], upper[1] + resolution, step=resolution))
             points = np.stack((x_grid, y_grid)).transpose().reshape(-1, 2)
             grid_shape = x_grid.shape
 
@@ -561,9 +565,6 @@ class TrajOptSolver(abc.ABC):
                     zs = np.concatenate((z_values[:t*2], point))  # cat flat z values to flat point
                     ego_trajectory = self.z_to_ego_trajectory(zs)
 
-                    # Most objective function (and constraint violations) are additive over time. For semi-positive
-                    # objectives does that mean, that they are increased over the length of the trajectory by design.
-
                     # Compute the objective/constraint values and add to images.
                     objective = np.sum([m.objective(ego_trajectory, ado_ids=None) for m in self.modules])
                     violation = np.sum([m.compute_violation(ego_trajectory, ado_ids=None) for m in self.modules])
@@ -574,6 +575,7 @@ class TrajOptSolver(abc.ABC):
                 # (= constraint violation > 0) to nan value, that will be assigned to a special color
                 # in the heat-map later on.
                 objective_values[constraint_values > 0.0] = np.nan
+                assert not np.all(np.isnan(objective_values))
 
                 # Copy resulting objective values into results image.
                 images[t, :, :] = objective_values.copy()

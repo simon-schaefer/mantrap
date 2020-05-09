@@ -16,6 +16,7 @@ def visualize(
     env: mantrap.environment.base.GraphBasedEnvironment,
     ego_planned: torch.Tensor = None,
     ado_planned: torch.Tensor = None,
+    ego_goal: torch.Tensor = None,
     file_path: str = None,
     obj_dict: typing.Dict[str, typing.List[torch.Tensor]] = None,
     inf_dict: typing.Dict[str, typing.List[torch.Tensor]] = None,
@@ -29,10 +30,10 @@ def visualize(
     # Check inputs for validity in shape and matching sizes.
     if ego_planned is not None:
         assert len(ego_planned.shape) == 3 and ego_planned.shape[0] == num_env_steps
-
     if ado_planned is not None:
         assert len(ado_planned.shape) == 5 and ado_planned.shape[0] == num_env_steps
-
+    if ego_goal is not None:
+        assert mantrap.utility.shaping.check_goal(ego_goal)
     if not plot_path_only:
         assert ego_planned is not None and ado_planned is not None
         num_vertical_plots += 3  # velocities, accelerations, controls (3)
@@ -81,6 +82,7 @@ def visualize(
             ado_trajectories=ado_planned_k,
             ado_trajectories_wo=ado_planned_wo_k,
             env=env,
+            ego_goal=ego_goal,
             ego_traj_trials=ego_trials_k,
             ax=axs[0]
         )
@@ -144,7 +146,9 @@ def visualize(
         axs[0].set_title(f"step {k}")
         return axs
 
-    anim = matplotlib.animation.FuncAnimation(fig, update, frames=num_env_steps - 1, interval=300)
+    anim = matplotlib.animation.FuncAnimation(fig, update, frames=num_env_steps,
+                                              interval=mantrap.constants.VISUALIZATION_FRAME_DELAY,
+                                              repeat_delay=mantrap.constants.VISUALIZATION_RESTART_DELAY)
 
     # In interactive mode (when file_path is not set), return the video itself, otherwise save
     # the video in the given directory as a ".gif"-file.
@@ -168,9 +172,8 @@ def visualize_heat_map(
     assert len(lower) == len(upper) == 2  # 2D (!)
     num_grid_points_x = int((upper[0] - lower[0]) / resolution)
     num_grid_points_y = int((upper[1] - lower[1]) / resolution)
+
     assert len(images.shape) == 3
-    assert images.shape[1] == num_grid_points_x
-    assert images.shape[2] == num_grid_points_y
     assert len(z_values.shape) == 2
     assert images.shape[0] == z_values.shape[0]
     assert z_values.shape[1] == 2
@@ -190,21 +193,23 @@ def visualize_heat_map(
     color_map = matplotlib.cm.get_cmap()
     color_map.set_bad(color="black")
     im = ax.imshow(images[0, :, :], interpolation="none", animated=True)
-    cb = fig.colorbar(im)
+    fig.colorbar(im)
 
     # Line plot definition, which is also updated during iteration.
     z_values_coords = (z_values - np.array(lower)) / resolution
     line, = ax.plot(z_values_coords[0, 0], z_values_coords[0, 1], 'rx')
 
     def update(k):
-        im = ax.imshow(images[k, :, :], interpolation="none", animated=True)
+        ax.imshow(images[k, :, :], interpolation="none", animated=True)
         line.set_xdata(z_values_coords[k, 0])
         line.set_ydata(z_values_coords[k, 1])
         ax.set_title(f"optimization landscape - step {k}")
         return ax
 
     # Start matplotlib animation with an image per time-step.
-    anim = matplotlib.animation.FuncAnimation(fig, update, frames=images.shape[0] - 1, interval=2000, repeat_delay=2000)
+    anim = matplotlib.animation.FuncAnimation(fig, update, frames=images.shape[0] - 1,
+                                              interval=mantrap.constants.VISUALIZATION_FRAME_DELAY,
+                                              repeat_delay=mantrap.constants.VISUALIZATION_RESTART_DELAY)
 
     # In interactive mode (when file_path is not set), return the video itself, otherwise save
     # the video in the given directory as a ".gif"-file.
@@ -222,6 +227,7 @@ def __draw_trajectories(
     ax: plt.Axes,
     ego_trajectory: torch.Tensor = None,
     ado_trajectories: torch.Tensor = None,
+    ego_goal: typing.Union[torch.Tensor, None] = None,
     ego_traj_trials: typing.List[torch.Tensor] = None
 ):
     """Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as the
@@ -250,11 +256,16 @@ def __draw_trajectories(
         ax.plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label=env.ego.id)
         draw_agent_representation(ego_trajectory[0, :], color=env.ego.color, name=env.ego.id)
 
+    # Plot ego goal.
+    if ego_goal is not None:
+        assert mantrap.utility.shaping.check_goal(ego_goal)
+        ax.plot(ego_goal[0], ego_goal[1], "rx", markersize=15.0, label="goal")
+
     # Plot trial trajectories during optimisation process.
     if ego_traj_trials is not None:
         for ego_traj_trial in ego_traj_trials:
             ego_traj_trial_np = ego_traj_trial.detach().numpy()
-            ax.plot(ego_traj_trial_np[:, 0], ego_traj_trial_np[:, 1], "--", color=env.ego.color, alpha=0.08)
+            ax.plot(ego_traj_trial_np[:, 0], ego_traj_trial_np[:, 1], "--", color=env.ego.color, alpha=0.04)
 
     # Plot current and base resulting simulated ado trajectories in the scene.
     for ghost in env.ghosts:

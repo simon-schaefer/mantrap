@@ -71,7 +71,11 @@ class DTAgent(abc.ABC):
         self._is_robot = is_robot
 
         # Create random agent color (reddish), for evaluation only.
-        self._color = np.random.uniform(0.0, 0.8, size=3).tolist()
+        if is_robot:
+            self._color = np.zeros(3)
+        else:
+            self._color = np.array(random.choice(mantrap.constants.COLORS))
+
         # Random identifier.
         letters = string.ascii_lowercase
         self._id = identifier if identifier is not None else "".join(random.choice(letters) for _ in range(3))
