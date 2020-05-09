@@ -116,6 +116,7 @@ class TrajOptSolver(abc.ABC):
         ego_trajectory_opt = torch.zeros((time_steps + 1, 5))
         ado_trajectories = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
         self.log_reset(log_horizon=time_steps)
+        env_copy = self.env.copy()
 
         # Initialize trajectories with current state and environment time.
         ego_trajectory_opt[0] = self._env.ego.state_with_time
@@ -132,14 +133,14 @@ class TrajOptSolver(abc.ABC):
             ego_controls_k = self.determine_ego_controls(multiprocessing=multiprocessing, **solver_kwargs)
             logging.debug(f"solver {self.log_name} @k={k}: finishing optimization")
 
+            # Logging, before the environment step is done.
+            self.intermediate_log(ego_controls_k=ego_controls_k)
+
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
             self._env.step_reset(ego_state_next=ego_state, ado_states_next=ado_states)
             ego_trajectory_opt[k + 1, :] = ego_state
             ado_trajectories[:, 0, k + 1, :] = ado_states
-
-            # Logging.
-            self.intermediate_log(ego_controls_k=ego_controls_k)
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
@@ -148,8 +149,10 @@ class TrajOptSolver(abc.ABC):
                 ado_trajectories = ado_trajectories[:, :, :k + 2, :].detach()
                 break
 
+        # Cleaning up solver environment and summarizing logging.
         logging.debug(f"solver {self.log_name}: logging trajectory optimization")
-        self.env.detach()
+        self.env.detach()  # detach environment from computation graph
+        self.env = env_copy  # reset environment to initial state
         self.log_summarize()
         logging.debug(f"solver {self.log_name}: finishing up optimization process")
         return ego_trajectory_opt, ado_trajectories
