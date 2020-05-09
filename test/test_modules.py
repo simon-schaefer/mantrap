@@ -129,11 +129,8 @@ def test_objective_goal_distribution():
     ego_trajectory = torch.rand((11, 4))
 
     module = mantrap.modules.GoalModule(goal=goal_state, t_horizon=10, weight=1.0)
-    module.importance_distribution = torch.zeros(module.importance_distribution.size())
-    module.importance_distribution[3] = 1.0
-
     objective = module.objective(ego_trajectory)
-    distance = torch.norm(ego_trajectory[3, 0:2] - goal_state).item()
+    distance = float(torch.mean(torch.norm(ego_trajectory[:, 0:2] - goal_state)).item())
     assert math.isclose(objective, distance, abs_tol=0.1)
 
 

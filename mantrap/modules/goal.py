@@ -12,10 +12,14 @@ class GoalModule(PureObjectiveModule):
 
     Next to avoiding interaction with other agents the robot should reach the goal state in a finite amount of
     time. Therefore the distance of every trajectory point to the goal state is taken to account, which is
-    minimized the faster the robot gets to the goal. However, it is more important for the last rather than the
-    first trajectory points to be close to the goal, therefore the distance are weighted using a cubic distribution.
+    minimized the faster the robot gets to the goal.
 
-    .. math:: objective = \\sum_{T} w_t(t) || pos_t - goal ||_2
+    .. math:: objective = \\sum_{T} || pos_t - goal ||_2
+
+    However, it is more important for the last rather than the first trajectory points to be close to the goal.
+    Using some strictly-increasing distribution to weight the importance of the distance at every point in time
+    did not lead to the expect result, while complicating the optimization. When we want to trade-off the
+    goal cost with other cost, simply adapting its weight is sufficient as well.
 
     Additionally a cost for the velocity at the goal state can be included in this objective, a cost for non-zero
     velocity to be exact. This cost is weighted continuously based on the distance to the goal, i.e. the closer
@@ -27,16 +31,12 @@ class GoalModule(PureObjectiveModule):
     :param optimize_speed: include cost for zero velocity at goal state.
     """
 
-    def __init__(self, goal: torch.Tensor, optimize_speed: bool = True, **module_kwargs):
+    def __init__(self, goal: torch.Tensor, optimize_speed: bool = False, **module_kwargs):
         super(GoalModule, self).__init__(**module_kwargs)
 
         assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
         self._include_velocity = optimize_speed
-
-        self._distribution = torch.linspace(0, 1, steps=self.t_horizon + 1) ** 3
-        self._distribution = self._distribution / torch.sum(self._distribution)  # normalization (!)
-        self._distribution = self._distribution.detach()  # detach -> constant factor (!)
 
     def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
                            ) -> typing.Union[torch.Tensor, None]:
@@ -54,7 +54,7 @@ class GoalModule(PureObjectiveModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
         goal_distances = torch.norm(ego_trajectory[:, 0:2] - self._goal, dim=1)
-        cost = goal_distances.dot(self._distribution)
+        cost = torch.mean(goal_distances)
 
         if self._include_velocity:
             speeds = torch.norm(ego_trajectory[:, 2:4], dim=1)
@@ -72,15 +72,6 @@ class GoalModule(PureObjectiveModule):
         should always hold.
         """
         return True
-
-    @property
-    def importance_distribution(self) -> torch.Tensor:
-        return self._distribution
-
-    @importance_distribution.setter
-    def importance_distribution(self, weights: torch.Tensor):
-        assert weights.numel() == self.t_horizon + 1
-        self._distribution = weights
 
     ###########################################################################
     # Objective Properties ####################################################
