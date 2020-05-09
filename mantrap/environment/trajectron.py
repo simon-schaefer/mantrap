@@ -68,7 +68,9 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, **ado_kwargs) -> mantrap.agents.base.DTAgent:
+    def add_ado(self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2), history: torch.Tensor = None,
+                num_modes: int = 1, **ado_kwargs
+                ) -> mantrap.agents.base.DTAgent:
         """Add a new ado and its mode to the scene.
 
         For the Trajectron model the multi-modality evolves at the output, not the input. Therefore instead of
@@ -83,7 +85,9 @@ class Trajectron(GraphBasedEnvironment):
         are initialized as a not really meaningful uniform distribution for now and then updated during the
         environment's prediction step.
         """
-        ado = super(Trajectron, self).add_ado(ado_type=mantrap.agents.IntegratorDTAgent, **ado_kwargs)
+        ado = super(Trajectron, self).add_ado(ado_type=mantrap.agents.IntegratorDTAgent,
+                                              position=position, velocity=velocity, history=history,
+                                              weights=np.ones(num_modes), **ado_kwargs)
 
         # Add a ado to Trajectron neural network model using reference ghost.
         ado_id, _ = self.split_ghost_id(ghost_id=self.ghosts[-1].id)

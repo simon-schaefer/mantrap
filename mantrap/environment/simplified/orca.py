@@ -43,10 +43,12 @@ class ORCAEnvironment(IterativeEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, goal: torch.Tensor = torch.zeros(2), **ado_kwargs) -> mantrap.agents.base.DTAgent:
+    def add_ado(self, position: torch.Tensor, goal: torch.Tensor = torch.zeros(2), **ado_kwargs
+                ) -> mantrap.agents.base.DTAgent:
         assert mantrap.utility.shaping.check_goal(goal)
         params = [{mantrap.constants.PK_GOAL: goal.detach().float()}]
-        return super(ORCAEnvironment, self).add_ado(mantrap.agents.IntegratorDTAgent, arg_list=params, **ado_kwargs)
+        return super(ORCAEnvironment, self).add_ado(ado_type=mantrap.agents.IntegratorDTAgent,
+                                                    position=position, arg_list=params, **ado_kwargs)
 
     ###########################################################################
     # Simulation Graph ########################################################

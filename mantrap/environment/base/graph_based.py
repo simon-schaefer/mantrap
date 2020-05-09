@@ -288,6 +288,9 @@ class GraphBasedEnvironment(abc.ABC):
 
     def add_ado(
         self,
+        position: torch.Tensor,
+        velocity: torch.Tensor = torch.zeros(2),
+        history: torch.Tensor = None,
         ado_type: mantrap.agents.base.DTAgent.__class__ = None,
         num_modes: int = 1,
         weights: np.ndarray = None,
@@ -302,12 +305,15 @@ class GraphBasedEnvironment(abc.ABC):
         to dynamically change it without having a lot of computational overhead.
 
         :param ado_type: agent class of creating ado (has to be subclass of Agent-class in agents/).
+        :param position: ado initial position (2D).
+        :param velocity: ado initial velocity (2D).
+        :param history: ado state history (if None then just current state as history).
         :param num_modes: number of modes of multi-modal ado agent (>=1).
         :param weights: mode weight vector, default = uniform distribution.
         :param arg_list: initialization arguments for each mode.
         """
         assert ado_type is not None and type(ado_type) == mantrap.agents.base.DTAgent.__class__
-        ado = ado_type(dt=self.dt, **ado_kwargs)
+        ado = ado_type(position, velocity=velocity, history=history, dt=self.dt, **ado_kwargs)
         self._ado_ids.append(ado.id)
 
         # Append ado to internal list of ados and rebuilt the graph (could be also extended but small computational
@@ -607,6 +613,7 @@ class GraphBasedEnvironment(abc.ABC):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
             env_copy.add_ado(
+                ado_type=ghosts_ado[0].agent.__class__,  # same over all ghosts of same ado
                 position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado

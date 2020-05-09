@@ -30,8 +30,10 @@ class LinearDTAgent(DTAgent, abc.ABC):
     :param max_steps: maximal number of pre-computed rolling steps.
     """
 
-    def __init__(self, dt: float = None, max_steps: int = mantrap.constants.AGENT_MAX_PRE_COMPUTATION, **agent_kwargs):
-        super(LinearDTAgent, self).__init__(**agent_kwargs)
+    def __init__(self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2), history: torch.Tensor = None,
+                 dt: float = None, max_steps: int = mantrap.constants.AGENT_MAX_PRE_COMPUTATION,  **agent_kwargs
+                 ):
+        super(LinearDTAgent, self).__init__(position=position, velocity=velocity, history=history, **agent_kwargs)
 
         # Passing some time-step `dt` gives the possibility to pre-compute the dynamics matrices for this
         # particular time-step, in order to save computational effort when repeatedly calling the dynamics()

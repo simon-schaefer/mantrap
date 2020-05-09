@@ -19,22 +19,19 @@ class IterativeEnvironment(GraphBasedEnvironment, abc.ABC):
     # Scene ###################################################################
     ###########################################################################
     @staticmethod
-    def ado_mode_params(xs: typing.List[typing.Tuple[scipy.stats.rv_continuous, typing.Dict[str, float]]],
-                        x0_default: float, num_modes: int
-                        ):
+    def ado_mode_params(x0_default: float, num_modes: int):
         """Create simulation mode parameters and weights for given modes by sampling.
 
         In order to introduce multi-modality and stochastic effects the underlying mode parameters are sampled
-        from distributions, each for one mode. If not stated the default parameters are used as truncated Gaussian
-        distribution (cut so that always positive) around the default value.
+        from distributions, each for one mode. As default parameters truncated Gaussian are used as a distribution
+        (cut so that always positive) around the default value.
 
-        :param xs: distribution-tuples for every mode.
         :param x0_default: mean for default distribution.
         :param num_modes: number of modes (= number of sampled parameters).
         :return: sampled parameters, according weights.
         """
         x_default = (scipy.stats.truncnorm, {"a": 0.0, "b": math.inf, "loc": x0_default, "scale": x0_default / 2})
-        xs = xs if xs is not None else [x_default] * num_modes
+        xs = [x_default] * num_modes
         assert len(xs) == num_modes
 
         xs_parameters = np.ones(num_modes)

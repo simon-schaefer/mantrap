@@ -1,7 +1,6 @@
 import typing
 
 import numpy as np
-import scipy.stats
 import torch
 
 import mantrap.agents
@@ -24,22 +23,15 @@ class PotentialFieldEnvironment(IterativeEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(
-        self,
-        num_modes: int = 1,
-        v0s: typing.Union[typing.List[typing.Tuple[scipy.stats.rv_continuous, typing.Dict[str, float]]],
-                          np.ndarray] = None,
-        weights: np.ndarray = None,
-        **ado_kwargs
-    ) -> mantrap.agents.base.DTAgent:
+    def add_ado(self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2),
+                num_modes: int = 1, v0s=None, weights: np.ndarray = None, **ado_kwargs
+                ) -> mantrap.agents.base.DTAgent:
         # In order to introduce multi-modality and stochastic effects the underlying v0 parameters of the potential
         # field environment are sampled from distributions, each for one mode. If not stated the default parameters
         # are used as Gaussian distribution around the default value.
         assert (weights is not None) == (type(v0s) == np.ndarray)
         if type(v0s) != np.ndarray:
-            v0s, weights = self.ado_mode_params(xs=v0s,
-                                                x0_default=mantrap.constants.SOCIAL_FORCES_DEFAULT_V0,
-                                                num_modes=num_modes)
+            v0s, weights = self.ado_mode_params(mantrap.constants.SOCIAL_FORCES_DEFAULT_V0, num_modes=num_modes)
 
         # Fill ghost argument list with mode parameters.
         args_list = [{mantrap.constants.PK_V0: v0s[i]} for i in range(num_modes)]
@@ -47,10 +39,7 @@ class PotentialFieldEnvironment(IterativeEnvironment):
         # Finally add ado ghosts to environment.
         return super(PotentialFieldEnvironment, self).add_ado(
             ado_type=mantrap.agents.DoubleIntegratorDTAgent,
-            num_modes=num_modes,
-            weights=weights,
-            arg_list=args_list,
-            **ado_kwargs
+            num_modes=num_modes, weights=weights, arg_list=args_list, **ado_kwargs
         )
 
     ###########################################################################

@@ -1,7 +1,6 @@
 import typing
 
 import numpy as np
-import scipy.stats
 import torch
 
 import mantrap.agents
@@ -40,17 +39,11 @@ class SocialForcesEnvironment(IterativeEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(
-        self,
-        num_modes: int = 1,
-        goal: torch.Tensor = torch.zeros(2),
-        v0s: typing.Union[typing.List[typing.Tuple[scipy.stats.rv_continuous, typing.Dict[str, float]]],
-                          np.ndarray] = None,
-        sigmas: typing.Union[typing.List[typing.Tuple[scipy.stats.rv_continuous, typing.Dict[str, float]]],
-                             np.ndarray] = None,
-        weights: np.ndarray = None,
-        **ado_kwargs,
-    ) -> mantrap.agents.base.DTAgent:
+    def add_ado(self, position: torch.Tensor,
+                velocity: torch.Tensor = torch.zeros(2), goal: torch.Tensor = torch.zeros(2), num_modes: int = 1,
+                v0s: np.ndarray = None, sigmas: np.ndarray = None, weights: np.ndarray = None,
+                **ado_kwargs,
+                ) -> mantrap.agents.base.DTAgent:
         # Social Forces requires to introduce a goal point, the agent is heading to. Find it in the parameters
         # and add it to the ado parameters dictionary.
         assert mantrap.utility.shaping.check_goal(goal)
@@ -60,13 +53,11 @@ class SocialForcesEnvironment(IterativeEnvironment):
         # environment are sampled from distributions, each for one mode. If not stated the default parameters are
         # used as Gaussian distribution around the default value.
         assert (weights is not None) == (type(v0s) == np.ndarray) == (type(sigmas) == np.ndarray)
-        if type(v0s) != np.ndarray:
-            v0s, weights_v = self.ado_mode_params(xs=v0s,
-                                                  x0_default=mantrap.constants.SOCIAL_FORCES_DEFAULT_V0,
-                                                  num_modes=num_modes)
-            sigmas, weights_s = self.ado_mode_params(xs=sigmas,
-                                                     x0_default=mantrap.constants.SOCIAL_FORCES_DEFAULT_SIGMA,
-                                                     num_modes=num_modes)
+        if v0s is None:
+            v0 = mantrap.constants.SOCIAL_FORCES_DEFAULT_V0
+            sigma0 = mantrap.constants.SOCIAL_FORCES_DEFAULT_SIGMA
+            v0s, weights_v = self.ado_mode_params(v0, num_modes=num_modes)
+            sigmas, weights_s = self.ado_mode_params(sigma0, num_modes=num_modes)
             weights = np.multiply(weights_s, weights_v)
 
         # Fill ghost argument list with mode parameters.
@@ -79,10 +70,7 @@ class SocialForcesEnvironment(IterativeEnvironment):
         # Finally add ado ghosts to environment.
         return super(SocialForcesEnvironment, self).add_ado(
             ado_type=mantrap.agents.DoubleIntegratorDTAgent,
-            num_modes=num_modes,
-            weights=weights,
-            arg_list=args_list,
-            **ado_kwargs
+            position=position, num_modes=num_modes, weights=weights, arg_list=args_list, **ado_kwargs
         )
 
     ###########################################################################
