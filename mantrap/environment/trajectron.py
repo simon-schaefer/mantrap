@@ -69,7 +69,7 @@ class Trajectron(GraphBasedEnvironment):
     # Scene ###################################################################
     ###########################################################################
     def add_ado(self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2), history: torch.Tensor = None,
-                num_modes: int = 1, **ado_kwargs
+                num_modes: int = 1, time: float = 0.0, **ado_kwargs
                 ) -> mantrap.agents.base.DTAgent:
         """Add a new ado and its mode to the scene.
 
@@ -85,6 +85,19 @@ class Trajectron(GraphBasedEnvironment):
         are initialized as a not really meaningful uniform distribution for now and then updated during the
         environment's prediction step.
         """
+        # When being queried with an agent's history length of one, the Trajectron will always predict standing
+        # still instead of assuming a constant velocity (or likewise). However when the user inputs just one
+        # position and one velocity, rather than a full state history, continuing on this path clearly is the
+        # user's intention, therefore stack several copies of this input state (position, velocity, time) in order
+        # to create a history the Trajectron is used to deal with, while giving the incentive to predict a simple
+        # "constant" continuation of this state as most likely prediction.
+        if history is None:
+            position, velocity = position.float(), velocity.float()
+            history = torch.stack([torch.cat(
+                (position + velocity * self.dt * t, velocity, torch.ones(1) * time + self.dt * t))
+                for t in range(-mantrap.constants.TRAJECTRON_DEFAULT_HISTORY_LENGTH, 1)
+            ])
+
         ado = super(Trajectron, self).add_ado(ado_type=mantrap.agents.IntegratorDTAgent,
                                               position=position, velocity=velocity, history=history,
                                               weights=np.ones(num_modes), **ado_kwargs)

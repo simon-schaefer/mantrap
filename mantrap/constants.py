@@ -58,6 +58,7 @@ ORCA_SAFE_TIME = 0.8  # [s] time interval of guaranteed no collisions. The large
 # constraints, but more deviating paths.
 
 TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
+TRAJECTRON_DEFAULT_HISTORY_LENGTH = 5
 
 #######################################
 # solver parameters ###################
