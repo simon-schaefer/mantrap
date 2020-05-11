@@ -39,6 +39,7 @@ class PotentialFieldEnvironment(IterativeEnvironment):
         # Finally add ado ghosts to environment.
         return super(PotentialFieldEnvironment, self).add_ado(
             ado_type=mantrap.agents.DoubleIntegratorDTAgent,
+            position=position, velocity=velocity,
             num_modes=num_modes, weights=weights, arg_list=args_list, **ado_kwargs
         )
 

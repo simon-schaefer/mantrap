@@ -259,44 +259,51 @@ class TrajOptSolver(abc.ABC):
         :param just_one: flag whether to return just one trajectory or multiple.
         """
         with torch.no_grad():
-            z0s = []
-
             ego_pos, goal = self.env.ego.position, self.goal  # local variables for speed up looping
             ego_distance = torch.norm(goal - ego_pos)  # distance between ego and goal
             ego_direction = goal - ego_pos / ego_distance  # ego-goal-direction vector
             normal = mantrap.utility.maths.normal_line(ego_pos, goal)  # normal line to vector from ego to goal
 
-            for i, distance in enumerate([- ego_distance / 2, 0.0, ego_distance / 2.0]):
-                control_points = [ego_pos + ego_direction * ego_distance * f_point + f_distance * distance * normal
-                                  for f_point, f_distance in [(0, 0), (0.25, 0.5), (0.5, 1), (0.75, 0.5), (1, 0.0)]]
-                control_points = torch.stack(control_points, dim=0)
+            # At first check whether goal and current state are actually the same, in case just return the
+            # optimization variables representing no control actions.
+            if ego_distance < 1e-3:
+                z0 = self.ego_controls_to_z(ego_controls=torch.zeros((self.planning_horizon, 2)))
+                z0s = [z0, z0, z0]  # three initial trajectories
 
-                # Spline interpolation to build "continuous" path.
-                reference_path = mantrap.utility.maths.spline_interpolation(control_points,
-                                                                            num_samples=self.planning_horizon)
+            else:
+                z0s = []
+                for i, distance in enumerate([- ego_distance / 2, 0.0, ego_distance / 2.0]):
+                    control_points = [ego_pos + ego_direction * ego_distance * f_point + f_distance * distance * normal
+                                      for f_point, f_distance in [(0, 0), (0.25, 0.5), (0.5, 1), (0.75, 0.5), (1, 0.0)]]
+                    control_points = torch.stack(control_points, dim=0)
 
-                # Determine controls to track the given trajectory. Afterwards check whether the determined
-                # controls are feasible in terms of the control limits of the ego agent.
-                controls = mantrap.controller.p_ahead_controller(
-                    agent=self.env.ego,
-                    path=reference_path,
-                    max_sim_time=self.planning_horizon * self.env.dt,
-                    dtc=self.env.dt,
-                    speed_reference=self.env.ego.speed_max
-                )
+                    # Spline interpolation to build "continuous" path.
+                    reference_path = mantrap.utility.maths.spline_interpolation(control_points,
+                                                                                num_samples=self.planning_horizon)
 
-                # If the controller did not need the full time until reaching the end of the reference path
-                # it has to be expanded (to be transformable to a valid optimization variable). Since the controller
-                # is assumed to break at the end, the easiest (and also valid) approach is to fill with zeros.
-                if controls.shape[0] < self.planning_horizon:
-                    delta_horizon = self.planning_horizon - controls.shape[0]
-                    delta_zeros = torch.zeros((delta_horizon, controls.shape[1]))
-                    controls = torch.cat((controls, delta_zeros), dim=0)
-                assert mantrap.utility.shaping.check_ego_controls(controls, t_horizon=self.planning_horizon)
-                assert self.env.ego.check_feasibility_controls(controls)
+                    # Determine controls to track the given trajectory. Afterwards check whether the determined
+                    # controls are feasible in terms of the control limits of the ego agent.
+                    controls = mantrap.controller.p_ahead_controller(
+                        agent=self.env.ego,
+                        path=reference_path,
+                        max_sim_time=self.planning_horizon * self.env.dt,
+                        dtc=self.env.dt,
+                        speed_reference=self.env.ego.speed_max
+                    )
 
-                # Transform controls to z variable.
-                z0s.append(self.ego_controls_to_z(controls))
+                    # If the controller did not need the full time until reaching the end of the reference path
+                    # it has to be expanded (to be transformable to a valid optimization variable). Since the
+                    # controller is assumed to break at the end, the easiest (and also valid) approach is to fill
+                    # with zeros.
+                    if controls.shape[0] < self.planning_horizon:
+                        delta_horizon = self.planning_horizon - controls.shape[0]
+                        delta_zeros = torch.zeros((delta_horizon, controls.shape[1]))
+                        controls = torch.cat((controls, delta_zeros), dim=0)
+                    assert mantrap.utility.shaping.check_ego_controls(controls, self.planning_horizon)
+                    assert self.env.ego.check_feasibility_controls(controls)
+
+                    # Transform controls to z variable.
+                    z0s.append(self.ego_controls_to_z(controls))
 
         z0s = torch.from_numpy(np.array(z0s)).view(3, -1)
         logging.debug(f"solver: initial values z = {z0s}")
