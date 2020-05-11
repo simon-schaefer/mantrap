@@ -91,24 +91,56 @@ class OptimizationModule(abc.ABC):
         :param ado_ids: ghost ids which should be taken into account for computation.
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        assert grad_wrt.requires_grad
-        assert ego_trajectory.requires_grad  # otherwise objective cannot have gradient function
 
-        # Compute the objective value and check whether a gradient between the value and the ego_trajectory input
-        # (which has been assured to require a gradient) exists, if the module-conditions for that are met.
-        objective = self._compute_objective(ego_trajectory, ado_ids=ado_ids)
+        # Analytical solutions are more exact and (usually more efficient) to compute, when known, compared
+        # to the numerical "graphical" solution. Therefore, first check whether an analytical solution is
+        # defined for this module.
+        gradient_analytical = self._compute_gradient_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids)
+        if gradient_analytical is not None:
+            gradient = gradient_analytical
 
-        # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
-        # In general the objective might not be affected by the `ego_trajectory`, then it does not have a gradient
-        # function and the gradient is not defined. Then the objective gradient is assumed to be zero.
-        if objective is None or not self._gradient_condition():
-            gradient = np.zeros(grad_wrt.numel())
-
-        # Otherwise compute the gradient "numerically" using the PyTorch autograd package.
+        # Otherwise compute the jacobian using torch auto-grad function, for each constraint individually.
         else:
-            gradient = self._compute_gradient_autograd(objective, grad_wrt=grad_wrt)
+            assert grad_wrt.requires_grad
+            assert ego_trajectory.requires_grad  # otherwise objective cannot have gradient function
+
+            # Compute the objective value and check whether a gradient between the value and the
+            # ego_trajectory input (which has been assured to require a gradient) exists, if the
+            # module-conditions for that are met.
+            objective = self._compute_objective(ego_trajectory, ado_ids=ado_ids)
+
+            # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
+            # In general the objective might not be affected by the `ego_trajectory`, then it does not have
+            # a gradient function and the gradient is not defined. Then the objective gradient is assumed
+            # to be zero.
+            if objective is None or not self._gradient_condition():
+                gradient = np.zeros(grad_wrt.numel())
+
+            # Otherwise compute the gradient "numerically" using the PyTorch autograd package.
+            else:
+                gradient = self._compute_gradient_autograd(objective, grad_wrt=grad_wrt)
 
         return self._return_gradient(gradient)
+
+    def _compute_gradient_analytically(
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+    ) -> typing.Union[np.ndarray, None]:
+        """Compute objective gradient vector analytically.
+
+        While the gradient vector of the objective can be computed automatically using PyTorch's automatic
+        differentiation package there might be an analytic solution, which is when known for sure more
+        efficient to compute. Although it is against the convention to use torch representations whenever
+        possible, this function returns numpy arrays, since the main gradient() function has to return
+        a numpy array. Hence, not computing based on numpy arrays would just introduce an un-necessary
+        `.detach().numpy()`.
+
+        When no analytical solution is defined (or too hard to determine) return None.
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param grad_wrt: vector w.r.t. which the gradient should be determined.
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        """
+        return None
 
     ###########################################################################
     # Constraint ##############################################################

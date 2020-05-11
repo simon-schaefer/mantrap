@@ -77,8 +77,8 @@ class LinearDTAgent(DTAgent, abc.ABC):
         """
         A, B, _ = self._dynamics_matrices(dt=dt)
         A, B = A.float(), B.float()
-        x_size = 5  # state size
-        u_size = 2  # control size
+        x_size = self.state_size
+        u_size = self.control_size
 
         An = torch.cat([A.matrix_power(n) for n in range(0, max_steps + 1)])
         Bn = torch.zeros((x_size * (max_steps + 1), u_size * (max_steps + 1)))
@@ -121,8 +121,8 @@ class LinearDTAgent(DTAgent, abc.ABC):
         """
         assert mantrap.utility.shaping.check_ego_controls(x=controls)
         assert dt > 0.0
-        x_size = 5
-        u_size = 2
+        x_size = self.state_size
+        u_size = self.control_size
         t_horizon = controls.shape[0]
         controls = controls.float()
 
@@ -212,3 +212,35 @@ class LinearDTAgent(DTAgent, abc.ABC):
             x_n_dict[name] = x_n[0] if "x_" in name else x_n[1]
 
         return mantrap.utility.maths.Circle.from_min_max_2d(**x_n_dict)
+
+    ###########################################################################
+    # Differentiation #########################################################
+    ###########################################################################
+    def dx_du(self, controls: torch.Tensor, dt: float) -> torch.Tensor:
+        """Compute the derivative of the agent's control input with respect to its
+        state, evaluated over state trajectory x with discrete state time-step dt.
+
+        As follows from the equations for some state at time-step n `x_n` in dependence of
+        the initial state `x0` and the control inputs `u_k`, we have
+
+        .. math::\\frac{dx_i}{du_k} = \\frac{d}{du_k} An * x0 + Bn * uj
+
+        due to the assumptions that the control inputs are independently from each other,
+        their derivatives do not depend on each other, i.e. `du_i/du_j = 0 for all i != j`.
+        Also the state at time-step n only depends on the initial state and the control
+        inputs, not the states in between when the equation above is used !
+        Therefore we can simplify the equation above to the following:
+
+        .. math::\\frac{dx_i}{du_k} = \\frac{d}{du_k} Bn_k * u_k = Bn_k
+
+        """
+        assert mantrap.utility.shaping.check_ego_controls(controls)
+        t_horizon = controls.shape[0]
+
+        # Check whether the dynamics matrices have been pre-computed, if not compute them now.
+        if dt not in self._dynamics_matrices_rolling_dict.keys():
+            An, Bn, Tn = self._dynamics_rolling_matrices(dt=dt, max_steps=t_horizon)
+            self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float(), Tn.float())
+
+        _, Bn, _ = self._dynamics_matrices_rolling_dict[dt]
+        return Bn[:self.state_size * (t_horizon + 1), :self.control_size * (t_horizon + 1)]

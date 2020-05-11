@@ -400,6 +400,15 @@ class DTAgent(abc.ABC):
         return state
 
     ###########################################################################
+    # Differentiation #########################################################
+    ###########################################################################
+    @abc.abstractmethod
+    def dx_du(self, controls: torch.Tensor, dt: float) -> torch.Tensor:
+        """Compute the derivative of the agent's state with respect to its control input
+        evaluated over controls u with discrete state time-step dt."""
+        raise NotImplementedError
+
+    ###########################################################################
     # Operators ###############################################################
     ###########################################################################
     def __eq__(self, other, check_class: bool = True):
@@ -451,6 +460,14 @@ class DTAgent(abc.ABC):
     @property
     def speed(self) -> float:
         return torch.norm(self.velocity)
+
+    @property
+    def state_size(self) -> int:
+        return 5
+
+    @property
+    def control_size(self) -> int:
+        return 2
 
     ###########################################################################
     # History properties ######################################################

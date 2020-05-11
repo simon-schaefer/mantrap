@@ -1,6 +1,7 @@
 import abc
 import typing
 
+import numpy as np
 import torch
 
 from .optimization_module import OptimizationModule
@@ -27,4 +28,9 @@ class PureConstraintModule(OptimizationModule, abc.ABC):
                            ) -> typing.Union[torch.Tensor, None]:
         """Returning `None` as an objective automatically ends objective and gradient computation
         and returns default values (zero). """
+        return None
+
+    def _compute_gradient_analytically(
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+    ) -> typing.Union[np.ndarray, None]:
         return None
