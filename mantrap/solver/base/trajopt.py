@@ -529,7 +529,7 @@ class TrajOptSolver(abc.ABC):
                 plot_path_only=plot_path_only, file_path=self._visualize_output_format("scenes")
             )
 
-    def visualize_heat_map(self, resolution: float = 0.1):
+    def visualize_heat_map(self, propagation: str = "log", resolution: float = 0.1):
         """Visualize heat map of objective and constraint function for planned ego trajectory at initial
         state of the system.
 
@@ -537,14 +537,28 @@ class TrajOptSolver(abc.ABC):
         value as well as the constraint violation for each grid point. Overlaying the grid point values
         computed for each optimization module creates the shown heat-map.
 
+        The `propagation` mode determines the way how the z values are chosen over time. Plotting every
+        possible state combination over the full planning horizon surely is in-feasible. Therefore there
+        are several propagation modes possible:
+
+        - "log": Choose the optimization values as it was chosen during the last optimization, i.e. the ones
+                 stored in the internal logging. Hence, when plotting the kth heat-map, only the kth value
+                 is sampled, while the (k-1) z-values before are used from the optimal trajectory in the logging.
+                 Requires solver.solve() call in before !
+
+        - "constant": Keep z-values constant over whole time-horizon, e.g. when the optimization variables are
+                      the robot's controls than use the same action over the full time-horizon. Hence, the
+                      optimization variable space has to be sampled only once per time-step.
+
         Plot only if __debug__ is True (otherwise no logging).
         """
         if __debug__ is True:
             from mantrap.visualization import visualize_heat_map
-            assert self.log is not None
+            assert propagation in ["log", "constant"]
 
+            num_time_steps = self.planning_horizon
             lower, upper = self.optimization_variable_bounds()
-            assert len(lower) == len(upper) == 2 * self.planning_horizon  # 2D (!)
+            assert len(lower) == len(upper) == 2 * num_time_steps  # 2D (!)
 
             # Create optimization variable mesh grid with given resolution.
             # Assumption: Same optimization variable bounds over full time horizon
@@ -556,12 +570,14 @@ class TrajOptSolver(abc.ABC):
             points = np.stack((x_grid, y_grid)).transpose().reshape(-1, 2)
             grid_shape = x_grid.shape
 
-            # Receive planned ego trajectories from log.
-            ego_planned = self.log[f"{mantrap.constants.LK_OPTIMAL}/ego_planned"]
-            ego_planned = ego_planned[0, :, :]  # initial system state
-            z_values = self.ego_trajectory_to_z(ego_trajectory=ego_planned)
-            num_time_steps = self.planning_horizon
-            assert z_values.size == self.planning_horizon * 2  # 2D !
+            # Receive planned ego trajectories from log (propagation = log).
+            z_values_prior = None
+            if propagation == "log":
+                assert self.log is not None
+                ego_planned = self.log[f"{mantrap.constants.LK_OPTIMAL}/ego_planned"]
+                ego_planned = ego_planned[0, :, :]  # initial system state
+                z_values_prior = self.ego_trajectory_to_z(ego_trajectory=ego_planned)
+                assert z_values_prior.size == self.planning_horizon * 2  # 2D !
 
             # Iterate over all points, compute objective and constraint violation and write
             # both in images. For simplification take all ados into account for this  visualization,
@@ -577,7 +593,15 @@ class TrajOptSolver(abc.ABC):
                     # Use the chosen optimization variable state trajectory until the current state,
                     # then add the current point to it and transform back to ego trajectory, which
                     # can be used to determine the objective/constraint values.
-                    zs = np.concatenate((z_values[:t*2], point))  # cat flat z values to flat point
+                    if propagation == "log":
+                        zs = np.concatenate((z_values_prior[:t*2], point))  # cat flat z values to flat point
+                    elif propagation == "constant":
+                        zs = np.array([point] * (t + 1)).flatten()
+                    else:
+                        raise ValueError(f"Invalid propagation mode {propagation} !")
+
+                    # Transform optimization value to ego trajectory, which is required for objective and
+                    # constraint violation computations.
                     ego_trajectory = self.z_to_ego_trajectory(zs)
 
                     # Compute the objective/constraint values and add to images.
@@ -595,11 +619,16 @@ class TrajOptSolver(abc.ABC):
                 # Copy resulting objective values into results image.
                 images[t, :, :] = objective_values.copy()
 
+            # When known convert the optimized z-values to a usable shape. When not known simply do not plot
+            # them in the heat-map (by passing `None`).
+            zs = None
+            if propagation == "log":
+                zs = z_values_prior.reshape(-1, 2)
+
             # Finally draw all the created images in plot using the `visualize_heat_map` function
             # defined in the internal visualization package.
             path = self._visualize_output_format(name="heat_map")
             bounds = (lower[:2], upper[:2])
-            zs = z_values.reshape(-1, 2)
             return visualize_heat_map(images, z_bounds=bounds, z_values=zs, resolution=resolution, file_path=path)
 
     def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
