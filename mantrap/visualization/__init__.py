@@ -149,12 +149,7 @@ def visualize(
     anim = matplotlib.animation.FuncAnimation(fig, update, frames=num_env_steps,
                                               interval=mantrap.constants.VISUALIZATION_FRAME_DELAY,
                                               repeat_delay=mantrap.constants.VISUALIZATION_RESTART_DELAY)
-
-    # In interactive mode (when file_path is not set), return the video itself, otherwise save
-    # the video in the given directory as a ".gif"-file.
-    if file_path is not None:
-        anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
-    return True if file_path is not None else anim.to_html5_video()
+    return __interactive_save(anim, file_path=file_path)
 
 
 # ##########################################################################
@@ -207,20 +202,90 @@ def visualize_heat_map(
         return ax
 
     # Start matplotlib animation with an image per time-step.
-    anim = matplotlib.animation.FuncAnimation(fig, update, frames=images.shape[0] - 1,
+    anim = matplotlib.animation.FuncAnimation(fig, update, frames=images.shape[0],
                                               interval=mantrap.constants.VISUALIZATION_FRAME_DELAY,
                                               repeat_delay=mantrap.constants.VISUALIZATION_RESTART_DELAY)
+    return __interactive_save(anim, file_path=file_path)
 
-    # In interactive mode (when file_path is not set), return the video itself, otherwise save
-    # the video in the given directory as a ".gif"-file.
-    if file_path is not None:
-        anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
-    return True if file_path is not None else anim.to_html5_video()
+
+# ##########################################################################
+# General trajectories #####################################################
+# ##########################################################################
+def visualize_trajectories(
+    trajectories: typing.List[torch.Tensor],
+    labels: typing.List[str],
+    colors: typing.List[typing.Union[np.ndarray, str]] = None,
+    env_axes: typing.Tuple[typing.Tuple[float, float], typing.Tuple[float, float]] = ((-10, 10), (-10, 10)),
+    file_path: str = None,
+):
+    assert len(trajectories[0].shape) == 2
+    t_horizon = trajectories[0].shape[0]
+    assert all([mantrap.utility.shaping.check_ego_trajectory(x, t_horizon) for x in trajectories])
+    if colors is None:
+        colors = [np.array([0, 0, 1])] * len(trajectories)  # blue = default
+    assert len(labels) == len(colors) == len(trajectories)
+
+    # Create basic plot. In order to safe computational effort the created plot is re-used over the full output
+    # video, by deleting the previous frame content and overwrite it (within the `update()` function).
+    fig, ax = plt.subplots(figsize=(8, 8))
+    plt.axis("off")
+
+    def update(k):
+        plt.axis("off")
+        ax.cla()
+
+        # Draw trajectories in (quadratic) plot, thereby differentiate the trajectories by color. Also add
+        # little dots (`plt.Circle`) at the agents current positions.
+        for label, color, trajectory in zip(labels, colors,  trajectories):
+            __draw_agent_representation(trajectory[k, :].detach(), name=label, color=color, env_axes=env_axes, ax=ax)
+            ax.plot(trajectory[:k, 0].detach(), trajectory[:k, 1].detach(), "--", color=color, label=label)
+
+        __draw_trajectory_axis(env_axes, ax=ax)
+        ax.set_title(f"step {k}")
+        return ax
+
+    anim = matplotlib.animation.FuncAnimation(fig, update, frames=t_horizon,
+                                              interval=mantrap.constants.VISUALIZATION_FRAME_DELAY,
+                                              repeat_delay=mantrap.constants.VISUALIZATION_RESTART_DELAY)
+    return __interactive_save(anim, file_path=file_path)
 
 
 # ##########################################################################
 # Atomic plotting functions ################################################
 # ##########################################################################
+def __draw_agent_representation(
+    state: torch.Tensor,
+    name: typing.Union[str, None],
+    color: typing.Union[np.ndarray, str],
+    env_axes: typing.Tuple[typing.Tuple[float, float], typing.Tuple[float, float]],
+    ax: plt.Axes,
+):
+    """Add circle for agent and agent id description. If the state (position) is outside of the scene, just
+    do not plot it, return directly instead."""
+    assert mantrap.utility.shaping.check_ego_state(state, enforce_temporal=False)
+
+    if not (env_axes[0][0] < state[0] < env_axes[0][1]) or not (env_axes[1][0] < state[1] < env_axes[1][1]):
+        return
+    state = state.detach().numpy()
+    ado_circle = plt.Circle(state[0:2], radius=0.2, color=color, clip_on=True)
+    ax.add_artist(ado_circle)
+    if name is not None:
+        ax.text(state[0], state[1], name, fontsize=8)
+    return ax
+
+
+def __draw_trajectory_axis(
+    env_axes: typing.Tuple[typing.Tuple[float, float], typing.Tuple[float, float]],
+    ax: plt.Axes
+):
+    # Set axes limitations for x- and y-axis and add legend and grid to visualization.
+    ax.set_xlim(*env_axes[0])
+    ax.set_ylim(*env_axes[1])
+    ax.grid()
+    ax.legend()
+    return ax
+
+
 def __draw_trajectories(
     ado_trajectories_wo: torch.Tensor,
     env: mantrap.environment.base.GraphBasedEnvironment,
@@ -232,20 +297,6 @@ def __draw_trajectories(
 ):
     """Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as the
     resulting ado trajectories based on some environment."""
-
-    def draw_agent_representation(state: torch.Tensor, color: np.ndarray, name: typing.Union[str, None]):
-        """Add circle for agent and agent id description. If the state (position) is outside of the scene, just
-        do not plot it, return directly instead."""
-        assert mantrap.utility.shaping.check_ego_state(state, enforce_temporal=False)
-
-        if not (env.axes[0][0] < state[0] < env.axes[0][1]) or not (env.axes[1][0] < state[1] < env.axes[1][1]):
-            return
-        state = state.detach().numpy()
-        ado_circle = plt.Circle(state[0:2], 0.2, color=color, clip_on=True)
-        ax.add_artist(ado_circle)
-        if id is not None:
-            ax.text(state[0], state[1], name, fontsize=8)
-
     assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories_wo, ados=env.num_ados)
     planning_horizon = ado_trajectories_wo.shape[2]
 
@@ -253,8 +304,9 @@ def __draw_trajectories(
     if ego_trajectory is not None:
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, planning_horizon, pos_and_vel_only=True)
         ego_trajectory_np = ego_trajectory.detach().numpy()
-        ax.plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=env.ego.color, label=env.ego.id)
-        draw_agent_representation(ego_trajectory[0, :], color=env.ego.color, name=env.ego.id)
+        ego_color, ego_id = env.ego.color, env.ego.id
+        ax.plot(ego_trajectory_np[:, 0], ego_trajectory_np[:, 1], "-", color=ego_color, label=ego_id)
+        ax = __draw_agent_representation(ego_trajectory[0, :], color=ego_color, name=ego_id, env_axes=env.axes, ax=ax)
 
     # Plot ego goal.
     if ego_goal is not None:
@@ -281,13 +333,9 @@ def __draw_trajectories(
             agent_rep_state = ado_trajectories[i_ado, i_mode, 0, :]
         else:
             agent_rep_state = ado_trajectories_wo[i_ado, i_mode, 0, :]
-        draw_agent_representation(agent_rep_state, color=ado_color, name=ado_id)
+        ax = __draw_agent_representation(agent_rep_state, color=ado_color, name=ado_id, env_axes=env.axes, ax=ax)
 
-    # Set axes limitations for x- and y-axis and add legend and grid to visualization.
-    ax.set_xlim(*env.axes[0])
-    ax.set_ylim(*env.axes[1])
-    ax.grid()
-    ax.legend()
+    ax = __draw_trajectory_axis(env.axes, ax=ax)
     return ax
 
 
@@ -307,3 +355,11 @@ def __draw_values(
     ax.legend()
     ax.grid()
     return ax
+
+
+def __interactive_save(anim: matplotlib.animation.FuncAnimation, file_path: str):
+    # In interactive mode (when file_path is not set), return the video itself, otherwise save
+    # the video in the given directory as a ".gif"-file.
+    if file_path is not None:
+        anim.save(f"{file_path}.gif", dpi=60, writer='imagemagick')
+    return True if file_path is not None else anim.to_html5_video()
