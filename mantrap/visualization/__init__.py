@@ -3,6 +3,8 @@ import typing
 import matplotlib.animation
 import matplotlib.cm
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 import numpy as np
 import torch
 
@@ -158,7 +160,7 @@ def visualize(
 def visualize_heat_map(
     images: np.ndarray,
     z_bounds: typing.Tuple[typing.List, typing.List],
-    z_values: np.ndarray,
+    z_values: np.ndarray = None,
     resolution: float = 0.1,
     file_path: str = None,
 ):
@@ -167,11 +169,13 @@ def visualize_heat_map(
     assert len(lower) == len(upper) == 2  # 2D (!)
     num_grid_points_x = int((upper[0] - lower[0]) / resolution)
     num_grid_points_y = int((upper[1] - lower[1]) / resolution)
+    plot_z_values = z_values is not None
 
     assert len(images.shape) == 3
-    assert len(z_values.shape) == 2
-    assert images.shape[0] == z_values.shape[0]
-    assert z_values.shape[1] == 2
+    if plot_z_values:
+        assert len(z_values.shape) == 2
+        assert images.shape[0] == z_values.shape[0]
+        assert z_values.shape[1] == 2
 
     # Plot resulting objective value and constraints plot.
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -187,17 +191,28 @@ def visualize_heat_map(
     # (min, max) and therefore in the colormap, the image has to be re-drawn in every step.
     color_map = matplotlib.cm.get_cmap()
     color_map.set_bad(color="black")
-    im = ax.imshow(images[0, :, :], interpolation="none", animated=True)
-    fig.colorbar(im)
 
     # Line plot definition, which is also updated during iteration.
-    z_values_coords = (z_values - np.array(lower)) / resolution
-    line, = ax.plot(z_values_coords[0, 0], z_values_coords[0, 1], 'rx')
+    z_values_coords, line = None, None
+    if plot_z_values:
+        z_values_coords = (z_values - np.array(lower)) / resolution
+        line, = ax.plot(z_values_coords[0, 0], z_values_coords[0, 1], 'rx')
 
     def update(k):
-        ax.imshow(images[k, :, :], interpolation="none", animated=True)
-        line.set_xdata(z_values_coords[k, 0])
-        line.set_ydata(z_values_coords[k, 1])
+        # Reset plot to be re-built from scratch, due to the limitations explained above.
+        fig.clear()
+        ax = fig.add_subplot(111)
+
+        # Draw heat-map and according color-bar.
+        im = ax.imshow(images[k, :, :], interpolation="none", animated=True, cmap=color_map)
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        fig.colorbar(im, cax=cax, orientation='vertical', ax=ax)
+
+        # Plot the optimized z-value (if given).
+        if plot_z_values:
+            line.set_xdata(z_values_coords[k, 0])
+            line.set_ydata(z_values_coords[k, 1])
         ax.set_title(f"optimization landscape - step {k}")
         return ax
 
