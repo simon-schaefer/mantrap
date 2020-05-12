@@ -69,7 +69,7 @@ class Trajectron(GraphBasedEnvironment):
     # Scene ###################################################################
     ###########################################################################
     def add_ado(self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2), history: torch.Tensor = None,
-                num_modes: int = 1, time: float = 0.0, **ado_kwargs
+                num_modes: int = 1, weights: np.ndarray = None, time: float = 0.0, **ado_kwargs
                 ) -> mantrap.agents.base.DTAgent:
         """Add a new ado and its mode to the scene.
 
@@ -98,9 +98,10 @@ class Trajectron(GraphBasedEnvironment):
                 for t in range(-mantrap.constants.TRAJECTRON_DEFAULT_HISTORY_LENGTH, 1)
             ])
 
+        weights = np.ones(num_modes) if weights is None else weights
         ado = super(Trajectron, self).add_ado(ado_type=mantrap.agents.IntegratorDTAgent,
                                               position=position, velocity=velocity, history=history,
-                                              weights=np.ones(num_modes), num_modes=num_modes, **ado_kwargs)
+                                              weights=weights, num_modes=num_modes, **ado_kwargs)
 
         # Add a ado to Trajectron neural network model using reference ghost.
         ado_id, _ = self.split_ghost_id(ghost_id=self.ghosts[-1].id)

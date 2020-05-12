@@ -253,6 +253,56 @@ class OptimizationModule(abc.ABC):
         using the PyTorch autograd, automatic differentiation package. Here we assume that both are
         connected by some computational graph (PyTorch graph) that can be used for differentiation.
 
+        A comment about multiprocessing: Computing the gradients in parallel would be a good match
+        for multiple processing, since it is fairly independent from each other, given the shared
+        memory of the computation graph.
+
+        ```
+        import torch.multiprocessing as mp
+
+        mp.set_start_method('spawn')
+        x.share_memory_()
+        grad_wrt.share_memory_()
+        gradient.share_memory_()
+
+        def compute(x_i, grad_wrt_i):
+            grad = torch.autograd.grad(element, grad_wrt, retain_graph=True, only_inputs=True)[0]
+            return grad.flatten().detach()
+
+        processes = []
+        for i_process in range(8):
+            p = mp.Process(target=compute, args=(x[i_process], grad_wrt, ))
+            p.start()
+            processes.append(p)
+        for p in processes:
+            p.join()
+        ```
+
+        Here the torch.multiprocessing library is used to compute the gradient over the whole tensor x in
+        multiple parallel processes. Therefore the tensors of both x and grad_wrt are shared over all
+        processes using the `.share_memory()` method and all processes are launched with a different
+        element of the tensor x. However as shown below sharing a computation graph, i.e. tensors that
+        require a gradient, being attached to this graph, over multiple processes is not supported in
+        PyTorch and therefore not possible.
+
+        ```
+        def reduce_tensor(tensor):
+            storage = tensor.storage()
+
+            if tensor.requires_grad and not tensor.is_leaf:
+                raise RuntimeError("Cowardly refusing to serialize non-leaf tensor which requires_grad, "
+                                   "since autograd does not support crossing process boundaries.  "
+                                   "If you just want to transfer the data, call detach() on the tensor "
+                                   "before serializing (e.g., putting it on the queue).")
+                RuntimeError: Cowardly refusing to serialize non-leaf tensor which requires_grad, since
+                autograd does not support crossing process boundaries.  If you just want to transfer the data,
+                call detach() on the tensor before serializing (e.g., putting it on the queue).
+        ```
+
+        To avoid this issue, the full computation graph would have to be re-built for every single element
+        of x, which would create a lot of overhead due to repeated computations (as well as being quite not
+        general and unreadable due to nesting instead of batching) and therefore not accelerate the computations.
+
         :params x: gradient input flat vector.
         :param grad_wrt: tensor with respect to gradients should be computed.
         :returns: flattened gradient tensor (x.size * grad_wrt.size)

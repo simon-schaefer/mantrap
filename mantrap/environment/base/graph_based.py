@@ -613,7 +613,6 @@ class GraphBasedEnvironment(abc.ABC):
             ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
             ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
             env_copy.add_ado(
-                ado_type=ghosts_ado[0].agent.__class__,  # same over all ghosts of same ado
                 position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
                 velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
                 history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
