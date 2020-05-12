@@ -37,7 +37,7 @@ class GoalModule(PureObjectiveModule):
 
         assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
-        self._include_velocity = optimize_speed
+        self._optimize_speed = optimize_speed
 
     def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
                            ) -> typing.Union[torch.Tensor, None]:
@@ -57,7 +57,7 @@ class GoalModule(PureObjectiveModule):
         goal_distances = torch.norm(ego_trajectory[:, 0:2] - self._goal, dim=1)
         cost = torch.mean(goal_distances)
 
-        if self._include_velocity:
+        if self._optimize_speed:
             speeds = torch.norm(ego_trajectory[:, 2:4], dim=1)
             cost += speeds.dot(torch.exp(- goal_distances * 0.5))
 

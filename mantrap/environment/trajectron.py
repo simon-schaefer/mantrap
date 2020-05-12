@@ -100,7 +100,7 @@ class Trajectron(GraphBasedEnvironment):
 
         ado = super(Trajectron, self).add_ado(ado_type=mantrap.agents.IntegratorDTAgent,
                                               position=position, velocity=velocity, history=history,
-                                              weights=np.ones(num_modes), **ado_kwargs)
+                                              weights=np.ones(num_modes), num_modes=num_modes, **ado_kwargs)
 
         # Add a ado to Trajectron neural network model using reference ghost.
         ado_id, _ = self.split_ghost_id(ghost_id=self.ghosts[-1].id)

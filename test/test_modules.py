@@ -126,6 +126,8 @@ class TestObjectiveInteraction:
     @staticmethod
     def test_objective_gradient_analytical(module_class, env_class, num_modes):
         env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.rand(2)})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
         env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10, num_modes=num_modes)
         env.add_ado(position=torch.rand(2) * 8, goal=torch.rand(2) * (-10), num_modes=num_modes)
 
@@ -162,7 +164,7 @@ def test_objective_goal_distribution():
 
     module = mantrap.modules.GoalModule(goal=goal_state, t_horizon=10, weight=1.0)
     objective = module.objective(ego_trajectory)
-    distance = float(torch.mean(torch.norm(ego_trajectory[:, 0:2] - goal_state)).item())
+    distance = float(torch.mean(torch.norm(ego_trajectory[:, 0:2] - goal_state, dim=1)).item())
     assert math.isclose(objective, distance, abs_tol=0.1)
 
 
@@ -256,7 +258,7 @@ class TestConstraints:
         jacobian_analytical = module._compute_jacobian_analytically(ego_trajectory=ego_trajectory,
                                                                     grad_wrt=ego_controls,
                                                                     ado_ids=None)
-        if jacobian_analytical is None:
+        if jacobian_analytical is None or not module._gradient_condition():
             pytest.skip()
 
         # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.

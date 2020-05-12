@@ -21,8 +21,10 @@ class KalmanEnvironment(IterativeEnvironment):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def add_ado(self, **ado_kwargs) -> mantrap.agents.base.DTAgent:
-        return super(KalmanEnvironment, self).add_ado(mantrap.agents.IntegratorDTAgent, **ado_kwargs)
+    def add_ado(self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2), **ado_kwargs
+                ) -> mantrap.agents.base.DTAgent:
+        return super(KalmanEnvironment, self).add_ado(ado_type=mantrap.agents.IntegratorDTAgent,
+                                                      position=position, velocity=velocity, **ado_kwargs)
 
     ###########################################################################
     # Simulation Graph ########################################################
