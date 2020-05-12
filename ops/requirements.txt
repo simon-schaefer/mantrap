@@ -11,4 +11,4 @@ sphinx  # documentation
 tqdm  # progress-bars
 
 Cython  # IPOPT dependency
-coverage  # code coverage
+codecov  # code coverage
