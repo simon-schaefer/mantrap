@@ -1,9 +1,62 @@
 language: python
 python:
   - "3.7"
+
+# installation add-ons (for travis ci linux-based system)
+addons:
+  apt:
+    packages:
+    - pkgconf
+    - gfortran
+    - libblas-dev
+    - liblapack-dev
+    - libmetis-dev
+
 # command to install dependencies
 install:
+  - PROJECT_PATH="/home/travis/build/simon-schaefer/mantrap"
+
+  - echo "Python requirement installation"
   - pip install -r ops/requirements.txt
-# command to run tests
+  - cp ops/setup.py .
+  - pip install -e .
+
+  - echo "IPOPT installation"
+  - cd external/Ipopt || return
+  - mkdir build
+  - ./coinbrew fetch Ipopt --no-prompt
+  - ./coinbrew build Ipopt --prefix=/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build --test --no-prompt
+  - ./coinbrew install Ipopt  --no-prompt
+
+  - cd /home/travis/build/simon-schaefer/mantrap/external
+  - git clone https://github.com/coin-or-tools/ThirdParty-Mumps.git
+  - cd ThirdParty-Mumps
+  - ./get.Mumps
+  - ./configure
+  - make
+  - sudo make install
+
+  - export PKG_CONFIG_PATH="/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build/Ipopt/master"
+  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build/ThirdParty/Mumps/2.0"
+  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build/ThirdParty/Metis/2.0"
+  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/external/ThirdParty-Mumps/"
+
+  - echo "CYIPOPT installation"
+  - cd /home/travis/build/simon-schaefer/mantrap/external
+  - wget https://files.pythonhosted.org/packages/05/57/a7c5a86a8f899c5c109f30b8cdb278b64c43bd2ea04172cbfed721a98fac/ipopt-0.1.9.tar.gz
+  - tar -xzvf ipopt-0.1.9.tar.gz
+  - mv ipopt-0.1.9 cyipopt
+  - cd cyipopt || return
+  - python setup.py install
+
+  - export LD_LIBRARY_PATH="/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build/lib"
+  - cd /home/travis/build/simon-schaefer/mantrap
+
+# command to run tests. since trajectron is private so far, all modules connected to it are not
+# yet tested, this will be changed once trajectron is being integrated publicly
 script:
-  - pytest
+  - coverage run -m pytest test/test_agents.py test/test_utility.py
+
+# Push the results back to codecov
+after_success:
+  - codecov

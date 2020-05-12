@@ -10,4 +10,4 @@ sphinx  # documentation
 tqdm  # progress-bars
 
 Cython  # IPOPT dependency
-cvxpy  # mpc-test
+coverage  # code coverage
