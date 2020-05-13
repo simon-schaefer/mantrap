@@ -36,6 +36,9 @@ class TestEnvironment:
         env.add_ado(position=torch.tensor([6, 7]), velocity=torch.ones(2), num_modes=num_modes)
 
         assert torch.all(torch.eq(env.ghosts[0].agent.position, torch.tensor([6, 7]).float()))
+
+        print(env.ghosts[0].agent.velocity)
+
         assert torch.all(torch.eq(env.ghosts[0].agent.velocity, torch.ones(2)))
 
     @staticmethod
@@ -243,20 +246,19 @@ class TestParametrized:
         velocity = torch.tensor([0.1, 0.2])
         num_modes = 2
         # For the sake of easy testing simulate some kind of direc delta distribution.
-        v0s = [(uniform, {"loc": 2.3, "scale": 1e-6}), (uniform, {"loc": 1.5, "scale": 1e-6})]
+        v0s = np.random.rand(num_modes)
+        weights = np.random.rand(num_modes)
+        s0s = np.random.rand(2)
 
         env = env_class()
-        env.add_ado(goal=torch.zeros(2), position=position, velocity=velocity, num_modes=num_modes, v0s=v0s)
+        env.add_ado(goal=torch.zeros(2), position=position, num_modes=num_modes, weights=weights, v0s=v0s, sigmas=s0s)
 
         assert env.num_modes == num_modes
         assert all([env.split_ghost_id(ghost.id)[0] == env.ado_ids[0] for ghost in env.ghosts])
         assert len(env.ghosts) == num_modes
 
         v0s_env = np.array([ghost.params["v0"] for ghost in env.ghosts])
-        v0s_env.sort()
-        v0s_exp = np.array([2.3, 1.5])
-        v0s_exp.sort()
-        assert np.allclose(v0s_env, v0s_exp)
+        assert np.allclose(v0s, v0s_env)
 
 
 ###########################################################################

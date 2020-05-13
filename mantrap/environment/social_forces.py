@@ -70,7 +70,8 @@ class SocialForcesEnvironment(IterativeEnvironment):
         # Finally add ado ghosts to environment.
         return super(SocialForcesEnvironment, self).add_ado(
             ado_type=mantrap.agents.DoubleIntegratorDTAgent,
-            position=position, num_modes=num_modes, weights=weights, arg_list=args_list, **ado_kwargs
+            position=position, velocity=velocity,
+            num_modes=num_modes, weights=weights, arg_list=args_list, **ado_kwargs
         )
 
     ###########################################################################

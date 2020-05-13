@@ -130,7 +130,7 @@ class TestSolvers:
         time_steps_exp = torch.arange(start=env.time, end=env.time + env.dt * (solver_horizon + 1), step=env.dt)
         assert torch.all(torch.isclose(ego_trajectory_opt[:, -1], time_steps_exp))
         for k in range(solver_horizon):
-            t_start = env.time + (k + 1) * env.dt
+            t_start = env.time + k * env.dt
             time_steps_exp = torch.linspace(start=t_start,
                                             end=t_start + env.dt * solver.planning_horizon,
                                             steps=solver.planning_horizon + 1)

@@ -24,7 +24,7 @@ class PotentialFieldEnvironment(IterativeEnvironment):
     # Scene ###################################################################
     ###########################################################################
     def add_ado(self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2),
-                num_modes: int = 1, v0s=None, weights: np.ndarray = None, **ado_kwargs
+                num_modes: int = 1, v0s: np.ndarray = None, weights: np.ndarray = None, **ado_kwargs
                 ) -> mantrap.agents.base.DTAgent:
         # In order to introduce multi-modality and stochastic effects the underlying v0 parameters of the potential
         # field environment are sampled from distributions, each for one mode. If not stated the default parameters
