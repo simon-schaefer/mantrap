@@ -1,0 +1,102 @@
+\documentclass[10pt, twoside, a4paper, fleqn]{report}
+
+% Language
+\usepackage[T1]{fontenc}  % ensure that type 1 fonts (vector-based)
+
+% General
+\usepackage{fancyhdr}
+\RequirePackage[nottoc]{tocbibind} % include bibliography in table of contents
+\usepackage{parskip} % manages the two lengths \parskip and \parindent
+\usepackage{placeins} % preventing floats from floating past a \FloatBarrier
+\usepackage{caption} % enables caption customization
+\usepackage[all]{nowidow} % removes orphans and widows
+\usepackage{geometry}
+
+% Font
+\usepackage{lmodern} % use improved fonts compared to the standard latex fonts
+\usepackage{anyfontsize} % for proper scaling of font sizes 
+\usepackage{xcolor} % for coloured text with command \color{<color>}{<text>}
+\usepackage{xspace} % define commands that appear not to eat spaces
+
+% Graphics
+\usepackage{graphicx} % include graphics
+\usepackage{float} % adds feature to place floats where defined via h! or H!
+\usepackage{pgfplots} % adds native plotting features to LaTeX
+
+% Math Symbols
+\usepackage{amsmath} % provides most of the mathematical features of AMS-TEX
+\usepackage{amssymb} % provides an extended symbol collection and loads amsfonts
+\usepackage{amsthm} % helps to define theorem-like structures
+\usepackage{mathtools} % fixes various deficiencies of amsmath and standard LATEX
+\usepackage{mathabx} % provides even more mathematical symbols
+\usepackage{commath} % for nice derivative operators
+
+% Text Symbols
+\usepackage{acronym}
+\usepackage{textcomp} % provides an extensive list of text symbols
+\usepackage{xfrac} % provides the command \sfrac to print nice d/n fractions
+
+% Units
+\usepackage{units} % bundle for typesetting physical units and nice fractions
+
+% Tables
+\usepackage{multirow} % construction for table cells that span more than one row
+\usepackage{array} % extends options for tabular environment
+\usepackage{booktabs} % enhances the quality of tables and provides extra commands
+
+% Environments
+\usepackage[chapter]{algorithm} % for floating algorithm environment
+\usepackage{algpseudocode} % for pseudocode
+\usepackage{fancyvrb} % allows to indent the verbatim environment
+\usepackage{enumitem} % allows to customize lists such as itemize and enumerate
+\usepackage{ragged2e} % allows setting ragged text which is easy to configure
+\usepackage{csquotes} % advanced facilities for inline and display quotations
+\usepackage{listings} % advanced typesetting of source code
+
+% Internet addresses and interactive links
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+
+
+% Page header ________________________________________________________
+\setlength{\parindent}{0em}                 % Disable par-indent
+\rhead[\nouppercase{\rightmark}]{\thepage}  % Special headings
+\lhead[\thepage]{\nouppercase{\leftmark}}   % Special headings
+\cfoot{}                                    % Special headings
+
+% Document ____________________________________________________________
+\begin{document}
+\include{title}
+
+% Pre-Document ________________________________________________________
+\pagenumbering{roman}	% Begin roman page numbering (i,ii,...)
+
+\cleardoublepage
+\input{preamble}
+
+% Table of Contents ___________________________________________________
+\tableofcontents
+
+\cleardoublepage
+\input{abstract}
+\cleardoublepage
+\input{nomenclature}
+ \cleardoublepage
+
+% Report ______________________________________________________________
+\pagestyle{fancy}       	% Fancy headings
+\pagenumbering{arabic} 	% Begin arabic page numbering (1,2,...)
+
+\input{introduction}
+\input{related_work}
+\input{approach}
+\input{experiments}
+\input{conclusion}
+
+\appendix
+\input{appendix}
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\end{document}
