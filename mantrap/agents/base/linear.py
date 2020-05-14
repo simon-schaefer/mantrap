@@ -69,7 +69,7 @@ class LinearDTAgent(DTAgent, abc.ABC):
         """Determine matrices for batched trajectory-rolling dynamics using equation shown in the
         definition of the class, stacked to two matrices An and Bn.
 
-        .. math:: A = [I, A, A^2, ..., A^n]
+        .. math:: An = [I, A, A^2, ..., A^n]
         .. math:: Bn = [[B, 0, ..., 0], [AB, B, 0, ..., 0], ..., [A^{n-1} B, ..., B]]
         .. math:: Tn = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 1], ..., [0, 0, 0, 0, n]]
 
@@ -82,9 +82,9 @@ class LinearDTAgent(DTAgent, abc.ABC):
 
         An = torch.cat([A.matrix_power(n) for n in range(0, max_steps + 1)])
         Bn = torch.zeros((x_size * (max_steps + 1), u_size * (max_steps + 1)))
-        for n in range(1, max_steps + 1):
-            C = torch.cat([torch.mm(A.matrix_power(k), B) for k in range(max_steps + 1 - n)])
-            Bn[x_size * n:, u_size * n: u_size * (n + 1)] = C
+        for m in range(max_steps + 1):
+            C = torch.cat([torch.mm(A.matrix_power(k), B) for k in range(max_steps + 1 - m)])
+            Bn[x_size * m:, u_size * m:u_size * (m + 1)] = C  # C = m-th column of B
 
         # Correct for delta time updates (which have been ignored so far).
         Tn = torch.zeros(x_size * (max_steps + 1))
@@ -243,4 +243,9 @@ class LinearDTAgent(DTAgent, abc.ABC):
             self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float(), Tn.float())
 
         _, Bn, _ = self._dynamics_matrices_rolling_dict[dt]
-        return Bn[:self.state_size * (t_horizon + 1), :self.control_size * (t_horizon + 1)]
+        # The trajectory includes the initial state x0, while the matrix Bn assumes to start at time-step
+        # t=1, i.e. with x = x1 as first trajectory point. Therefore stack zeros to the beginning of the
+        # jacobian matrix.
+        Bn0 = torch.zeros((self.state_size, self.control_size * t_horizon))
+        Bn1_n = Bn[:self.state_size * t_horizon, :self.control_size * t_horizon]
+        return torch.cat((Bn0, Bn1_n))

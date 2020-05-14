@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 import torch
 
@@ -118,6 +119,55 @@ class TestAgent:
 
         controls[5, 0] = 100.0  # should be far off every maximum
         assert not agent.check_feasibility_controls(controls=controls)
+
+    @staticmethod
+    def test_end_state_prediction(agent_class: mantrap.agents.base.DTAgent.__class__):
+        """In mantrap the agent dynamics predictions over some time horizon are computed in batches,
+        instead of iteratively applying the same dynamics over and over again. However the resulting
+        trajectory should be the same with both approaches.
+        Inverse (inverse dynamics) test is given by testing "reversibility" of trajectory unrolling
+        which has been done in test_rolling().
+        """
+        agent = agent_class(position=torch.rand(2) * 4, velocity=torch.rand(2) * 2)
+
+        controls = torch.rand((5, 2))
+        trajectory_batched = agent.unroll_trajectory(controls, dt=1.0)
+        trajectory_iterative = torch.zeros((controls.shape[0] + 1, 5))
+        trajectory_iterative[0, :] = agent.state_with_time
+        for t in range(1, controls.shape[0] + 1):
+            trajectory_iterative[t, :] = agent.dynamics(trajectory_iterative[t-1, :], controls[t-1, :], dt=1.0)
+
+        assert torch.all(torch.isclose(trajectory_batched, trajectory_iterative))
+
+    @staticmethod
+    def test_derivative_trajectory_control(agent_class: mantrap.agents.base.DTAgent.__class__):
+        """In order to test the derivative of the trajectory with respect to the control input use the
+        PyTorch autograd framework. Thereby create a fake objective function J and determine both the
+        gradient of J w.r.t. x (trajectory) as well as u (controls). By the chain rule we have
+
+        .. math:: \\frac{dJ}{du} = \\frac{dJ}{dx} * \\frac{dx}{du}
+
+        By computing dJ/du and dJ/dx using the autograd framework we can test dx/du.
+        """
+        t_horizon, dt = 4, 0.4
+        agent = agent_class(position=torch.rand(2) * 4, velocity=torch.rand(2) * 2, dt=dt)
+
+        controls = torch.rand((t_horizon, 2))
+        controls.requires_grad = True
+        trajectory = agent.unroll_trajectory(controls, dt=dt)
+
+        # Define pseudo-objective function randomly from trajectory.
+        weights = torch.rand(trajectory.numel()).view(*trajectory.shape).float()
+        J = torch.sum(weights * trajectory)
+        dJ_dx = torch.autograd.grad(J, trajectory, retain_graph=True)[0].detach().numpy()
+
+        # Compute gradient using chain rule.
+        dx_du = agent.dx_du(controls, dt=dt).detach().numpy()
+        gradient_chain = np.matmul(dJ_dx.flatten(), dx_du)
+
+        # Compute gradient for pseudo-objective using autograd package.
+        gradient_auto_grad = torch.autograd.grad(J, controls, retain_graph=True)[0].flatten().detach().numpy()
+        assert np.allclose(gradient_chain, gradient_auto_grad)
 
 
 ###########################################################################

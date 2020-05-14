@@ -148,11 +148,6 @@ class TestObjectiveInteraction:
 
         # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
         # Then assert equality (or numerical equality) between both results.
-        # dx_du = np.zeros((x_size * (t_horizon + 1), t_horizon * u_size))
-        # for ix in range(x_size):
-        #     for t in range(1, t_horizon + 1):
-        #         grad = torch.autograd.grad(ego_trajectory[t, ix], ego_controls, retain_graph=True)[0].detach().numpy()
-        #         dx_du[ix*t_horizon:(ix+1)*t_horizon, (t - 1)*u_size:t*u_size] = grad
         objective = module._compute_objective(ego_trajectory, ado_ids=None)
         gradient_auto_grad = module._compute_gradient_autograd(objective, grad_wrt=ego_controls)
         assert np.allclose(gradient_analytical, gradient_auto_grad, atol=0.01)
