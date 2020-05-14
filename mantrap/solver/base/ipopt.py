@@ -9,7 +9,7 @@ import torch
 import mantrap.constants
 import mantrap.solver
 
-from ..base.trajopt import TrajOptSolver
+from .trajopt import TrajOptSolver
 
 
 class IPOPTIntermediate(TrajOptSolver, ABC):
@@ -19,7 +19,6 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         z0: torch.Tensor,
         ado_ids: List[str],
         tag: str = "opt",
-        max_iter: int = mantrap.constants.IPOPT_MAX_STEPS_DEFAULT,
         max_cpu_time: float = mantrap.constants.IPOPT_MAX_CPU_TIME_DEFAULT,
         approx_jacobian: bool = False,
         **solver_kwargs
@@ -31,13 +30,16 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
         the optimization but only the ones with ids defined in `ado_ids`.
 
+        ATTENTION: Since several `_optimize()` calls are spawned in parallel, one for every process, but
+        originating from the same solver class, the method should be self-contained. Hence, no internal
+        variables should be updated, since this would lead to race conditions !
+
         IPOPT-Solver poses the optimization problem as Non-Linear Program (NLP) and uses the non-linear optimization
         library IPOPT (with Mumps backend) to solve it.
 
         :param z0: initial value of optimization variables.
         :param tag: name of optimization call (name of the core).
         :param ado_ids: identifiers of ados that should be taken into account during optimization.
-        :param max_iter: maximal solver iterations until return.
         :param max_cpu_time: maximal cpu time until return.
         :param approx_jacobian: if True automatic approximation of Jacobian based on finite-difference values.
         :returns: z_opt (optimal values of optimization variable vector)
@@ -68,7 +70,6 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
 
         # Use definition above to create IPOPT problem.
         nlp = ipopt.problem(n=len(z0_flat), m=len(cl), problem_obj=problem, lb=lb, ub=ub, cl=cl, cu=cu)
-        nlp.addOption("max_iter", max_iter)
         nlp.addOption("max_cpu_time", max_cpu_time)
         nlp.addOption("tol", mantrap.constants.IPOPT_OPTIMALITY_TOLERANCE)  # tolerance for optimality error
         if approx_jacobian:
@@ -132,8 +133,8 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
     # wrong hessian should just affect rate of convergence, not convergence in general
     # (given it is semi-positive definite which is the case for the identity matrix)
     # hessian = np.eye(3*self.O)
-    def hessian(self, z, lagrange=None, obj_factor=None) -> np.ndarray:
-        raise NotImplementedError
+    # def hessian(self, z, lagrange=None, obj_factor=None) -> np.ndarray:
+    #    raise NotImplementedError
 
     ###########################################################################
     # Visualization & Logging #################################################

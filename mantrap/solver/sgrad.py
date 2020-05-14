@@ -2,8 +2,7 @@ import typing
 
 import mantrap.modules
 
-from .base.ipopt import IPOPTIntermediate
-from .base.z_controls import ZControlIntermediate
+from .base import IPOPTIntermediate, ZControlIntermediate
 
 
 class SGradSolver(IPOPTIntermediate, ZControlIntermediate):

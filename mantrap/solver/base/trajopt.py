@@ -170,6 +170,9 @@ class TrajOptSolver(abc.ABC):
         logging.debug(f"solver {self.log_name}: finishing up optimization process")
         return ego_trajectory_opt, ado_trajectories
 
+    ###########################################################################
+    # Optimization ############################################################
+    ###########################################################################
     def determine_ego_controls(self, multiprocessing: bool = True, **solver_kwargs) -> torch.Tensor:
         """Determine the ego control inputs for the internally stated problem and the current state of the environment.
         The implementation crucially depends on the solver class itself and is hence not implemented here.
@@ -233,6 +236,10 @@ class TrajOptSolver(abc.ABC):
         objectives and constraints. This function is executed in every thread in parallel, for different initial
         values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
         the optimization but only the ones with ids defined in `ado_ids`.
+
+        ATTENTION: Since several `_optimize()` calls are spawned in parallel, one for every process, but
+        originating from the same solver class, the method should be self-contained. Hence, no internal
+        variables should be updated, since this would lead to race conditions !
 
         :param z0: initial value of optimization variables.
         :param tag: name of optimization call (name of the core).

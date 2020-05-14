@@ -42,7 +42,8 @@ def scenario(
 ###########################################################################
 @pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver,
                                           mantrap.solver.MonteCarloTreeSearch,
-                                          mantrap.solver.ORCASolver])
+                                          mantrap.solver.baselines.RandomSearch,
+                                          mantrap.solver.baselines.ORCASolver])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 3])
 @pytest.mark.parametrize("filter_class", filters)
@@ -59,7 +60,7 @@ class TestSolvers:
         solver = solver_class(env, goal=torch.zeros(2), objectives=[("goal", 1.0)], constraints=[], **solver_kwargs)
 
         z0 = solver.initial_values(just_one=True)
-        z_opt, _, _ = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0, max_iter=1000)
+        z_opt, _, _ = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0)
         ego_controls = solver.z_to_ego_controls(z=z_opt.detach().numpy())
         ego_trajectory_opt = solver.env.ego.unroll_trajectory(controls=ego_controls, dt=solver.env.dt)
 
@@ -143,6 +144,26 @@ class TestSolvers:
         for module in solver.modules:
             violation = module.compute_violation(ego_trajectory_opt, ado_ids=None)
             assert math.isclose(violation, 0.0, abs_tol=1e-3)
+
+
+###########################################################################
+# Test - Search Solver ####################################################
+###########################################################################
+@pytest.mark.parametrize("solver_class", [mantrap.solver.baselines.RandomSearch,
+                                          mantrap.solver.MonteCarloTreeSearch])
+@pytest.mark.parametrize("env_class", environments)
+class TestSearchSolvers:
+
+    @staticmethod
+    def test_improvement(solver_class, env_class):
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+        solver = solver_class(env, goal=torch.zeros(2), t_planning=5)
+
+        z0 = np.random.uniform(*solver.z_bounds)
+        obj_0, _ = solver._evaluate(z0, ado_ids=None, tag="")
+        _, obj_best, _ = solver._optimize(z0, ado_ids=None)
+
+        assert obj_0 >= obj_best
 
 
 ###########################################################################
