@@ -32,14 +32,14 @@ class GoalModule(PureObjectiveModule):
     :param optimize_speed: include cost for zero velocity at goal state.
     """
 
-    def __init__(self, goal: torch.Tensor, optimize_speed: bool = False, **module_kwargs):
-        super(GoalModule, self).__init__(**module_kwargs)
+    def __init__(self, goal: torch.Tensor, optimize_speed: bool = False, **unsued):
+        super(GoalModule, self).__init__()
 
         assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
         self._optimize_speed = optimize_speed
 
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                            ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
@@ -53,6 +53,7 @@ class GoalModule(PureObjectiveModule):
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         goal_distances = torch.norm(ego_trajectory[:, 0:2] - self._goal, dim=1)
         cost = torch.mean(goal_distances)
@@ -64,7 +65,7 @@ class GoalModule(PureObjectiveModule):
         return cost
 
     def _compute_gradient_analytically(
-        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute objective gradient vector analytically.
 
@@ -88,6 +89,7 @@ class GoalModule(PureObjectiveModule):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         # assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
         #

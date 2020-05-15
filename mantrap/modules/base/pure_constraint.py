@@ -18,19 +18,19 @@ class PureConstraintModule(OptimizationModule, abc.ABC):
     The `PureConstraintModule` implements the general optimization module as pure constraint module, i.e.
     for hard constraints without any inter-connection to the objective function.
     """
-    def __init__(self, t_horizon: int, **module_kwargs):
-        super(PureConstraintModule, self).__init__(t_horizon, weight=0.0, **module_kwargs)
+    def __init__(self, t_horizon: int = None):
+        super(PureConstraintModule, self).__init__(t_horizon=t_horizon, weight=None)
 
     ###########################################################################
     # Objective & Gradient ####################################################
     ###########################################################################
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                            ) -> typing.Union[torch.Tensor, None]:
         """Returning `None` as an objective automatically ends objective and gradient computation
         and returns default values (zero). """
         return None
 
     def _compute_gradient_analytically(
-        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         return None

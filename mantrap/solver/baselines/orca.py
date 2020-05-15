@@ -68,7 +68,7 @@ class ORCASolver(ZControlIntermediate):
         # Determine z and objective value from determined ego-control. For logging only also determine
         # the constraints values (since logging happens within the function).
         z = ego_controls.flatten()
-        objective_value = self.objective(z=z.detach().numpy(), tag=tag, ado_ids=ado_ids)
+        objective_value = self.objective(z=z.detach().numpy(), ado_ids=ado_ids, tag=tag)
         _ = self.constraints(z=z.detach().numpy(), tag=tag, ado_ids=ado_ids)
         return z, objective_value, self.log
 

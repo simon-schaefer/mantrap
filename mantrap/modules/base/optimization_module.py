@@ -8,7 +8,7 @@ import mantrap.environment
 
 
 class OptimizationModule(abc.ABC):
-    def __init__(self, t_horizon: int,  weight: float = 0.0, **module_kwargs):
+    def __init__(self, t_horizon: int,  weight: float = 0.0):
         """General objective and constraint module.
 
         For an unified and general implementation of objective and constraint function modules, this superclass
@@ -19,9 +19,17 @@ class OptimizationModule(abc.ABC):
         Combining objective and constraint in one module object grants the possibility to introduce soft
         constraints using slack variables, while also merely implementing pure objective and constraint
         modules seamlessly.
+
+        For multiprocessing the same module object is shared over all processes (even sharing memory), in order to
+        avoid repeated pre-computation steps online. However to avoid racing conditions this means that internal
+        variables of the class object are also shared and not owned by the process. Altering these variables in
+        one process would then lead to un-expected outcomes in the other processes. Therefore each function comes
+        with a `tag` argument which classifies the current process the function runs in. When internal variables
+        have to be used, then they should be assigned to some dictionary with the tags as keys, so  that the
+        function only alters variables which are assigned to this process.
         """
-        assert t_horizon >= 1
-        assert weight >= 0.0
+        assert t_horizon is None or t_horizon >= 1
+        assert weight is None or weight >= 0.0
 
         self._weight = weight
         self._t_horizon = t_horizon
@@ -49,14 +57,15 @@ class OptimizationModule(abc.ABC):
     ###########################################################################
     # Objective ###############################################################
     ###########################################################################
-    def objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None) -> float:
+    def objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str) -> float:
         """Determine objective value for passed ego trajectory by calling the internal `compute()` method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids)
+        obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
         if obj_value is None:
             obj_value = 0.0  # if objective not defined simply return 0.0
         else:
@@ -64,7 +73,7 @@ class OptimizationModule(abc.ABC):
         return self._return_objective(obj_value)
 
     @abc.abstractmethod
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                            ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
@@ -74,13 +83,14 @@ class OptimizationModule(abc.ABC):
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         raise NotImplementedError
 
     ###########################################################################
     # Gradient ################################################################
     ###########################################################################
-    def gradient(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+    def gradient(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
                  ) -> np.ndarray:
         """Determine gradient vector for passed ego trajectory. Therefore determine the objective value by
         calling the internal `compute()` method and en passant build a computation graph. Then using the pytorch
@@ -89,13 +99,14 @@ class OptimizationModule(abc.ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
 
         # Analytical solutions are more exact and (usually more efficient) to compute, when known, compared
         # to the numerical "graphical" solution. Therefore, first check whether an analytical solution is
         # defined for this module.
-        gradient_analytical = self._compute_gradient_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids)
+        gradient_analytical = self._compute_gradient_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids, tag=tag)
         if gradient_analytical is not None:
             gradient = gradient_analytical
 
@@ -107,7 +118,7 @@ class OptimizationModule(abc.ABC):
             # Compute the objective value and check whether a gradient between the value and the
             # ego_trajectory input (which has been assured to require a gradient) exists, if the
             # module-conditions for that are met.
-            objective = self._compute_objective(ego_trajectory, ado_ids=ado_ids)
+            objective = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
             # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
             # In general the objective might not be affected by the `ego_trajectory`, then it does not have
@@ -123,7 +134,7 @@ class OptimizationModule(abc.ABC):
         return self._return_gradient(gradient)
 
     def _compute_gradient_analytically(
-        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute objective gradient vector analytically.
 
@@ -139,20 +150,22 @@ class OptimizationModule(abc.ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         return None
 
     ###########################################################################
     # Constraint ##############################################################
     ###########################################################################
-    def constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None) -> np.ndarray:
+    def constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str) -> np.ndarray:
         """Determine constraint value for passed ego trajectory by calling the internal `compute()` method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids)
+        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
         if constraints is None:
             constraints = np.array([])
         else:
@@ -160,19 +173,20 @@ class OptimizationModule(abc.ABC):
         return self._return_constraint(constraints)
 
     @abc.abstractmethod
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                             ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         raise NotImplementedError
 
     ###########################################################################
     # Jacobian ################################################################
     ###########################################################################
-    def jacobian(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+    def jacobian(self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
                  ) -> np.ndarray:
         """Determine jacobian matrix for passed ego trajectory.
 
@@ -183,13 +197,14 @@ class OptimizationModule(abc.ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
 
         # Analytical solutions are more exact and (usually more efficient) to compute, when known, compared
         # to the numerical "graphical" solution. Therefore, first check whether an analytical solution is
         # defined for this module.
-        jacobian_analytical = self._compute_jacobian_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids)
+        jacobian_analytical = self._compute_jacobian_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids, tag=tag)
         if jacobian_analytical is not None:
             jacobian = jacobian_analytical
 
@@ -199,7 +214,7 @@ class OptimizationModule(abc.ABC):
             # input (which has been assured to require a gradient) exists, if the module-conditions for
             # that are met.
             assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
-            constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids)
+            constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
             # If constraint vector is None, directly return empty jacobian vector.
             if constraints is None:
@@ -223,7 +238,7 @@ class OptimizationModule(abc.ABC):
         return jacobian
 
     def _compute_jacobian_analytically(
-        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute Jacobian matrix analytically.
 
@@ -239,6 +254,7 @@ class OptimizationModule(abc.ABC):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         return None
 
@@ -346,7 +362,7 @@ class OptimizationModule(abc.ABC):
     ###########################################################################
     # Constraint Violation ####################################################
     ###########################################################################
-    def compute_violation(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None) -> float:
+    def compute_violation(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str) -> float:
         """Determine constraint violation based on some input ego trajectory and ado ids list.
 
         The violation is the amount how much the solution state is inside the constraint active region.
@@ -355,9 +371,10 @@ class OptimizationModule(abc.ABC):
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True)
-        constraint = self._compute_constraint(ego_trajectory, ado_ids=ado_ids)
+        constraint = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
         if constraint is None:
             return self._violation(constraint=None)
         else:

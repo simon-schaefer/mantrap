@@ -90,7 +90,7 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         # Solve optimization problem for "optimal" ego trajectory `x_optimized`.
         z_opt, info = nlp.solve(z0_flat)
         z2_opt = torch.from_numpy(z_opt).view(-1, 2)
-        objective_opt = self.objective(z_opt, tag=tag)
+        objective_opt = self.objective(z_opt, tag=tag, ado_ids=ado_ids)
         return z2_opt, objective_opt, self.log
 
     ###########################################################################
@@ -105,7 +105,7 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         final gradient estimate.
         """
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.modules]
+        gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, tag=tag, ado_ids=ado_ids) for m in self.modules]
         gradient = np.sum(gradient, axis=0)
 
         self.log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
@@ -126,7 +126,7 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         for the final jacobian estimate.
         """
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
-        jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, ado_ids=ado_ids) for m in self.modules]
+        jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, tag=tag, ado_ids=ado_ids) for m in self.modules]
         jacobian = np.concatenate(jacobian)
         return jacobian
 

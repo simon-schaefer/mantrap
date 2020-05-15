@@ -47,7 +47,9 @@ class TestObjectiveInteraction:
 
         module = module_class(t_horizon=10, env=env)
         if env.is_deterministic:
-            assert module.objective(ego_trajectory_near) >= module.objective(ego_trajectory_far)
+            objective_near = module.objective(ego_trajectory_near, ado_ids=[], tag="test")
+            objective_far = module.objective(ego_trajectory_far, ado_ids=[], tag="test")
+            assert objective_near >= objective_far
 
     @staticmethod
     def test_multimodal_support(module_class, env_class, num_modes):
@@ -62,7 +64,7 @@ class TestObjectiveInteraction:
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=env.dt)
 
         module = module_class(t_horizon=10, env=env)
-        assert module.objective(ego_trajectory) is not None
+        assert module.objective(ego_trajectory, ado_ids=env.ado_ids, tag="test") is not None
 
     @staticmethod
     def test_output(module_class, env_class, num_modes):
@@ -74,8 +76,10 @@ class TestObjectiveInteraction:
         ego_trajectory.requires_grad = True
 
         module = module_class(t_horizon=10, env=env)
-        assert type(module.objective(ego_trajectory)) == float
-        assert module.gradient(ego_trajectory, grad_wrt=ego_trajectory).size == ego_trajectory.numel()
+        objective = module.objective(ego_trajectory, ado_ids=env.ado_ids, tag="test")
+        gradient = module.gradient(ego_trajectory, grad_wrt=ego_trajectory, ado_ids=env.ado_ids, tag="test")
+        assert type(objective) == float
+        assert gradient.size == ego_trajectory.numel()
 
     @staticmethod
     def test_runtime(module_class, env_class, num_modes):
@@ -91,11 +95,11 @@ class TestObjectiveInteraction:
         objective_run_times, gradient_run_times = list(), list()
         for i in range(10):
             start_time = time.time()
-            module.objective(ego_trajectory)
+            module.objective(ego_trajectory, ado_ids=env.ado_ids, tag="test")
             objective_run_times.append(time.time() - start_time)
 
             start_time = time.time()
-            module.gradient(ego_trajectory, grad_wrt=ego_trajectory)
+            module.gradient(ego_trajectory, grad_wrt=ego_trajectory, ado_ids=env.ado_ids, tag="test")
             gradient_run_times.append(time.time() - start_time)
 
         assert np.mean(objective_run_times) < 0.03 * num_modes  # 33 Hz
@@ -141,7 +145,8 @@ class TestObjectiveInteraction:
         module = module_class(goal=torch.rand(2) * 8, env=env, t_horizon=t_horizon)
         gradient_analytical = module._compute_gradient_analytically(ego_trajectory=ego_trajectory,
                                                                     grad_wrt=ego_controls,
-                                                                    ado_ids=None)
+                                                                    ado_ids=env.ado_ids,
+                                                                    tag="test")
 
         if gradient_analytical is None:
             pytest.skip()
@@ -158,7 +163,7 @@ def test_objective_goal_distribution():
     ego_trajectory = torch.rand((11, 4))
 
     module = mantrap.modules.GoalModule(goal=goal_state, t_horizon=10, weight=1.0)
-    objective = module.objective(ego_trajectory)
+    objective = module.objective(ego_trajectory, ado_ids=[], tag="test")
     distance = float(torch.mean(torch.norm(ego_trajectory[:, 0:2] - goal_state, dim=1)).item())
     assert math.isclose(objective, distance, abs_tol=0.1)
 
@@ -190,11 +195,11 @@ class TestConstraints:
         constraint_run_times, jacobian_run_times = list(), list()
         for i in range(10):
             start_time = time.time()
-            module.constraint(ego_trajectory)
+            module.constraint(ego_trajectory, ado_ids=env.ado_ids, tag="test")
             constraint_run_times.append(time.time() - start_time)
 
             start_time = time.time()
-            module.jacobian(ego_trajectory, grad_wrt=ego_trajectory)
+            module.jacobian(ego_trajectory, grad_wrt=ego_trajectory, ado_ids=env.ado_ids, tag="test")
             jacobian_run_times.append(time.time() - start_time)
 
         assert np.mean(constraint_run_times) < 0.04 * num_modes  # 25 Hz
@@ -212,7 +217,7 @@ class TestConstraints:
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.zeros((5, 2)), dt=env.dt)
 
         module = module_class(env=env, t_horizon=5)
-        violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=None)
+        violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
         assert violation == 0
 
     @staticmethod
@@ -252,13 +257,14 @@ class TestConstraints:
         module = module_class(env=env, t_horizon=5)
         jacobian_analytical = module._compute_jacobian_analytically(ego_trajectory=ego_trajectory,
                                                                     grad_wrt=ego_controls,
-                                                                    ado_ids=None)
+                                                                    ado_ids=env.ado_ids,
+                                                                    tag="test")
         if jacobian_analytical is None or not module._gradient_condition():
             pytest.skip()
 
         # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
         # Then assert equality (or numerical equality) between both results.
-        constraints = module._compute_constraint(ego_trajectory, ado_ids=None)
+        constraints = module._compute_constraint(ego_trajectory, ado_ids=env.ado_ids, tag="test")
         jacobian_auto_grad = module._compute_gradient_autograd(constraints, grad_wrt=ego_controls)
         assert np.allclose(jacobian_analytical, jacobian_auto_grad, atol=0.01)
 
@@ -277,21 +283,21 @@ def test_max_speed_constraint_violation(env_class, num_modes):
     # In this first scenario the ego has zero velocity over the full horizon.
     controls = torch.zeros((module._t_horizon, 2))
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
-    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test")
     assert violation == 0
 
     # In this second scenario the ego has non-zero random velocity in x-direction, but always below the maximal
     # allowed speed (random -> [0, 1]).
     controls[:, 0] = torch.rand(module._t_horizon) * upper_bound  # single integrator, so no velocity summation !
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
-    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test2")
     assert violation == 0
 
     # In this third scenario the ego has the same random velocity in the x-direction as in the second scenario,
     # but at one time step, it is increased to a slightly larger speed than allowed.
     controls[1, 0] = upper_bound + 1e-3
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
-    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test3")
     assert violation > 0
 
 
@@ -315,7 +321,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
     module = mantrap.modules.MinDistanceModule(env=env, t_horizon=controls.shape[0])
     lower_bound, _ = module._constraint_boundaries()
-    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
     assert violation == 0
 
     # In the second scenario add another ado agent that is starting and moving very close to the ego robot.
@@ -325,7 +331,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
 
     module = mantrap.modules.MinDistanceModule(env=env, t_horizon=controls.shape[0])
     lower_bound, _ = module._constraint_boundaries()
-    violation = module.compute_violation(ego_trajectory=ego_trajectory)
+    violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
     assert violation > 0
 
 

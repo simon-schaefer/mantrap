@@ -16,11 +16,11 @@ class ControlLimitModule(PureConstraintModule):
 
     .. math:: ||u(t)||_2 < u_{max}
     """
-    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **module_kwargs):
-        super(ControlLimitModule, self).__init__(**module_kwargs)
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, **unused):
+        super(ControlLimitModule, self).__init__(t_horizon=t_horizon)
         self.initialize_env(env=env)
 
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                             ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
@@ -30,12 +30,13 @@ class ControlLimitModule(PureConstraintModule):
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
         return torch.norm(ego_controls, dim=1).flatten()
 
     def _compute_jacobian_analytically(
-        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+        self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute Jacobian matrix analytically.
 
@@ -61,6 +62,7 @@ class ControlLimitModule(PureConstraintModule):
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
 
