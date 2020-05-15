@@ -239,7 +239,8 @@ class TrajOptSolver(abc.ABC):
 
         ATTENTION: Since several `_optimize()` calls are spawned in parallel, one for every process, but
         originating from the same solver class, the method should be self-contained. Hence, no internal
-        variables should be updated, since this would lead to race conditions !
+        variables should be updated, since this would lead to race conditions ! If class variables have
+        to be altered and used within this function, then assign them to the process tag !
 
         :param z0: initial value of optimization variables.
         :param tag: name of optimization call (name of the core).
@@ -359,7 +360,7 @@ class TrajOptSolver(abc.ABC):
         :return: weighted sum of objective values w.r.t. `z`.
         """
         ego_trajectory = self.z_to_ego_trajectory(z)
-        objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids) for m in self.modules])
+        objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag=tag) for m in self.modules])
 
         if __debug__ is True:
             ado_planned = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
@@ -403,7 +404,7 @@ class TrajOptSolver(abc.ABC):
         :return: constraints vector w.r.t. `z`.
         """
         ego_trajectory = self.z_to_ego_trajectory(z)
-        constraints = np.concatenate([m.constraint(ego_trajectory, ado_ids=ado_ids) for m in self.modules])
+        constraints = np.concatenate([m.constraint(ego_trajectory, tag=tag, ado_ids=ado_ids) for m in self.modules])
         violation = float(np.sum([m.compute_violation_internal() for m in self.modules]))
 
         if __debug__ is True:
@@ -612,8 +613,11 @@ class TrajOptSolver(abc.ABC):
                     ego_trajectory = self.z_to_ego_trajectory(zs)
 
                     # Compute the objective/constraint values and add to images.
-                    objective = np.sum([m.objective(ego_trajectory, ado_ids=None) for m in self.modules])
-                    violation = np.sum([m.compute_violation(ego_trajectory, ado_ids=None) for m in self.modules])
+                    ado_ids = self.env.ado_ids
+                    objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag="vis")
+                                        for m in self.modules])
+                    violation = np.sum([m.compute_violation(ego_trajectory, ado_ids=ado_ids, tag="vis")
+                                        for m in self.modules])
                     objective_values[ix, iy] = float(objective)
                     constraint_values[ix, iy] = float(violation)
 

@@ -18,26 +18,25 @@ class PureObjectiveModule(OptimizationModule, abc.ABC):
     The `PureConstraintModule` implements the general optimization module as pure constraint module, i.e.
     for hard constraints without any inter-connection to the objective function.
     """
-    def __init__(self, t_horizon: int, weight: float = 1.0, **module_kwargs):
-        super(PureObjectiveModule, self).__init__(t_horizon, weight=weight, **module_kwargs)
+    def __init__(self, t_horizon: int = None, weight: float = 1.0):
+        super(PureObjectiveModule, self).__init__(t_horizon=t_horizon, weight=weight)
 
     ###########################################################################
     # Constraint & Jacobian ###################################################
     ###########################################################################
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                             ) -> typing.Union[torch.Tensor, None]:
         """Returning `None` as an constraint automatically ends constraint and jacobian computation
         and returns default values (empty numpy array). """
         return None
 
     def _compute_jacobian_analytically(
-            self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str] = None
+            self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         return None
 
     def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
-        """Lower and upper bounds for constraint values."""
         return None, None
 
-    def num_constraints(self, ado_ids: typing.List[str] = None) -> int:
+    def num_constraints(self, ado_ids: typing.List[str]) -> int:
         return 0

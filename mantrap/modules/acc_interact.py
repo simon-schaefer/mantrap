@@ -25,8 +25,9 @@ class InteractionAccelerationModule(PureObjectiveModule):
 
     :param env: environment for predicting the behaviour without interaction.
     """
-    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **module_kwargs):
-        super(InteractionAccelerationModule, self).__init__(**module_kwargs)
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, weight: float = 1.0,
+                 **unused):
+        super(InteractionAccelerationModule, self).__init__(t_horizon=t_horizon, weight=weight)
         self.initialize_env(env=env)
 
         if env.num_ghosts > 0:
@@ -36,7 +37,7 @@ class InteractionAccelerationModule(PureObjectiveModule):
                                                                    num_axes=2)
             self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
 
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                            ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
@@ -48,6 +49,7 @@ class InteractionAccelerationModule(PureObjectiveModule):
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
         # Per default (i.e. if `ado_ids`) is None use all ado ids defined in the environment.
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids

@@ -25,11 +25,11 @@ class MinDistanceModule(PureConstraintModule):
     trajectory has no gradients pointing to a certain distance from other agents at other points in time, so that
     the number of convergence steps might be increased.
     """
-    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **module_kwargs):
-        super(MinDistanceModule, self).__init__(**module_kwargs)
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **unused):
+        super(MinDistanceModule, self).__init__()
         self.initialize_env(env=env)
 
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str] = None
+    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                             ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
@@ -48,6 +48,7 @@ class MinDistanceModule(PureConstraintModule):
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
 
         ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
@@ -96,7 +97,7 @@ class MinDistanceModule(PureConstraintModule):
         """
         return mantrap.constants.CONSTRAINT_MIN_L2_DISTANCE, None
 
-    def num_constraints(self, ado_ids: typing.List[str] = None) -> int:
+    def num_constraints(self, ado_ids: typing.List[str]) -> int:
         return 1
 
     ###########################################################################
