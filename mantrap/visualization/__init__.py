@@ -180,12 +180,6 @@ def visualize_heat_map(
     # Plot resulting objective value and constraints plot.
     fig, ax = plt.subplots(figsize=(8, 8))
     num_ticks = 8
-    ax.set_xticks(np.linspace(0, num_grid_points_x, num=num_ticks))
-    ax.set_xticklabels(np.round(np.linspace(lower[0], upper[0], num=num_ticks), 1))
-    ax.set_yticks(np.linspace(0, num_grid_points_y, num=num_ticks))
-    ax.set_yticklabels(np.round(np.linspace(lower[1], upper[1], num=num_ticks), 1))
-    ax.set_xlabel("z1")
-    ax.set_ylabel("z2")
 
     # Color map and image definition. However due to a shift in the range of the image data
     # (min, max) and therefore in the colormap, the image has to be re-drawn in every step.
@@ -214,6 +208,12 @@ def visualize_heat_map(
             line.set_xdata(z_values_coords[k, 0])
             line.set_ydata(z_values_coords[k, 1])
         ax.set_title(f"optimization landscape - step {k}")
+        ax.set_xticks(np.linspace(0, num_grid_points_x, num=num_ticks))
+        ax.set_xticklabels(np.round(np.linspace(lower[0], upper[0], num=num_ticks), 1))
+        ax.set_yticks(np.linspace(0, num_grid_points_y, num=num_ticks))
+        ax.set_yticklabels(np.round(np.linspace(lower[1], upper[1], num=num_ticks), 1))
+        ax.set_xlabel("z1")
+        ax.set_ylabel("z2")
         return ax
 
     # Start matplotlib animation with an image per time-step.

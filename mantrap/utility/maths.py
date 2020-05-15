@@ -95,6 +95,19 @@ def spline_interpolation(control_points: torch.Tensor, num_samples: int = 100):
     return path
 
 
+## Grid interpolation (e.g. for value function)
+# from scipy.interpolate import griddata
+#
+# grid_x, grid_y = np.mgrid[grid_min[0]:grid_max[0]:(grid_max[0] - grid_min[0])/N[0],
+#                           grid_min[1]:grid_max[1]:(grid_max[1] - grid_min[1])/N[1]]
+# grid_x_new, grid_y_new = np.mgrid[grid_min[0]:grid_max[0]:(grid_max[0] - grid_min[0])/(4 * N[0]),
+#                                   grid_min[1]:grid_max[1]:(grid_max[1] - grid_min[1])/(4 * N[1])]
+#
+#
+# points = np.stack((grid_x, grid_y))
+# points = np.flip(np.rot90(np.transpose(points)), 1).reshape(-1, 2)
+# values_interpolated = griddata(points, value_function.flatten(), (grid_x_new, grid_y_new), method='cubic')
+
 ###########################################################################
 # Shapes ##################################################################
 ###########################################################################
