@@ -9,7 +9,8 @@ import mantrap.environment
 
 class OptimizationModule(abc.ABC):
     def __init__(self, t_horizon: int,  weight: typing.Union[float, None] = 0.0,
-                 num_slack_variables: int = 0, slack_weight: float = 0.0):
+                 env: mantrap.environment.base.GraphBasedEnvironment = None,
+                 has_slack: bool = False, slack_weight: float = 0.0):
         """General objective and constraint module.
 
         For an unified and general implementation of objective and constraint function modules, this superclass
@@ -20,6 +21,10 @@ class OptimizationModule(abc.ABC):
         Combining objective and constraint in one module object grants the possibility to introduce soft
         constraints using slack variables, while also merely implementing pure objective and constraint
         modules seamlessly.
+        For making the constraints soft, slack variables are added internally to the objective and updated
+        with every constraint call. Therefore only the `has_slack` flag has to be set to True. However for
+        simplicity we assume that then each constraint of the defined module is soft, otherwise the module
+        can just divided into two modules.
 
         For multiprocessing the same module object is shared over all processes (even sharing memory), in order to
         avoid repeated pre-computation steps online. However to avoid racing conditions this means that internal
@@ -36,9 +41,8 @@ class OptimizationModule(abc.ABC):
         self._t_horizon = t_horizon
 
         # Giving every optimization module access to a (large) simulation environment object is not
-        # necessary and an un-necessary use of space, even when it is just a pointer. Therefore using
-        # the simulation requires executing another class method (`initialize_env`).
-        self._env = None  # type: typing.Union[None, mantrap.environment.base.GraphBasedEnvironment]
+        # necessary and an un-necessary use of space, even when it is just a pointer.
+        self._env = env  # may be None
 
         # Logging variables for objective and gradient values. For logging the latest variables are stored
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
@@ -51,18 +55,14 @@ class OptimizationModule(abc.ABC):
         # therefore have to stored internally to be shared between both functions. However as discussed
         # above during multi-processing the same module object is shared over multiple processes,
         # therefore store the slack variable values in dictionaries assigned to the processes tag.
-        assert slack_weight >= 0.0 and num_slack_variables >= 0
+        assert slack_weight >= 0.0
         self._slack = {}  # type: typing.Dict[str, torch.Tensor]
-        self._num_slack_variables = num_slack_variables
+        self._has_slack = has_slack
         self._slack_weight = slack_weight
-
-    def initialize_env(self, env: mantrap.environment.base.GraphBasedEnvironment):
-        assert env.ego is not None
-        self._env = env
 
     def reset_env(self, env: mantrap.environment.base.GraphBasedEnvironment):
         if self._env is not None:
-            self.initialize_env(env=env)
+            self._env = env
 
     ###########################################################################
     # Objective ###############################################################
@@ -83,7 +83,7 @@ class OptimizationModule(abc.ABC):
         return self._return_objective(obj_value, tag=tag)
 
     def compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                           ) -> typing.Union[torch.Tensor, None]:
+                          ) -> typing.Union[torch.Tensor, None]:
         """Determine internal objective value + slack variables.
         
         Add slack based part of objective function. The value of the slack variable can only be
@@ -93,7 +93,7 @@ class OptimizationModule(abc.ABC):
         """
         obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
-        if self._num_slack_variables > 0:
+        if self._has_slack > 0:
             _ = self.constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
             obj_value += self._slack_weight * self._slack[tag].sum()
 
@@ -195,7 +195,8 @@ class OptimizationModule(abc.ABC):
         constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
         # Update slack variables (if any are defined for this module).
-        self._slack[tag] = constraints
+        if self._has_slack:
+            self._slack[tag] = constraints
 
         if constraints is None:
             constraints = np.array([])
@@ -386,9 +387,11 @@ class OptimizationModule(abc.ABC):
         upper_bounds = (upper * np.ones(num_constraints)).tolist() \
             if upper is not None else [None] * num_constraints
 
-        # Slack variable introduced boundaries.
-        lower_bounds = lower_bounds + [0.0] * self._num_slack_variables
-        upper_bounds = upper_bounds + [None] * self._num_slack_variables
+        # Slack variable introduced boundaries. We assume that the number of slack variables
+        # is equal to number of constraint, i.e. that each constraint of the module is "soft".
+        if self._has_slack:
+            lower_bounds = lower_bounds + [0.0] * num_constraints
+            upper_bounds = upper_bounds + [None] * num_constraints
         return lower_bounds, upper_bounds
 
     def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
@@ -396,7 +399,9 @@ class OptimizationModule(abc.ABC):
         raise NotImplementedError
 
     def num_constraints(self, ado_ids: typing.List[str]) -> int:
-        return self._num_slack_variables + self._num_constraints(ado_ids=ado_ids)
+        num_module_constraints = self._num_constraints(ado_ids=ado_ids)
+        num_slack_constraints = num_module_constraints if self._has_slack else 0
+        return num_module_constraints + num_slack_constraints
 
     @abc.abstractmethod
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:

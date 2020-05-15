@@ -26,8 +26,7 @@ class MinDistanceModule(PureConstraintModule):
     the number of convergence steps might be increased.
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **unused):
-        super(MinDistanceModule, self).__init__()
-        self.initialize_env(env=env)
+        super(MinDistanceModule, self).__init__(env=env)
 
     def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                             ) -> typing.Union[torch.Tensor, None]:

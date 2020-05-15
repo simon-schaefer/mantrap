@@ -25,8 +25,7 @@ class InteractionPositionModule(PureObjectiveModule):
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, weight: float = 1.0,
                  **unused):
-        super(InteractionPositionModule, self).__init__(t_horizon=t_horizon, weight=weight)
-        self.initialize_env(env=env)
+        super(InteractionPositionModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
 
         if env.num_ghosts > 0:
             self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]

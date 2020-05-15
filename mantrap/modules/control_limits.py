@@ -17,8 +17,7 @@ class ControlLimitModule(PureConstraintModule):
     .. math:: ||u(t)||_2 < u_{max}
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, **unused):
-        super(ControlLimitModule, self).__init__(t_horizon=t_horizon)
-        self.initialize_env(env=env)
+        super(ControlLimitModule, self).__init__(env=env, t_horizon=t_horizon)
 
     def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                             ) -> typing.Union[torch.Tensor, None]:

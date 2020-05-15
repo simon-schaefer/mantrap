@@ -4,6 +4,8 @@ import typing
 import numpy as np
 import torch
 
+import mantrap.environment
+
 from .optimization_module import OptimizationModule
 
 
@@ -18,8 +20,9 @@ class PureObjectiveModule(OptimizationModule, abc.ABC):
     The `PureConstraintModule` implements the general optimization module as pure constraint module, i.e.
     for hard constraints without any inter-connection to the objective function.
     """
-    def __init__(self, t_horizon: int = None, weight: float = 1.0):
-        super(PureObjectiveModule, self).__init__(t_horizon=t_horizon, weight=weight, num_slack_variables=0)
+    def __init__(self, t_horizon: int = None, weight: float = 1.0,
+                 env: mantrap.environment.base.GraphBasedEnvironment = None):
+        super(PureObjectiveModule, self).__init__(t_horizon=t_horizon, weight=weight, env=env, has_slack=False)
 
     ###########################################################################
     # Constraint & Jacobian ###################################################
