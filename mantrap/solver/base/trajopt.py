@@ -367,7 +367,7 @@ class TrajOptSolver(abc.ABC):
             ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_trajectory.shape[0])
             self.log_append(ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo, tag=tag)
             self.log_append(obj_overall=objective, tag=tag)
-            module_log = {f"{mantrap.constants.LK_OBJECTIVE}_{key}": mod.obj_current
+            module_log = {f"{mantrap.constants.LK_OBJECTIVE}_{key}": mod.obj_current(tag=tag)
                           for key, mod in self.module_dict.items()}
             self.log_append(**module_log, tag=tag)
 
@@ -405,11 +405,11 @@ class TrajOptSolver(abc.ABC):
         """
         ego_trajectory = self.z_to_ego_trajectory(z)
         constraints = np.concatenate([m.constraint(ego_trajectory, tag=tag, ado_ids=ado_ids) for m in self.modules])
-        violation = float(np.sum([m.compute_violation_internal() for m in self.modules]))
+        violation = float(np.sum([m.compute_violation_internal(tag=tag) for m in self.modules]))
 
         if __debug__ is True:
             self.log_append(inf_overall=violation, tag=tag)
-            module_log = {f"{mantrap.constants.LK_CONSTRAINT}_{key}": mod.inf_current
+            module_log = {f"{mantrap.constants.LK_CONSTRAINT}_{key}": mod.inf_current(tag=tag)
                           for key, mod in self.module_dict.items()}
             self.log_append(**module_log, tag=tag)
 

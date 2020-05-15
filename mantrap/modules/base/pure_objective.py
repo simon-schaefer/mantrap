@@ -19,7 +19,7 @@ class PureObjectiveModule(OptimizationModule, abc.ABC):
     for hard constraints without any inter-connection to the objective function.
     """
     def __init__(self, t_horizon: int = None, weight: float = 1.0):
-        super(PureObjectiveModule, self).__init__(t_horizon=t_horizon, weight=weight)
+        super(PureObjectiveModule, self).__init__(t_horizon=t_horizon, weight=weight, num_slack_variables=0)
 
     ###########################################################################
     # Constraint & Jacobian ###################################################
@@ -38,5 +38,5 @@ class PureObjectiveModule(OptimizationModule, abc.ABC):
     def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         return None, None
 
-    def num_constraints(self, ado_ids: typing.List[str]) -> int:
+    def _num_constraints(self, ado_ids: typing.List[str]) -> int:
         return 0

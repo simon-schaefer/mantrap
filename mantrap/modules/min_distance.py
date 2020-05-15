@@ -97,7 +97,7 @@ class MinDistanceModule(PureConstraintModule):
         """
         return mantrap.constants.CONSTRAINT_MIN_L2_DISTANCE, None
 
-    def num_constraints(self, ado_ids: typing.List[str]) -> int:
+    def _num_constraints(self, ado_ids: typing.List[str]) -> int:
         return 1
 
     ###########################################################################

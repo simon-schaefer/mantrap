@@ -111,7 +111,7 @@ class ControlLimitModule(PureConstraintModule):
         else:
             return lower, upper
 
-    def num_constraints(self, ado_ids: typing.List[str]) -> int:
+    def _num_constraints(self, ado_ids: typing.List[str]) -> int:
         return self.t_horizon
 
     ###########################################################################

@@ -19,7 +19,7 @@ class PureConstraintModule(OptimizationModule, abc.ABC):
     for hard constraints without any inter-connection to the objective function.
     """
     def __init__(self, t_horizon: int = None):
-        super(PureConstraintModule, self).__init__(t_horizon=t_horizon, weight=None)
+        super(PureConstraintModule, self).__init__(t_horizon=t_horizon, weight=None, num_slack_variables=0)
 
     ###########################################################################
     # Objective & Gradient ####################################################

@@ -109,7 +109,7 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         gradient = np.sum(gradient, axis=0)
 
         self.log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
-        module_log = {f"{mantrap.constants.LK_GRADIENT}_{key}": mod.grad_current
+        module_log = {f"{mantrap.constants.LK_GRADIENT}_{key}": mod.grad_current(tag=tag)
                       for key, mod in self.module_dict.items()}
         self.log_append(**module_log, tag=tag)
         return gradient

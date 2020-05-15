@@ -8,7 +8,8 @@ import mantrap.environment
 
 
 class OptimizationModule(abc.ABC):
-    def __init__(self, t_horizon: int,  weight: float = 0.0):
+    def __init__(self, t_horizon: int,  weight: typing.Union[float, None] = 0.0,
+                 num_slack_variables: int = 0, slack_weight: float = 0.0):
         """General objective and constraint module.
 
         For an unified and general implementation of objective and constraint function modules, this superclass
@@ -37,14 +38,23 @@ class OptimizationModule(abc.ABC):
         # Giving every optimization module access to a (large) simulation environment object is not
         # necessary and an un-necessary use of space, even when it is just a pointer. Therefore using
         # the simulation requires executing another class method (`initialize_env`).
-        self._env = None
+        self._env = None  # type: typing.Union[None, mantrap.environment.base.GraphBasedEnvironment]
 
         # Logging variables for objective and gradient values. For logging the latest variables are stored
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
         # appending multiple values within one optimization step.
-        self._constraint_current = np.array([])
-        self._obj_current = 0.0
-        self._grad_current = None
+        self._constraint_current = {}  # type: typing.Dict[str, np.ndarray]
+        self._obj_current = {}  # type: typing.Dict[str, float]
+        self._grad_current = {}  # type: typing.Dict[str, np.ndarray]
+
+        # Slack variables - Slack variables are part of both the constraints and the objective function,
+        # therefore have to stored internally to be shared between both functions. However as discussed
+        # above during multi-processing the same module object is shared over multiple processes,
+        # therefore store the slack variable values in dictionaries assigned to the processes tag.
+        assert slack_weight >= 0.0 and num_slack_variables >= 0
+        self._slack = {}  # type: typing.Dict[str, torch.Tensor]
+        self._num_slack_variables = num_slack_variables
+        self._slack_weight = slack_weight
 
     def initialize_env(self, env: mantrap.environment.base.GraphBasedEnvironment):
         assert env.ego is not None
@@ -65,12 +75,29 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        obj_value = self.compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
         if obj_value is None:
             obj_value = 0.0  # if objective not defined simply return 0.0
         else:
             obj_value = float(obj_value.item())
-        return self._return_objective(obj_value)
+        return self._return_objective(obj_value, tag=tag)
+
+    def compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                           ) -> typing.Union[torch.Tensor, None]:
+        """Determine internal objective value + slack variables.
+        
+        Add slack based part of objective function. The value of the slack variable can only be
+        updated if the constraints have been computed before. However using general optimization
+        frameworks we cannot enforce the order to method calls, therefore to be surely synched
+        we have to compute the constraints here first (!).
+        """
+        obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
+
+        if self._num_slack_variables > 0:
+            _ = self.constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+            obj_value += self._slack_weight * self._slack[tag].sum()
+
+        return obj_value
 
     @abc.abstractmethod
     def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -131,7 +158,7 @@ class OptimizationModule(abc.ABC):
             else:
                 gradient = self._compute_gradient_autograd(objective, grad_wrt=grad_wrt)
 
-        return self._return_gradient(gradient)
+        return self._return_gradient(gradient, tag=tag)
 
     def _compute_gradient_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -166,11 +193,15 @@ class OptimizationModule(abc.ABC):
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+
+        # Update slack variables (if any are defined for this module).
+        self._slack[tag] = constraints
+
         if constraints is None:
             constraints = np.array([])
         else:
             constraints = constraints.detach().numpy()
-        return self._return_constraint(constraints)
+        return self._return_constraint(constraints, tag=tag)
 
     @abc.abstractmethod
     def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -343,20 +374,32 @@ class OptimizationModule(abc.ABC):
     ###########################################################################
     # Constraint Bounds #######################################################
     ###########################################################################
+    def constraint_boundaries(
+        self, ado_ids: typing.List[str] = None
+    ) -> typing.Tuple[typing.Union[typing.List[float], typing.List[None]],
+                      typing.Union[typing.List[float], typing.List[None]]]:
+        # Module-individual constraint boundaries.
+        lower, upper = self._constraint_boundaries()
+        num_constraints = self.num_constraints(ado_ids=ado_ids)
+        lower_bounds = (lower * np.ones(num_constraints)).tolist() \
+            if lower is not None else [None] * num_constraints
+        upper_bounds = (upper * np.ones(num_constraints)).tolist() \
+            if upper is not None else [None] * num_constraints
+
+        # Slack variable introduced boundaries.
+        lower_bounds = lower_bounds + [0.0] * self._num_slack_variables
+        upper_bounds = upper_bounds + [None] * self._num_slack_variables
+        return lower_bounds, upper_bounds
+
     def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         """Lower and upper bounds for constraint values."""
         raise NotImplementedError
 
-    def constraint_boundaries(
-        self, ado_ids: typing.List[str] = None
-    ) -> typing.Tuple[typing.Union[np.ndarray, typing.List[None]], typing.Union[np.ndarray, typing.List[None]]]:
-        lower, upper = self._constraint_boundaries()
-        num_constraints = self.num_constraints(ado_ids=ado_ids)
-        lower = lower * np.ones(num_constraints) if lower is not None else [None] * num_constraints
-        upper = upper * np.ones(num_constraints) if upper is not None else [None] * num_constraints
-        return lower, upper
-
     def num_constraints(self, ado_ids: typing.List[str]) -> int:
+        return self._num_slack_variables + self._num_constraints(ado_ids=ado_ids)
+
+    @abc.abstractmethod
+    def _num_constraints(self, ado_ids: typing.List[str]) -> int:
         raise NotImplementedError
 
     ###########################################################################
@@ -380,12 +423,12 @@ class OptimizationModule(abc.ABC):
         else:
             return self._violation(constraint=constraint.detach().numpy())
 
-    def compute_violation_internal(self) -> float:
+    def compute_violation_internal(self, tag: str) -> float:
         """Determine constraint violation, i.e. how much the internal state is inside the constraint active region.
         When the constraint is not active, then the violation is zero. The calculation is based on the last (cached)
         evaluation of the constraint function.
         """
-        return self._violation(constraint=self._constraint_current)
+        return self._violation(constraint=self._constraint_current[tag])
 
     def _violation(self, constraint: typing.Union[np.ndarray, None]) -> float:
         if constraint is None:
@@ -416,36 +459,35 @@ class OptimizationModule(abc.ABC):
         (`_current_`-variables) has to require a gradient as well."""
         raise NotImplementedError
 
-    def _return_constraint(self, constraint_value: np.ndarray) -> np.ndarray:
-        self._constraint_current = constraint_value
-        return self._constraint_current
+    def _return_constraint(self, constraint_value: np.ndarray, tag: str) -> np.ndarray:
+        self._constraint_current[tag] = constraint_value
+        return self._constraint_current[tag]
 
-    def _return_objective(self, obj_value: float) -> float:
-        self._obj_current = self.weight * obj_value
-        return self._obj_current
+    def _return_objective(self, obj_value: float, tag: str) -> float:
+        self._obj_current[tag] = self.weight * obj_value
+        return self._obj_current[tag]
 
-    def _return_gradient(self, gradient: np.ndarray) -> np.ndarray:
-        self._grad_current = self.weight * gradient
-        return self._grad_current
+    def _return_gradient(self, gradient: np.ndarray, tag: str) -> np.ndarray:
+        self._grad_current[tag] = self.weight * gradient
+        return self._grad_current[tag]
 
     ###########################################################################
     # Module backlog ##########################################################
     ###########################################################################
-    @property
-    def constraint_current(self) -> np.ndarray:
-        return self._constraint_current
+    def constraint_current(self, tag: str) -> np.ndarray:
+        return self._constraint_current[tag]
 
-    @property
-    def inf_current(self) -> float:
-        return self.compute_violation_internal()
+    def inf_current(self, tag: str) -> float:
+        return self.compute_violation_internal(tag=tag)
 
-    @property
-    def obj_current(self) -> float:
-        return self._obj_current
+    def obj_current(self, tag: str) -> float:
+        return self._obj_current[tag]
 
-    @property
-    def grad_current(self) -> float:
-        return np.linalg.norm(self._grad_current)
+    def grad_current(self, tag: str) -> float:
+        return np.linalg.norm(self._grad_current[tag])
+
+    def slack_variables(self, tag: str) -> torch.Tensor:
+        return self._slack[tag]
 
     ###########################################################################
     # Module Properties #######################################################
