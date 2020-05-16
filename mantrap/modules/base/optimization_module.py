@@ -217,13 +217,13 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag).float()
 
         # Update slack variables (if any are defined for this module).
         if self._has_slack and constraints is not None:
             self._slack[tag] = - constraints
             constraints = constraints + self._slack[tag]  # constraint - slack (slacked variables)
-            constraints = torch.cat((constraints, self._slack[tag]))
+            constraints = torch.cat((constraints, - self._slack[tag]))
 
         return constraints
 
@@ -398,17 +398,14 @@ class OptimizationModule(abc.ABC):
     ###########################################################################
     # Constraint Bounds #######################################################
     ###########################################################################
-    def constraint_boundaries(
-        self, ado_ids: typing.List[str] = None
+    def constraint_boundaries(self, ado_ids: typing.List[str]
     ) -> typing.Tuple[typing.Union[typing.List[float], typing.List[None]],
                       typing.Union[typing.List[float], typing.List[None]]]:
         # Module-individual constraint boundaries.
         lower, upper = self._constraint_boundaries()
-        num_constraints = self.num_constraints(ado_ids=ado_ids)
-        lower_bounds = (lower * np.ones(num_constraints)).tolist() \
-            if lower is not None else [None] * num_constraints
-        upper_bounds = (upper * np.ones(num_constraints)).tolist() \
-            if upper is not None else [None] * num_constraints
+        num_constraints = self._num_constraints(ado_ids=ado_ids)  # number of internal constraints (!)
+        lower_bounds = (lower * np.ones(num_constraints)).tolist() if lower is not None else [None] * num_constraints
+        upper_bounds = (upper * np.ones(num_constraints)).tolist() if upper is not None else [None] * num_constraints
 
         # Slack variable introduced boundaries. We assume that the number of slack variables
         # is equal to number of constraint, i.e. that each constraint of the module is "soft".
@@ -445,32 +442,33 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True)
-        constraint = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        constraint = self.compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
         if constraint is None:
-            return self._violation(constraint=None)
+            return self._violation(constraints=None)
         else:
-            return self._violation(constraint=constraint.detach().numpy())
+            return self._violation(constraints=constraint.detach().numpy())
 
     def compute_violation_internal(self, tag: str) -> float:
         """Determine constraint violation, i.e. how much the internal state is inside the constraint active region.
         When the constraint is not active, then the violation is zero. The calculation is based on the last (cached)
         evaluation of the constraint function.
         """
-        return self._violation(constraint=self._constraint_current[tag])
+        return self._violation(constraints=self._constraint_current[tag])
 
-    def _violation(self, constraint: typing.Union[np.ndarray, None]) -> float:
-        if constraint is None:
+    def _violation(self, constraints: typing.Union[np.ndarray, None]) -> float:
+        if constraints is None:
             return 0.0
 
-        num_constraints = constraint.size
-        no_violation = np.zeros(num_constraints)
-        lower, upper = self._constraint_boundaries()
-        violation_lower = lower * np.ones(num_constraints) - constraint if lower is not None else no_violation
-        violation_upper = constraint - upper * np.ones(num_constraints) if upper is not None else no_violation
-
+        num_constraints = constraints.size
+        violation = np.zeros(num_constraints)
+        lower_bounds, upper_bounds = self.constraint_boundaries(ado_ids=self._env.ado_ids)
+        for ic, (lower, upper) in enumerate(zip(lower_bounds, upper_bounds)):
+            lower = lower if lower is not None else -np.inf
+            upper = upper if upper is not None else np.inf
+            violation[ic] = max(lower - constraints[ic], 0.0) + max(constraints[ic] - upper, 0.0)
+        violation = violation.sum()
         # Due to numerical (precision) errors the violation might be non-zero, although the derived optimization
         # variable is just at the constraint border (as for example in linear programming). Ignore these violations.
-        violation = np.sum(np.maximum(no_violation, violation_lower) + np.maximum(no_violation, violation_upper))
         if np.abs(violation) < mantrap.constants.CONSTRAINT_VIOLATION_PRECISION:
             return 0.0
         else:
