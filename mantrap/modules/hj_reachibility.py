@@ -8,6 +8,7 @@ import torch
 import mantrap.agents
 import mantrap.environment
 import mantrap.utility.io
+import mantrap.utility.maths
 import mantrap.utility.shaping
 
 from .base import OptimizationModule
@@ -55,16 +56,13 @@ class HJReachabilityModule(OptimizationModule):
         data_directory = mantrap.utility.io.build_os_path("external/reachability")
         mat = scipy.io.loadmat(os.path.join(data_directory, data_file), squeeze_me=True)
 
-        value_function = mat["value_function_flat"]
-        gradients = mat["gradient_flat"]
-
         # Check same environment parameters in pre-computation and internal environment.
         # grid_min = (min_x, min_y, min_vx_robot, min_vy_robot)
         x_axis, y_axis = env.axes
         v_max_robot = env.ego.speed_max
-        self._grid_min = mat["grid_min"].tolist()
+        self._grid_min = mat["grid_min"]
         assert self._grid_min[2] == self._grid_min[3] == -v_max_robot
-        self._grid_max = mat["grid_max"].tolist()
+        self._grid_max = mat["grid_max"]
         assert self._grid_max[2] == self._grid_max[3] == v_max_robot
         # since relative state is a position difference, it could occur that the robot is at one
         # edge of the environment and the pedestrian at the other, or vice versa, therefore 2 x (!)
@@ -82,13 +80,24 @@ class HJReachabilityModule(OptimizationModule):
         # Re-shape value function and gradient into usable shape.
         # value_function = (t_horizon, dx, dy, vx, vy)
         # gradient = (4, t_horizon, dx, dy, vx, vy)
-        self._num_points_by_dimension = mat["N"].tolist()
-        self._value_function = np.reshape(value_function, (-1, *self._num_points_by_dimension))
+        self._grid_size_by_dim = mat["N"]
+        self._value_function = np.moveaxis(mat["value_function"], -1, 0)
         assert self._value_function.shape[0] >= t_horizon
-        self._gradients = np.stack([np.reshape(gradient, (-1, *self._num_points_by_dimension))
-                                   for gradient in gradients])
+        assert all(self._value_function.shape[1:] == self._grid_size_by_dim)
+        self._gradients = np.moveaxis(np.stack(mat["gradients"]), -1, 1)
         assert self._gradients.shape[0] == 4  # for dimensions of relative state (dx, dy, vx_robot, vy_robot)
-        assert self._gradients.shape[1] >= t_horizon
+        assert self._gradients.shape[1] == self._value_function.shape[0]
+        assert all(self._gradients.shape[2:] == self._grid_size_by_dim)
+
+        # Up-scale the given value-function and gradient using the internal grid-up-scaling equally over every
+        # axis in order to be able to handle smaller changes in value and grid function.
+        # up_scaling_factor = 4
+        # t_horizon_max = self._value_function.shape[0]
+        # value_function_new = np.zeros((t_horizon_max, *(self._grid_size_by_dim * up_scaling_factor).tolist()))
+        # for t in range(t_horizon_max):
+        #     value_function_new[t], self._grid_size_by_dim = mantrap.utility.maths.grid_interpolation(
+        #         self._value_function[t], self.grid_description, upscale=up_scaling_factor)
+        # self._value_function = value_function_new
 
     ###########################################################################
     # Objective ###############################################################
@@ -145,19 +154,19 @@ class HJReachabilityModule(OptimizationModule):
             # In order to determine the system dynamics at the current state and given the worst
             # action the pedestrian could take, determine this worst action first.
             # The relative (coupled) system dynamics are described as shown in the module description.
-            end_point_robot_wo = 0.5 * u_robot * t_max ** 2 + ego_state[2:4] * t_max + state_rel[0:2]
-            u_ped_worst = np.sign(end_point_robot_wo) * np.minimum(np.abs(end_point_robot_wo / t_max),
-                                                                   u_max_ado * np.ones(2))
+            state_rel_wo = 0.5 * u_robot * t_max ** 2 + ego_state[2:4] * t_max + state_rel[0:2]  # todo: use dynamics()
+            u_ped_worst = np.sign(state_rel_wo) * np.minimum(np.abs(state_rel_wo / t_max), u_max_ado * np.ones(2))
             f_rel_worst = np.concatenate((ego_state[2:4] - u_ped_worst, u_robot))
 
             # Determine the value function's gradient at this current (relative) state.
-            coords = self._convert_state_to_value_coordinates(state_rel)
-            gradient = self._gradients[:, self.t_horizon, coords[0], coords[1], coords[2], coords[3]]
-            constraints[i_ado] = np.matmul(gradient.T, f_rel_worst)
-            # state_rel_next = state_rel + self._env.dt * f_rel_worst
-            # coords_next = self._convert_state_to_value_coordinates(state_rel_next)
-            # value_next = self._value_function[self.t_horizon, coords_next[0], coords_next[1], coords_next[2], coords_next[3]]
-            # constraints[i_ado] = value_next
+            # coords = self._convert_state_to_value_coordinates(state_rel)
+            # gradient = self._gradients[:, self.t_horizon, coords[0], coords[1], coords[2], coords[3]]
+            # constraints[i_ado] = np.matmul(gradient.T, f_rel_worst)
+
+            state_rel_next = state_rel + self._env.dt * f_rel_worst
+            c_next = self._convert_state_to_value_coordinates(state_rel_next)
+            value_next = self._value_function[0, c_next[0], c_next[1], c_next[2], c_next[3]]
+            constraints[i_ado] = value_next
 
         return torch.from_numpy(constraints)
 
@@ -198,16 +207,24 @@ class HJReachabilityModule(OptimizationModule):
         value_coordinates = np.zeros(4)
         for i in range(4):
             coordinate_range = self._grid_max[i] - self._grid_min[i]
-            n = self._num_points_by_dimension[i]
+            n = self._grid_size_by_dim[i]
             value_coordinates[i] = int((state[i] - self._grid_min[i]) / coordinate_range * n)
 
-        assert np.all(np.greater_equal(value_coordinates, np.zeros(4)))
-        assert np.all(np.less(value_coordinates, self._num_points_by_dimension))
+        # Clip values outside of boundaries by closest value inside pre-computed range (axis-wise).
+        value_coordinates = np.clip(value_coordinates, np.zeros(4), self._grid_size_by_dim - 1)
         return value_coordinates.astype(int)
 
     ###########################################################################
     # Module Properties #######################################################
     ###########################################################################
+    @property
+    def value_function(self) -> np.ndarray:
+        return self._value_function
+
+    @property
+    def grid_properties(self) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return self._grid_min, self._grid_max, self._grid_size_by_dim
+
     @property
     def name(self) -> str:
         return "hj_reachability"

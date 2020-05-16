@@ -35,6 +35,7 @@ def check_ego_path(x: torch.Tensor, num_primitives: int = None, t_horizon: int =
 def check_ego_controls(x: torch.Tensor, t_horizon: int = None) -> bool:
     assert not torch.any(torch.isnan(x))
     assert len(x.shape) == 2  # (t_horizon, dims)
+    assert x.shape[-1] == 2
     if t_horizon is not None:
         assert x.shape[0] == t_horizon
     return True
