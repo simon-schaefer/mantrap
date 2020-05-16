@@ -625,7 +625,6 @@ class TrajOptSolver(abc.ABC):
                 # (= constraint violation > 0) to nan value, that will be assigned to a special color
                 # in the heat-map later on.
                 objective_values[constraint_values > 0.0] = np.nan
-                assert not np.all(np.isnan(objective_values))
 
                 # Copy resulting objective values into results image.
                 images[t, :, :] = objective_values.copy()

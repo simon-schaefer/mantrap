@@ -76,6 +76,7 @@ class OptimizationModule(abc.ABC):
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         obj_value = self.compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        # Convert objective in standard optimization format (as float).
         if obj_value is None:
             obj_value = 0.0  # if objective not defined simply return 0.0
         else:
@@ -93,7 +94,8 @@ class OptimizationModule(abc.ABC):
         """
         obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
-        if self._has_slack > 0:
+        if self._has_slack:
+            obj_value = torch.zeros(1) if obj_value is None else obj_value
             _ = self.constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
             obj_value += self._slack_weight * self._slack[tag].sum()
 
@@ -196,8 +198,9 @@ class OptimizationModule(abc.ABC):
 
         # Update slack variables (if any are defined for this module).
         if self._has_slack:
-            self._slack[tag] = constraints
+            self._slack[tag] = - constraints
 
+        # Convert constraints in standard optimization format (as numpy arrays).
         if constraints is None:
             constraints = np.array([])
         else:
