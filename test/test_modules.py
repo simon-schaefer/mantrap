@@ -172,7 +172,8 @@ def test_objective_goal_distribution():
 # Constraints #############################################################
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.modules.ControlLimitModule,
-                                          mantrap.modules.MinDistanceModule])
+                                          mantrap.modules.MinDistanceModule,
+                                          mantrap.modules.HJReachabilityModule])
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
                                        mantrap.environment.PotentialFieldEnvironment,
                                        mantrap.environment.SocialForcesEnvironment,
@@ -183,7 +184,7 @@ class TestConstraints:
 
     @staticmethod
     def test_runtime(module_class, env_class, num_modes):
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
@@ -210,19 +211,19 @@ class TestConstraints:
         """In order to test the constraint violation in general test it in a scene with static and far-distant
         agent(s), with  respect to the ego, and static ego robot. In this configurations all constraints should
         be met. """
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.ones(2) * 9, goal=torch.ones(2) * 9, num_modes=num_modes)
-        ego_trajectory = env.ego.unroll_trajectory(controls=torch.zeros((5, 2)), dt=env.dt)
+        ego_trajectory = env.ego.unroll_trajectory(controls=torch.zeros((1, 2)), dt=env.dt)
 
-        module = module_class(env=env, t_horizon=5)
+        module = module_class(env=env, t_horizon=1)
         violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
         assert violation == 0
 
     @staticmethod
     def test_internal_env_update(module_class, env_class, num_modes):
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
@@ -244,7 +245,7 @@ class TestConstraints:
 
     @staticmethod
     def test_jacobian_analytical(module_class, env_class, num_modes):
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.rand(2)})
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, {"position": torch.rand(2)})
         env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10, num_modes=1)
         env.add_ado(position=torch.rand(2) * 8, goal=torch.rand(2) * (-10), num_modes=1)
 
@@ -382,3 +383,40 @@ class TestFilter:
         env.step(ego_action=torch.rand(2))
         assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
         assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+
+###########################################################################
+# Reachability Module #####################################################
+###########################################################################
+@pytest.mark.parametrize("env_class", environments)
+@pytest.mark.parametrize("num_modes", [1, 2])
+class TestHJReachability:
+
+    @staticmethod
+    def test_ego_type_failing(env_class, num_modes):
+        env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": torch.zeros(2)})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.rand(2) * 5, num_modes=num_modes)
+
+        # Check for module is asserting when ego has another type than double integrator, since only for
+        # this type of ego the pre-computed value function is correct.
+        with pytest.raises(AssertionError):
+            mantrap.modules.HJReachabilityModule(env, t_horizon=5)
+
+    @staticmethod
+    def test_constraint(env_class, num_modes):
+        env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent, ego_kwargs={"position": torch.zeros(2)})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.rand(2) * 5, num_modes=num_modes)
+        module = mantrap.modules.HJReachabilityModule(env, t_horizon=5)
+
+        ego_controls = torch.rand((5, 2))
+        ego_trajectory = env.ego.unroll_trajectory(ego_controls, dt=env.dt)
+        module.constraint(ego_trajectory, ado_ids=env.ado_ids, tag="test")
+
+
+
+if __name__ == '__main__':
+    TestHJReachability.test_constraint(mantrap.environment.PotentialFieldEnvironment, num_modes=1)
