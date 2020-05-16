@@ -74,7 +74,6 @@ class OptimizationModule(abc.ABC):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         obj_value = self.compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
         # Convert objective in standard optimization format (as float).
         if obj_value is None:
@@ -91,12 +90,17 @@ class OptimizationModule(abc.ABC):
         updated if the constraints have been computed before. However using general optimization
         frameworks we cannot enforce the order to method calls, therefore to be surely synched
         we have to compute the constraints here first (!).
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
         """
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
         if self._has_slack:
             obj_value = torch.zeros(1) if obj_value is None else obj_value
-            _ = self.constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+            _ = self.compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
             obj_value += self._slack_weight * self._slack[tag].sum()
 
         return obj_value
@@ -193,19 +197,35 @@ class OptimizationModule(abc.ABC):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
-
-        # Update slack variables (if any are defined for this module).
-        if self._has_slack:
-            self._slack[tag] = - constraints
-
+        constraints = self.compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
         # Convert constraints in standard optimization format (as numpy arrays).
         if constraints is None:
             constraints = np.array([])
         else:
             constraints = constraints.detach().numpy()
         return self._return_constraint(constraints, tag=tag)
+
+    def compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                           ) -> typing.Union[torch.Tensor, None]:
+        """Determine internal constraints + slack constraints.
+
+        Compute internal constraints and convert them to equality constraints by updating and adding the
+        slack variables. Then add further constraints for the slack variables themselves (>= 0).
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
+        """
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+
+        # Update slack variables (if any are defined for this module).
+        if self._has_slack and constraints is not None:
+            self._slack[tag] = - constraints
+            constraints = constraints + self._slack[tag]  # constraint - slack (slacked variables)
+            constraints = torch.cat((constraints, self._slack[tag]))
+
+        return constraints
 
     @abc.abstractmethod
     def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str

@@ -42,7 +42,7 @@ class HJReachabilityModule(OptimizationModule):
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int,  weight: float = 10.0,
                  data_file: str = "2D.mat", **unused):
         super(HJReachabilityModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight,
-                                                   has_slack=False, slack_weight=weight)
+                                                   has_slack=True, slack_weight=weight)
 
         # Pre-computed value function only for environment in which robot is double and each other
         # agent is a single integrator. However here we assume that the ados can be modelled as
