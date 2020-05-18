@@ -515,7 +515,7 @@ class TrajOptSolver(abc.ABC):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory), if __debug__ is True (otherwise no logging). """
         if __debug__ is True:
-            from mantrap.visualization import visualize
+            from mantrap.visualization import visualize_overview
             assert self.log is not None
 
             # From optimization log extract the core (initial condition) which has resulted in the best objective
@@ -528,7 +528,7 @@ class TrajOptSolver(abc.ABC):
                         for key in self.module_names}
             inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.module_names}
 
-            return visualize(
+            return visualize_overview(
                 ego_planned=self.log[f"{mantrap.constants.LK_OPTIMAL}/ego_planned"],
                 ado_planned=self.log[f"{mantrap.constants.LK_OPTIMAL}/ado_planned"],
                 ado_planned_wo=self.log[f"{mantrap.constants.LK_OPTIMAL}/ado_planned_wo"],
@@ -639,7 +639,7 @@ class TrajOptSolver(abc.ABC):
             # defined in the internal visualization package.
             path = self._visualize_output_format(name="heat_map")
             bounds = (lower[:2], upper[:2])
-            return visualize_heat_map(images, z_bounds=bounds, z_values=zs, resolution=resolution, file_path=path)
+            return visualize_heat_map(images, bounds=bounds, choices=zs, resolution=resolution, file_path=path)
 
     def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
         """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,

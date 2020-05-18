@@ -694,7 +694,7 @@ class GraphBasedEnvironment(abc.ABC):
         trajectory is repeated to the whole time horizon.
         """
         if __debug__ is True or enforce:
-            from mantrap.visualization import visualize
+            from mantrap.visualization import visualize_overview
             assert mantrap.utility.shaping.check_ego_trajectory(x=ego_trajectory)
             t_horizon = ego_trajectory.shape[0]
 
@@ -714,7 +714,7 @@ class GraphBasedEnvironment(abc.ABC):
                 ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
                 ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
 
-            return visualize(
+            return visualize_overview(
                 ego_planned=ego_stretched,
                 ado_planned=ado_stretched,
                 ado_planned_wo=ado_stretched_wo,
@@ -733,7 +733,7 @@ class GraphBasedEnvironment(abc.ABC):
         trajectory is repeated to the whole time horizon.
         """
         if __debug__ is True or enforce:
-            from mantrap.visualization import visualize
+            from mantrap.visualization import visualize_overview
 
             # Predict the ado behaviour conditioned on the given ego trajectory.
             ado_trajectories_wo = self.predict_wo_ego(t_horizon=t_horizon)
@@ -745,7 +745,7 @@ class GraphBasedEnvironment(abc.ABC):
                 ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
 
             output_path = self._visualize_output_format(name="prediction_wo_ego")
-            return visualize(ado_planned_wo=ado_stretched_wo, plot_path_only=True, env=self, file_path=output_path)
+            return visualize_overview(ado_planned_wo=ado_stretched_wo, plot_path_only=True, env=self, file_path=output_path)
 
     def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
         """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
