@@ -92,7 +92,7 @@ class ORCASolver(ZControlIntermediate):
     # Optimization Formulation ################################################
     ###########################################################################
     def module_defaults(self) -> typing.List[typing.Tuple]:
-        return [(mantrap.modules.GoalModule, {"optimize_speed": False, "weight": 1.0}),
+        return [(mantrap.modules.GoalNormModule, {"optimize_speed": False, "weight": 1.0}),
                 (mantrap.modules.ControlLimitModule, None)]
 
     ###########################################################################

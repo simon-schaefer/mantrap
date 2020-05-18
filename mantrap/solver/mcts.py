@@ -96,7 +96,7 @@ class MonteCarloTreeSearch(SearchIntermediate, ZControlIntermediate):
     # Optimization formulation  ###############################################
     ###########################################################################
     def module_defaults(self) -> typing.List[typing.Tuple]:
-        return [(mantrap.modules.GoalModule, {"optimize_speed": False, "weight": 1.0}),
+        return [(mantrap.modules.GoalNormModule, {"optimize_speed": False, "weight": 1.0}),
                 (mantrap.modules.InteractionPositionModule, {"weight": 1.0}),
                 (mantrap.modules.ControlLimitModule, None),
                 (mantrap.modules.MinDistanceModule, None)]

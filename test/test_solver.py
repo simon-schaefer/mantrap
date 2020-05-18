@@ -204,7 +204,7 @@ def test_ignoring_solver(env_class):
                     dt=0.4)
     env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
 
-    modules = [(mantrap.modules.GoalModule, {"optimize_speed": False}),
+    modules = [(mantrap.modules.GoalNormModule, {"optimize_speed": False}),
                (mantrap.modules.ControlLimitModule, None)]
 
     solver = mantrap.solver.SGradSolver(env, goal=torch.tensor([1, 0]), t_planning=3, modules=modules)

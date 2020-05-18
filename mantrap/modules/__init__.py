@@ -1,8 +1,11 @@
 import mantrap.modules.base
 
+from mantrap.modules.goal_norm import GoalNormModule
 from mantrap.modules.acc_interact import InteractionAccelerationModule
+from mantrap.modules.pos_interact import InteractionPositionModule
+
 from mantrap.modules.control_limits import ControlLimitModule
-from mantrap.modules.goal import GoalModule
 from mantrap.modules.hj_reachibility import HJReachabilityModule
 from mantrap.modules.min_distance import MinDistanceModule
-from mantrap.modules.pos_interact import InteractionPositionModule
+
+import mantrap.modules.baselines

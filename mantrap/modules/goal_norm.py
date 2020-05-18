@@ -8,7 +8,7 @@ import mantrap.utility.shaping
 from .base import PureObjectiveModule
 
 
-class GoalModule(PureObjectiveModule):
+class GoalNormModule(PureObjectiveModule):
     """Objective based on goal distance of every point of planned robot trajectory.
 
     Next to avoiding interaction with other agents the robot should reach the goal state in a finite amount of
@@ -31,9 +31,8 @@ class GoalModule(PureObjectiveModule):
     :param goal: goal state/position for robot agent (2).
     :param optimize_speed: include cost for zero velocity at goal state.
     """
-
     def __init__(self, goal: torch.Tensor, optimize_speed: bool = False, **unsued):
-        super(GoalModule, self).__init__()
+        super(GoalNormModule, self).__init__()
 
         assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
@@ -137,4 +136,4 @@ class GoalModule(PureObjectiveModule):
     ###########################################################################
     @property
     def name(self) -> str:
-        return "goal"
+        return "goal_norm"
