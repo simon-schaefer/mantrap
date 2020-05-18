@@ -40,7 +40,8 @@ Furthermore both the robot and the pedestrians underly constraints for their min
 Within project \project I want to find a robot trajectory over some discrete time horizon $T$ that trade-offs between minimising the travel time from the its current state to some goal state $\mathcal{G}_R$ on the one side and the interference with the pedestrians in the scene on the other side, with respect to its dynamic as well as safety boundaries. Formally, the solution to this problem solves the following optimisation problem: 
 
 \begin{align}
-\min_{X_R} \quad & w_1 E_{\mathcal{S}_P}[J_{int}(X_R, \mathcal{S}_P)] + w_2 J_{goal}(X_R, \mathcal{G}_R) \\
+\label{eq:formulation}
+\min_{X_R} \quad & w_{int} E_{\mathcal{S}_P}[J_{int}(X_R, \mathcal{S}_P)] + w_{goal} J_{goal}(X_R, \mathcal{G}_R) \\
 \textrm{s.t. } \quad & X_R^{t+1} = f_R(X_R^t, U_R^t) \\
 & X_{Pi}^{t+1} = \phi_{Pi}(X_R^{t_0:t}, X_{Pi}^{t_0:t}, X_{Pj}^{t_0:t}) \\
 & g_{control}(X_R) \leq 0 \\
@@ -65,7 +66,7 @@ For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-d
 
 - wikipedia description \href{https://en.wikipedia.org/wiki/Trajectory_optimization}
 
-- IPOPT (Vincent Laurense, cascaded MPC, speed racing)
+- IPOPT (fast ! Vincent Laurense, cascaded MPC, speed racing)
 
 - Trajectory Optimization (Shooting vs Collocation) \href{https://epubs.siam.org/doi/pdf/10.1137/16M1062569}
 
@@ -74,6 +75,19 @@ For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-d
 
 \subsection{Goal Objective}
 \label{text:approach/objective/goal}
+The goal objective gives an incentive for the optimiser to choose a solution that targets the goal state. It simply consists of the L2-norm between each robot trajectory point and the goal state, normed over the planning horizon:
+
+\begin{equation}
+J_{goal} = \frac{1}{T} \sum_{t = 0}^T ||X_R^t - \mathcal{G}_R||_2
+\end{equation}
+
+By normalisation the cost is independent from the length of the planning horizon and thus allows to use the same weight $w_{goal}$ for different planning horizons (comp. equation \ref{eq:formulation}). 
+
+- jacobian: speed of convergence
+
+- final speed objective
+
+- comparison between mean and weighted sum of point-wise objectives
 
 \subsection{Interactive Objective}
 \label{text:approach/objective/interactive}
