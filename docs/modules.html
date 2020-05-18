@@ -1,0 +1,465 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Objective and Constraint Modules &#8212; mantrap 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Filter Modules" href="filter.html" />
+    <link rel="prev" title="Solver" href="solver.html" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head><body>
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="filter.html" title="Filter Modules"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="solver.html" title="Solver"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="objective-and-constraint-modules">
+<h1>Objective and Constraint Modules<a class="headerlink" href="#objective-and-constraint-modules" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="base-optimization-modules-abstract">
+<h2>Base Optimization Modules (abstract)<a class="headerlink" href="#base-optimization-modules-abstract" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.modules.base.optimization_module">
+<span id="base-class"></span><h3>Base class<a class="headerlink" href="#module-mantrap.modules.base.optimization_module" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.base.optimization_module.</code><code class="sig-name descname">OptimizationModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">has_slack</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">slack_weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.compute_constraint">
+<code class="sig-name descname">compute_constraint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.compute_constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine internal constraints + slack constraints.</p>
+<p>Compute internal constraints and convert them to equality constraints by updating and adding the
+slack variables. Then add further constraints for the slack variables themselves (&gt;= 0).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.compute_objective">
+<code class="sig-name descname">compute_objective</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.compute_objective" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine internal objective value + slack variables.</p>
+<p>Add slack based part of objective function. The value of the slack variable can only be
+updated if the constraints have been computed before. However using general optimization
+frameworks we cannot enforce the order to method calls, therefore to be surely synched
+we have to compute the constraints here first (!).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.compute_violation">
+<code class="sig-name descname">compute_violation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.compute_violation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine constraint violation based on some input ego trajectory and ado ids list.</p>
+<p>The violation is the amount how much the solution state is inside the constraint active region.
+When the constraint is not active, then the violation is zero. The calculation is based on the last
+(cached) evaluation of the constraint function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.compute_violation_internal">
+<code class="sig-name descname">compute_violation_internal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.compute_violation_internal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine constraint violation, i.e. how much the internal state is inside the constraint active region.
+When the constraint is not active, then the violation is zero. The calculation is based on the last (cached)
+evaluation of the constraint function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.constraint">
+<code class="sig-name descname">constraint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine constraint value for passed ego trajectory by calling the internal <cite>compute()</cite> method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.gradient">
+<code class="sig-name descname">gradient</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.gradient" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine gradient vector for passed ego trajectory. Therefore determine the objective value by
+calling the internal <cite>compute()</cite> method and en passant build a computation graph. Then using the pytorch
+autograd library compute the gradient vector through the previously built computation graph.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>grad_wrt</strong> – vector w.r.t. which the gradient should be determined.</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.jacobian">
+<code class="sig-name descname">jacobian</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.jacobian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine jacobian matrix for passed ego trajectory.</p>
+<p>Therefore at first check whether an analytical solution is defined, if not determine the constraint values
+by calling the internal <cite>compute()</cite> method and en passant build a computation graph. Then using the PyTorch
+autograd library compute the jacobian matrix based on the constraints computation graph.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>grad_wrt</strong> – vector w.r.t. which the gradient should be determined.</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.objective">
+<code class="sig-name descname">objective</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.objective" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine objective value for passed ego trajectory by calling the internal <cite>compute()</cite> method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.modules.base.pure_objective">
+<span id="pure-objective"></span><h3>Pure objective<a class="headerlink" href="#module-mantrap.modules.base.pure_objective" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.base.pure_objective.PureObjectiveModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.base.pure_objective.</code><code class="sig-name descname">PureObjectiveModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.base.pure_objective.PureObjectiveModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pure constraint module class.</p>
+<p>For an unified and general implementation of objective and constraint function modules, this superclass
+implements methods for computing both, either analytically or numerically based on the PyTorch autograd
+package. Thereby all objective and constraint computations should be purely based on the robot’s (ego)
+trajectory, as well as the possibility to perform further roll-outs in a given simulation environment.</p>
+<p>The <cite>PureConstraintModule</cite> implements the general optimization module as pure constraint module, i.e.
+for hard constraints without any inter-connection to the objective function.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.modules.base.pure_constraint">
+<span id="pure-constraint"></span><h3>Pure constraint<a class="headerlink" href="#module-mantrap.modules.base.pure_constraint" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.base.pure_constraint.PureConstraintModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.base.pure_constraint.</code><code class="sig-name descname">PureConstraintModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.base.pure_constraint.PureConstraintModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pure constraint module class.</p>
+<p>For an unified and general implementation of objective and constraint function modules, this superclass
+implements methods for computing both, either analytically or numerically based on the PyTorch autograd
+package. Thereby all objective and constraint computations should be purely based on the robot’s (ego)
+trajectory, as well as the possibility to perform further roll-outs in a given simulation environment.</p>
+<p>The <cite>PureConstraintModule</cite> implements the general optimization module as pure constraint module, i.e.
+for hard constraints without any inter-connection to the objective function.</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="goal-driven-objectives">
+<h2>Goal-Driven Objectives<a class="headerlink" href="#goal-driven-objectives" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.modules.goal_norm">
+<span id="goal-norm"></span><h3>Goal-Norm<a class="headerlink" href="#module-mantrap.modules.goal_norm" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.goal_norm.GoalNormModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.goal_norm.</code><code class="sig-name descname">GoalNormModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">optimize_speed</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unsued</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.goal_norm.GoalNormModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Objective based on goal distance of every point of planned robot trajectory.</p>
+<p>Next to avoiding interaction with other agents the robot should reach the goal state in a finite amount of
+time. Therefore the distance of every trajectory point to the goal state is taken to account, which is
+minimized the faster the robot gets to the goal.</p>
+<div class="math notranslate nohighlight">
+\[objective = \sum_{T} || pos_t - goal ||_2\]</div>
+<p>However, it is more important for the last rather than the first trajectory points to be close to the goal.
+Using some strictly-increasing distribution to weight the importance of the distance at every point in time
+did not lead to the expect result, while complicating the optimization. When we want to trade-off the
+goal cost with other cost, simply adapting its weight is sufficient as well.</p>
+<p>Additionally a cost for the velocity at the goal state can be included in this objective, a cost for non-zero
+velocity to be exact. This cost is weighted continuously based on the distance to the goal, i.e. the closer
+the a large speed (= velocity L2 norm) occurs, the higher its cost.</p>
+<div class="math notranslate nohighlight">
+\[objective = \sum_{T} w_t(d_{goal}(t)) || v_t ||_2\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>goal</strong> – goal state/position for robot agent (2).</p></li>
+<li><p><strong>optimize_speed</strong> – include cost for zero velocity at goal state.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.modules.baselines.goal_sum">
+<span id="goal-sum"></span><h3>Goal-Sum<a class="headerlink" href="#module-mantrap.modules.baselines.goal_sum" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.baselines.goal_sum.GoalSumModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.goal_sum.</code><code class="sig-name descname">GoalSumModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.goal_sum.GoalSumModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Objective based on goal distance of every point of planned robot trajectory.</p>
+<p>This module merely serves as a baseline comparison for the <cite>GoalMeanModule</cite>, by using a weighted
+sum instead of the mean for combining the point-wise objectives. Following the idea that it is
+more important for the last point of the trajectory to be close to the goal than the first one,
+the larger the trajectory index the larger the weight of the point-wise distance.</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="interaction-driven-objectives">
+<h2>Interaction-Driven Objectives<a class="headerlink" href="#interaction-driven-objectives" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.modules.acc_interact">
+<span id="acceleration-interaction"></span><h3>Acceleration Interaction<a class="headerlink" href="#module-mantrap.modules.acc_interact" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.acc_interact.InteractionAccelerationModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.acc_interact.</code><code class="sig-name descname">InteractionAccelerationModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.acc_interact.InteractionAccelerationModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loss based on accelerational interaction between robot and ados.</p>
+<p>As a proxy for interaction based on the acceleration of every ado is computed in a (fictional) scene without an
+ego (robot) and compared to the actual occurring accelerations in the scene. As for autonomous driving the
+acceleration can be expressed “moving comfort”, since a change in acceleration, especially a sudden change like
+strong de-acceleration, decreases the comfort of the agent.</p>
+<p>Re-Predicting it every time-step would be more correct, however it would also require a lot more computational
+effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
+that would occur, if the ego is not there from the beginning.</p>
+<div class="math notranslate nohighlight">
+\[objective = \sum_{T} \sum_{ghosts} || acc_{t,i} - acc_{t,i}^{wo} ||_2\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>env</strong> – environment for predicting the behaviour without interaction.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.modules.pos_interact">
+<span id="position-interaction"></span><h3>Position Interaction<a class="headerlink" href="#module-mantrap.modules.pos_interact" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.pos_interact.InteractionPositionModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.pos_interact.</code><code class="sig-name descname">InteractionPositionModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.pos_interact.InteractionPositionModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loss based on positional interaction between robot and ados.</p>
+<p>As a proxy for interaction based on the position of every ado is computed in a (fictional) scene without an
+ego (robot) and compared to the actual occurring positions in the scene, as in intuitive measure for the change
+the robot’s presence introduces to the scene.</p>
+<p>Re-Predicting it every time-step would be more correct, however it would also require a lot more computational
+effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
+that would occur, if the ego is not there from the beginning.</p>
+<div class="math notranslate nohighlight">
+\[objective = \sum_{T} \sum_{ghosts} || pos_{t,i} - pos_{t,i}^{wo} ||_2\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>env</strong> – solver’s environment environment for predicting the behaviour without interaction.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-mantrap.modules.baselines.control_limits">
+<span id="control-effort-constraints"></span><h2>Control-Effort Constraints<a class="headerlink" href="#module-mantrap.modules.baselines.control_limits" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mantrap.modules.baselines.control_limits.ControlLimitModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.control_limits.</code><code class="sig-name descname">ControlLimitModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.control_limits.ControlLimitModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximal control input at every point in time.</p>
+<p>For computing this constraint simply the norm of the planned control input is determined and compared to the
+maximal agent’s control limit. For 0 &lt; t &lt; T_{planning}:</p>
+<div class="math notranslate nohighlight">
+\[||u(t)||_2 &lt; u_{max}\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="safety-constraints">
+<h2>Safety-Constraints<a class="headerlink" href="#safety-constraints" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.modules.hj_reachibility">
+<span id="hj-reachability"></span><h3>HJ-Reachability<a class="headerlink" href="#module-mantrap.modules.hj_reachibility" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.hj_reachibility.HJReachabilityModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.hj_reachibility.</code><code class="sig-name descname">HJReachabilityModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">10.0</span></em>, <em class="sig-param"><span class="n">data_file</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'2D.mat'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Soft constraint based on Hamilton-Jacobi Reachability.</p>
+<p>Use HJ (aka backward) reachability to constraint the ego agent to not become “unsafer” when moving, i.e.
+to chose some trajectory so that the backward reachability value function does not become larger. This is
+equivalent to a min-max-game between the robot and each pedestrian, in which the pedestrian tries to catch
+the ego robot and while the robot tries to avoid the pedestrian. When the value function is negative, it
+is provably safe which means no matter what the pedestrian does (regarding safety trying to “catch” the robot is
+the worst case) they cannot reach each other.</p>
+<p>with <cite>f_{rel}(x, u_R, u_P)</cite> being the system dynamics of the relative state. Since the robot is modelled
+as double integrator while all pedestrians are modelled as single integrators, the relative (coupled) systems
+state only depends on the relative position as well as the velocity of the robot, not the velocity of the
+pedestrian (which is a system input).</p>
+<p>The coupled system dynamics then are given as:</p>
+<p>Since <cite>sigma</cite> is a slack variable the according weight in the objective function should be comparably large.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-mantrap.modules.baselines.min_distance">
+<span id="minimal-distance"></span><h3>Minimal-Distance<a class="headerlink" href="#module-mantrap.modules.baselines.min_distance" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.modules.baselines.min_distance.MinDistanceModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.min_distance.</code><code class="sig-name descname">MinDistanceModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.min_distance.MinDistanceModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraint for minimal distance between the robot (ego) and any other agent (ado) over all time.</p>
+<p>For computing the minimal distance between the ego and every ado the scene is forward simulated given the
+planned ego trajectory, using the <cite>build_connected_graph()</cite> method. Then the minimal distance between ego
+and every ado is computed for every time-step of the trajectory. For 0 &lt; t &lt; T_{planning}:</p>
+<div class="math notranslate nohighlight">
+\[min_t || pos(t) - pos^{ado}_{0:2}(t) || &gt; D\]</div>
+<p>In comparison to the <cite>norm_distance</cite> constraint, this constraint only includes the minimal value over all
+time-steps and agents (w.r.t. the ego agent) during the planning horizon. Thus, the <cite>min_distance</cite> constraint
+is a necessary condition for the <cite>norm_distance</cite> to be satisfied. However, although the <cite>min_distance</cite>
+constraint definitely is computationally way more efficient due to the decrease of  number of constraints
+(leading to way less backward passes), it gives a lot less information about where the optimization should go.
+In fact it reduces the problem of minimal distance to the “selected” agent and time-step, while the optimized
+trajectory has no gradients pointing to a certain distance from other agents at other points in time, so that
+the number of convergence steps might be increased.</p>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Objective and Constraint Modules</a><ul>
+<li><a class="reference internal" href="#base-optimization-modules-abstract">Base Optimization Modules (abstract)</a><ul>
+<li><a class="reference internal" href="#module-mantrap.modules.base.optimization_module">Base class</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.base.pure_objective">Pure objective</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.base.pure_constraint">Pure constraint</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#goal-driven-objectives">Goal-Driven Objectives</a><ul>
+<li><a class="reference internal" href="#module-mantrap.modules.goal_norm">Goal-Norm</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.baselines.goal_sum">Goal-Sum</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#interaction-driven-objectives">Interaction-Driven Objectives</a><ul>
+<li><a class="reference internal" href="#module-mantrap.modules.acc_interact">Acceleration Interaction</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.pos_interact">Position Interaction</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-mantrap.modules.baselines.control_limits">Control-Effort Constraints</a></li>
+<li><a class="reference internal" href="#safety-constraints">Safety-Constraints</a><ul>
+<li><a class="reference internal" href="#module-mantrap.modules.hj_reachibility">HJ-Reachability</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.baselines.min_distance">Minimal-Distance</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="solver.html"
+                        title="previous chapter">Solver</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="filter.html"
+                        title="next chapter">Filter Modules</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/modules.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="filter.html" title="Filter Modules"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="solver.html" title="Solver"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Simon Schaefer.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+    </div>
+  </body>
+</html>

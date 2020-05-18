@@ -10,8 +10,7 @@ Code in Detail
    agents.rst
    environment.rst
    solver.rst
-   constraints.rst
-   objectives.rst
+   modules.rst
    filter.rst
    controllers.rst
    evaluation.rst

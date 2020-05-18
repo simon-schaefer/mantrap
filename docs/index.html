@@ -45,7 +45,9 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mantrap">
+  <a class="reference external image-reference" href="https://travis-ci.com/simon-schaefer/mantrap"><img alt="https://travis-ci.com/simon-schaefer/mantrap.svg?branch=master" src="https://travis-ci.com/simon-schaefer/mantrap.svg?branch=master" /></a>
+<a class="reference external image-reference" href="https://codecov.io/gh/simon-schaefer/mantrap"><img alt="https://codecov.io/gh/simon-schaefer/mantrap/branch/master/graph/badge.svg" src="https://codecov.io/gh/simon-schaefer/mantrap/branch/master/graph/badge.svg" /></a>
+<div class="section" id="mantrap">
 <h1>mantrap<a class="headerlink" href="#mantrap" title="Permalink to this headline">¶</a></h1>
 <p>Minimal interferring Interactive Risk-aware Planning for multimodal and time-evolving obstacle behaviour</p>
 <div class="section" id="description">
@@ -124,48 +126,71 @@ in order to save runtime.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="agents.html">Agents</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="agents.html#module-mantrap.agents.agent">Abstract Agent</a></li>
-<li class="toctree-l2"><a class="reference internal" href="agents.html#module-mantrap.agents.agent_intermediates.linear">Linear Agent</a></li>
-<li class="toctree-l2"><a class="reference internal" href="agents.html#module-mantrap.agents.integrator">Single Integrator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="agents.html#module-mantrap.agents.integrator_double">Double Integrator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#module-mantrap.agents.base.discrete">Base Discrete Agent (abstract)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#module-mantrap.agents.base.linear">Linear Agents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="agents.html#module-mantrap.agents.integrator_single">Single Integrator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="agents.html#module-mantrap.agents.integrator_double">Double Integrator</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="environment.html">Environment</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.environment">Graph-Based Environment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.iterative">Iterative Environment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.social_forces">Social Forces</a></li>
-<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.potential_field">Potential Field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.orca">ORCA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.kalman">Kalman</a></li>
+<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.base.graph_based">Graph-Based Environment (abstract)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.base.iterative">Iterative Environments</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="environment.html#module-mantrap.environment.social_forces">Social Forces</a></li>
+<li class="toctree-l3"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.potential_field">Potential Field</a></li>
+<li class="toctree-l3"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.orca">ORCA</a></li>
+<li class="toctree-l3"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.kalman">Kalman</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="environment.html#trajectron">Trajectron</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="solver.html">Solver</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.solver">Abstract Solver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.sgrad">S-GRAD-IPOPT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.solver_baselines.orca">Baselines - ORCA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.solver_baselines.ignoring">Baselines - Ignoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.base.trajopt">Base Trajectory Solver (abstract)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.base.ipopt">IPOPT - Solvers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="solver.html#module-mantrap.solver.sgrad">S-GRAD-IPOPT</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="constraints.html">Constraint Modules</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="constraints.html#module-mantrap.solver.constraints.constraint_module">Abstract Constraint</a></li>
-<li class="toctree-l2"><a class="reference internal" href="constraints.html#module-mantrap.solver.constraints.control_limits">Control Limits</a></li>
-<li class="toctree-l2"><a class="reference internal" href="constraints.html#module-mantrap.solver.constraints.min_distance">Minimal Distance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.base.search">Search - Solvers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="solver.html#module-mantrap.solver.mcts">Monte-Carlo-Tree-Search</a></li>
+<li class="toctree-l3"><a class="reference internal" href="solver.html#module-mantrap.solver.baselines.random_search">Random Search</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="objectives.html">Objective Modules</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="objectives.html#module-mantrap.solver.objectives.objective_module">Abstract Objective</a></li>
-<li class="toctree-l2"><a class="reference internal" href="objectives.html#module-mantrap.solver.objectives.goal">Goal Driven</a></li>
-<li class="toctree-l2"><a class="reference internal" href="objectives.html#module-mantrap.solver.objectives.control_effort">Control Effort</a></li>
-<li class="toctree-l2"><a class="reference internal" href="objectives.html#module-mantrap.solver.objectives.acc_interact">Acceleration Interaction</a></li>
-<li class="toctree-l2"><a class="reference internal" href="objectives.html#module-mantrap.solver.objectives.pos_interact">Position Interaction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.baselines.orca">Baselines - ORCA</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Objective and Constraint Modules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules.html#base-optimization-modules-abstract">Base Optimization Modules (abstract)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.base.optimization_module">Base class</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.base.pure_objective">Pure objective</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.base.pure_constraint">Pure constraint</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules.html#goal-driven-objectives">Goal-Driven Objectives</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.goal_norm">Goal-Norm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.baselines.goal_sum">Goal-Sum</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules.html#interaction-driven-objectives">Interaction-Driven Objectives</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.acc_interact">Acceleration Interaction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.pos_interact">Position Interaction</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules.html#module-mantrap.modules.baselines.control_limits">Control-Effort Constraints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules.html#safety-constraints">Safety-Constraints</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.hj_reachibility">HJ-Reachability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.baselines.min_distance">Minimal-Distance</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="filter.html">Filter Modules</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="filter.html#module-mantrap.solver.filter.filter_module">Abstract Filter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="filter.html#module-mantrap.solver.filter.nofilter">No Filter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="filter.html#module-mantrap.solver.filter.euclidean">Euclidean Distance</a></li>
-<li class="toctree-l2"><a class="reference internal" href="filter.html#module-mantrap.solver.filter.reachability">Forward Reachability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filter.html#module-mantrap.filter.filter_module">Base Filter Module (abstract)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filter.html#module-mantrap.filter.euclidean">Euclidean Distance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filter.html#module-mantrap.filter.reachability">Forward Reachability</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="controllers.html">Controller</a><ul>

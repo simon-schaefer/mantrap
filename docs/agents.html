@@ -51,11 +51,11 @@
             
   <div class="section" id="agents">
 <h1>Agents<a class="headerlink" href="#agents" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-mantrap.agents.agent">
-<span id="abstract-agent"></span><h2>Abstract Agent<a class="headerlink" href="#module-mantrap.agents.agent" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.agents.base.discrete">
+<span id="base-discrete-agent-abstract"></span><h2>Base Discrete Agent (abstract)<a class="headerlink" href="#module-mantrap.agents.base.discrete" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
-<dt id="mantrap.agents.agent.Agent">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.agent.</code><code class="sig-name descname">Agent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">is_robot</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">identifier</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.agent.Agent" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.base.discrete.</code><code class="sig-name descname">DTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">is_robot</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">identifier</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent" title="Permalink to this definition">¶</a></dt>
 <dd><p>General agent representation.</p>
 <p>An agent, whether in environment or real world, has a five-dimensional state vector and a state history, which are
 defined as follows:</p>
@@ -80,8 +80,8 @@ value directly. All other methods do not alter the internal state.</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.check_feasibility_controls">
-<code class="sig-name descname">check_feasibility_controls</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.agents.agent.Agent.check_feasibility_controls" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.check_feasibility_controls">
+<code class="sig-name descname">check_feasibility_controls</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.check_feasibility_controls" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check feasibility of a given set of controls to be executed by the internal agent.</p>
 <p>In order to check feasibility convert the trajectory just check whether the controls
 are inside the internal control boundaries. Since changes of control input from one
@@ -94,8 +94,8 @@ step to another are not limited, they are not checked here.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.check_feasibility_trajectory">
-<code class="sig-name descname">check_feasibility_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.agents.agent.Agent.check_feasibility_trajectory" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.check_feasibility_trajectory">
+<code class="sig-name descname">check_feasibility_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.check_feasibility_trajectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check feasibility of a given trajectory to be followed by the internal agent.</p>
 <p>In order to check feasibility convert the trajectory to control inputs using the
 internal inverse dynamics of the agent and check whether all of them are inside
@@ -111,21 +111,28 @@ its control boundaries.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.control_limits">
-<em class="property">abstract </em><code class="sig-name descname">control_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.agent.Agent.control_limits" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.control_limits">
+<em class="property">abstract </em><code class="sig-name descname">control_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.control_limits" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns agent’s control input limitations, i.e. lower and upper bound.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.detach">
-<code class="sig-name descname">detach</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.agent.Agent.detach" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.detach">
+<code class="sig-name descname">detach</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.detach" title="Permalink to this definition">¶</a></dt>
 <dd><p>Detach the agent’s internal variables (position, velocity, history) from computation tree. This is
 sometimes required to completely separate subsequent computations in PyTorch.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.dynamics">
-<code class="sig-name descname">dynamics</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">action</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent.Agent.dynamics" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.dx_du">
+<em class="property">abstract </em><code class="sig-name descname">dx_du</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.dx_du" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the derivative of the agent’s state with respect to its control input
+evaluated over controls u with discrete state time-step dt.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.agents.base.discrete.DTAgent.dynamics">
+<code class="sig-name descname">dynamics</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">action</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.dynamics" title="Permalink to this definition">¶</a></dt>
 <dd><p>Forward integrate the agent’s motion given some state-action pair and an integration time-step.</p>
 <p>Passing the state, instead of using the internal state, allows the method to be used for other state
 vector than the internal state, e.g. for forward predicting over a time horizon &gt; 1. Since every agent
@@ -145,8 +152,8 @@ type has different dynamics (like single-integrator or Dubins Car) this method i
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.dynamics_scalar">
-<em class="property">static </em><code class="sig-name descname">dynamics_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">px</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">py</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vx</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">ux</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">uy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.agent.Agent.dynamics_scalar" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.dynamics_scalar">
+<em class="property">static </em><code class="sig-name descname">dynamics_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">px</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">py</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vx</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">ux</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">uy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.dynamics_scalar" title="Permalink to this definition">¶</a></dt>
 <dd><p>Forward integrate the agent’s motion given some state-action pair and an integration time-step.</p>
 <p>In comparison to the “normal” dynamics() method this method can be used for repeated scalar and non-
 differentiable use cases. Since the agent’s fundamental state tensor operations are “only” two-dimensional
@@ -160,14 +167,14 @@ native python scalar operations.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.expand_state_vector">
-<em class="property">static </em><code class="sig-name descname">expand_state_vector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state_4</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent.Agent.expand_state_vector" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.expand_state_vector">
+<em class="property">static </em><code class="sig-name descname">expand_state_vector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state_4</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.expand_state_vector" title="Permalink to this definition">¶</a></dt>
 <dd><p>Expand 4 dimensional (x, y, vx, vy) state vector by time information.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.expand_trajectory">
-<code class="sig-name descname">expand_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent.Agent.expand_trajectory" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.expand_trajectory">
+<code class="sig-name descname">expand_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.expand_trajectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Derive (position, orientation, velocity)-trajectory information from position data only, using naive
 discrete differentiation, i.e. v_i = (x_i+1 - x_i) / dt.</p>
 <dl class="field-list simple">
@@ -184,8 +191,8 @@ discrete differentiation, i.e. v_i = (x_i+1 - x_i) / dt.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.go_to_point">
-<em class="property">abstract </em><code class="sig-name descname">go_to_point</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">target_point</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">speed</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.agents.agent.Agent.go_to_point" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.go_to_point">
+<em class="property">abstract </em><code class="sig-name descname">go_to_point</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">target_point</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">speed</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.go_to_point" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine and execute the controls for going for the given state to some target point with respect
 to the internal dynamics.</p>
 <dl class="field-list simple">
@@ -204,8 +211,8 @@ to the internal dynamics.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.inverse_dynamics">
-<code class="sig-name descname">inverse_dynamics</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">state_previous</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent.Agent.inverse_dynamics" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.inverse_dynamics">
+<code class="sig-name descname">inverse_dynamics</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">state_previous</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.inverse_dynamics" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine the agent’s motion given its current and previous state.</p>
 <p>Passing the state, instead of using the internal state, allows the method to be used for other state
 vector than the internal state, e.g. for forward predicting over a time horizon &gt; 1. Since every agent
@@ -225,24 +232,25 @@ type has different dynamics (like single-integrator or Dubins Car) this method i
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.make_controls_feasible">
-<code class="sig-name descname">make_controls_feasible</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent.Agent.make_controls_feasible" title="Permalink to this definition">¶</a></dt>
-<dd><p>Make controls feasible by clipping them between its lower and upper boundaries. Return
-the transformed feasible controls. The direction of controls is thereby not changed, since
-just the length of the control vector is adapted.</p>
+<dt id="mantrap.agents.base.discrete.DTAgent.make_controls_feasible">
+<code class="sig-name descname">make_controls_feasible</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.make_controls_feasible" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make controls feasible by clipping them between its lower and upper boundaries.</p>
+<p>Return the transformed feasible controls. The direction of controls is thereby not changed, since
+just the length of the control vector is adapted. If the controls are just zeros then return
+them as they are.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.make_controls_feasible_scalar">
-<code class="sig-name descname">make_controls_feasible_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">control_x</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">control_y</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.agent.Agent.make_controls_feasible_scalar" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.make_controls_feasible_scalar">
+<code class="sig-name descname">make_controls_feasible_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">control_x</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">control_y</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.make_controls_feasible_scalar" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make single control feasible by clipping them between its lower and upper boundaries. Return
 the transformed feasible controls. Since this is basically clamping each direction separately,
 the overall direction of the control input might be changed !!</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.reachability_boundary">
-<em class="property">abstract </em><code class="sig-name descname">reachability_boundary</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_steps</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; mantrap.utility.maths.Shape2D<a class="headerlink" href="#mantrap.agents.agent.Agent.reachability_boundary" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.reachability_boundary">
+<em class="property">abstract </em><code class="sig-name descname">reachability_boundary</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_steps</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; mantrap.utility.maths.Shape2D<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.reachability_boundary" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute the forward reachable set within the time-horizon with <cite>time_steps</cite> number of discrete
 steps with time-step <cite>dt</cite>. While the reachable set can be computed numerically in general, an
 exact (and more efficient) implementation has to be done in the child classes. Return this exact
@@ -258,8 +266,8 @@ solution as class object of <cite>Shape2D</cite> type.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.reset">
-<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.agent.Agent.reset" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.reset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent’s
 history to the new state (i.e. append it to the already existing history) if history is given as None or set
 it to some given trajectory.</p>
@@ -274,8 +282,8 @@ it to some given trajectory.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.roll_trajectory">
-<code class="sig-name descname">roll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent.Agent.roll_trajectory" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.roll_trajectory">
+<code class="sig-name descname">roll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.roll_trajectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine the controls by iteratively applying the agent’s model inverse dynamics.
 Thereby a perfect model i.e. without uncertainty and correct is assumed.</p>
 <p>To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
@@ -296,8 +304,8 @@ it is rather determining the theoretical trajectory given the agent’s dynamics
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.sanity_check">
-<code class="sig-name descname">sanity_check</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.agents.agent.Agent.sanity_check" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.sanity_check">
+<code class="sig-name descname">sanity_check</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.sanity_check" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sanity check for agent.
 In order to evaluate the sanity of the agent in the most general form, several internal states such as the
 position and velocity are checked to be of the right type. Also the history should always reflect the
@@ -305,8 +313,8 @@ states until and including (!) the current state.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.unroll_trajectory">
-<code class="sig-name descname">unroll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent.Agent.unroll_trajectory" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.unroll_trajectory">
+<code class="sig-name descname">unroll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.unroll_trajectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build the trajectory from some controls and current state, by iteratively applying the model
 dynamics. Thereby a perfect model i.e. without uncertainty and correct is assumed.</p>
 <p>To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
@@ -327,8 +335,8 @@ it is rather determining the theoretical trajectory given the agent’s dynamics
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent.Agent.update">
-<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">action</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.agents.agent.Agent.update" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.discrete.DTAgent.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">action</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.update" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update internal state (position, velocity and history) by forward integrating the agent’s dynamics over
 the given time-step. The new state and time are then appended to the agent’s state history.</p>
 <dl class="field-list simple">
@@ -347,11 +355,11 @@ the given time-step. The new state and time are then appended to the agent’s s
 </dd></dl>
 
 </div>
-<div class="section" id="module-mantrap.agents.agent_intermediates.linear">
-<span id="linear-agent"></span><h2>Linear Agent<a class="headerlink" href="#module-mantrap.agents.agent_intermediates.linear" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.agents.base.linear">
+<span id="linear-agents"></span><h2>Linear Agents<a class="headerlink" href="#module-mantrap.agents.base.linear" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
-<dt id="mantrap.agents.agent_intermediates.linear.LinearAgent">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.agent_intermediates.linear.</code><code class="sig-name descname">LinearAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.agent_intermediates.linear.LinearAgent" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.linear.LinearDTAgent">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.base.linear.</code><code class="sig-name descname">LinearDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.base.linear.LinearDTAgent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Intermediate agent class for agents having linear state dynamics.</p>
 <p>For linear state dynamics the dynamics can be computed very efficiently, using matrix-vector multiplication,
 with constant matrices (state-space matrices).</p>
@@ -373,8 +381,22 @@ once only.</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="mantrap.agents.agent_intermediates.linear.LinearAgent.reachability_boundary">
-<code class="sig-name descname">reachability_boundary</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_steps</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; mantrap.utility.maths.Circle<a class="headerlink" href="#mantrap.agents.agent_intermediates.linear.LinearAgent.reachability_boundary" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.linear.LinearDTAgent.dx_du">
+<code class="sig-name descname">dx_du</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.linear.LinearDTAgent.dx_du" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the derivative of the agent’s control input with respect to its
+state, evaluated over state trajectory x with discrete state time-step dt.</p>
+<p>As follows from the equations for some state at time-step n <cite>x_n</cite> in dependence of
+the initial state <cite>x0</cite> and the control inputs <cite>u_k</cite>, we have</p>
+<p>due to the assumptions that the control inputs are independently from each other,
+their derivatives do not depend on each other, i.e. <cite>du_i/du_j = 0 for all i != j</cite>.
+Also the state at time-step n only depends on the initial state and the control
+inputs, not the states in between when the equation above is used !
+Therefore we can simplify the equation above to the following:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.agents.base.linear.LinearDTAgent.reachability_boundary">
+<code class="sig-name descname">reachability_boundary</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_steps</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; mantrap.utility.maths.Circle<a class="headerlink" href="#mantrap.agents.base.linear.LinearDTAgent.reachability_boundary" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generally for linear agents the N-th can be easily expressed in terms of the controls and the
 initial state by nesting the linear dynamics, resulting in</p>
 <div class="math notranslate nohighlight">
@@ -394,8 +416,8 @@ the current position, with radius being the maximal allowed agent speed.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent_intermediates.linear.LinearAgent.roll_trajectory">
-<code class="sig-name descname">roll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent_intermediates.linear.LinearAgent.roll_trajectory" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.linear.LinearDTAgent.roll_trajectory">
+<code class="sig-name descname">roll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.linear.LinearDTAgent.roll_trajectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine the controls by iteratively applying the agent’s model inverse dynamics.
 Thereby a perfect model i.e. without uncertainty and correct is assumed.</p>
 <p>To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
@@ -419,8 +441,8 @@ used within this project). Therefore the <cite>roll_trajectory()</cite> method c
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.agent_intermediates.linear.LinearAgent.unroll_trajectory">
-<code class="sig-name descname">unroll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.agent_intermediates.linear.LinearAgent.unroll_trajectory" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.base.linear.LinearDTAgent.unroll_trajectory">
+<code class="sig-name descname">unroll_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.linear.LinearDTAgent.unroll_trajectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build the trajectory from some controls and current state, by iteratively applying the model
 dynamics. Thereby a perfect model i.e. without uncertainty and correct is assumed.</p>
 <p>To guarantee that the unrolled trajectory is invertible, i.e. when the resulting trajectory is
@@ -442,34 +464,33 @@ it is rather determining the theoretical trajectory given the agent’s dynamics
 
 </dd></dl>
 
-</div>
-<div class="section" id="module-mantrap.agents.integrator">
-<span id="single-integrator"></span><h2>Single Integrator<a class="headerlink" href="#module-mantrap.agents.integrator" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.agents.integrator_single">
+<span id="single-integrator"></span><h3>Single Integrator<a class="headerlink" href="#module-mantrap.agents.integrator_single" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
-<dt id="mantrap.agents.integrator.IntegratorDTAgent">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.integrator.</code><code class="sig-name descname">IntegratorDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.integrator.IntegratorDTAgent" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.integrator_single.IntegratorDTAgent">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.integrator_single.</code><code class="sig-name descname">IntegratorDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.integrator_single.IntegratorDTAgent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Linear single integrator dynamics:</p>
 <div class="math notranslate nohighlight">
 \[vel_{t+1} = action\]</div>
 <div class="math notranslate nohighlight">
 \[pos_{t+1} = pos_t + vel_{t+1} * dt\]</div>
 <dl class="py method">
-<dt id="mantrap.agents.integrator.IntegratorDTAgent.acceleration_max">
-<em class="property">property </em><code class="sig-name descname">acceleration_max</code><a class="headerlink" href="#mantrap.agents.integrator.IntegratorDTAgent.acceleration_max" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.integrator_single.IntegratorDTAgent.acceleration_max">
+<em class="property">property </em><code class="sig-name descname">acceleration_max</code><a class="headerlink" href="#mantrap.agents.integrator_single.IntegratorDTAgent.acceleration_max" title="Permalink to this definition">¶</a></dt>
 <dd><p>Since single integrators are assumed to react instantly, their maximal acceleration
 is in fact infinite !</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.integrator.IntegratorDTAgent.control_limits">
-<code class="sig-name descname">control_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator.IntegratorDTAgent.control_limits" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.integrator_single.IntegratorDTAgent.control_limits">
+<code class="sig-name descname">control_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator_single.IntegratorDTAgent.control_limits" title="Permalink to this definition">¶</a></dt>
 <dd><div class="math notranslate nohighlight">
 \[[- v_{max}, v_{max}]\]</div>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.integrator.IntegratorDTAgent.dynamics_scalar">
-<em class="property">static </em><code class="sig-name descname">dynamics_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">px</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">py</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vx</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">ux</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">uy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator.IntegratorDTAgent.dynamics_scalar" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.integrator_single.IntegratorDTAgent.dynamics_scalar">
+<em class="property">static </em><code class="sig-name descname">dynamics_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">px</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">py</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vx</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">ux</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">uy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator_single.IntegratorDTAgent.dynamics_scalar" title="Permalink to this definition">¶</a></dt>
 <dd><p>Forward integrate the agent’s motion given some state-action pair and an integration time-step.</p>
 <p>In comparison to the “normal” dynamics() method this method can be used for repeated scalar and non-
 differentiable use cases. Since the agent’s fundamental state tensor operations are “only” two-dimensional
@@ -483,8 +504,8 @@ native python scalar operations.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.integrator.IntegratorDTAgent.go_to_point">
-<code class="sig-name descname">go_to_point</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">target_point</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">speed</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator.IntegratorDTAgent.go_to_point" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.agents.integrator_single.IntegratorDTAgent.go_to_point">
+<code class="sig-name descname">go_to_point</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">target_point</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">speed</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator_single.IntegratorDTAgent.go_to_point" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine and execute the controls for going for the given state to some target point with respect to
 the internal dynamics.</p>
 <p>Due to the instant dynamics of a single integrator going from one point to another simple means instantly
@@ -508,10 +529,10 @@ adapting the controls to go in the right direction.</p>
 
 </div>
 <div class="section" id="module-mantrap.agents.integrator_double">
-<span id="double-integrator"></span><h2>Double Integrator<a class="headerlink" href="#module-mantrap.agents.integrator_double" title="Permalink to this headline">¶</a></h2>
+<span id="double-integrator"></span><h3>Double Integrator<a class="headerlink" href="#module-mantrap.agents.integrator_double" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.agents.integrator_double.DoubleIntegratorDTAgent">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.integrator_double.</code><code class="sig-name descname">DoubleIntegratorDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.integrator_double.DoubleIntegratorDTAgent" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.integrator_double.</code><code class="sig-name descname">DoubleIntegratorDTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.integrator_double.DoubleIntegratorDTAgent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Linear double integrator dynamics:</p>
 <div class="math notranslate nohighlight">
 \[vel_{t+1} = vel_t + action * dt\]</div>
@@ -569,6 +590,7 @@ given scenario and transformed to the cartesian controls the double integrator r
 
 </div>
 </div>
+</div>
 
 
           </div>
@@ -579,10 +601,12 @@ given scenario and transformed to the cartesian controls the double integrator r
   <h3><a href="index.html">Table of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Agents</a><ul>
-<li><a class="reference internal" href="#module-mantrap.agents.agent">Abstract Agent</a></li>
-<li><a class="reference internal" href="#module-mantrap.agents.agent_intermediates.linear">Linear Agent</a></li>
-<li><a class="reference internal" href="#module-mantrap.agents.integrator">Single Integrator</a></li>
+<li><a class="reference internal" href="#module-mantrap.agents.base.discrete">Base Discrete Agent (abstract)</a></li>
+<li><a class="reference internal" href="#module-mantrap.agents.base.linear">Linear Agents</a><ul>
+<li><a class="reference internal" href="#module-mantrap.agents.integrator_single">Single Integrator</a></li>
 <li><a class="reference internal" href="#module-mantrap.agents.integrator_double">Double Integrator</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

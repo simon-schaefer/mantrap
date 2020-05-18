@@ -1,22 +1,17 @@
 Filter Modules
 ==============
 
-Abstract Filter
-----------------------------
-.. automodule:: mantrap.solver.filter.filter_module
-    :members:
-
-No Filter
----------
-.. automodule:: mantrap.solver.filter.nofilter
+Base Filter Module (abstract)
+-----------------------------
+.. automodule:: mantrap.filter.filter_module
     :members:
 
 Euclidean Distance
-------------------
-.. automodule:: mantrap.solver.filter.euclidean
+~~~~~~~~~~~~~~~~~~
+.. automodule:: mantrap.filter.euclidean
     :members:
 
 Forward Reachability
---------------------
-.. automodule:: mantrap.solver.filter.reachability
+~~~~~~~~~~~~~~~~~~~~
+.. automodule:: mantrap.filter.reachability
     :members:

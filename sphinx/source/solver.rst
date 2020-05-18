@@ -1,22 +1,37 @@
 Solver
 ======
 
-Abstract Solver
-----------------
-.. automodule:: mantrap.solver.solver
+Base Trajectory Solver (abstract)
+---------------------------------
+.. automodule:: mantrap.solver.base.trajopt
+    :members:
+
+IPOPT - Solvers
+---------------
+.. automodule:: mantrap.solver.base.ipopt
     :members:
 
 S-GRAD-IPOPT
-----------------------------
+~~~~~~~~~~~~
 .. automodule:: mantrap.solver.sgrad
     :members:
 
-Baselines - ORCA
-----------------------------
-.. automodule:: mantrap.solver.solver_baselines.orca
+Search - Solvers
+----------------
+.. automodule:: mantrap.solver.base.search
     :members:
 
-Baselines - Ignoring
-----------------------------
-.. automodule:: mantrap.solver.solver_baselines.ignoring
+Monte-Carlo-Tree-Search
+~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: mantrap.solver.mcts
+    :members:
+
+Random Search
+~~~~~~~~~~~~~~
+.. automodule:: mantrap.solver.baselines.random_search
+    :members:
+
+Baselines - ORCA
+----------------
+.. automodule:: mantrap.solver.baselines.orca
     :members:
