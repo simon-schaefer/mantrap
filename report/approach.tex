@@ -1,8 +1,73 @@
-\chapter{Multi-modal Interaction-Aware Trajectory Optimisation}
+\chapter{Multi-Modal Interaction-Aware Trajectory Optimisation}
 \label{text:approach}
+In this chapter an overview of the approach is provided. Starting in section \ref{text:approach/formulation} the problem of socially-aware motion planning is formulated formally, including the assumptions made within this project. 
+\newline
+Section \ref{text:approach/overview} which presents an overview over the full trajectory optimisation pipeline. It is shown how the algorithm is built in order to allow to deal with general graph-like pedestrian behaviour prediction models, with multi-modal, probabilistic outputs. Furthermore, the advantages of formulating socially-aware motion planning as an optimisation problem while utilising graph-based prediction model, e.g. deep learning based models such as the Trajectron \cite{Ivanovic18}, over purely learned \cite{Chen2017} or purely optimisation-based \cite{Berg2011} algorithms are illustrated. Finally it is explained how the usage of a general-purpose, computation-graph based framework such as PyTorch \cite{pytorch} or TensorFlow \cite{tensorflow} can be harnessed for a highly modular, efficient and versatile implementation.
+\newline
+The exact formulation of the optimisation problem is further explained in section \ref{text:approach/objective} and \ref{text:approach/constraint}. Beginning with the objective function the both the goal-driven and the interaction-driven parts are illustrated, together with a derivation of their gradients. Furthermore, several designs of the specific objective function are discussed. The subsequent section addresses the design of the constraints used. Likewise several constraint function designs are compared. 
+\newline
+In order to use the system in real-world applications it must comply several requirements. While some of these has been tackled by the optimisation design, e.g. feasibility of the control limitations of the robot or safety regarding robot-human interaction, the system underlies runtime limits. Similarly to \cite{Chen2017} this project aims to run at a frequency of $10 Hz$. To achieve this goal several runtime improvements have been implemented, which are described in section \ref{text:approach/runtime}.
+
+
+\section{Problem Formulation}
+\label{text:approach/formulation}
+In this work we are interested in finding the optimal trajectory for a robot navigating among pedestrians on the two-dimensional plane. Let $X_R^t = (x_R^t, y_R^t, vx_R^t, vy_R^t)$ be the position and velocity of the robot, also referred as $ego$, at time $t$. Within this work the robot is assumed to have double integrator dynamics, i.e., 
+
+\begin{align}
+\label{eq:robot_dynamics}
+\ddot{X}_R^t &= U_R^t. \\
+\dot{X}_R^t &= f_R(X_R^t, U_R^t)
+\end{align}
+
+For further simplification the robot's dynamics are assumed to be deterministic.
+\newline
+In general each pedestrian's trajectory is probabilistic and multimodal. Thereby,  let $X_{Pi}^t = \xi_{Pi}^t$ be the state distribution of pedestrian $i$ at time $t$, with mean $\mu_{Pi}^t$, variance $\Sigma_{Pi}^t$ and mode-weights vector $\pi_{Pi}^t$. 
+
+\begin{equation}
+X_{Pi}^t = \xi_{Pi}^t \sim f(\mu_{Pi}^t, \Sigma_{Pi}^t, \pi_{Pi}^t)	
+\end{equation}
+
+Similar to the robot the pedestrians are modelled as single point masses. The pedestrian's trajectories are predicted using some model $\phi_P$ which is assumed to be known. As described above in general for some pedestrian $P_i$ the model $\phi_P$ outputs a multi-modal distribution over the next state $X_{Pi}^{t+1}$ conditioned on the trajectory of the robot $X_R^{t_0:t}$, the trajectory of every other pedestrian in the scene $X_{Pj}^{t_0:t} (i \neq j)$ and the trajectory of the agent $P_i$ itself, i.e. $X_{Pi}^{t_0:t}$. Moreover the function $\phi_P$ is generally not shared over all pedestrian, but individually for each one.
+
+\begin{equation}
+X_{Pi}^{t+1} = \phi_{Pi}(X_R^{t_0:t}, X_{Pi}^{t_0:t}, X_{Pj}^{t_0:t})	
+\end{equation}
+
+The set over all pedestrian states over all times within the planning horizon is $\mathcal{S}_P$.
+\newline
+Furthermore both the robot and the pedestrians underly constraints for their minimal and maximal control effort, $(\mathcal{U}_R^{min}, \mathcal{U}_R^{max})$ and $(\mathcal{U}_P^{min}, \mathcal{U}_P^{max})$ respectively. Thereby all agents are assumed to be isotropic, i.e. have the same boundaries in every dimension.
+\newline
+Within project \project I want to find a robot trajectory over some discrete time horizon $T$ that trade-offs between minimising the travel time from the its current state to some goal state $\mathcal{G}_R$ on the one side and the interference with the pedestrians in the scene on the other side, with respect to its dynamic as well as safety boundaries. Formally, the solution to this problem solves the following optimisation problem: 
+
+\begin{align}
+\min_{X_R} \quad & w_1 E_{\mathcal{S}_P}[J_{int}(X_R, \mathcal{S}_P)] + w_2 J_{goal}(X_R, \mathcal{G}_R) \\
+\textrm{s.t. } \quad & X_R^{t+1} = f_R(X_R^t, U_R^t) \\
+& X_{Pi}^{t+1} = \phi_{Pi}(X_R^{t_0:t}, X_{Pi}^{t_0:t}, X_{Pj}^{t_0:t}) \\
+& g_{control}(X_R) \leq 0 \\
+& g_{safety}(X_R, \mathcal{S}_P) \leq 0 \\
+\end{align} 
+
+For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-driven objective function $J_{int}(\cdot)$, which are further explained in section \ref{text:approach/objective}; the dynamics for the robot and every pedestrian and some constraint bounding the control effort of the robot $g_{control}(\cdot)$ and ensuring a safe robot-human interaction $g_{safety}(\cdot)$, which will be described in section \ref{text:approach/constraint}.
 
 \section{System Overview}
 \label{text:approach/overview}
+
+
+\begin{center}
+\includegraphics[width=\imgwidth]{images/placeholder.png}
+\captionof{figure}{Information-Flow-Diagram of project \project}
+\label{img:information_flow}
+\end{center}
+
+- shooting !
+
+- nonzero in equality \& inequality Jacobian, Hessian, number of variables, number of constraints 
+
+- wikipedia description \href{https://en.wikipedia.org/wiki/Trajectory_optimization}
+
+- IPOPT (Vincent Laurense, cascaded MPC, speed racing)
+
+- Trajectory Optimization (Shooting vs Collocation) \href{https://epubs.siam.org/doi/pdf/10.1137/16M1062569}
 
 \section{Objective Function Design}
 \label{text:approach/objective}
@@ -16,11 +81,17 @@
 \section{Constraint Function Design}
 \label{text:approach/constraint}
 
-\subsection{Dynamics Constraint}
+\subsection{Control Effort Constraint}
 \label{text:approach/constraint/dynamics}
 
-\subsection{Reachibility Constraint}
-\label{text:approach/constraint/reachibility}
+\subsection{Reachability Constraint}
+\label{text:approach/constraint/reachability}
+
+however they follow single integrator dynamics. As pointed out in \cite{Ivanovic18} this is an intuitive choice "as a person’s movements are all position-changing, e.g. walking increases position along a direction, running does so faster". Other standard models for pedestrian dynamics such as Social Forces \cite{Helbling1995} however regard the pedestrian to be a double integrator, not a single integrator, and describe the forces acting on it introduced by other pedestrians, obstacles, etc. Having a reasonable fast reaction time and a large maximal acceleration in comparison to the robot both of these descriptions converge, so that the single integrator model is a good choice nonetheless.\footnote{As discussed in chapter \ref{text:experiments} the modular implementation allows to use different pedestrian dynamics. When testing against other prediction environments, in fact, non single integrator dynamics are used, but most analysis described in this report relates to the single integrator model.} 
+
+- constraint formulation (e.g. min-distance constraints split to be more accurate or summed to compute jacobian faster)
+
+- Quellen: neural network representation of value function to make it differentiable (Karen: reachability, Kyle David Julian: network representation to make sure all the corner cases are met)
 
 \section{Runtime Optimisation}
 \label{text:approach/runtime}
@@ -31,5 +102,3 @@
 \subsection{Agent Filtering}
 \label{text:approach/runtime/filtering}
 
-\section{Implementation Details}
-\label{text:approach/implementation}

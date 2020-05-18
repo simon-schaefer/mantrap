@@ -1,4 +1,4 @@
-\documentclass[10pt, twoside, a4paper, fleqn]{report}
+\documentclass[11pt, twoside, a4paper]{report}
 
 % Language
 \usepackage[T1]{fontenc}  % ensure that type 1 fonts (vector-based)
@@ -10,13 +10,15 @@
 \usepackage{placeins} % preventing floats from floating past a \FloatBarrier
 \usepackage{caption} % enables caption customization
 \usepackage[all]{nowidow} % removes orphans and widows
-\usepackage{geometry}
+\usepackage{geometry} % document layout.
+\usepackage{titling} % user-friendly access of title, author, etc. 
 
 % Font
 \usepackage{lmodern} % use improved fonts compared to the standard latex fonts
 \usepackage{anyfontsize} % for proper scaling of font sizes 
 \usepackage{xcolor} % for coloured text with command \color{<color>}{<text>}
 \usepackage{xspace} % define commands that appear not to eat spaces
+\usepackage[utf8]{inputenc} % german umlaut (ö, ä, ü)
 
 % Graphics
 \usepackage{graphicx} % include graphics
@@ -24,7 +26,7 @@
 \usepackage{pgfplots} % adds native plotting features to LaTeX
 
 % Math Symbols
-\usepackage{amsmath} % provides most of the mathematical features of AMS-TEX
+\usepackage{amsmath} % most of the mathematical features of AMS-TEX
 \usepackage{amssymb} % provides an extended symbol collection and loads amsfonts
 \usepackage{amsthm} % helps to define theorem-like structures
 \usepackage{mathtools} % fixes various deficiencies of amsmath and standard LATEX
@@ -39,10 +41,10 @@
 % Units
 \usepackage{units} % bundle for typesetting physical units and nice fractions
 
-% Tables
+% Tables & Images
 \usepackage{multirow} % construction for table cells that span more than one row
 \usepackage{array} % extends options for tabular environment
-\usepackage{booktabs} % enhances the quality of tables and provides extra commands
+\usepackage{booktabs} % enhances quality of tables and provides extra commands
 
 % Environments
 \usepackage[chapter]{algorithm} % for floating algorithm environment
@@ -58,11 +60,30 @@
 \usepackage{hyperref}
 
 
-% Page header ________________________________________________________
+% Document info _______________________________________________________
+\title{Mantrap}
+\author{Simon Schaefer}
+
+\def \project{mantrap }
+\def \ethid{14-943-799}
+\def \email{sischaef@student.ethz.ch}
+\def \semester{6}
+\def \phdA{Karen Leung}
+\def \phdB{Boris Ivanovic}
+\def \supervisoreth{Prof. Emilio Frazzoli}
+\def \supervisorstanford{Prof. Marco Pavone}
+
+\def \imgwidth{0.8\textwidth}
+
+% Page format _________________________________________________________
+\frenchspacing % makes the sentence spacing single spaced
 \setlength{\parindent}{0em}                 % Disable par-indent
 \rhead[\nouppercase{\rightmark}]{\thepage}  % Special headings
 \lhead[\thepage]{\nouppercase{\leftmark}}   % Special headings
 \cfoot{}                                    % Special headings
+
+\setcounter{tocdepth}{2} % Table of contents contain only chapters and sections
+\captionsetup[table]{skip=10pt} % Increase space between caption and content of tables
 
 % Document ____________________________________________________________
 \begin{document}
@@ -96,7 +117,9 @@
 \appendix
 \input{appendix}
 
-\bibliographystyle{plain}
-\bibliography{bibliography}
+\bibliographystyle{IEEEtran}
+\bibliography{bibliography.bib}
+
+\input{infopage}
 
 \end{document}

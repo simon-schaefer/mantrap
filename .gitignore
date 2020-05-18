@@ -39,7 +39,7 @@ outputs/
 # Documentation files.
 *.pptx
 report/main.pdf
-report/images
 
 # Dataset files.
 ewap_dataset/
+!/report/images/
