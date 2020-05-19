@@ -74,10 +74,14 @@ class TrajOptSolver(abc.ABC):
         modules = self.module_defaults() if modules is None else modules
         self._module_dict = {}
         for module_tuple in modules:
-            assert len(module_tuple) <= 2
-            module = module_tuple[0]
-            module_kwargs = {} if len(module_tuple) < 2 else module_tuple[1]
-            module_kwargs = {} if module_kwargs is None else module_kwargs
+            if type(module_tuple) == tuple:
+                assert 1 <= len(module_tuple) <= 2
+                module = module_tuple[0]
+                module_kwargs = {} if len(module_tuple) < 2 else module_tuple[1]
+                module_kwargs = {} if module_kwargs is None else module_kwargs
+            else:
+                module = module_tuple
+                module_kwargs = {}
             module_object = module(t_horizon=self.planning_horizon, goal=self.goal, env=self.env, **module_kwargs)
             self._module_dict[module_object.name] = module_object
 
@@ -115,7 +119,7 @@ class TrajOptSolver(abc.ABC):
         """
         ego_trajectory_opt = torch.zeros((time_steps + 1, 5))
         ado_trajectories = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
-        self.log_reset(log_horizon=time_steps)
+        self._log_reset(log_horizon=time_steps)
         env_copy = self.env.copy()
         eval_env_copy = self.eval_env.copy()
 
@@ -131,11 +135,11 @@ class TrajOptSolver(abc.ABC):
             self._iteration = k
 
             # Solve optimisation problem.
-            ego_controls_k = self.determine_ego_controls(multiprocessing=multiprocessing, **solver_kwargs)
+            ego_controls_k = self.__determine_ego_controls(multiprocessing=multiprocessing, **solver_kwargs)
             logging.debug(f"solver {self.log_name} @k={k}: finishing optimization")
 
             # Logging, before the environment step is done.
-            self.intermediate_log(ego_controls_k=ego_controls_k)
+            self.__intermediate_log(ego_controls_k=ego_controls_k)
 
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
@@ -152,13 +156,13 @@ class TrajOptSolver(abc.ABC):
                 # Log a last time in order to log the final state, after the environment has executed it
                 # its update step. However since the controls have not changed, but still the planned
                 # trajectories should  all have the same shape, the concatenate no action (zero controls).
-                self.intermediate_log(ego_controls_k=torch.cat((ego_controls_k[1:, :], torch.zeros((1, 2)))))
+                self.__intermediate_log(ego_controls_k=torch.cat((ego_controls_k[1:, :], torch.zeros((1, 2)))))
                 break
 
         # Cleaning up solver environment and summarizing logging.
         logging.debug(f"solver {self.log_name}: logging trajectory optimization")
         self.env.detach()  # detach environment from computation graph
-        self.log_summarize()
+        self.__log_summarize()
 
         # Reset environment to initial state. Some modules are also connected to the old environment,
         # which has been forward predicted now. Reset these to the original environment copy.
@@ -173,7 +177,7 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Optimization ############################################################
     ###########################################################################
-    def determine_ego_controls(self, multiprocessing: bool = True, **solver_kwargs) -> torch.Tensor:
+    def __determine_ego_controls(self, multiprocessing: bool = True, **solver_kwargs) -> torch.Tensor:
         """Determine the ego control inputs for the internally stated problem and the current state of the environment.
         The implementation crucially depends on the solver class itself and is hence not implemented here.
 
@@ -365,11 +369,11 @@ class TrajOptSolver(abc.ABC):
         if __debug__ is True:
             ado_planned = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
             ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_trajectory.shape[0])
-            self.log_append(ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo, tag=tag)
-            self.log_append(obj_overall=objective, tag=tag)
+            self._log_append(ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo, tag=tag)
+            self._log_append(obj_overall=objective, tag=tag)
             module_log = {f"{mantrap.constants.LK_OBJECTIVE}_{key}": mod.obj_current(tag=tag)
                           for key, mod in self.module_dict.items()}
-            self.log_append(**module_log, tag=tag)
+            self._log_append(**module_log, tag=tag)
 
         return float(objective)
 
@@ -408,10 +412,10 @@ class TrajOptSolver(abc.ABC):
         violation = float(np.sum([m.compute_violation_internal(tag=tag) for m in self.modules]))
 
         if __debug__ is True:
-            self.log_append(inf_overall=violation, tag=tag)
+            self._log_append(inf_overall=violation, tag=tag)
             module_log = {f"{mantrap.constants.LK_CONSTRAINT}_{key}": mod.inf_current(tag=tag)
                           for key, mod in self.module_dict.items()}
-            self.log_append(**module_log, tag=tag)
+            self._log_append(**module_log, tag=tag)
 
         return constraints if not return_violation else (constraints, violation)
 
@@ -437,15 +441,15 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Logging #################################################################
     ###########################################################################
-    def intermediate_log(self, ego_controls_k: torch.Tensor):
+    def __intermediate_log(self, ego_controls_k: torch.Tensor):
         if __debug__ is True and self.log is not None:
             # For logging purposes unroll and predict the scene for the derived ego controls.
             ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
-            self.log_append(ego_planned=ego_opt_planned, tag=mantrap.constants.LK_OPTIMAL)
+            self._log_append(ego_planned=ego_opt_planned, tag=mantrap.constants.LK_OPTIMAL)
             ado_planned = self._env.predict_w_controls(ego_controls=ego_controls_k)
-            self.log_append(ado_planned=ado_planned, tag=mantrap.constants.LK_OPTIMAL)
+            self._log_append(ado_planned=ado_planned, tag=mantrap.constants.LK_OPTIMAL)
             ado_planned_wo = self._env.predict_wo_ego(t_horizon=ego_controls_k.shape[0] + 1)
-            self.log_append(ado_planned_wo=ado_planned_wo, tag=mantrap.constants.LK_OPTIMAL)
+            self._log_append(ado_planned_wo=ado_planned_wo, tag=mantrap.constants.LK_OPTIMAL)
 
     @staticmethod
     def log_keys() -> typing.List[str]:
@@ -463,7 +467,7 @@ class TrajOptSolver(abc.ABC):
         log_opt_keys = [f"{mantrap.constants.LK_OPTIMAL}/{key}" for key in self.log_keys()]
         return self.log_keys_performance() + log_tag_keys + log_opt_keys
 
-    def log_reset(self, log_horizon: int):
+    def _log_reset(self, log_horizon: int):
         # Reset iteration counter.
         self._iteration = 0
 
@@ -472,13 +476,13 @@ class TrajOptSolver(abc.ABC):
         if __debug__ is True:
             self._log = {f"{tag}_{k}": [] for k in range(log_horizon) for tag in self.log_keys_all()}
 
-    def log_append(self, tag: str = mantrap.constants.TAG_DEFAULT, **kwargs):
+    def _log_append(self, tag: str = mantrap.constants.TAG_DEFAULT, **kwargs):
         if __debug__ is True and self.log is not None:
             for key, value in kwargs.items():
                 x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()
                 self._log[f"{tag}/{key}_{self._iteration}"].append(x)
 
-    def log_summarize(self):
+    def __log_summarize(self):
         """Summarize optimisation-step dictionaries to a single tensor per logging key, e.g. collapse all objective
         value tensors for k = 1, 2, ..., N to one tensor for the whole optimisation process.
 
@@ -495,7 +499,7 @@ class TrajOptSolver(abc.ABC):
                 summary = [self.log[f"{key}_{k}"][-1] for k in range(self._iteration + 1)
                            if len(self.log[f"{key}_{k}"]) > 0]
                 if len(summary) > 0:
-                    self._log[key] = torch.stack(summary)
+                    self._log[f"{key}_end"] = torch.stack(summary)
 
             # Save the optimization performance for every optimization step into logging file. Since the
             # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
@@ -507,6 +511,36 @@ class TrajOptSolver(abc.ABC):
             csv_log_k_keys += self.log_keys_performance()
             csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys if key in self.log.keys()}
             pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
+
+    def log_query(self, key: str, key_type: str, iteration: int = None, core: str = None
+                  ) -> typing.Union[typing.Dict[str, typing.List[float]], None]:
+        """Query internal log for some value with given key.
+
+         :param key: query key, e.g. name of objective module.
+         :param key_type: type of query (-> mantrap.constants.LK_...).
+         :param iteration: optimization iteration to search in, if None then no iteration (summarized value).
+         :param core: optimization core to search in (should be in self.cores or opt-core).
+         """
+        assert self.log is not None
+        assert iteration is None or iteration <= self._iteration
+        assert core is None or core in self.cores or core == self.core_opt
+
+        # Build query by combining arguments into one query string.
+        iteration = "end" if iteration is None else iteration
+        query = f"{key_type}_{key}_{iteration}"
+        if core is not None:
+            query = f"{core}/{query}"
+
+        # Search in log for elements that satisfy the query and return as dictionary. For the sake of
+        # runtime the elements are stored as torch tensors in the log, therefore stack and list them.
+        results_dict = {}
+        for key, values in self.log.items():
+            if query not in key:
+                continue
+            key_short = key.replace(f"_{iteration}", "")
+            key_values = torch.stack(values).tolist() if type(values) == list else values.tolist()
+            results_dict[key_short] = key_values
+        return results_dict
 
     ###########################################################################
     # Visualization ###########################################################
@@ -521,10 +555,10 @@ class TrajOptSolver(abc.ABC):
             # From optimization log extract the core (initial condition) which has resulted in the best objective
             # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
             # N=t_horizon times to be able to visualize the whole distribution at every time.
-            obj_dict = {key: self.log[f"{self.core_opt}/{mantrap.constants.LK_OBJECTIVE}_{key}"]
+            obj_dict = {key: self.log[f"{self.core_opt}/{mantrap.constants.LK_OBJECTIVE}_{key}_end"]
                         for key in self.module_names}
             obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.module_names}
-            inf_dict = {key: self.log[f"{self.core_opt}/{mantrap.constants.LK_CONSTRAINT}_{key}"]
+            inf_dict = {key: self.log[f"{self.core_opt}/{mantrap.constants.LK_CONSTRAINT}_{key}_end"]
                         for key in self.module_names}
             inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.module_names}
 

@@ -108,10 +108,10 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, tag=tag, ado_ids=ado_ids) for m in self.modules]
         gradient = np.sum(gradient, axis=0)
 
-        self.log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
+        self._log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
         module_log = {f"{mantrap.constants.LK_GRADIENT}_{key}": mod.grad_current(tag=tag)
                       for key, mod in self.module_dict.items()}
-        self.log_append(**module_log, tag=tag)
+        self._log_append(**module_log, tag=tag)
         return gradient
 
     ###########################################################################
