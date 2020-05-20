@@ -21,10 +21,10 @@ class PureConstraintModule(OptimizationModule, abc.ABC):
     for hard constraints without any inter-connection to the objective function.
     """
     def __init__(self, t_horizon: int = None, env: mantrap.environment.base.GraphBasedEnvironment = None):
-        super(PureConstraintModule, self).__init__(t_horizon=t_horizon, weight=None, env=env, has_slack=False)
+        super(PureConstraintModule, self).__init__(t_horizon=t_horizon, weight=0.0, env=env, has_slack=False)
 
     ###########################################################################
-    # Objective & Gradient ####################################################
+    # Objective ###############################################################
     ###########################################################################
     def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                            ) -> typing.Union[torch.Tensor, None]:
@@ -32,6 +32,9 @@ class PureConstraintModule(OptimizationModule, abc.ABC):
         and returns default values (zero). """
         return None
 
+    ###########################################################################
+    # Gradient ################################################################
+    ###########################################################################
     def _compute_gradient_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:

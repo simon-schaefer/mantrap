@@ -32,7 +32,7 @@ class ControlLimitModule(PureConstraintModule):
         :param tag: name of optimization call (name of the core).
         """
         ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-        return torch.norm(ego_controls, dim=1).flatten()
+        return torch.norm(ego_controls, dim=1).flatten().float()
 
     def _compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str

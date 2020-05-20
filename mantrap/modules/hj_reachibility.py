@@ -41,7 +41,7 @@ class HJReachabilityModule(OptimizationModule):
     Since `sigma` is a slack variable the according weight in the objective function should be comparably large.
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int,  weight: float = 10.0,
-                 data_file: str = "2D.mat", **unused):
+                 data_file: str = "2D_small.mat", **unused):
         super(HJReachabilityModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight,
                                                    has_slack=True, slack_weight=weight)
 
@@ -168,7 +168,7 @@ class HJReachabilityModule(OptimizationModule):
             value_next = self._value_function[0, c_next[0], c_next[1], c_next[2], c_next[3]]
             constraints[i_ado] = value_next
 
-        return torch.from_numpy(constraints)
+        return torch.from_numpy(constraints).float()
 
     def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         return 0.0, 0.0  # slack variable => inequality to equality constraint

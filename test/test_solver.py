@@ -15,7 +15,6 @@ import mantrap.utility.shaping
 environments = [mantrap.environment.KalmanEnvironment,
                 mantrap.environment.PotentialFieldEnvironment,
                 mantrap.environment.SocialForcesEnvironment,
-                mantrap.environment.ORCAEnvironment,
                 mantrap.environment.Trajectron]
 filters = [mantrap.filter.EuclideanModule,
            mantrap.filter.ReachabilityModule]
@@ -76,7 +75,7 @@ class TestSolvers:
         objective = solver.objective(z=z0, tag="core0")
         assert type(objective) == float
         constraints = solver.constraints(z=z0, tag="core0", return_violation=False)
-        assert constraints.size == sum([c.num_constraints() for c in solver.modules])
+        assert constraints.size == sum([c.num_constraints(ado_ids=env.ado_ids) for c in solver.modules])
 
     @staticmethod
     def test_z_to_ego_trajectory(solver_class, env_class, num_modes, filter_class):
@@ -115,8 +114,8 @@ class TestSolvers:
 
         solver_horizon = 3
         ego_trajectory_opt, ado_trajectories = solver.solve(solver_horizon, max_cpu_time=0.1, multiprocessing=False)
-        ado_planned = solver.log["opt/ado_planned"]
-        ego_opt_planned = solver.log["opt/ego_planned"]
+        ado_planned = solver.log["opt/ado_planned_end"]
+        ego_opt_planned = solver.log["opt/ego_planned_end"]
 
         # Test output shapes.
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
@@ -142,7 +141,7 @@ class TestSolvers:
         # Since the constraint modules have been tested independently, for generalization, the module-internal
         # violation computation can be used for this check.
         for module in solver.modules:
-            violation = module.compute_violation(ego_trajectory_opt, ado_ids=None)
+            violation = module.compute_violation(ego_trajectory_opt, ado_ids=env.ado_ids, tag="test")
             assert math.isclose(violation, 0.0, abs_tol=1e-3)
 
 
@@ -157,6 +156,7 @@ class TestSearchSolvers:
     @staticmethod
     def test_improvement(solver_class, env_class):
         env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+        env.add_ado(position=torch.tensor([9, 9]))  # far-away
         solver = solver_class(env, goal=torch.zeros(2), t_planning=5)
 
         z0 = np.random.uniform(*solver.z_bounds)
@@ -185,7 +185,7 @@ class TestIPOPTSolvers:
         assert grad.size == z0.flatten().size
 
         jacobian = solver.jacobian(z0)
-        num_constraints = sum([c.num_constraints() for c in solver.modules])
+        num_constraints = sum([c.num_constraints(ado_ids=env.ado_ids) for c in solver.modules])
 
         # Jacobian is only defined if the environment
         if all([module._gradient_condition() for module in solver.modules]):

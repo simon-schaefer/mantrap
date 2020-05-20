@@ -27,11 +27,10 @@ class RandomSearch(ZControlIntermediate, SearchIntermediate):
         :param ado_ids: identifiers of ados that should be taken into account during optimization.
         :returns: updated best z-values, updated best objective, outer loop iteration, termination flag.
         """
-
         z_sample = np.random.uniform(*self.z_bounds)
         objective, constraint_violation = self._evaluate(z=z_sample, tag=tag, ado_ids=ado_ids)
 
-        if objective < obj_best  and constraint_violation < mantrap.constants.SOLVER_CONSTRAINT_LIMIT:
+        if objective < obj_best and constraint_violation < mantrap.constants.SOLVER_CONSTRAINT_LIMIT:
             obj_best = objective
             z_best = z_sample
 

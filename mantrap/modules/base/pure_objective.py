@@ -25,7 +25,7 @@ class PureObjectiveModule(OptimizationModule, abc.ABC):
         super(PureObjectiveModule, self).__init__(t_horizon=t_horizon, weight=weight, env=env, has_slack=False)
 
     ###########################################################################
-    # Constraint & Jacobian ###################################################
+    # Constraint ##############################################################
     ###########################################################################
     def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                             ) -> typing.Union[torch.Tensor, None]:
@@ -33,13 +33,16 @@ class PureObjectiveModule(OptimizationModule, abc.ABC):
         and returns default values (empty numpy array). """
         return None
 
-    def _compute_jacobian_analytically(
-            self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
-    ) -> typing.Union[np.ndarray, None]:
-        return None
-
     def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         return None, None
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
         return 0
+
+    ###########################################################################
+    # Jacobian ################################################################
+    ###########################################################################
+    def _compute_jacobian_analytically(
+            self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
+    ) -> typing.Union[np.ndarray, None]:
+        return None

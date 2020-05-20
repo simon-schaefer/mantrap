@@ -164,7 +164,7 @@ def test_objective_goal_distribution():
 
     module = mantrap.modules.GoalNormModule(goal=goal_state, t_horizon=10, weight=1.0)
     objective = module.objective(ego_trajectory, ado_ids=[], tag="test")
-    distance = float(torch.mean(torch.norm(ego_trajectory[:, 0:2] - goal_state, dim=1)).item())
+    distance = float(torch.mean(torch.sum((ego_trajectory[:, 0:2] - goal_state).pow(2), dim=1)).item())
     assert math.isclose(objective, distance, abs_tol=0.1)
 
 
@@ -402,7 +402,7 @@ class TestHJReachability:
         # Check for module is asserting when ego has another type than double integrator, since only for
         # this type of ego the pre-computed value function is correct.
         with pytest.raises(AssertionError):
-            mantrap.modules.HJReachabilityModule(env, t_horizon=5)
+            mantrap.modules.HJReachabilityModule(env, t_horizon=5, data_file="2D_small.mat")
 
     @staticmethod
     def test_constraint(env_class, num_modes):
@@ -410,13 +410,8 @@ class TestHJReachability:
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.rand(2) * 5, num_modes=num_modes)
-        module = mantrap.modules.HJReachabilityModule(env, t_horizon=5)
+        module = mantrap.modules.HJReachabilityModule(env, t_horizon=5, data_file="2D_small.mat")
 
         ego_controls = torch.rand((5, 2))
         ego_trajectory = env.ego.unroll_trajectory(ego_controls, dt=env.dt)
         module.constraint(ego_trajectory, ado_ids=env.ado_ids, tag="test")
-
-
-
-if __name__ == '__main__':
-    TestHJReachability.test_constraint(mantrap.environment.PotentialFieldEnvironment, num_modes=1)

@@ -72,7 +72,7 @@ class MinDistanceModule(PureConstraintModule):
                     ado_position = graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"]
                     ego_position = ego_trajectory[t, 0:2]
                     constraints[m, t] = torch.norm(ado_position - ego_position)
-        return torch.min(constraints.flatten()).view(1, )
+        return torch.min(constraints.flatten()).view(1, ).float()
 
     def _gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

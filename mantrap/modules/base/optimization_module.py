@@ -8,7 +8,7 @@ import mantrap.environment
 
 
 class OptimizationModule(abc.ABC):
-    def __init__(self, t_horizon: int,  weight: typing.Union[float, None] = 0.0,
+    def __init__(self, t_horizon: int,  weight: float = 0.0,
                  env: mantrap.environment.base.GraphBasedEnvironment = None,
                  has_slack: bool = False, slack_weight: float = 0.0):
         """General objective and constraint module.
@@ -217,7 +217,7 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag).float()
+        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
         # Update slack variables (if any are defined for this module).
         if self._has_slack and constraints is not None:
@@ -456,17 +456,18 @@ class OptimizationModule(abc.ABC):
         return self._violation(constraints=self._constraint_current[tag])
 
     def _violation(self, constraints: typing.Union[np.ndarray, None]) -> float:
-        if constraints is None:
+        if constraints is None or constraints.size == 0:
             return 0.0
 
-        num_constraints = constraints.size
-        violation = np.zeros(num_constraints)
+        assert self._env is not None
+        violation = np.zeros(constraints.size)
         lower_bounds, upper_bounds = self.constraint_boundaries(ado_ids=self._env.ado_ids)
-        for ic, (lower, upper) in enumerate(zip(lower_bounds, upper_bounds)):
-            lower = lower if lower is not None else -np.inf
-            upper = upper if upper is not None else np.inf
+        for ic, constraint in enumerate(constraints):
+            lower = lower_bounds[ic] if lower_bounds[ic] is not None else -np.inf
+            upper = upper_bounds[ic] if upper_bounds[ic] is not None else np.inf
             violation[ic] = max(lower - constraints[ic], 0.0) + max(constraints[ic] - upper, 0.0)
         violation = violation.sum()
+
         # Due to numerical (precision) errors the violation might be non-zero, although the derived optimization
         # variable is just at the constraint border (as for example in linear programming). Ignore these violations.
         if np.abs(violation) < mantrap.constants.CONSTRAINT_VIOLATION_PRECISION:
