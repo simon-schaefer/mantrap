@@ -57,7 +57,7 @@
 
 % Internet addresses and interactive links
 \usepackage[hyphens]{url}
-\usepackage{hyperref}
+\usepackage[colorlinks=true, urlcolor=blue]{hyperref}
 
 
 % Document info _______________________________________________________
@@ -78,12 +78,13 @@
 % Page format _________________________________________________________
 \frenchspacing % makes the sentence spacing single spaced
 \setlength{\parindent}{0em}                 % Disable par-indent
+\setlength{\headheight}{14pt}				% Correcting too small head height
 \rhead[\nouppercase{\rightmark}]{\thepage}  % Special headings
 \lhead[\thepage]{\nouppercase{\leftmark}}   % Special headings
 \cfoot{}                                    % Special headings
 
 \setcounter{tocdepth}{2} % Table of contents contain only chapters and sections
-\captionsetup[table]{skip=10pt} % Increase space between caption and content of tables
+\captionsetup[table]{skip=10pt} % Increase space between tables and caption
 
 % Document ____________________________________________________________
 \begin{document}
@@ -118,7 +119,7 @@
 \input{appendix}
 
 \bibliographystyle{IEEEtran}
-\bibliography{bibliography.bib}
+\bibliography{mantrap.bib}
 
 \input{infopage}
 

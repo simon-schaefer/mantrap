@@ -11,7 +11,7 @@ In order to use the system in real-world applications it must comply several req
 
 \section{Problem Formulation}
 \label{text:approach/formulation}
-In this work we are interested in finding the optimal trajectory for a robot navigating among pedestrians on the two-dimensional plane. Let $X_R^t = (x_R^t, y_R^t, vx_R^t, vy_R^t)$ be the position and velocity of the robot, also referred as $ego$, at time $t$. Within this work the robot is assumed to have double integrator dynamics, i.e., 
+In this work we are interested in finding the optimal trajectory for a robot navigating among pedestrians on the two-dimensional plane. Let $X_R^t = (x_R^t, y_R^t, vx_R^t, vy_R^t)$ be the position and velocity of the robot, also referred as $ego$, at time $t$ and $X_R$ a trajectory over multiple states $(X_R^{t_0}, X_R^{t_1}, X_R^{t_2}, \hdots, X_R^{T})$. Within this work the robot is assumed to have double integrator dynamics, i.e., 
 
 \begin{align}
 \label{eq:robot_dynamics}
@@ -53,22 +53,25 @@ For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-d
 \section{System Overview}
 \label{text:approach/overview}
 
-
+\begin{figure}[!ht]
 \begin{center}
 \includegraphics[width=\imgwidth]{images/placeholder.png}
-\captionof{figure}{Information-Flow-Diagram of project \project}
+\captionof{figure}{Information-Flow-Diagram of project \project }
 \label{img:information_flow}
 \end{center}
+\end{figure}
 
-- shooting !
+- shooting with z = ego controls ($z = U_R$)
 
 - nonzero in equality \& inequality Jacobian, Hessian, number of variables, number of constraints 
 
-- wikipedia description \href{https://en.wikipedia.org/wiki/Trajectory_optimization}
+- wikipedia description \href{https://en.wikipedia.org/wiki/Trajectory_optimization}{wiki}
 
-- IPOPT (fast ! Vincent Laurense, cascaded MPC, speed racing)
+- IPOPT (fast ! c, cascaded MPC, speed racing)
 
-- Trajectory Optimization (Shooting vs Collocation) \href{https://epubs.siam.org/doi/pdf/10.1137/16M1062569}
+- Trajectory Optimization (Shooting vs Collocation) \href{https://epubs.siam.org/doi/pdf/10.1137/16M1062569}{tutorial}
+
+- KKT conditions ??
 
 \section{Objective Function Design}
 \label{text:approach/objective}
@@ -78,16 +81,38 @@ For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-d
 The goal objective gives an incentive for the optimiser to choose a solution that targets the goal state. It simply consists of the L2-norm between each robot trajectory point and the goal state, normed over the planning horizon:
 
 \begin{equation}
-J_{goal} = \frac{1}{T} \sum_{t = 0}^T ||X_R^t - \mathcal{G}_R||_2
+J_{goal}(X_R, \mathcal{G}_R) = \frac{1}{T} \sum_{t = 0}^T ||X_R^t - \mathcal{G}_R||_2
 \end{equation}
 
-By normalisation the cost is independent from the length of the planning horizon and thus allows to use the same weight $w_{goal}$ for different planning horizons (comp. equation \ref{eq:formulation}). 
+By normalisation the cost is independent from the length of the planning horizon and thus allows to use the same weight $w_{goal}$ for different planning horizons (comp. equation \ref{eq:formulation}). In Figure \ref{img:goal_norm_vs_sum} the convergence of both formulations is compared; although the terminal cost is the same, the normalised version (\textit{goal\_norm}) converges slightly faster, presumably due to the smaller starting value. Although shown for only one scenario here, both, the ease in tuning and slightly larger convergence speed of the normalised goal objective can be observed also over a wide variety of different scenarios.  
+
+\begin{figure}[!ht]
+\begin{center}
+\includegraphics[width=\imgwidth]{images/goal_norm_vs_sum.png}
+\captionof{figure}{Direct comparison of a norm-based vs a weighted-sum based goal objective function, normalised by their end value. While roughly the same final objective value is reached (not shown here), the normed goal objective converges faster, i.e. gets to its minimum with fewer iterations over all initial conditions (\textit{core0, core1, core2}). For further details please have a look into the example notebook: \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/modules/goal.ipynb}{examples/modules/goal}.}.
+\label{img:goal_norm_vs_sum}
+\end{center}
+\end{figure}
+
+Since the goal objective $J_{goal}(X_R, \mathcal{G}_R)$ is only a function of the robot's planned trajectory and the goal state, its jacobian can be derived without further knowledge of the pedestrian prediction model, merely using the (known) robot dynamics. As described in section \ref{text:approach/overview} the robot controls are optimised, ergo $Z = U_R$. Hence by applying the chain rule we get: 
+
+\begin{equation}
+\nabla J_{goal} = \pd{J_{goal}}{Z} = \pd{J_{goal}}{X_R} \cdot \pd{X_R}{Z}
+\end{equation}
+
+Hence, we can find the goal-objectives gradient by determining the gradient of the robot's trajectory with respect to its control inputs and the objectives gradient with respect to the robot's trajectory. Since the goal-objective directly depends on the trajectory, deriving the latter term is trivial: 
+
+\begin{align}
+\pd{J_{goal}}{X_R} &= \pd{}{X_R} \frac{1}{T} \sum_{t = 0}^T ||X_R^t - \mathcal{G}_R||_2 \\
+&= \frac{1}{T} \frac{1}{||X_R^t - \mathcal{G}_R||_2} \cdot \mathbb{I} \cdot X_R
+\end{align}
+
+
+
 
 - jacobian: speed of convergence
 
 - final speed objective
-
-- comparison between mean and weighted sum of point-wise objectives
 
 \subsection{Interactive Objective}
 \label{text:approach/objective/interactive}
@@ -110,8 +135,45 @@ however they follow single integrator dynamics. As pointed out in \cite{Ivanovic
 \section{Runtime Optimisation}
 \label{text:approach/runtime}
 
+\subsection{Efficient Trajectory Unrolling}
+\label{text:approach/runtime/unrolling}
+One of the most promising directions for decreasing the runtime of a trajectory optimisation algorithm is to decrease the runtime of the objective and constraints evaluation as well as their gradients. As shown in sections \ref{text:approach/objective} and \ref{text:approach/constraint} the majority of these optimisation modules depends on the robot's trajectory $X_R$, rather than on its control inputs $U_R$. However since control inputs are optimised, as described in section \ref{text:approach/overview}, a computationally efficient transformation from controls and initial state to the trajectory is key for making the trajectory optimisation real-time feasible.
+\newline
+Fortunately, we assumed that the robot follows double integrator dynamics, which are linear and markovian. Hence, they can be expressed as the following: 
+
+\begin{equation}
+X_R^{t+1} = A X_R^t + B U_R^t
+\label{eq:dynamics}
+\end{equation}
+
+\begin{minipage}{0.5\textwidth}
+$$A = \begin{bmatrix} 1 & 0 & dt & 0 \\ 0 & 1 & 0 & dt \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1\end{bmatrix}$$
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+$$B = \begin{bmatrix} 0 & 0 & dt & 0 \\ 0 & 0 & 0 & dt \end{bmatrix}$$
+\end{minipage}
+
+In order to fully "unroll" a trajectory the linear dynamic equation \ref{eq:dynamics} would be to be applied iteratively for the length of the trajectory. Since the dynamics themselves are linear (not just a first-order approximation) this computation can be further batched and on this way, speeded up. In fact the full trajectory can be derived merely based on the initial state $X_R^0$ and the control input matrix $U_R$, as shown in the following:
+
+\begin{align}
+X_R^1 &= A X_R^0 + B U_R^0 \\
+X_R^2 &= A X_R^0 + B U_R^1 = A^2 X_R^0 + A B U_R^0 + B U_R^1\\ 
+\hdots &= \hdots \\
+\begin{bmatrix} X^1 \\ X^2 \\ \vdots \\ X^n \end{bmatrix}_R &= \underbrace{\begin{bmatrix} A \\ A^2 \\ \vdots \\ A^n \end{bmatrix}}_{\substack{A_n}} X_R^0 + \underbrace{\begin{bmatrix} B & 0 & \hdots & \hdots & 0 \\ AB & B & 0 & \hdots & 0 \\ \hdots & \hdots & \hdots & \hdots & \hdots \\ A^{n-1} B & A^{n-2} B & \hdots & \hdots & B \end{bmatrix}}_{\substack{B_n}} \begin{bmatrix} U^0 \\ U^1 \\ \vdots \\ U^{n-1}
+\end{bmatrix}_R
+\end{align}
+
+In summary we get the following (also linear) expression for computing the full robot trajectory at once. As demonstrated in \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/tools/timing.ipynb}{examples/tools/timing} using the fully batched formulation speeds up the trajectory "unrolling" by about a factor of 30.  
+
+\begin{equation}
+X_R = A_n X_R^0 + B_n U_R
+\label{eq:dynamics_stacked}
+\end{equation}
+
 \subsection{Warm Starting}
 \label{text:approach/runtime/warm_starting}
+It is widely known that warm starting an optimisation can be very beneficial for its convergence speed, e.g. shown in \cite{Banerjee2020} for GuSTO, a sequential convex programming based solver for trajectory optimisation \cite{Bonalli2019}, or for \ac{IPOPT} in \cite{John2008} or \cite{Spielberge2019}.
+
 
 \subsection{Agent Filtering}
 \label{text:approach/runtime/filtering}
