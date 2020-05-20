@@ -61,7 +61,17 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         # Then start searching loop for finding more optimal trajectories.
         z_best, obj_best, iteration = None, np.inf, 0
         while (time.time() - sampling_start_time) < max_cpu_time:
-            z_best, obj_best, iteration, is_finished = self._optimize_inner(z_best, obj_best, iteration, tag, ado_ids)
+            z_best_candidate, obj_best_candidate, iteration_candidate, is_finished = self._optimize_inner(
+                z_best, obj_best, iteration, tag, ado_ids)
+
+            # Update iteration variables (z_best, obj_best, iteration) only if the objective has been
+            # improved over the iteration.
+            if obj_best_candidate <= obj_best:
+                z_best = z_best_candidate
+                obj_best = obj_best_candidate
+                iteration = iteration_candidate
+
+            # If solver claims to be finished, end the iteration before the runtime has exceeded.
             if is_finished:
                 break
 
