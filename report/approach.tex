@@ -40,12 +40,12 @@ Furthermore both the robot and the pedestrians underly constraints for their min
 Within project \project I want to find a robot trajectory over some discrete time horizon $T$ that trade-offs between minimising the travel time from the its current state to some goal state $\mathcal{G}_R$ on the one side and the interference with the pedestrians in the scene on the other side, with respect to its dynamic as well as safety boundaries. Formally, the solution to this problem solves the following optimisation problem: 
 
 \begin{align}
-\label{eq:formulation}
-\min_{X_R} \quad & w_{int} E_{\mathcal{S}_P}[J_{int}(X_R, \mathcal{S}_P)] + w_{goal} J_{goal}(X_R, \mathcal{G}_R) \\
+\min_{U_R} \quad & w_{int} E_{\mathcal{S}_P}[J_{int}(X_R, \mathcal{S}_P)] + w_{goal} J_{goal}(X_R, \mathcal{G}_R) \\
 \textrm{s.t. } \quad & X_R^{t+1} = f_R(X_R^t, U_R^t) \\
 & X_{Pi}^{t+1} = \phi_{Pi}(X_R^{t_0:t}, X_{Pi}^{t_0:t}, X_{Pj}^{t_0:t}) \\
 & g_{control}(X_R) \leq 0 \\
 & g_{safety}(X_R, \mathcal{S}_P) \leq 0 \\
+\label{eq:formulation}
 \end{align} 
 
 For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-driven objective function $J_{int}(\cdot)$, which are further explained in section \ref{text:approach/objective}; the dynamics for the robot and every pedestrian and some constraint bounding the control effort of the robot $g_{control}(\cdot)$ and ensuring a safe robot-human interaction $g_{safety}(\cdot)$, which will be described in section \ref{text:approach/constraint}.
@@ -67,7 +67,7 @@ For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-d
 
 - wikipedia description \href{https://en.wikipedia.org/wiki/Trajectory_optimization}{wiki}
 
-- IPOPT (fast ! c, cascaded MPC, speed racing)
+- \ac{IPOPT} (fast ! c, cascaded MPC, speed racing)
 
 - Trajectory Optimization (Shooting vs Collocation) \href{https://epubs.siam.org/doi/pdf/10.1137/16M1062569}{tutorial}
 
@@ -81,7 +81,7 @@ For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-d
 The goal objective gives an incentive for the optimiser to choose a solution that targets the goal state. It simply consists of the L2-norm between each robot trajectory point and the goal state, normed over the planning horizon:
 
 \begin{equation}
-J_{goal}(X_R, \mathcal{G}_R) = \frac{1}{T} \sum_{t = 0}^T ||X_R^t - \mathcal{G}_R||_2
+J_{goal}(X_R, \mathcal{G}_R) = \frac{1}{T} \sum_{t = 0}^T (X_R^t - \mathcal{G}_R)^2
 \end{equation}
 
 By normalisation the cost is independent from the length of the planning horizon and thus allows to use the same weight $w_{goal}$ for different planning horizons (comp. equation \ref{eq:formulation}). In Figure \ref{img:goal_norm_vs_sum} the convergence of both formulations is compared; although the terminal cost is the same, the normalised version (\textit{goal\_norm}) converges slightly faster, presumably due to the smaller starting value. Although shown for only one scenario here, both, the ease in tuning and slightly larger convergence speed of the normalised goal objective can be observed also over a wide variety of different scenarios.  
@@ -94,7 +94,7 @@ By normalisation the cost is independent from the length of the planning horizon
 \end{center}
 \end{figure}
 
-Since the goal objective $J_{goal}(X_R, \mathcal{G}_R)$ is only a function of the robot's planned trajectory and the goal state, its jacobian can be derived without further knowledge of the pedestrian prediction model, merely using the (known) robot dynamics. As described in section \ref{text:approach/overview} the robot controls are optimised, ergo $Z = U_R$. Hence by applying the chain rule we get: 
+Since the goal objective $J_{goal}(X_R, \mathcal{G}_R) = J_{goal}(X_R(X_R^0, U_R), \mathcal{G}_R)$ is only a function of the robot's planned trajectory and the goal state, its jacobian can be derived without further knowledge of the pedestrian prediction model, merely using the (known) robot dynamics. As described in section \ref{text:approach/overview} the robot controls are optimised. Hence by applying the chain rule we get: 
 
 \begin{equation}
 \nabla J_{goal} = \pd{J_{goal}}{Z} = \pd{J_{goal}}{X_R} \cdot \pd{X_R}{Z}
@@ -103,11 +103,9 @@ Since the goal objective $J_{goal}(X_R, \mathcal{G}_R)$ is only a function of th
 Hence, we can find the goal-objectives gradient by determining the gradient of the robot's trajectory with respect to its control inputs and the objectives gradient with respect to the robot's trajectory. Since the goal-objective directly depends on the trajectory, deriving the latter term is trivial: 
 
 \begin{align}
-\pd{J_{goal}}{X_R} &= \pd{}{X_R} \frac{1}{T} \sum_{t = 0}^T ||X_R^t - \mathcal{G}_R||_2 \\
-&= \frac{1}{T} \frac{1}{||X_R^t - \mathcal{G}_R||_2} \cdot \mathbb{I} \cdot X_R
+\pd{J_{goal}}{X_R} &= \pd{}{X_R} \frac{1}{T} \sum_{t = 0}^T (X_R^t - \mathcal{G}_R)^2 \\
+&= \frac{2}{T} \begin{bmatrix} (X_R^1 - \mathcal{G}_R) X_R^1 & \hdots & (X_R^T - \mathcal{G}_R) X_R^T \end{bmatrix}^T
 \end{align}
-
-
 
 
 - jacobian: speed of convergence
@@ -172,8 +170,18 @@ X_R = A_n X_R^0 + B_n U_R
 
 \subsection{Warm Starting}
 \label{text:approach/runtime/warm_starting}
-It is widely known that warm starting an optimisation can be very beneficial for its convergence speed, e.g. shown in \cite{Banerjee2020} for GuSTO, a sequential convex programming based solver for trajectory optimisation \cite{Bonalli2019}, or for \ac{IPOPT} in \cite{John2008} or \cite{Spielberge2019}.
+It is widely known that warm starting an optimisation can be very beneficial for its convergence speed, e.g. shown in \cite{Banerjee2020} for GuSTO, a sequential convex programming based solver for trajectory optimisation \cite{Bonalli2019}, or for \ac{IPOPT} in \cite{Shahzad2010}, \cite{John2008} or \cite{Spielberge2019}.
+\newline
+Within project \project the algorithm has been warm-started by solving the optimisation problem posed in equation \ref{eq:formulation} while ignoring all objectives and constraints that relate to pedestrians, i.e. by solving the following optimisation problem: 
 
+\begin{align}
+\min_{U_R} \quad & J_{goal}(X_R, \mathcal{G}_R) \\
+\textrm{s.t. } \quad & X_R^{t+1} = f_R(X_R^t, U_R^t) \\
+& g_{control}(X_R) \leq 0 \\
+\label{eq:formulation_warm_starting}
+\end{align} 
+
+Since the simplified optimisation problem in equation \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\phi_P$ it is much easier and more efficient to solve, being a convex quadratic program. 
 
 \subsection{Agent Filtering}
 \label{text:approach/runtime/filtering}
