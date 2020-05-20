@@ -15,7 +15,7 @@ class GoalNormModule(PureObjectiveModule):
     time. Therefore the distance of every trajectory point to the goal state is taken to account, which is
     minimized the faster the robot gets to the goal.
 
-    .. math:: objective = \\sum_{T} || pos_t - goal ||_2
+    .. math:: objective = 1/T \\sum_{T} (pos_t - goal)^2
 
     However, it is more important for the last rather than the first trajectory points to be close to the goal.
     Using some strictly-increasing distribution to weight the importance of the distance at every point in time
@@ -54,7 +54,7 @@ class GoalNormModule(PureObjectiveModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        goal_distances = torch.norm(ego_trajectory[:, 0:2] - self._goal, dim=1)
+        goal_distances = torch.sum((ego_trajectory[:, 0:2] - self._goal).pow(2), dim=1)
         cost = torch.mean(goal_distances)
 
         if self._optimize_speed:

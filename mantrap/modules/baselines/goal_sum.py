@@ -19,7 +19,7 @@ class GoalSumModule(GoalNormModule):
 
     def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                            ) -> typing.Union[torch.Tensor, None]:
-        goal_distances = torch.norm(ego_trajectory[:, 0:2] - self._goal, dim=1)
+        goal_distances = torch.sum((ego_trajectory[:, 0:2] - self._goal).pow(2), dim=1)
         weights = torch.linspace(0.2, 1.0, steps=goal_distances.numel()).detach()
         return torch.sum(goal_distances * weights)
 
