@@ -498,8 +498,8 @@ class TrajOptSolver(abc.ABC):
                 assert all([f"{key}_{k}" in self.log.keys() for k in range(self._iteration + 1)])
                 summary = [self.log[f"{key}_{k}"][-1] for k in range(self._iteration + 1)
                            if len(self.log[f"{key}_{k}"]) > 0]
-                if len(summary) > 0:
-                    self._log[f"{key}_end"] = torch.stack(summary)
+                summary = torch.stack(summary) if len(summary) > 0 else []
+                self._log[f"{key}_end"] = summary
 
             # Save the optimization performance for every optimization step into logging file. Since the
             # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
@@ -545,28 +545,34 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_scenes(self, plot_path_only: bool = False):
+    def visualize_scenes(self, plot_path_only: bool = False, core: str = None):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
-        trajectories conditioned on the planned ego trajectory), if __debug__ is True (otherwise no logging). """
+        trajectories conditioned on the planned ego trajectory), if __debug__ is True (otherwise no logging).
+
+        :param plot_path_only: just plot the robot's and ado's trajectories, no further stats.
+        :param core: process of solution to plot, if None then `core_opt`.
+        """
         if __debug__ is True:
             from mantrap.visualization import visualize_overview
             assert self.log is not None
+            core = core if core is not None else self.core_opt
+            assert core in self.cores or core == self.core_opt
 
             # From optimization log extract the core (initial condition) which has resulted in the best objective
             # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
             # N=t_horizon times to be able to visualize the whole distribution at every time.
-            obj_dict = {key: self.log[f"{self.core_opt}/{mantrap.constants.LK_OBJECTIVE}_{key}_end"]
+            obj_dict = {key: self.log[f"{core}/{mantrap.constants.LK_OBJECTIVE}_{key}_end"]
                         for key in self.module_names}
             obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.module_names}
-            inf_dict = {key: self.log[f"{self.core_opt}/{mantrap.constants.LK_CONSTRAINT}_{key}_end"]
+            inf_dict = {key: self.log[f"{core}/{mantrap.constants.LK_CONSTRAINT}_{key}_end"]
                         for key in self.module_names}
             inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.module_names}
 
             return visualize_overview(
-                ego_planned=self.log[f"{mantrap.constants.LK_OPTIMAL}/ego_planned"],
-                ado_planned=self.log[f"{mantrap.constants.LK_OPTIMAL}/ado_planned"],
-                ado_planned_wo=self.log[f"{mantrap.constants.LK_OPTIMAL}/ado_planned_wo"],
-                ego_trials=[self._log[f"{self.core_opt}/ego_planned_{k}"] for k in range(self._iteration + 1)],
+                ego_planned=self.log[f"{core}/ego_planned_end"],
+                ado_planned=self.log[f"{core}/ado_planned_end"],
+                ado_planned_wo=self.log[f"{core}/ado_planned_wo_end"],
+                ego_trials=[self._log[f"{core}/ego_planned_{k}"] for k in range(self._iteration + 1)],
                 ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
                 plot_path_only=plot_path_only, file_path=self._visualize_output_format("scenes")
             )
