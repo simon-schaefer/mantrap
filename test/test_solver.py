@@ -32,7 +32,7 @@ def scenario(
         pytest.skip()
     env.add_ado(position=torch.tensor([3, 2]), num_modes=num_modes)
     solver = solver_class(env, goal=torch.tensor([1, 1]), filter_module=filter_class, **solver_kwargs)
-    z0 = solver.initial_values(just_one=True).detach().numpy()
+    z0 = solver.warm_start().detach().numpy()
     return env, solver, z0
 
 
@@ -58,7 +58,7 @@ class TestSolvers:
         solver_kwargs = {"filter_module": filter_class, "t_planning": 1}
         solver = solver_class(env, goal=torch.zeros(2), objectives=[("goal", 1.0)], constraints=[], **solver_kwargs)
 
-        z0 = solver.initial_values(just_one=True)
+        z0 = solver.warm_start()
         z_opt, _, _ = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0)
         ego_controls = solver.z_to_ego_controls(z=z_opt.detach().numpy())
         ego_trajectory_opt = solver.env.ego.unroll_trajectory(controls=ego_controls, dt=solver.env.dt)
@@ -94,13 +94,6 @@ class TestSolvers:
         assert len(lb) == solver.num_optimization_variables()
         assert len(ub) == solver.num_optimization_variables()
 
-        z0s = solver.initial_values(just_one=False)
-        assert len(z0s.shape) == 2
-        print(z0s.shape)
-
-        z0 = solver.initial_values(just_one=True)
-        assert len(z0.shape) == 1
-
     @staticmethod
     def test_solve(solver_class, env_class, num_modes, filter_class):
         env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
@@ -113,9 +106,9 @@ class TestSolvers:
         assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
 
         solver_horizon = 3
-        ego_trajectory_opt, ado_trajectories = solver.solve(solver_horizon, max_cpu_time=0.1, multiprocessing=False)
-        ado_planned = solver.log["opt/ado_planned_end"]
-        ego_opt_planned = solver.log["opt/ego_planned_end"]
+        ego_trajectory_opt, ado_trajectories = solver.solve(solver_horizon, max_cpu_time=0.1)
+        ado_planned = solver.log[f"{mantrap.constants.TAG_OPTIMIZATION}/ado_planned_end"]
+        ego_opt_planned = solver.log[f"{mantrap.constants.TAG_OPTIMIZATION}/ego_planned_end"]
 
         # Test output shapes.
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
@@ -143,6 +136,25 @@ class TestSolvers:
         for module in solver.modules:
             violation = module.compute_violation(ego_trajectory_opt, ado_ids=env.ado_ids, tag="test")
             assert math.isclose(violation, 0.0, abs_tol=1e-3)
+
+    @staticmethod
+    def test_warm_start(solver_class, env_class, num_modes, filter_class):
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0]),
+                                                           "velocity": torch.ones(2)})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
+        solver = solver_class(env, filter_module=filter_class, goal=torch.zeros(2), t_planning=5)
+
+        # Solve simplified optimization problem.
+        z0 = solver.warm_start().detach().numpy()
+
+        # Check whether z is within the allowed optimization boundaries.
+        z0_flat = z0.flatten()
+        lower, upper = solver.optimization_variable_bounds()
+        assert z0_flat.size == len(lower) == len(upper)
+        assert np.all(np.less_equal(z0_flat, upper))
+        assert np.all(np.greater_equal(z0_flat, lower))
 
 
 ###########################################################################
@@ -208,7 +220,7 @@ def test_ignoring_solver(env_class):
                (mantrap.modules.ControlLimitModule, None)]
 
     solver = mantrap.solver.SGradSolver(env, goal=torch.tensor([1, 0]), t_planning=3, modules=modules)
-    ego_trajectory, _ = solver.solve(time_steps=20, multiprocessing=False)
+    ego_trajectory, _ = solver.solve(time_steps=20)
 
     # Check whether goal has been reached in acceptable closeness.
     goal_distance = torch.norm(ego_trajectory[-1,  0:2] - solver.goal)

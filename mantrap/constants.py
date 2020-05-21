@@ -7,11 +7,15 @@ GK_CONTROL = "control"  # GK = Graph-Key
 GK_POSITION = "position"
 GK_VELOCITY = "velocity"
 
-LK_GRADIENT = "grad"  # LK = Log-Key
-LK_CONSTRAINT = "inf"
-LK_OBJECTIVE = "obj"
-LK_OPTIMAL = "opt"
-LK_OVERALL_PERFORMANCE = "overall"
+LT_GRADIENT = "grad"  # LT = Log-Type
+LT_CONSTRAINT = "inf"
+LT_OBJECTIVE = "obj"
+
+LK_OVERALL_PERFORMANCE = "overall" # LK = Log-Keys (module names, ...)
+
+TAG_OPTIMIZATION = "optimization"  # logging tags
+TAG_WARM_START = "warm_start"
+TAG_VISUALIZATION = "visualization"
 
 PK_CONFIG = "config_name"  # PK = Parameter-Key
 PK_NUM_CONTROL_POINTS = "num_control_points"
@@ -85,7 +89,6 @@ FILTER_EUCLIDEAN_RADIUS = 7.0  # [m] attention radius of ego for planning
 # visualization parameters ############
 #######################################
 CONFIG_UNKNOWN = "unknown"
-TAG_DEFAULT = LK_OPTIMAL
 VISUALIZATION_AGENT_RADIUS = 0.1
 VISUALIZATION_DIRECTORY = "outputs/"
 VISUALIZATION_FRAME_DELAY = 500  # [ms]

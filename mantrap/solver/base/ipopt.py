@@ -1,6 +1,6 @@
 import logging
-from abc import ABC
-from typing import Dict, List, Tuple
+import abc
+import typing
 
 import ipopt
 import numpy as np
@@ -12,17 +12,17 @@ import mantrap.solver
 from .trajopt import TrajOptSolver
 
 
-class IPOPTIntermediate(TrajOptSolver, ABC):
+class IPOPTIntermediate(TrajOptSolver, abc.ABC):
 
     def _optimize(
         self,
         z0: torch.Tensor,
-        ado_ids: List[str],
-        tag: str = "opt",
+        ado_ids: typing.List[str],
+        tag: str = mantrap.constants.TAG_OPTIMIZATION,
         max_cpu_time: float = mantrap.constants.IPOPT_MAX_CPU_TIME_DEFAULT,
         approx_jacobian: bool = False,
         **solver_kwargs
-    ) -> Tuple[torch.Tensor, float, Dict[str, torch.Tensor]]:
+    ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.
 
         Given some initial value `z0` find the optimal allocation for z with respect to the internally defined
@@ -94,9 +94,23 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         return z2_opt, objective_opt, self.log
 
     ###########################################################################
-    # Optimization formulation - Objective ####################################s
+    # Optimization formulation - Formulation ##################################
     ###########################################################################
-    def gradient(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = mantrap.constants.TAG_DEFAULT
+    @staticmethod
+    def module_hard() -> typing.Union[typing.List[typing.Tuple], typing.List]:
+        """List of "hard" optimization modules (objectives, constraint). Hard modules are used for
+        warm-starting the trajectory optimization and should therefore be simple to solve while still
+        encoding a good guess of possible solutions.
+
+        The IPOPT solver already uses the optimization variable boundaries as control limit, since we
+        optimize for z = controls. Therefore only the goal module is required as a hard module.
+        """
+        return [mantrap.modules.GoalNormModule]
+
+    ###########################################################################
+    # Optimization formulation - Gradient #####################################
+    ###########################################################################
+    def gradient(self, z: np.ndarray, ado_ids: typing.List[str] = None, tag: str = mantrap.constants.TAG_OPTIMIZATION
                  ) -> np.ndarray:
         """Gradient computation function.
 
@@ -109,15 +123,15 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
         gradient = np.sum(gradient, axis=0)
 
         self._log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
-        module_log = {f"{mantrap.constants.LK_GRADIENT}_{key}": mod.grad_current(tag=tag)
+        module_log = {f"{mantrap.constants.LT_GRADIENT}_{key}": mod.grad_current(tag=tag)
                       for key, mod in self.module_dict.items()}
         self._log_append(**module_log, tag=tag)
         return gradient
 
     ###########################################################################
-    # Optimization formulation - Constraints ##################################
+    # Optimization formulation - Jacobian #####################################
     ###########################################################################
-    def jacobian(self, z: np.ndarray, ado_ids: List[str] = None, tag: str = mantrap.constants.TAG_DEFAULT
+    def jacobian(self, z: np.ndarray, ado_ids: typing.List[str] = None, tag: str = mantrap.constants.TAG_OPTIMIZATION
                  ) -> np.ndarray:
         """Jacobian computation function.
 
@@ -139,10 +153,10 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
     ###########################################################################
     # Visualization & Logging #################################################
     ###########################################################################
-    def log_keys_performance(self) -> List[str]:
+    def log_keys_performance(self, tag: str = mantrap.constants.TAG_OPTIMIZATION) -> typing.List[str]:
         log_keys = super(IPOPTIntermediate, self).log_keys_performance()
-        gradient_keys = [f"{tag}/{mantrap.constants.LK_GRADIENT}_{key}"
-                         for key in self.module_names for tag in self.cores]
+        gradient_keys = [f"{tag}/{mantrap.constants.LT_GRADIENT}_{key}"
+                         for key in self.module_names]
         return log_keys + gradient_keys
 
 
@@ -151,7 +165,12 @@ class IPOPTIntermediate(TrajOptSolver, ABC):
 ###########################################################################
 class IPOPTProblem:
 
-    def __init__(self, problem: IPOPTIntermediate, ado_ids: List[str], tag: str = mantrap.constants.TAG_DEFAULT):
+    def __init__(
+        self,
+        problem: IPOPTIntermediate,
+        ado_ids: typing.List[str],
+        tag: str = mantrap.constants.TAG_OPTIMIZATION
+    ):
         self.problem = problem
         self.tag = tag
         self.ado_ids = ado_ids

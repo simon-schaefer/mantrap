@@ -29,7 +29,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         self,
         z0: torch.Tensor,
         ado_ids: typing.List[str],
-        tag: str = mantrap.constants.TAG_DEFAULT,
+        tag: str = mantrap.constants.TAG_OPTIMIZATION,
         max_cpu_time: float = mantrap.constants.SEARCH_MAX_CPU_TIME,
         **solver_kwargs
     ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:

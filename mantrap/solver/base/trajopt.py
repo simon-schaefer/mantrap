@@ -3,13 +3,11 @@ import logging
 import os
 import typing
 
-import joblib
 import numpy as np
 import pandas
 import torch
 
 import mantrap.constants
-import mantrap.controller
 import mantrap.environment
 import mantrap.filter
 import mantrap.modules
@@ -47,7 +45,7 @@ class TrajOptSolver(abc.ABC):
         env: mantrap.environment.base.GraphBasedEnvironment,
         goal: torch.Tensor,
         t_planning: int = mantrap.constants.SOLVER_HORIZON_DEFAULT,
-        modules: typing.List[typing.Tuple] = None,
+        modules: typing.Union[typing.List[typing.Tuple], typing.List] = None,
         filter_module: mantrap.filter.FilterModule.__class__ = None,
         eval_env: mantrap.environment.base.GraphBasedEnvironment = None,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN,
@@ -104,8 +102,14 @@ class TrajOptSolver(abc.ABC):
         # Sanity checks.
         assert self.num_optimization_variables() > 0
 
-    def solve(self, time_steps: int, multiprocessing: bool = True, **solver_kwargs
-              ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+    def initialize(self, **solver_params):
+        """Method can be overwritten when further initialization is required."""
+        pass
+
+    ###########################################################################
+    # Solving #################################################################
+    ###########################################################################
+    def solve(self, time_steps: int, **solver_kwargs) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal environment with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
@@ -113,7 +117,6 @@ class TrajOptSolver(abc.ABC):
         This method changes the internal environment by forward simulating it over the prediction horizon.
 
         :param time_steps: how many time-steps shall be solved (not planning horizon !).
-        :param multiprocessing: use multiple threads for solving with each initial value in parallel.
         :return: derived ego trajectory [horizon + 1, 5].
         :return: derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
         """
@@ -129,17 +132,30 @@ class TrajOptSolver(abc.ABC):
             m_ado, m_mode = self.env.convert_ghost_id(ghost_id=ghost.id)
             ado_trajectories[m_ado, 0, 0, :] = ghost.agent.state_with_time
 
+        # Warm-start the optimization using a simplified optimization formulation.
+        z_warm_start = self.warm_start()
+
         logging.debug(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
             logging.debug("#" * 30 + f"solver {self.log_name} @k={k}: initializing optimization")
             self._iteration = k
 
             # Solve optimisation problem.
-            ego_controls_k = self.__determine_ego_controls(multiprocessing=multiprocessing, **solver_kwargs)
-            logging.debug(f"solver {self.log_name} @k={k}: finishing optimization")
+            z_k, _, optimization_log = self.optimize(z_warm_start, tag=mantrap.constants.TAG_OPTIMIZATION)
+            ego_controls_k = self.z_to_ego_controls(z_k.detach().numpy())
+            assert mantrap.utility.shaping.check_ego_controls(ego_controls_k, t_horizon=self.planning_horizon)
 
-            # Logging, before the environment step is done.
+            # Warm-starting using the next optimization at time-step k+1 using the recent results k.
+            # As we have proceeded one time-step, use the recent results for one-step ahead, and append
+            # zero control actions to it.
+            z_warm_start = self.ego_controls_to_z(torch.cat((ego_controls_k[1:, :], torch.zeros((1, 2)))))
+            z_warm_start = torch.from_numpy(z_warm_start)  # detached !
+
+            # Logging, before the environment step is done and update optimization
+            # logging values for optimization results.
             self.__intermediate_log(ego_controls_k=ego_controls_k)
+            if __debug__ is True:
+                self._log.update({key: x for key, x in optimization_log.items()})
 
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
@@ -177,48 +193,6 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Optimization ############################################################
     ###########################################################################
-    def __determine_ego_controls(self, multiprocessing: bool = True, **solver_kwargs) -> torch.Tensor:
-        """Determine the ego control inputs for the internally stated problem and the current state of the environment.
-        The implementation crucially depends on the solver class itself and is hence not implemented here.
-
-        :param multiprocessing: use multiple threads for solving with each initial value in parallel.
-        :return: ego_controls: control inputs of ego agent for whole planning horizon.
-        :return: optimization dictionary of solution (containing objective, infeasibility scores, etc.).
-        """
-        logging.debug(f"solver: solving optimization problem in parallel = {multiprocessing}")
-
-        # Find initial values for optimization variable and assign one to each core.
-        z0s = self.initial_values()
-        assert z0s.shape[0] == len(self.cores)
-        initial_values = list(zip(z0s, self.cores))
-        logging.debug(f"solver: initial values = {initial_values}")
-
-        # Solve optimisation problem for each initial condition, either in multiprocessing or sequential.
-        # Requiring shared memory allows to run code in optimized manner over multiple processes, e.g. by
-        # sharing the "__debug__" flag between all processes. Also the processes do not change shared by
-        # (or making a deepcopy), so copying to every process the whole memory is not efficient (neither
-        # required at all).
-        if multiprocessing:
-            results = joblib.Parallel(n_jobs=8, require="sharedmem")(joblib.delayed(self.optimize)
-                                                                     (z0, tag, **solver_kwargs)
-                                                                     for z0, tag in initial_values)
-        else:
-            results = [self.optimize(z0, tag, **solver_kwargs) for z0, tag in initial_values]
-
-        # Update optimization logging values for optimization results.
-        if __debug__ is True:
-            for i, (_, _, optimization_log) in enumerate(results):
-                self._log.update({key: x for key, x in optimization_log.items() if self.cores[i] in key})
-
-        # Return controls with minimal objective function result.
-        index_best = int(np.argmin([obj for _, obj, _ in results]))
-        z_opt_best, self._core_opt = results[index_best][0], self.cores[index_best]
-
-        # Convert the resulting optimization variable to control inputs.
-        ego_controls = self.z_to_ego_controls(z_opt_best.detach().numpy())
-        assert mantrap.utility.shaping.check_ego_controls(ego_controls, t_horizon=self.planning_horizon)
-        return ego_controls
-
     def optimize(self, z0: torch.Tensor, tag: str, **kwargs
                  ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
         # Filter the important ghost indices from the current scene state.
@@ -256,78 +230,66 @@ class TrajOptSolver(abc.ABC):
         raise NotImplementedError
 
     ###########################################################################
-    # Initialization ##########################################################
+    # Problem formulation - Warm-Starting #####################################
     ###########################################################################
-    def initialize(self, **solver_params):
-        """Method can be overwritten when further initialization is required."""
-        pass
+    def warm_start(self) -> torch.Tensor:
+        """Warm-Starting optimization using solution for hard modules only.
 
-    def initial_values(self, just_one: bool = False) -> torch.Tensor:
-        """Initialize with three primitives, going from the current ego position to the goal point, following
-        square shapes. The middle one (index = 1) is a straight line, the other two have some curvature,
-        one positive and the other one negative curvature. When just one initial trajectory should be returned,
-        then return straight line trajectory.
+        In order to warm start the optimization solve the same optimization process but use the hard
+        optimization modules (objectives and constraints) only. These hard optimization modules should
+        be very efficient to solve, e.g. convex, not include the simulation model, etc., but still give
+        a good guess for the final actual solution, i.e. the solution including soft modules as well.
 
-        :param just_one: flag whether to return just one trajectory or multiple.
+        For further information about hard modules please have a look into `module_hard()`.
         """
-        with torch.no_grad():
-            ego_pos, goal = self.env.ego.position, self.goal  # local variables for speed up looping
-            ego_distance = torch.norm(goal - ego_pos)  # distance between ego and goal
-            ego_direction = goal - ego_pos / ego_distance  # ego-goal-direction vector
-            normal = mantrap.utility.maths.normal_line(ego_pos, goal)  # normal line to vector from ego to goal
+        solver_hard = self.solver_hard(env=self.env, goal=self.goal,
+                                       t_planning=self.planning_horizon, config_name=self.config_name)
 
-            # At first check whether goal and current state are actually the same, in case just return the
-            # optimization variables representing no control actions.
-            if ego_distance < 1e-3:
-                z0 = self.ego_controls_to_z(ego_controls=torch.zeros((self.planning_horizon, 2)))
-                z0s = [z0, z0, z0]  # three initial trajectories
+        # As initial guess for this first optimization, without prior knowledge, going straight
+        # from the current position to the goal with maximal control input is chosen.
+        _, u_max = self.env.ego.control_limits()
+        dx_goal = self.goal - self.env.ego.position
+        dx_goal_length = torch.norm(dx_goal).item()
+        ego_controls_init = torch.stack([dx_goal / dx_goal_length * u_max] * self.planning_horizon)
+        z_init = self.ego_controls_to_z(ego_controls=ego_controls_init)
 
-            else:
-                z0s = []
-                for i, distance in enumerate([- ego_distance / 2, 0.0, ego_distance / 2.0]):
-                    control_points = [ego_pos + ego_direction * ego_distance * f_point + f_distance * distance * normal
-                                      for f_point, f_distance in [(0, 0), (0.25, 0.5), (0.5, 1), (0.75, 0.5), (1, 0.0)]]
-                    control_points = torch.stack(control_points, dim=0)
+        # Solve the simplified optimization and return its results.
+        z_opt_hard, _, _ = solver_hard.optimize(z0=torch.from_numpy(z_init), tag=mantrap.constants.TAG_WARM_START)
+        return z_opt_hard
 
-                    # Spline interpolation to build "continuous" path.
-                    reference_path = mantrap.utility.maths.spline_interpolation(control_points,
-                                                                                num_samples=self.planning_horizon)
-
-                    # Determine controls to track the given trajectory. Afterwards check whether the determined
-                    # controls are feasible in terms of the control limits of the ego agent.
-                    controls = mantrap.controller.p_ahead_controller(
-                        agent=self.env.ego,
-                        path=reference_path,
-                        max_sim_time=self.planning_horizon * self.env.dt,
-                        dtc=self.env.dt,
-                        speed_reference=self.env.ego.speed_max
-                    )
-
-                    # If the controller did not need the full time until reaching the end of the reference path
-                    # it has to be expanded (to be transformable to a valid optimization variable). Since the
-                    # controller is assumed to break at the end, the easiest (and also valid) approach is to fill
-                    # with zeros.
-                    if controls.shape[0] < self.planning_horizon:
-                        delta_horizon = self.planning_horizon - controls.shape[0]
-                        delta_zeros = torch.zeros((delta_horizon, controls.shape[1]))
-                        controls = torch.cat((controls, delta_zeros), dim=0)
-                    assert mantrap.utility.shaping.check_ego_controls(controls, self.planning_horizon)
-                    assert self.env.ego.check_feasibility_controls(controls)
-
-                    # Transform controls to z variable.
-                    z0s.append(self.ego_controls_to_z(controls))
-
-        z0s = torch.from_numpy(np.array(z0s)).view(3, -1)
-        logging.debug(f"solver: initial values z = {z0s}")
-        return z0s if not just_one else z0s[1, :]
-
-    @staticmethod
-    def num_initial_values() -> int:
-        return 3
+    @classmethod
+    def solver_hard(
+        cls,
+        env: mantrap.environment.base.GraphBasedEnvironment,
+        goal: torch.Tensor,
+        t_planning: int = mantrap.constants.SOLVER_HORIZON_DEFAULT,
+        config_name: str = mantrap.constants.CONFIG_UNKNOWN,
+        **solver_params
+    ):
+        """Create internal solver version with only "hard" optimization modules."""
+        modules_hard = cls.module_hard()
+        return cls(env, goal, t_planning=t_planning, modules=modules_hard, config_name=config_name, **solver_params)
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
     ###########################################################################
+    @staticmethod
+    def module_defaults() -> typing.Union[typing.List[typing.Tuple], typing.List]:
+        """List of optimization modules (objectives, constraint) and according dictionary
+        of module kwargs, such as weight (for objectives), etc."""
+        raise NotImplementedError
+
+    @staticmethod
+    def module_hard() -> typing.Union[typing.List[typing.Tuple], typing.List]:
+        """List of "hard" optimization modules (objectives, constraint). Hard modules are used for
+        warm-starting the trajectory optimization and should therefore be simple to solve while still
+        encoding a good guess of possible solutions.
+
+        By default these modules are assumed to be the goal objective function and the controls limit
+        constraint, dynamics constraint fulfilled by the solver's structure.
+        """
+        return [mantrap.modules.GoalNormModule, mantrap.modules.ControlLimitModule]
+
     @abc.abstractmethod
     def num_optimization_variables(self) -> int:
         raise NotImplementedError
@@ -336,16 +298,10 @@ class TrajOptSolver(abc.ABC):
     def optimization_variable_bounds(self) -> typing.Tuple[typing.List, typing.List]:
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def module_defaults(self) -> typing.List[typing.Tuple]:
-        """List of optimization modules (objectives, constraint) and according dictionary
-        of module kwargs, such as weight (for objectives), etc."""
-        raise NotImplementedError
-
     ###########################################################################
     # Problem formulation - Objective #########################################
     ###########################################################################
-    def objective(self, z: np.ndarray, ado_ids: typing.List[str] = None, tag: str = mantrap.constants.TAG_DEFAULT
+    def objective(self, z: np.ndarray, ado_ids: typing.List[str] = None, tag: str = mantrap.constants.TAG_OPTIMIZATION
                   ) -> float:
         """Determine objective value for some optimization vector `z`.
 
@@ -371,7 +327,7 @@ class TrajOptSolver(abc.ABC):
             ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_trajectory.shape[0])
             self._log_append(ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo, tag=tag)
             self._log_append(obj_overall=objective, tag=tag)
-            module_log = {f"{mantrap.constants.LK_OBJECTIVE}_{key}": mod.obj_current(tag=tag)
+            module_log = {f"{mantrap.constants.LT_OBJECTIVE}_{key}": mod.obj_current(tag=tag)
                           for key, mod in self.module_dict.items()}
             self._log_append(**module_log, tag=tag)
 
@@ -384,7 +340,7 @@ class TrajOptSolver(abc.ABC):
         self,
         z: np.ndarray,
         ado_ids: typing.List[str] = None,
-        tag: str = mantrap.constants.TAG_DEFAULT,
+        tag: str = mantrap.constants.TAG_OPTIMIZATION,
         return_violation: bool = False
     ) -> np.ndarray:
         """Determine constraints vector for some optimization vector `z`.
@@ -413,7 +369,7 @@ class TrajOptSolver(abc.ABC):
 
         if __debug__ is True:
             self._log_append(inf_overall=violation, tag=tag)
-            module_log = {f"{mantrap.constants.LK_CONSTRAINT}_{key}": mod.inf_current(tag=tag)
+            module_log = {f"{mantrap.constants.LT_CONSTRAINT}_{key}": mod.inf_current(tag=tag)
                           for key, mod in self.module_dict.items()}
             self._log_append(**module_log, tag=tag)
 
@@ -445,27 +401,23 @@ class TrajOptSolver(abc.ABC):
         if __debug__ is True and self.log is not None:
             # For logging purposes unroll and predict the scene for the derived ego controls.
             ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
-            self._log_append(ego_planned=ego_opt_planned, tag=mantrap.constants.LK_OPTIMAL)
+            self._log_append(ego_planned=ego_opt_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
             ado_planned = self._env.predict_w_controls(ego_controls=ego_controls_k)
-            self._log_append(ado_planned=ado_planned, tag=mantrap.constants.LK_OPTIMAL)
+            self._log_append(ado_planned=ado_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
             ado_planned_wo = self._env.predict_wo_ego(t_horizon=ego_controls_k.shape[0] + 1)
-            self._log_append(ado_planned_wo=ado_planned_wo, tag=mantrap.constants.LK_OPTIMAL)
+            self._log_append(ado_planned_wo=ado_planned_wo, tag=mantrap.constants.TAG_OPTIMIZATION)
 
     @staticmethod
     def log_keys() -> typing.List[str]:
         return ["ego_planned", "ado_planned", "ado_planned_wo"]
 
-    def log_keys_performance(self) -> typing.List[str]:
-        objective_keys = [f"{tag}/{mantrap.constants.LK_OBJECTIVE}_{key}"
-                          for key in self.module_names for tag in self.cores]
-        constraint_keys = [f"{tag}/{mantrap.constants.LK_CONSTRAINT}_{key}"
-                           for key in self.module_names for tag in self.cores]
+    def log_keys_performance(self, tag: str = mantrap.constants.TAG_OPTIMIZATION) -> typing.List[str]:
+        objective_keys = [f"{tag}/{mantrap.constants.LT_OBJECTIVE}_{key}" for key in self.module_names]
+        constraint_keys = [f"{tag}/{mantrap.constants.LT_CONSTRAINT}_{key}" for key in self.module_names]
         return objective_keys + constraint_keys
 
-    def log_keys_all(self) -> typing.List[str]:
-        log_tag_keys = [f"{tag}/{key}" for key in self.log_keys() for tag in self.cores]
-        log_opt_keys = [f"{mantrap.constants.LK_OPTIMAL}/{key}" for key in self.log_keys()]
-        return self.log_keys_performance() + log_tag_keys + log_opt_keys
+    def log_keys_all(self, tag: str = mantrap.constants.TAG_OPTIMIZATION) -> typing.List[str]:
+        return self.log_keys_performance(tag=tag) + [f"{tag}/{key}" for key in self.log_keys()]
 
     def _log_reset(self, log_horizon: int):
         # Reset iteration counter.
@@ -474,9 +426,9 @@ class TrajOptSolver(abc.ABC):
         # Reset optimization log by re-creating dictionary with entries all keys in the planning horizon. During
         # optimization new values are then added to these created lists.
         if __debug__ is True:
-            self._log = {f"{tag}_{k}": [] for k in range(log_horizon) for tag in self.log_keys_all()}
+            self._log = {f"{key}_{k}": [] for k in range(log_horizon) for key in self.log_keys_all()}
 
-    def _log_append(self, tag: str = mantrap.constants.TAG_DEFAULT, **kwargs):
+    def _log_append(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **kwargs):
         if __debug__ is True and self.log is not None:
             for key, value in kwargs.items():
                 x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()
@@ -512,24 +464,23 @@ class TrajOptSolver(abc.ABC):
             csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys if key in self.log.keys()}
             pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
 
-    def log_query(self, key: str, key_type: str, iteration: int = None, core: str = None
+    def log_query(self, key: str, key_type: str, iteration: int = None, tag: str = None
                   ) -> typing.Union[typing.Dict[str, typing.List[float]], None]:
-        """Query internal log for some value with given key.
+        """Query internal log for some value with given key (log-key-structure: {tag}/{key_type}_{key}).
 
          :param key: query key, e.g. name of objective module.
          :param key_type: type of query (-> mantrap.constants.LK_...).
          :param iteration: optimization iteration to search in, if None then no iteration (summarized value).
-         :param core: optimization core to search in (should be in self.cores or opt-core).
+         :param tag: logging tag to search in.
          """
         assert self.log is not None
         assert iteration is None or iteration <= self._iteration
-        assert core is None or core in self.cores or core == self.core_opt
 
         # Build query by combining arguments into one query string.
         iteration = "end" if iteration is None else iteration
         query = f"{key_type}_{key}_{iteration}"
-        if core is not None:
-            query = f"{core}/{query}"
+        if tag is not None:
+            query = f"{tag}/{query}"
 
         # Search in log for elements that satisfy the query and return as dictionary. For the sake of
         # runtime the elements are stored as torch tensors in the log, therefore stack and list them.
@@ -545,34 +496,32 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_scenes(self, plot_path_only: bool = False, core: str = None):
+    def visualize_scenes(self, plot_path_only: bool = False,  tag: str = mantrap.constants.TAG_OPTIMIZATION):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory), if __debug__ is True (otherwise no logging).
 
         :param plot_path_only: just plot the robot's and ado's trajectories, no further stats.
-        :param core: process of solution to plot, if None then `core_opt`.
+        :param tag: logging tag to plot, per default optimization tag.
         """
         if __debug__ is True:
             from mantrap.visualization import visualize_overview
             assert self.log is not None
-            core = core if core is not None else self.core_opt
-            assert core in self.cores or core == self.core_opt
 
             # From optimization log extract the core (initial condition) which has resulted in the best objective
             # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
             # N=t_horizon times to be able to visualize the whole distribution at every time.
-            obj_dict = {key: self.log[f"{core}/{mantrap.constants.LK_OBJECTIVE}_{key}_end"]
+            obj_dict = {key: self.log[f"{tag}/{mantrap.constants.LT_OBJECTIVE}_{key}_end"]
                         for key in self.module_names}
             obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.module_names}
-            inf_dict = {key: self.log[f"{core}/{mantrap.constants.LK_CONSTRAINT}_{key}_end"]
+            inf_dict = {key: self.log[f"{tag}/{mantrap.constants.LT_CONSTRAINT}_{key}_end"]
                         for key in self.module_names}
             inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.module_names}
 
             return visualize_overview(
-                ego_planned=self.log[f"{core}/ego_planned_end"],
-                ado_planned=self.log[f"{core}/ado_planned_end"],
-                ado_planned_wo=self.log[f"{core}/ado_planned_wo_end"],
-                ego_trials=[self._log[f"{core}/ego_planned_{k}"] for k in range(self._iteration + 1)],
+                ego_planned=self.log[f"{tag}/ego_planned_end"],
+                ado_planned=self.log[f"{tag}/ado_planned_end"],
+                ado_planned_wo=self.log[f"{tag}/ado_planned_wo_end"],
+                ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],
                 ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
                 plot_path_only=plot_path_only, file_path=self._visualize_output_format("scenes")
             )
@@ -622,7 +571,7 @@ class TrajOptSolver(abc.ABC):
             z_values_prior = None
             if propagation == "log":
                 assert self.log is not None
-                ego_planned = self.log[f"{mantrap.constants.LK_OPTIMAL}/ego_planned"]
+                ego_planned = self.log[f"{mantrap.constants.TAG_OPTIMIZATION}/ego_planned_end"]
                 ego_planned = ego_planned[0, :, :]  # initial system state
                 z_values_prior = self.ego_trajectory_to_z(ego_trajectory=ego_planned)
                 assert z_values_prior.size == self.planning_horizon * 2  # 2D !
@@ -654,9 +603,10 @@ class TrajOptSolver(abc.ABC):
 
                     # Compute the objective/constraint values and add to images.
                     ado_ids = self.env.ado_ids
-                    objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag="vis")
+                    tag = mantrap.constants.TAG_VISUALIZATION
+                    objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
                                         for m in self.modules])
-                    violation = np.sum([m.compute_violation(ego_trajectory, ado_ids=ado_ids, tag="vis")
+                    violation = np.sum([m.compute_violation(ego_trajectory, ado_ids=ado_ids, tag=tag)
                                         for m in self.modules])
                     objective_values[ix, iy] = float(objective)
                     constraint_values[ix, iy] = float(violation)
@@ -734,17 +684,6 @@ class TrajOptSolver(abc.ABC):
 
     def filter_module(self) -> str:
         return self._filter_module.name() if self._filter_module is not None else "none"
-
-    ###########################################################################
-    # Utility parameters ######################################################
-    ###########################################################################
-    @property
-    def cores(self) -> typing.List[str]:
-        return [f"core{i}" for i in range(self.num_initial_values())]
-
-    @property
-    def core_opt(self) -> str:
-        return self._core_opt if self._core_opt is not None else mantrap.constants.LK_OPTIMAL
 
     ###########################################################################
     # Logging parameters ######################################################

@@ -78,20 +78,11 @@ class ORCASolver(ZControlIntermediate):
     def initialize(self, **solver_params):
         assert self.env.ego.__class__ == mantrap.agents.IntegratorDTAgent
 
-    def initial_values(self, just_one: bool = False) -> torch.Tensor:
-        """As explained in `_optimize()` the optimization is independent from the initial value of z, therefore
-        only return one value, to enforce single-threaded computations. """
-        z0 = torch.zeros((1, self.planning_horizon * 2))
-        return z0 if not just_one else z0[0, :]
-
-    @staticmethod
-    def num_initial_values() -> int:
-        return 1
-
     ###########################################################################
     # Optimization Formulation ################################################
     ###########################################################################
-    def module_defaults(self) -> typing.List[typing.Tuple]:
+    @staticmethod
+    def module_defaults() -> typing.Union[typing.List[typing.Tuple], typing.List]:
         return [(mantrap.modules.GoalNormModule, {"optimize_speed": False, "weight": 1.0}),
                 mantrap.modules.ControlLimitModule]
 
