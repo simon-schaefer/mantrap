@@ -50,6 +50,8 @@ Within project \project I want to find a robot trajectory over some discrete tim
 
 For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-driven objective function $J_{int}(\cdot)$, which are further explained in section \ref{text:approach/objective}; the dynamics for the robot and every pedestrian and some constraint bounding the control effort of the robot $g_{control}(\cdot)$ and ensuring a safe robot-human interaction $g_{safety}(\cdot)$, which will be described in section \ref{text:approach/constraint}.
 
+%todo: perfect perception ie knowledge about current and past states of all surrounding agents
+
 \section{System Overview}
 \label{text:approach/overview}
 
@@ -61,17 +63,13 @@ For some goal-driven objective function $J_{goal}(\cdot)$ and some interaction-d
 \end{center}
 \end{figure}
 
-- shooting with z = ego controls ($z = U_R$)
-
-- nonzero in equality \& inequality Jacobian, Hessian, number of variables, number of constraints 
-
-- wikipedia description \href{https://en.wikipedia.org/wiki/Trajectory_optimization}{wiki}
-
-- \ac{IPOPT} (fast ! c, cascaded MPC, speed racing)
-
-- Trajectory Optimization (Shooting vs Collocation) \href{https://epubs.siam.org/doi/pdf/10.1137/16M1062569}{tutorial}
-
-- KKT conditions ??
+% todo: shooting with z = ego controls ($z = U_R$)
+% todo: nonzero in equality \& inequality Jacobian, Hessian, number of variables, number of constraints 
+% todo: wikipedia description \href{https://en.wikipedia.org/wiki/Trajectory_optimization}{wiki}
+% todo: \ac{IPOPT} (fast ! c, cascaded MPC, speed racing)
+% todo: Trajectory Optimization (Shooting vs Collocation) \href{https://epubs.siam.org/doi/pdf/10.1137/16M1062569}{tutorial}
+% todo: KKT conditions ??
+% todo: system implementation verified by roughly 1000 unit- and integration tests in a continuous integration manner (CircleCI and CodeCov) 
 
 \section{Objective Function Design}
 \label{text:approach/objective}
@@ -104,15 +102,14 @@ Hence, we can find the goal-objectives gradient by determining the gradient of t
 
 \begin{align}
 \pd{J_{goal}}{X_R} &= \pd{}{X_R} \frac{1}{T} \sum_{t = 0}^T (X_R^t - \mathcal{G}_R)^2 \\
-&= \frac{2}{T} \begin{bmatrix} (X_R^1 - \mathcal{G}_R) X_R^1 & \hdots & (X_R^T - \mathcal{G}_R) X_R^T \end{bmatrix}^T
+&= \frac{2}{T} \begin{bmatrix} (X_R^1 - \mathcal{G}_R) & \hdots & (X_R^T - \mathcal{G}_R) \end{bmatrix}^T
 \end{align}
 
 
-- jacobian: speed of convergence
+%todo: jacobian: speed of convergence
+%todo: final speed objective
 
-- final speed objective
-
-\subsection{Interactive Objective}
+\subsection{Interaction Objective}
 \label{text:approach/objective/interactive}
 
 \section{Constraint Function Design}
@@ -124,11 +121,10 @@ Hence, we can find the goal-objectives gradient by determining the gradient of t
 \subsection{Reachability Constraint}
 \label{text:approach/constraint/reachability}
 
-however they follow single integrator dynamics. As pointed out in \cite{Ivanovic18} this is an intuitive choice "as a person’s movements are all position-changing, e.g. walking increases position along a direction, running does so faster". Other standard models for pedestrian dynamics such as Social Forces \cite{Helbling1995} however regard the pedestrian to be a double integrator, not a single integrator, and describe the forces acting on it introduced by other pedestrians, obstacles, etc. Having a reasonable fast reaction time and a large maximal acceleration in comparison to the robot both of these descriptions converge, so that the single integrator model is a good choice nonetheless.\footnote{As discussed in chapter \ref{text:experiments} the modular implementation allows to use different pedestrian dynamics. When testing against other prediction environments, in fact, non single integrator dynamics are used, but most analysis described in this report relates to the single integrator model.} 
+% however they follow single integrator dynamics. As pointed out in \cite{Ivanovic18} this is an intuitive choice "as a person’s movements are all position-changing, e.g. walking increases position along a direction, running does so faster". Other standard models for pedestrian dynamics such as Social Forces \cite{Helbling1995} however regard the pedestrian to be a double integrator, not a single integrator, and describe the forces acting on it introduced by other pedestrians, obstacles, etc. Having a reasonable fast reaction time and a large maximal acceleration in comparison to the robot both of these descriptions converge, so that the single integrator model is a good choice nonetheless.\footnote{As discussed in chapter \ref{text:experiments} the modular implementation allows to use different pedestrian dynamics. When testing against other prediction environments, in fact, non single integrator dynamics are used, but most analysis described in this report relates to the single integrator model.} 
 
-- constraint formulation (e.g. min-distance constraints split to be more accurate or summed to compute jacobian faster)
-
-- Quellen: neural network representation of value function to make it differentiable (Karen: reachability, Kyle David Julian: network representation to make sure all the corner cases are met)
+% todo: constraint formulation (e.g. min-distance constraints split to be more accurate or summed to compute jacobian faster)
+% todo: Quellen: neural network representation of value function to make it differentiable (Karen: reachability, Kyle David Julian: network representation to make sure all the corner cases are met)
 
 \section{Runtime Optimisation}
 \label{text:approach/runtime}
@@ -183,6 +179,7 @@ Within project \project the algorithm has been warm-started by solving the optim
 
 Since the simplified optimisation problem in equation \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\phi_P$ it is much easier and more efficient to solve, being a convex quadratic program. 
 
-\subsection{Agent Filtering}
-\label{text:approach/runtime/filtering}
+%todo: pre-computation warm-starting since going straight is often not a good choice
 
+\subsection{Attention}
+\label{text:approach/runtime/filtering}
