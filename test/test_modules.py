@@ -15,7 +15,6 @@ import mantrap.utility.maths
 environments = [mantrap.environment.KalmanEnvironment,
                 mantrap.environment.PotentialFieldEnvironment,
                 mantrap.environment.SocialForcesEnvironment,
-                mantrap.environment.ORCAEnvironment,
                 mantrap.environment.Trajectron]
 
 
