@@ -31,8 +31,9 @@ class GoalNormModule(PureObjectiveModule):
     :param goal: goal state/position for robot agent (2).
     :param optimize_speed: include cost for zero velocity at goal state.
     """
-    def __init__(self, goal: torch.Tensor, optimize_speed: bool = False, **unsued):
-        super(GoalNormModule, self).__init__()
+    def __init__(self, goal: torch.Tensor, env: mantrap.environment.base.GraphBasedEnvironment,
+                 optimize_speed: bool = False, **unsued):
+        super(GoalNormModule, self).__init__(env=env)
 
         assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
@@ -75,50 +76,31 @@ class GoalNormModule(PureObjectiveModule):
         a numpy array. Hence, not computing based on numpy arrays would just introduce an un-necessary
         `.detach().numpy()`.
 
-        When no analytical solution is defined (or too hard to determine) return None.
-
         .. math::\\grad J = \\frac{dJ}{dz} = \\frac{dJ}{dx} \\frac{dx}{du}
-
-        However it turned out that in fact the efficiency gains of the analytical solution, in comparison
-        to the "numerical" solution are in the order of magnitude of 0.1 ms (about 0.4 ms for a time horizon
-        of 10 time-steps). Given that the gradient is rarely computed, in comparison to the objective or
-        the constraints, it is really not the bottleneck. For the sake of generality there the "numerical"
-        solution is preferred.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        # assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
-        #
-        # with torch.no_grad():
-        #     # Compute controls from trajectory, if not equal to `grad_wrt` return None.
-        #     ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-        #     if not ego_controls.shape == grad_wrt.shape and torch.all(torch.isclose(ego_controls, grad_wrt)):
-        #         return None
-        #
-        #     # Compute dx/du from the agent's dynamics.
-        #     dx_du = self._env.ego.dx_du(ego_controls, dt=self._env.dt).detach().numpy()
-        #
-        #     # Compute dJ/dx which is simply the derivative of the L2-norm over all positions.
-        #     distance = ego_trajectory[:, 0:2] - self._goal
-        #     t_horizon, d_size = distance.shape
-        #     x_size = self._env.ego.state_size
-        #
-        #     d = distance.flatten().detach().numpy()
-        #     d_norm = torch.norm(distance, dim=1).flatten().detach().numpy()
-        #     d_norm[d_norm == 0.0] = 1e-6  # remove nan values when computing (1 / distance_norm)
-        #     dJ_dx = d / np.repeat(d_norm, 2)
-        #     dJ_dx /= dJ_dx.size / d_size  # axis-wise normalisation
-        #
-        #     # The goal objective only depends on positions, neither on the velocity nor the temporal
-        #     # part of the state. Therefore stretch dJ_dx so that these parts (dJ/dv, dJ/dt) are zero.
-        #     H = np.zeros((dJ_dx.size, dx_du.shape[0]))
-        #     H[[i for i in range(dJ_dx.size)],
-        #       [i // d_size * x_size + i % d_size for i in range(dJ_dx.size)]] = 1
-        #     dJ_dx = np.matmul(dJ_dx, H)
-        return None
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
+
+        with torch.no_grad():
+            # Compute controls from trajectory, if not equal to `grad_wrt` return None.
+            ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+            if not ego_controls.shape == grad_wrt.shape and torch.all(torch.isclose(ego_controls, grad_wrt)):
+                return None
+
+            # Compute dx/du from the agent's dynamics.
+            dx_du = self._env.ego.dx_du(ego_controls, dt=self._env.dt).detach().numpy()
+
+            # Compute dJ/dx which is simply the derivative of the squared over all positions.
+            T = ego_trajectory.shape[0]
+            dJ_dx = 2 * (ego_trajectory[:, 0:2] - self._goal).detach().numpy()
+            dJ_dx = np.concatenate((dJ_dx, np.zeros((T, 3))), axis=1)
+            dJ_dx = (dJ_dx / T)  # normalization
+
+        return np.matmul(dJ_dx.flatten(), dx_du)
 
     def _gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

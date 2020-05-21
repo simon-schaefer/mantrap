@@ -22,33 +22,42 @@ environments = [mantrap.environment.KalmanEnvironment,
 # Objectives ##############################################################
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionPositionModule,
-                                          mantrap.modules.InteractionAccelerationModule])
+                                          mantrap.modules.InteractionAccelerationModule,
+                                          mantrap.modules.GoalNormModule,
+                                          mantrap.modules.baselines.GoalSumModule])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
-class TestObjectiveInteraction:
+class TestObjectives:
 
     @staticmethod
-    def test_far_and_near(module_class, env_class, num_modes):
-        """Every interaction-based objective should be larger the closer the interacting agents are, so having the
-        ego agent close to some ado should affect the ado more than when the ego agent is far away. """
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 100.0])}, y_axis=(-100, 100))
+    def test_gradient_analytical(module_class, env_class, num_modes):
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, {"position": torch.rand(2)})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
-        env.add_ado(position=torch.zeros(2), num_modes=num_modes)
+        env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10, num_modes=num_modes)
+        env.add_ado(position=torch.rand(2) * 8, goal=torch.rand(2) * (-10), num_modes=num_modes)
 
-        start_near, end_near = torch.tensor([-5, 0.1]), torch.tensor([5, 0.1])
-        ego_path_near = mantrap.utility.maths.straight_line(start=start_near, end=end_near, steps=11)
-        ego_trajectory_near = env.ego.expand_trajectory(ego_path_near, dt=env.dt)
+        t_horizon = 10
+        ego_controls = torch.rand((t_horizon, 2)) / 10.0
+        ego_controls.requires_grad = True
+        ego_trajectory = env.ego.unroll_trajectory(controls=ego_controls, dt=env.dt)
 
-        start_far, end_far = torch.tensor([-5, 100.0]), torch.tensor([5, 10.0])
-        ego_path_far = mantrap.utility.maths.straight_line(start=start_far, end=end_far, steps=11)
-        ego_trajectory_far = env.ego.expand_trajectory(ego_path_far, dt=env.dt)
+        # Compute analytical gradient, if it is not defined (= returning `None`) just skip this
+        # test since there is nothing to test here anymore.
+        module = module_class(goal=torch.rand(2) * 8, env=env, t_horizon=t_horizon)
+        gradient_analytical = module._compute_gradient_analytically(ego_trajectory=ego_trajectory,
+                                                                    grad_wrt=ego_controls,
+                                                                    ado_ids=env.ado_ids,
+                                                                    tag="test")
 
-        module = module_class(t_horizon=10, env=env)
-        if env.is_deterministic:
-            objective_near = module.objective(ego_trajectory_near, ado_ids=[], tag="test")
-            objective_far = module.objective(ego_trajectory_far, ado_ids=[], tag="test")
-            assert objective_near >= objective_far
+        if gradient_analytical is None:
+            pytest.skip()
+
+        # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
+        # Then assert equality (or numerical equality) between both results.
+        objective = module._compute_objective(ego_trajectory, ado_ids=None, tag="test")
+        gradient_auto_grad = module._compute_gradient_autograd(objective, grad_wrt=ego_controls)
+        assert np.allclose(gradient_analytical, gradient_auto_grad, atol=0.01)
 
     @staticmethod
     def test_multimodal_support(module_class, env_class, num_modes):
@@ -81,6 +90,28 @@ class TestObjectiveInteraction:
         assert gradient.size == ego_trajectory.numel()
 
     @staticmethod
+    def test_internal_env_update(module_class, env_class, num_modes):
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
+        module = module_class(env=env, t_horizon=5)
+
+        # Compare the environment with the module-internally's environment states.
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+        # Add agent to environment (i.e. change the environment) and check again.
+        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+        # Step environment (i.e. change environment internally) and check again.
+        env.step(ego_action=torch.rand(2))
+        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+
+    @staticmethod
     def test_runtime(module_class, env_class, num_modes):
         env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
         if num_modes > 1 and not env.is_multi_modal:
@@ -104,64 +135,49 @@ class TestObjectiveInteraction:
         assert np.mean(objective_run_times) < 0.03 * num_modes  # 33 Hz
         assert np.mean(gradient_run_times) < 0.05 * num_modes  # 20 Hz
 
-    @staticmethod
-    def test_internal_env_update(module_class, env_class, num_modes):
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 0.1])})
-        if num_modes > 1 and not env.is_multi_modal:
-            pytest.skip()
-        env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
-        module = module_class(env=env, t_horizon=5)
 
-        # Compare the environment with the module-internally's environment states.
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+if __name__ == '__main__':
+    TestObjectives.test_gradient_analytical(module_class=mantrap.modules.GoalNormModule,
+                                            env_class=mantrap.environment.PotentialFieldEnvironment,
+                                            num_modes=2)
 
-        # Add agent to environment (i.e. change the environment) and check again.
-        env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
 
-        # Step environment (i.e. change environment internally) and check again.
-        env.step(ego_action=torch.rand(2))
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+@pytest.mark.parametrize("module_class", [mantrap.modules.InteractionPositionModule,
+                                          mantrap.modules.InteractionAccelerationModule])
+@pytest.mark.parametrize("env_class", environments)
+@pytest.mark.parametrize("num_modes", [1, 2])
+class TestObjectiveInteraction:
 
     @staticmethod
-    def test_objective_gradient_analytical(module_class, env_class, num_modes):
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.rand(2)})
+    def test_far_and_near(module_class, env_class, num_modes):
+        """Every interaction-based objective should be larger the closer the interacting agents are, so having the
+        ego agent close to some ado should affect the ado more than when the ego agent is far away. """
+        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 100.0])}, y_axis=(-100, 100))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
-        env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10, num_modes=num_modes)
-        env.add_ado(position=torch.rand(2) * 8, goal=torch.rand(2) * (-10), num_modes=num_modes)
+        env.add_ado(position=torch.zeros(2), num_modes=num_modes)
 
-        t_horizon = 10
-        ego_controls = torch.rand((t_horizon, 2)) / 10.0
-        ego_controls.requires_grad = True
-        ego_trajectory = env.ego.unroll_trajectory(controls=ego_controls, dt=env.dt)
+        start_near, end_near = torch.tensor([-5, 0.1]), torch.tensor([5, 0.1])
+        ego_path_near = mantrap.utility.maths.straight_line(start=start_near, end=end_near, steps=11)
+        ego_trajectory_near = env.ego.expand_trajectory(ego_path_near, dt=env.dt)
 
-        # Compute analytical gradient, if it is not defined (= returning `None`) just skip this
-        # test since there is nothing to test here anymore.
-        module = module_class(goal=torch.rand(2) * 8, env=env, t_horizon=t_horizon)
-        gradient_analytical = module._compute_gradient_analytically(ego_trajectory=ego_trajectory,
-                                                                    grad_wrt=ego_controls,
-                                                                    ado_ids=env.ado_ids,
-                                                                    tag="test")
+        start_far, end_far = torch.tensor([-5, 100.0]), torch.tensor([5, 10.0])
+        ego_path_far = mantrap.utility.maths.straight_line(start=start_far, end=end_far, steps=11)
+        ego_trajectory_far = env.ego.expand_trajectory(ego_path_far, dt=env.dt)
 
-        if gradient_analytical is None:
-            pytest.skip()
-
-        # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
-        # Then assert equality (or numerical equality) between both results.
-        objective = module._compute_objective(ego_trajectory, ado_ids=None)
-        gradient_auto_grad = module._compute_gradient_autograd(objective, grad_wrt=ego_controls)
-        assert np.allclose(gradient_analytical, gradient_auto_grad, atol=0.01)
+        module = module_class(t_horizon=10, env=env)
+        if env.is_deterministic:
+            objective_near = module.objective(ego_trajectory_near, ado_ids=[], tag="test")
+            objective_far = module.objective(ego_trajectory_far, ado_ids=[], tag="test")
+            assert objective_near >= objective_far
 
 
 def test_objective_goal_distribution():
+    env = mantrap.environment.PotentialFieldEnvironment()
     goal_state = torch.tensor([4.1, 8.9])
     ego_trajectory = torch.rand((11, 4))
 
-    module = mantrap.modules.GoalNormModule(goal=goal_state, t_horizon=10, weight=1.0)
+    module = mantrap.modules.GoalNormModule(goal=goal_state, env=env, t_horizon=10, weight=1.0)
     objective = module.objective(ego_trajectory, ado_ids=[], tag="test")
     distance = float(torch.mean(torch.sum((ego_trajectory[:, 0:2] - goal_state).pow(2), dim=1)).item())
     assert math.isclose(objective, distance, abs_tol=0.1)
