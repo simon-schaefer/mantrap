@@ -1,9 +1,6 @@
 import abc
 import math
-import typing
 
-import numpy as np
-import scipy.interpolate
 import torch
 
 import mantrap.utility.shaping
@@ -51,87 +48,6 @@ class Derivative2:
 
     def compute_single(self, x: torch.Tensor, x_prev: torch.Tensor, x_next: torch.Tensor) -> torch.Tensor:
         return (x_prev - 2 * x + x_next) / self._dt**2
-
-
-###########################################################################
-# Interpolation ###########################################################
-###########################################################################
-def lagrange_interpolation(control_points: torch.Tensor, num_samples: int = 100, deg: int = 2) -> torch.Tensor:
-    """Lagrange interpolation using Vandermonde Approach. Vandermonde finds the Lagrange parameters by solving
-    a matrix equation X a = Y with known control point matrices (X,Y) and parameter vector a, therefore is fully
-    differentiable. Also Lagrange interpolation guarantees to pass every control point, but performs poorly in
-    extrapolation (which is however not required for trajectory fitting, since the trajectory starts and ends at
-    defined control points.
-
-    Source: http://www.maths.lth.se/na/courses/FMN050/media/material/lec8_9.pdf
-    """
-    assert len(control_points.shape) == 2
-    assert control_points.shape[1] == 2
-
-    x = torch.stack([control_points[:, 0] ** n for n in range(deg)], dim=1)
-    y = control_points[:, 1]
-
-    # If x is singular (i.e. det(x) = 0) the matrix is not invertible, give an error, since permeating some points
-    # slightly to be able to perform an interpolation, leads to misinformed gradients. The result of the interpolation
-    # won't be very stable (!).
-    x = x + torch.eye(x.shape[0]) * 0.00001  # avoid singularities
-    a = torch.inverse(x).matmul(y)
-
-    x_up = torch.linspace(control_points[0, 0].item(), control_points[-1, 0].item(), steps=num_samples)
-    y_up = torch.stack([x_up ** n for n in range(deg)]).t().matmul(a)
-    return torch.stack((x_up, y_up), dim=1)
-
-
-def spline_interpolation(control_points: torch.Tensor, num_samples: int = 100):
-    assert mantrap.utility.shaping.check_ego_path(x=control_points)
-
-    # B-Spline is not differentiable anyway.
-    with torch.no_grad():
-        control_points_np = control_points.detach().numpy()
-        tck, _ = scipy.interpolate.splprep([control_points_np[:, 0], control_points_np[:, 1]], s=0.0)
-        x_path, y_path = scipy.interpolate.splev(np.linspace(0, 1, num_samples), tck)
-        path = torch.stack((torch.tensor(x_path), torch.tensor(y_path)), dim=1).float()
-
-    assert mantrap.utility.shaping.check_ego_path(path, t_horizon=num_samples)
-    return path
-
-
-def grid_interpolation(values: np.ndarray, grid: typing.Tuple[np.ndarray, np.ndarray, np.ndarray], upscale: int
-                       ) -> typing.Tuple[np.ndarray, np.ndarray]:
-    """Upscale an equally-spaced 2D grid using nearest neighbour.
-    
-    For up-scaling increase the number of steps within the grid dimensions, equally over all grid dimensions.
-    Then using the scipy.interpolate framework upscale the values using the passed method.
-    
-    :param values: grid values to upscale (will be flattened).
-    :param grid: grid description tuple (grid_min, grid_max, numer_of_points_by_dimension) - arrays.
-    :param upscale: up-scaling factor.
-    :returns: up_scaled values, new number of grid points by dimension
-    """
-    assert upscale >= 1
-    grid_min, grid_max, n = grid
-
-    # Create mesh-grid of original sized data from input grid data.
-    grid_old = np.mgrid[grid_min[0]:grid_max[0]:(grid_max[0] - grid_min[0])/n[0],
-                        grid_min[1]:grid_max[1]:(grid_max[1] - grid_min[1])/n[1],
-                        grid_min[2]:grid_max[2]:(grid_max[2] - grid_min[2])/n[2],
-                        grid_min[3]:grid_max[3]:(grid_max[3] - grid_min[3])/n[3]]
-
-    # Create up-scaled mesh-grid by increasing the number of steps by the `upscale` - factor.
-    n_new = upscale * n
-    grid_new = np.mgrid[grid_min[0]:grid_max[0]:(grid_max[0] - grid_min[0])/n_new[0],
-                        grid_min[1]:grid_max[1]:(grid_max[1] - grid_min[1])/n_new[1],
-                        grid_min[2]:grid_max[2]:(grid_max[2] - grid_min[2])/n_new[2],
-                        grid_min[3]:grid_max[3]:(grid_max[3] - grid_min[3])/n_new[3]]
-
-    # Using the scipy.interpolate framework upscale the values from the old to the new representation.
-    values_flat = values.flatten()
-    grid_old = np.flip(np.rot90(np.transpose(grid_old)), 1).reshape(-1, 4)
-    grid_new = np.flip(np.rot90(np.transpose(grid_new)), 1).reshape(-1, 4)
-
-    values_up_scaled = scipy.interpolate.griddata(grid_old, values_flat, grid_new, method="nearest")
-    values_up_scaled = values_up_scaled.reshape(*n_new.tolist())
-    return values_up_scaled, n_new
 
 
 ###########################################################################

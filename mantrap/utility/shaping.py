@@ -16,19 +16,12 @@ def check_ego_action(x: torch.Tensor) -> bool:
     return True
 
 
-def check_ego_path(x: torch.Tensor, num_primitives: int = None, t_horizon: int = None) -> bool:
+def check_ego_path(x: torch.Tensor, t_horizon: int = None) -> bool:
     assert not torch.any(torch.isnan(x))
-    if num_primitives is not None:
-        assert len(x.shape) == 3  # (num_primitives, t_horizon, 2)
-        assert x.shape[2] == 2
-        assert x.shape[0] == num_primitives
-        if t_horizon is not None:
-            assert x.shape[1] == t_horizon
-    else:
-        assert len(x.shape) == 2  # (t_horizon, 2)
-        assert x.shape[1] == 2
-        if t_horizon is not None:
-            assert x.shape[0] == t_horizon
+    assert len(x.shape) == 2  # (t_horizon, 2)
+    assert x.shape[1] == 2
+    if t_horizon is not None:
+        assert x.shape[0] == t_horizon
     return True
 
 

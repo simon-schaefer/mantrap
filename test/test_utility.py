@@ -60,53 +60,6 @@ def test_derivative_2_velocity():
 
 
 ###########################################################################
-# Interpolation Testing ###################################################
-###########################################################################
-def test_lagrange_interpolation():
-    """Lagrange interpolation using Vandermonde Approach. Vandermonde finds the Lagrange parameters by solving
-    a matrix equation X a = Y with known control point matrices (X,Y) and parameter vector a, therefore is fully
-    differentiable. Also Lagrange interpolation guarantees to pass every control point, but performs poorly in
-    extrapolation (which is however not required for trajectory fitting, since the trajectory starts and ends at
-    defined control points.
-
-    Source: http://www.maths.lth.se/na/courses/FMN050/media/material/lec8_9.pdf"""
-
-    start = torch.tensor([0.0, 0.0])
-    mid = torch.tensor([5.0, 5.0], requires_grad=True)
-    end = torch.tensor([10.0, 0.0])
-    points = torch.stack((start, mid, end))
-
-    points_up = mantrap.utility.maths.lagrange_interpolation(control_points=points, num_samples=100, deg=3)
-
-    # Test trajectory shape and it itself.
-    assert len(points_up.shape) == 2 and points_up.shape[1] == 2 and points_up.shape[0] == 100
-    for n in range(100):
-        assert start[0] <= points_up[n, 0] <= end[0]
-        assert min(start[1], mid[1], end[1]) <= points_up[n, 1] + 0.0001
-        assert points_up[n, 1] - 0.0001 <= max(start[1], mid[1], end[1])
-
-    # Test derivatives of up-sampled trajectory.
-    for n in range(1, 100):  # first point has no gradient since (0, 0) control point
-        dx = torch.autograd.grad(points_up[n, 0], mid, retain_graph=True)[0]
-        assert torch.all(torch.eq(dx, torch.zeros(2)))  # created by lin-space operation
-        dy = torch.autograd.grad(points_up[n, 1], mid, retain_graph=True)[0]
-        assert not torch.all(torch.eq(dy, torch.zeros(2)))  # created by interpolation
-
-
-@pytest.mark.xfail(raises=RuntimeError)
-def test_lagrange_singularity():
-    start = torch.tensor([0.0, 0.0])
-    mid = torch.tensor([0.0, 5.0], requires_grad=True)
-    end = torch.tensor([10.0, 0.0])
-    points = torch.stack((start, mid, end))  # singular matrix (!)
-
-    points_up = mantrap.utility.maths.lagrange_interpolation(control_points=points, num_samples=10)
-    for n in range(1, 10):
-        torch.autograd.grad(points_up[n, 0], mid, retain_graph=True)
-        torch.autograd.grad(points_up[n, 1], mid, retain_graph=True)
-
-
-###########################################################################
 # Shapes Testing ##########################################################
 ###########################################################################
 def test_circle_sampling():
