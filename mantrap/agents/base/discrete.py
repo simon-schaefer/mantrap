@@ -481,11 +481,11 @@ class DTAgent(abc.ABC):
     ###########################################################################
     @property
     def speed_max(self) -> float:
-        return mantrap.constants.AGENT_SPEED_MAX if not self.is_robot else mantrap.constants.ROBOT_SPEED_MAX
+        return mantrap.constants.PED_SPEED_MAX if not self.is_robot else mantrap.constants.ROBOT_SPEED_MAX
 
     @property
     def acceleration_max(self) -> float:
-        return mantrap.constants.AGENT_ACC_MAX if not self.is_robot else mantrap.constants.ROBOT_ACC_MAX
+        return mantrap.constants.PED_ACC_MAX if not self.is_robot else mantrap.constants.ROBOT_ACC_MAX
 
     @property
     def is_robot(self) -> bool:

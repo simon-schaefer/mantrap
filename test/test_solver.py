@@ -51,7 +51,7 @@ class TestSolvers:
     @staticmethod
     def test_convergence(solver_class, env_class, num_modes, filter_class):
         dt = mantrap.constants.ENV_DT_DEFAULT
-        ego_goal_distance = (mantrap.constants.AGENT_SPEED_MAX / 2) * dt
+        ego_goal_distance = (mantrap.constants.PED_SPEED_MAX / 2) * dt
         env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-ego_goal_distance, 0])}, dt=dt)
         env.add_ado(position=torch.ones(2) * 10, velocity=torch.zeros(2))
 

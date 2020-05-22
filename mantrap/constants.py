@@ -31,8 +31,9 @@ PK_Y_AXIS = "y_axis"
 #######################################
 # agent parameters ####################
 #######################################
-AGENT_SPEED_MAX = 4.0  # maximal agent velocity in [m/s].
-AGENT_ACC_MAX = 2.0  # maximal agent acceleration in [m/s^2].
+PED_SPEED_MAX = 2.5  # maximal agent velocity in [m/s] according to "Comfortable and maximum walking speed of
+# adults aged 20-79 years: reference values and determinants"
+PED_ACC_MAX = 2.0  # maximal agent acceleration in [m/s^2].
 ROBOT_SPEED_MAX = 2.0  # maximal robot velocity in [m/s].
 ROBOT_ACC_MAX = 2.0  # maximal robot acceleration in [m/s^2].
 

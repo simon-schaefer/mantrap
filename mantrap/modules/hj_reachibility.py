@@ -145,7 +145,7 @@ class HJReachabilityModule(OptimizationModule):
             # So we could obtain it by solving an optimization problem, which probably is an overkill, but instead
             # we compute the value function for a grid of possible pedestrian controls (under some assumptions this
             # should approximate the minimum of the value function w.r.t. the disturbance `u_ped`).
-            u_ped_max = mantrap.constants.AGENT_SPEED_MAX
+            u_ped_max = mantrap.constants.PED_SPEED_MAX
             u_ped_grid = torch.linspace(-u_ped_max, u_ped_max, steps=10)
             u_ped_x, u_ped_y = torch.meshgrid([u_ped_grid, u_ped_grid])
             u_ped = torch.stack((u_ped_x.flatten(), u_ped_y.flatten())).reshape(-1, 2)
@@ -314,10 +314,11 @@ class HJReachabilityModule(OptimizationModule):
         assert gradients.shape[1] == value_function.shape[0]
         assert all(gradients.shape[2:] == grid_size_by_dim)
 
-        # Check non-saved coupled system parameters. #todo
-        assert mantrap.constants.AGENT_SPEED_MAX == 4.0
-        assert mantrap.constants.ROBOT_ACC_MAX == 2.0
-        assert mantrap.constants.ROBOT_SPEED_MAX == 2.0
+        # Check non-saved coupled system parameters (for all variables it should hold min = -max).
+        hyper_params = mat["params"]
+        assert mantrap.constants.PED_SPEED_MAX == hyper_params["v_max_ped"]
+        assert mantrap.constants.ROBOT_ACC_MAX == hyper_params["a_max_robot"]
+        assert mantrap.constants.ROBOT_SPEED_MAX == hyper_params["v_max_robot"]
 
         return value_function, gradients, grid_size_by_dim, value_tau, (grid_min, grid_max)
 
