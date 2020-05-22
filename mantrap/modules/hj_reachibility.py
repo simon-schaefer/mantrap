@@ -60,14 +60,15 @@ class HJReachabilityModule(OptimizationModule):
 
         # Check same environment parameters in pre-computation and internal environment.
         # Since relative state is a position difference, it could occur that the robot is at one
-        # edge of the environment and the pedestrian at the other, or vice versa, therefore 2 x (!)
+        # edge of the environment and the pedestrian at the other, or vice versa, therefore 2 x (!).
+        # The pre-computed value function grid should be at least so large to cover these corner cases.
         # grid_min = (min_x, min_y, min_vx_robot, min_vy_robot)
         # grid_max = (min_x, min_y, min_vx_robot, min_vy_robot)
         x_axis, y_axis = env.axes
-        assert grid_max[0] - grid_min[0] == 2 * (x_axis[1] - x_axis[0])
-        assert grid_max[1] - grid_min[1] == 2 * (y_axis[1] - y_axis[0])
-        assert grid_min[2] == grid_min[3] == -env.ego.speed_max
-        assert grid_max[2] == grid_max[3] == env.ego.speed_max
+        assert grid_max[0] - grid_min[0] >= 2 * (x_axis[1] - x_axis[0])
+        assert grid_max[1] - grid_min[1] >= 2 * (y_axis[1] - y_axis[0])
+        assert grid_min[2] == grid_min[3] <= -env.ego.speed_max
+        assert grid_max[2] == grid_max[3] >= env.ego.speed_max
 
         # Get value function time-intervals in order to determine which value function grid we need
         # when we want to make a statement about the full time horizon (planning horizon) of the
