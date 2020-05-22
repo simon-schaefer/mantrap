@@ -290,6 +290,11 @@ class OptimizationModule(abc.ABC):
                 else:
                     jacobian = self._compute_gradient_autograd(constraints, grad_wrt=grad_wrt)
 
+        # Add slack variables jacobian term, which basically is identical to the jacobian of
+        # the constraint, just negative.
+        if self._has_slack:
+            jacobian = np.concatenate((jacobian, -jacobian), axis=0)
+
         return jacobian
 
     def _compute_jacobian_analytically(
@@ -441,7 +446,7 @@ class OptimizationModule(abc.ABC):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        assert mantrap.utility.shaping.check_ego_trajectory(x=ego_trajectory, pos_and_vel_only=True)
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         constraint = self.compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
         if constraint is None:
             return self._violation(constraints=None)
