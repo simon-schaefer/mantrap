@@ -90,8 +90,6 @@ class IterativeEnvironment(GraphBasedEnvironment, abc.ABC):
                 ado_action = graph[f"{ghost.id}_{t - 1}_{mantrap.constants.GK_CONTROL}"]
                 self._ado_ghosts[m_ghost].agent.update(ado_action, dt=self.dt)
 
-            # The ego movement is, of cause, unknown, since we try to find it here. Therefore motion primitives are
-            # used for the ego motion, as guesses for the final trajectory i.e. starting points for optimization.
             graph_k = self.build_graph(ego_trajectory[t], k=t, **kwargs)
             graph.update(graph_k)
 

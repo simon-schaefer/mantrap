@@ -46,17 +46,12 @@ class ControlLimitModule(PureConstraintModule):
         a numpy array. Hence, not computing based on numpy arrays would just introduce an un-necessary
         `.detach().numpy()`.
 
-        When no analytical solution is defined (or too hard to determine) return None.
-
         When the gradient shall be computed with respect to the controls, then computing the gradient analytically
         is very straight-forward, by just applying the following formula:
 
         .. math::
 
             \\frac{ d ||u|| }{ du_i } = \\frac{u_i}{||u||_2}
-
-        Otherwise the analytical jacobian is hard to compute analytically, for a general `grad_wrt`, then
-        return `None` in order to go on with numerical computations.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.

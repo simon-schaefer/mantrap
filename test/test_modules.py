@@ -136,12 +136,6 @@ class TestObjectives:
         assert np.mean(gradient_run_times) < 0.05 * num_modes  # 20 Hz
 
 
-if __name__ == '__main__':
-    TestObjectives.test_gradient_analytical(module_class=mantrap.modules.GoalNormModule,
-                                            env_class=mantrap.environment.PotentialFieldEnvironment,
-                                            num_modes=2)
-
-
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionPositionModule,
                                           mantrap.modules.InteractionAccelerationModule])
 @pytest.mark.parametrize("env_class", environments)
@@ -417,7 +411,7 @@ class TestHJReachability:
         # Check for module is asserting when ego has another type than double integrator, since only for
         # this type of ego the pre-computed value function is correct.
         with pytest.raises(AssertionError):
-            mantrap.modules.HJReachabilityModule(env, t_horizon=5, data_file="2D_small.mat")
+            mantrap.modules.HJReachabilityModule(env, t_horizon=5)
 
     @staticmethod
     def test_constraint(env_class, num_modes):
@@ -425,7 +419,7 @@ class TestHJReachability:
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.rand(2) * 5, num_modes=num_modes)
-        module = mantrap.modules.HJReachabilityModule(env, t_horizon=5, data_file="2D_small.mat")
+        module = mantrap.modules.HJReachabilityModule(env, t_horizon=5)
 
         ego_controls = torch.rand((5, 2))
         ego_trajectory = env.ego.unroll_trajectory(ego_controls, dt=env.dt)
