@@ -2,6 +2,7 @@ import os
 import typing
 
 import numpy as np
+import scipy.interpolate
 import scipy.io
 import torch
 
@@ -41,7 +42,7 @@ class HJReachabilityModule(OptimizationModule):
     Since `sigma` is a slack variable the according weight in the objective function should be comparably large.
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int,  weight: float = 10.0,
-                 data_file: str = "2D_small.mat", **unused):
+                 data_file: str = "2D.mat", **unused):
         super(HJReachabilityModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight,
                                                    has_slack=True, slack_weight=weight)
 
@@ -53,51 +54,49 @@ class HJReachabilityModule(OptimizationModule):
         # assert all([type(ado) == mantrap.agents.IntegratorDTAgent for ado in env.ados()])
 
         # Read pre-computed value and gradient description for 2D case.
-        data_directory = mantrap.utility.io.build_os_path("external/reachability")
-        mat = scipy.io.loadmat(os.path.join(data_directory, data_file), squeeze_me=True)
+        value_function, gradients, grid_size_by_dim, tau, (grid_min, grid_max) = self.unpack_mat_file(
+            mat_file_path=os.path.join(mantrap.utility.io.build_os_path("external/reachability"), data_file)
+        )
 
         # Check same environment parameters in pre-computation and internal environment.
-        # grid_min = (min_x, min_y, min_vx_robot, min_vy_robot)
-        x_axis, y_axis = env.axes
-        v_max_robot = env.ego.speed_max
-        self._grid_min = mat["grid_min"]
-        assert self._grid_min[2] == self._grid_min[3] == -v_max_robot
-        self._grid_max = mat["grid_max"]
-        assert self._grid_max[2] == self._grid_max[3] == v_max_robot
-        # since relative state is a position difference, it could occur that the robot is at one
+        # Since relative state is a position difference, it could occur that the robot is at one
         # edge of the environment and the pedestrian at the other, or vice versa, therefore 2 x (!)
-        assert self._grid_max[0] - self._grid_min[0] == 2 * (x_axis[1] - x_axis[0])
-        assert self._grid_max[1] - self._grid_min[1] == 2 * (y_axis[1] - y_axis[0])
+        # grid_min = (min_x, min_y, min_vx_robot, min_vy_robot)
+        # grid_max = (min_x, min_y, min_vx_robot, min_vy_robot)
+        x_axis, y_axis = env.axes
+        assert grid_max[0] - grid_min[0] == 2 * (x_axis[1] - x_axis[0])
+        assert grid_max[1] - grid_min[1] == 2 * (y_axis[1] - y_axis[0])
+        assert grid_min[2] == grid_min[3] == -env.ego.speed_max
+        assert grid_max[2] == grid_max[3] == env.ego.speed_max
 
-        # Check for synchronized time intervals.
-        assert np.all(np.allclose(np.diff(mat["tau"]), np.ones(mat["tau"].size - 1) * env.dt))
+        # Get value function time-intervals in order to determine which value function grid we need
+        # when we want to make a statement about the full time horizon (planning horizon) of the
+        # constraints in its (!) time-steps, they not necessarily have to be synced.
+        t_horizon_s = self.t_horizon * self._env.dt  # constraints time-horizon in seconds
+        assert tau[-1] >= t_horizon_s
+        T = int(np.argmax(tau > t_horizon_s))  # arg(value_function @ t = t_horizon in seconds)
 
-        # Check non-saved coupled system parameters. #todo
-        assert mantrap.constants.AGENT_SPEED_MAX == 4.0
-        assert mantrap.constants.ROBOT_ACC_MAX == 2.0
-        assert mantrap.constants.ROBOT_SPEED_MAX == 2.0
+        # Due to the curse of dimensionality the value function (and its gradient) cannot be computed with
+        # sufficiently small grid resolution. Even if the pre-computed tensors would be very large in size
+        # and would therefore take a lot of time to load (next to the blocked space in memory).
+        # Thus, we use (linear) interpolation by exploiting the regular grid structure of the value function
+        # tensor, implemented in the `scipy.interpolate` library.
+        grid = [np.linspace(grid_min[i], grid_max[i], num=grid_size_by_dim[i]) for i in range(4)]
+        self._value_function = scipy.interpolate.RegularGridInterpolator(grid, value_function[T, :, :, :, :])
+        self._gradients = [scipy.interpolate.RegularGridInterpolator(grid, gradients[i, T, :, :, :, :])
+                           for i in range(4)]
 
-        # Re-shape value function and gradient into usable shape.
-        # value_function = (t_horizon, dx, dy, vx, vy)
-        # gradient = (4, t_horizon, dx, dy, vx, vy)
-        self._grid_size_by_dim = mat["N"]
-        self._value_function = np.moveaxis(mat["value_function"], -1, 0)
-        assert self._value_function.shape[0] >= t_horizon
-        assert all(self._value_function.shape[1:] == self._grid_size_by_dim)
-        self._gradients = np.moveaxis(np.stack(mat["gradients"]), -1, 1)
-        assert self._gradients.shape[0] == 4  # for dimensions of relative state (dx, dy, vx_robot, vy_robot)
-        assert self._gradients.shape[1] == self._value_function.shape[0]
-        assert all(self._gradients.shape[2:] == self._grid_size_by_dim)
+        # For analytical jacobian and debugging - store variables for auto-grad.
+        self._x_rel = {}  # ado_id -> x_rel @ constraint
 
-        # Up-scale the given value-function and gradient using the internal grid-up-scaling equally over every
-        # axis in order to be able to handle smaller changes in value and grid function.
-        # up_scaling_factor = 4
-        # t_horizon_max = self._value_function.shape[0]
-        # value_function_new = np.zeros((t_horizon_max, *(self._grid_size_by_dim * up_scaling_factor).tolist()))
-        # for t in range(t_horizon_max):
-        #     value_function_new[t], self._grid_size_by_dim = mantrap.utility.maths.grid_interpolation(
-        #         self._value_function[t], self.grid_description, upscale=up_scaling_factor)
-        # self._value_function = value_function_new
+    ###########################################################################
+    # Value Function ##########################################################
+    ###########################################################################
+    def value_function(self, x: np.ndarray) -> np.ndarray:
+        return self._value_function(x)
+
+    def value_gradient(self, x: np.ndarray) -> np.ndarray:
+        return np.concatenate([self._gradients[i](x) for i in range(4)])
 
     ###########################################################################
     # Objective ###############################################################
@@ -121,58 +120,55 @@ class HJReachabilityModule(OptimizationModule):
     ###########################################################################
     # Constraint ##############################################################
     ###########################################################################
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str,
+                            enable_auto_grad: bool = False,
                             ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
+        :param enable_auto_grad: enable auto-grad to allow automatic backpropagation but slowing down
+                                 computation (for debugging & testing only).
         """
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
         ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-        u_robot = ego_controls[0, :].detach().numpy()
-        t_max = self.t_horizon * self._env.dt
-
         ego_state, ado_states = self._env.states()
-        ego_state = ego_state.detach().numpy()
-        ado_states = ado_states.detach().numpy()
-        constraints = np.zeros(len(ado_ids))
-        for i_ado, ado_id in enumerate(ado_ids):
-            m_ado = self._env.index_ado_id(ado_id=ado_id)
-            u_max_ado = self._env.ados()[m_ado].speed_max
 
-            # Determine current (i.e. at t = t0) relative state, which basically is the difference
-            # in positions and the velocity of the ego robot. Since the pedestrians are modelled
-            # as single integrators, as described above, their velocity is not part of the current
-            # state, but a system input (!).
-            state_rel = np.array([ego_state[0] - ado_states[m_ado, 0],
-                                  ego_state[1] - ado_states[m_ado, 1],
-                                  ego_state[2],
-                                  ego_state[3]
-                                  ])
+        with torch.set_grad_enabled(mode=enable_auto_grad):
+            constraints = torch.zeros(len(ado_ids))
+            u_robot = ego_controls[0, :]
+            dt = self._env.dt
 
-            # In order to determine the system dynamics at the current state and given the worst
-            # action the pedestrian could take, determine this worst action first.
-            # The relative (coupled) system dynamics are described as shown in the module description.
-            state_rel_wo = 0.5 * u_robot * t_max ** 2 + ego_state[2:4] * t_max + state_rel[0:2]  # todo: use dynamics()
-            u_ped_worst = np.sign(state_rel_wo) * np.minimum(np.abs(state_rel_wo / t_max), u_max_ado * np.ones(2))
-            f_rel_worst = np.concatenate((ego_state[2:4] - u_ped_worst, u_robot))
+            # To compute the value function of the next state we have to compute the "worst-case" disturbance
+            # first, which is in HJ Reachability, the disturbance that minimizes the value function (in our case).
+            # So we could obtain it by solving an optimization problem, which probably is an overkill, but instead
+            # we compute the value function for a grid of possible pedestrian controls (under some assumptions this
+            # should approximate the minimum of the value function w.r.t. the disturbance `u_ped`).
+            u_ped_max = mantrap.constants.AGENT_SPEED_MAX
+            u_ped_grid = torch.linspace(-u_ped_max, u_ped_max, steps=10)
+            u_ped_x, u_ped_y = torch.meshgrid([u_ped_grid, u_ped_grid])
+            u_ped = torch.stack((u_ped_x.flatten(), u_ped_y.flatten())).reshape(-1, 2)
 
-            # Determine the value function's gradient at this current (relative) state.
-            # coords = self._convert_state_to_value_coordinates(state_rel)
-            # gradient = self._gradients[:, self.t_horizon, coords[0], coords[1], coords[2], coords[3]]
-            # constraints[i_ado] = np.matmul(gradient.T, f_rel_worst)
+            for i_ado, ado_id in enumerate(ado_ids):
+                m_ado = self._env.index_ado_id(ado_id=ado_id)
+                x_ped = ado_states[m_ado, :]
+                x_rel_next = self.state_relative(ego_state, u_r=u_robot, x_ped=x_ped, u_ped=u_ped, dt=dt)
+                values = self.value_function(x=x_rel_next.detach().numpy())
 
-            state_rel_next = state_rel + self._env.dt * f_rel_worst
-            c_next = self._convert_state_to_value_coordinates(state_rel_next)
-            value_next = self._value_function[0, c_next[0], c_next[1], c_next[2], c_next[3]]
-            constraints[i_ado] = value_next
+                # The constraint is the minimum value function over all this possible disturbances (i.e. actions
+                # of the pedestrian), ergo what is the value function if the pedestrian takes the worst action
+                # regarding its safety.
+                min_value_index = np.argmin(values)
+                constraints[i_ado] = values[min_value_index]
 
-        return torch.from_numpy(constraints).float()
+                # For analytical jacobian and debugging store relative state value.
+                self._x_rel[f"{tag}/{ado_id}"] = x_rel_next[min_value_index, :]
+
+        return constraints
 
     def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         return 0.0, 0.0  # slack variable => inequality to equality constraint
-        # return 0.0, None  # slack variable => inequality to equality constraint
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
         return len(ado_ids)
@@ -183,8 +179,67 @@ class HJReachabilityModule(OptimizationModule):
     def _compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
-        """Enforce usage of IPOPT automatic jacobian approximation, instead of manual computation."""
-        return None
+        """Compute Jacobian matrix analytically.
+
+        While the Jacobian matrix of the constraint can be computed automatically using PyTorch's automatic
+        differentiation package there might be an analytic solution, which is when known for sure more
+        efficient to compute. Although it is against the convention to use torch representations whenever
+        possible, this function returns numpy arrays, since the main jacobian() function has to return
+        a numpy array. Hence, not computing based on numpy arrays would just introduce an un-necessary
+        `.detach().numpy()`.
+
+        In the following we assume that assume that we look for the jacobian with respect to the ego controls,
+        but to keep this general we will test it at the beginning. However since this module is based on look-up
+        table interpolated values, we cannot compute the full derivative using torch's autograd framework only,
+        as in other modules, therefore if `grad_wrt` is not the controls, an error is raised (since otherwise
+        autograd would be used and fail).
+
+        Since we pre-computed both the value function and its gradient computing the jacobian is quite
+        straight-forward. Using  the chain rule we get:
+
+        .. math:: \\frac{dJ}{du} = \\frac{dJ}{dx_{rel}} \\frac{dx_{rel}}{du}
+
+        with dJ/dx_rel being pre-computed we only have to determine dx_rel/du.
+
+        :param ego_trajectory: planned ego trajectory (t_horizon, 5).
+        :param grad_wrt: vector w.r.t. which the gradient should be determined.
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
+        """
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
+
+        with torch.no_grad():
+
+            # Compute controls from trajectory, if not equal to `grad_wrt` return None.
+            ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+            if not ego_controls.shape == grad_wrt.shape or not torch.all(torch.isclose(ego_controls, grad_wrt)):
+                raise NotImplementedError
+
+            # By evaluating the constraints with the current input states we ensure that the internal
+            # variables (relative states) are up-to-date.
+            self._compute_constraint(ego_trajectory=ego_trajectory, ado_ids=ado_ids, tag=tag, enable_auto_grad=False)
+
+            # Otherwise compute Jacobian using formula in method's description above. The partial derivative
+            t_horizon, u_size = ego_controls.shape
+            jacobian = np.zeros((len(ado_ids), t_horizon * u_size))
+
+            # dx_rel/du simply are zeros, except of two entries:
+            # x_rel = x_rel^0 + dt * f_rel(v_r, u_p, u_r)
+            # therefore the derivative dx_rel/du_r is zero, except of in the part of f_rel which depends on the
+            # robot controls (last two entries). However only the first control action of the robot is used, hence
+            # all other gradient entries are zero.
+            dx_rel_du = np.zeros((4, t_horizon, u_size))
+            dx_rel_du[2, 0, 0] = self._env.dt
+            dx_rel_du[2, 0, 1] = self._env.dt
+            dx_rel_du = dx_rel_du.reshape(4, -1)
+            for i_ado, ado_id in enumerate(ado_ids):
+                # Compute pre-computed gradient at evaluated relative state (see _compute_constraint).
+                value_gradient = self.value_gradient(self._x_rel[f"{tag}/{ado_id}"])
+
+                # Combine both partial gradients into the jacobian.
+                jacobian[i_ado, :] = np.matmul(value_gradient, dx_rel_du)
+
+        return jacobian
 
     ###########################################################################
     # Utility #################################################################
@@ -201,30 +256,74 @@ class HJReachabilityModule(OptimizationModule):
         """
         return False
 
-    def _convert_state_to_value_coordinates(self, state: np.ndarray) -> np.ndarray:
-        """Convert relative (not ego state  !) to value grid coordinates, i.e. the indices of the value
-        function and value gradient grid. """
-        value_coordinates = np.zeros(4)
-        for i in range(4):
-            coordinate_range = self._grid_max[i] - self._grid_min[i]
-            n = self._grid_size_by_dim[i]
-            value_coordinates[i] = int((state[i] - self._grid_min[i]) / coordinate_range * n)
+    @staticmethod
+    def state_relative(x_r: torch.Tensor, u_r: torch.Tensor, x_ped: torch.Tensor, u_ped: torch.Tensor, dt: float
+                       ) -> torch.Tensor:
+        """Determine the relative state and dynamics (see module description):
 
-        # Clip values outside of boundaries by closest value inside pre-computed range (axis-wise).
-        value_coordinates = np.clip(value_coordinates, np.zeros(4), self._grid_size_by_dim - 1)
-        return value_coordinates.astype(int)
+        .. math::\\vec{x}_{rel} = \\begin{bmatrix} x_r - x_p \\ y_r - y_p \\ vx_r \\ vy_r \\end{bmatrix}
+        .. math::f_{rel} = \\begin{bmatrix} vx_r - ux_p \\ vy_r - uy_p \\ ux_r \\ uy_r \\end{bmatrix}
+
+        Since the states of robot and pedestrian as well as the action of the robot are known, at the time
+        of evaluating the constraint, only the pedestrians controls are unknown. However in HJ reachability
+        we look for the controls that minimize the value function, by evaluating the value function for
+        several assignments of `u_ped` and finding the arg-min. In this context this function assumes that
+        all states as well as the robots control are "unique" while it can handle a whole bunch of
+        different pedestrian controls and computes the relative state for each of them.
+
+        :param x_r: robot's state (x, y, vx, vy)
+        :param u_r: robot's control input (ux, uy).
+        :param x_ped: pedestrian's state (px, py, vpx, vpy).
+        :param u_ped: pedestrian control input  (upx, upy).
+        :param dt: time-step [s] for applying dynamics on current state.
+        :returns: next state for each pedestrian control input.
+        """
+        assert mantrap.utility.shaping.check_ego_state(x_r, enforce_temporal=False)
+        assert mantrap.utility.shaping.check_ego_action(u_r)
+        assert mantrap.utility.shaping.check_ego_state(x_ped, enforce_temporal=False)
+        assert mantrap.utility.shaping.check_ego_controls(u_ped)
+
+        n = u_ped.shape[0]
+
+        # Compute the current relative state and repeat it to the number of pedestrian controls.
+        x_rel = torch.tensor([x_r[0] - x_ped[0], x_r[1] - x_ped[1], x_r[2], x_r[3]]).reshape(1, -1)
+        x_rel_n = torch.mm(torch.ones((n, 1)), x_rel)
+
+        # Compute dynamics stacked for all pedestrian controls and derive next state.
+        u_r_n = torch.mm(torch.ones((n, 1)), u_r.reshape(1, -1))
+        f_rel_n = torch.cat((x_r[2:4] - u_ped, u_r_n), dim=1)
+        return x_rel_n + dt * f_rel_n
+
+    @staticmethod
+    def unpack_mat_file(mat_file_path: str) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                                            typing.Tuple[np.ndarray, np.ndarray]]:
+        mat = scipy.io.loadmat(mat_file_path, squeeze_me=True)
+        grid_min, grid_max = mat["grid_min"], mat["grid_max"]
+        value_tau = np.sort(mat["tau"].flatten())
+        grid_size_by_dim = mat["N"]
+
+        # Re-shape value function into usable shape and check for consistency.
+        # value_function = (t_horizon, dx, dy, vx, vy)
+        value_function = np.moveaxis(mat["value_function"], -1, 0)
+        assert all(value_function.shape[1:] == grid_size_by_dim)
+
+        # Re-shape gradients into usable shape and check for consistency.
+        # gradient = (4, t_horizon, dx, dy, vx, vy)
+        gradients = np.moveaxis(np.stack(mat["gradients"]), -1, 1)
+        assert gradients.shape[0] == 4  # for dimensions of relative state (dx, dy, vx_robot, vy_robot)
+        assert gradients.shape[1] == value_function.shape[0]
+        assert all(gradients.shape[2:] == grid_size_by_dim)
+
+        # Check non-saved coupled system parameters. #todo
+        assert mantrap.constants.AGENT_SPEED_MAX == 4.0
+        assert mantrap.constants.ROBOT_ACC_MAX == 2.0
+        assert mantrap.constants.ROBOT_SPEED_MAX == 2.0
+
+        return value_function, gradients, grid_size_by_dim, value_tau, (grid_min, grid_max)
 
     ###########################################################################
     # Module Properties #######################################################
     ###########################################################################
-    @property
-    def value_function(self) -> np.ndarray:
-        return self._value_function
-
-    @property
-    def grid_properties(self) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return self._grid_min, self._grid_max, self._grid_size_by_dim
-
     @property
     def name(self) -> str:
         return "hj_reachability"
