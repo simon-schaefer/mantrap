@@ -212,7 +212,7 @@ class HJReachabilityModule(OptimizationModule):
 
             # Compute controls from trajectory, if not equal to `grad_wrt` return None.
             ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-            if not ego_controls.shape == grad_wrt.shape or not torch.all(torch.isclose(ego_controls, grad_wrt)):
+            if not mantrap.utility.maths.tensors_close(ego_controls.detach(), grad_wrt):
                 raise NotImplementedError
 
             # By evaluating the constraints with the current input states we ensure that the internal

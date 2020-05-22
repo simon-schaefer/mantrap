@@ -3,6 +3,7 @@ import typing
 import numpy as np
 import torch
 
+import mantrap.utility.maths
 import mantrap.utility.shaping
 
 from .base import PureObjectiveModule
@@ -33,7 +34,7 @@ class GoalNormModule(PureObjectiveModule):
     """
     def __init__(self, goal: torch.Tensor, env: mantrap.environment.base.GraphBasedEnvironment,
                  optimize_speed: bool = False, **unsued):
-        super(GoalNormModule, self).__init__(env=env)
+        super(GoalNormModule, self).__init__(env=env, weight=0.5)  # normalization-factor
 
         assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
@@ -88,7 +89,7 @@ class GoalNormModule(PureObjectiveModule):
         with torch.no_grad():
             # Compute controls from trajectory, if not equal to `grad_wrt` return None.
             ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-            if not ego_controls.shape == grad_wrt.shape and torch.all(torch.isclose(ego_controls, grad_wrt)):
+            if not mantrap.utility.maths.tensors_close(ego_controls, grad_wrt):
                 return None
 
             # Compute dx/du from the agent's dynamics.

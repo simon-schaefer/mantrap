@@ -110,3 +110,10 @@ def normal_line(start: torch.Tensor, end: torch.Tensor):
     """Normal direction to a line defined by  start and end position. """
     direction = (end - start) / torch.norm(end - start)
     return torch.tensor([direction[1], -direction[0]])
+
+
+###########################################################################
+# Logic ###################################################################
+###########################################################################
+def tensors_close(x: torch.Tensor, y: torch.Tensor, a_tol: float = 0.5) -> bool:
+    return x.shape == x.shape and torch.all(torch.isclose(x, y, atol=a_tol))

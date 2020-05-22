@@ -3,6 +3,7 @@ import typing
 import numpy as np
 import torch
 
+import mantrap.utility.maths
 import mantrap.utility.shaping
 
 from .base import PureConstraintModule
@@ -64,7 +65,7 @@ class ControlLimitModule(PureConstraintModule):
 
             # Compute controls from trajectory, if not equal to `grad_wrt` return None.
             ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-            if not ego_controls.shape == grad_wrt.shape or not torch.all(torch.isclose(ego_controls, grad_wrt)):
+            if not mantrap.utility.maths.tensors_close(ego_controls, grad_wrt):
                 return None
 
             # Otherwise compute Jacobian using formula in method's description above.
