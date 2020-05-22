@@ -14,6 +14,7 @@ from .atomics import __interactive_save_video
 def visualize_heat_map(
     images: np.ndarray,
     bounds: typing.Tuple[typing.List, typing.List],
+    color_bounds: typing.Tuple[float, float],
     choices: np.ndarray = None,
     resolution: float = 0.1,
     file_path: str = None,
@@ -27,6 +28,7 @@ def visualize_heat_map(
 
     :param images: heat-map images to plot (#steps, N, M).
     :param bounds: lower and upper bounds for image dimensions.
+    :param color_bounds: min and max value for heat-map color-bar.
     :param choices: chosen variables as described above (#steps, 2).
     :param resolution: image resolution to convert discrete image grid points to bounds.
     :param file_path: gif storage path (if None, then output is HTML5 video !).
@@ -65,7 +67,8 @@ def visualize_heat_map(
         ax = fig.add_subplot(111)
 
         # Draw heat-map and according color-bar.
-        im = ax.imshow(images[k, :, :], interpolation="none", animated=True, cmap=color_map)
+        im = ax.imshow(images[k, :, :], interpolation="none", animated=True, cmap=color_map,
+                       vmin=color_bounds[0], vmax=color_bounds[1])
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im, cax=cax, orientation='vertical', ax=ax)
