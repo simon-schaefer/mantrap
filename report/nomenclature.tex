@@ -3,12 +3,68 @@
 
 \section*{Symbols}
 \begin{tabbing}
- \hspace*{1.6cm} \= \hspace*{8cm} \= \kill
- $dt$ \> Discrete time-step. \> [$s$] \\[0.5ex]
+\hspace*{1.6cm} \= \hspace*{8cm} \= \kill
+$\mathbb{R}^n$ \> set of real column vectors of length n \\[0.5ex]
+$\mathbb{R}^{m \times n}$ \> set of real m by n matrices \\[0.5ex]
+$\mathbf{0}_{m \times n}$ \> n by m zero matrix \\[0.5ex]
+$\mathbf{I}_n$ \> identity matrix of dimension n \\[0.5ex]
+$\x$ \> state of robot \\[0.5ex]
+$\u$ \> control input of robot \\[0.5ex]
+$\xped[k]$ \> state of pedestrian k \\[0.5ex]
+$\uped[k]$ \> control input of pedestrian k \\[0.5ex]
+$\mathbf{\tilde{\mu}_k}$ \> mean of state $\xped[k]$ \\[0.5ex]
+$\mathbf{\tilde{\Sigma}_k}$ \> variance of state $\xped[k]$ \\[0.5ex]
+$\mathcal{X}$ \> set of feasible states \\[0.5ex]
+$\mathcal{X}_0$ \> set of initial states \\[0.5ex]
+$\mathcal{X}_f$ \> set of terminal/goal states \\[0.5ex]
+$\mathcal{U}$ \> set of feasible controls of robot \\[0.5ex]
+$\mathcal{\tilde{U}}$ \> set of feasible controls of pedestrian \\[0.5ex]
+$t_0$ \> initial time of optimisation [s] \\[0.5ex]
+$t_f$ \> final time of optimisation [s] \\[0.5ex]
+$T$ \> optimisation horizon in discrete steps \\[0.5ex]
+$\Delta t$ \> discretisation time of the dynamics [$s$] \\[0.5ex]
+$\delta t$ \> time-step of Runge-Kutta integration method [$s$] \\[0.5ex]
+$K$ \> number of pedestrians \\[0.5ex]
+$k$ \> pedestrian index \\[0.5ex]
+$L$ \> number of pedestrian prediction modes \\[0.5ex]
+$l$ \> prediction mode index \\[0.5ex]
+$n$ \> dimension of state $\x$ \\[0.5ex]
+$m$ \> dimension of control input $\u$ \\[0.5ex]
+$f(\cdot)$ \> system dynamics of robot \\[0.5ex]
+$\tilde{\Phi}_k(\cdot)$ \> system dynamics of pedestrian k \\[0.5ex]
+$J(\cdot)$ \> cost function \\[0.5ex]
+$l(\cdot)$ \> step cost function \\[0.5ex]
+$l_f(\cdot)$ \> final cost function \\[0.5ex]
+$\mathcal{N}(\cdot)$ \> normal probability distribution \\[0.5ex]
 \end{tabbing}
+
+\section*{Operators}
+\begin{tabbing}
+\hspace*{1.6cm} \= \hspace*{8cm} \= \kill
+$\mathbb{E}_Y[\cdot]$ \> expectation operator with respect to $Y$ \\[0.5ex]
+$\mathrm{Var}_Y[\cdot]$ \> variance operator with respect to $Y$ \\[0.5ex]
+$\max$ \> maximum operator \\[0.5ex]
+$\min$ \> minimum operator \\[0.5ex]
+$||\cdot||_2$ \> L2 norm \\[0.5ex]
+\end{tabbing}
+
+\section*{Indexing}
+\begin{tabbing}
+\hspace*{1.6cm} \= \hspace*{8cm} \= \kill
+$\mathbf{a}_i$ \> element $i$ of vector $\mathbf{a}$ \\[0.5ex]
+$\mathbf{A}_{ij}$ \> element in row $i$ and column $j$ of matrix $\mathbf{A}$ \\[0.5ex]
+\end{tabbing}
+
 
 \section*{Acronyms and Abbreviations}
 \begin{acronym}[Bash]
 \acro{ETH}{Eidgenössische Technische Hochschule}
+\acro{IDSC}{Institute of Dynamical Systems and Control at ETH Zürich}
+\acro{ASL}{Autonomous Systems Lab at Stanford University}
+\acro{NLP}{Non-Linear Program}
 \acro{IPOPT}{Interior Point Optimiser \cite{Wachter2006}}
+\acro{GuSTO}{Guaranteed Sequential Trajectory Optimisation \cite{Bonalli2019}}
+\acro{GMM}{Gaussian Mixture Model}
+\acro{SQP}{Sequential Quadratic Programs}
+\acro{IPM}{Interior Point Methods}
 \end{acronym}
