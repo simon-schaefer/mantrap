@@ -152,7 +152,7 @@ class Trajectron(ProbabilisticEnvironment):
     # Simulation Graph ########################################################
     ###########################################################################
     def _build_connected_graph(self, ego_trajectory: torch.Tensor, **kwargs
-                               ) -> typing.Tuple[typing.Dict[str, torch.Tensor], GMM2D]:
+                               ) -> typing.Tuple[typing.Dict[str, torch.Tensor], typing.Dict[str, GMM2D]]:
         """Build a connected graph based on the ego's trajectory.
 
         The graph should span over the time-horizon of the length of the ego's trajectory and contain the state
@@ -200,7 +200,11 @@ class Trajectron(ProbabilisticEnvironment):
         )
 
         # Build ado-wise dictionary distribution of probability distributions.
-        distribution_output = distribution.copy()
+        # The distribution is a dictionary mapping the GenTrajectron tag ("{class_id}/{id}") to a
+        # distribution object, defined in gmm2d.py in its code base. We re-map the key to the id only,
+        # which was enforced to be identical to the agent tags using within this project during
+        # initialization, and keep the distribution as it is.
+        distribution_output = {str(key).split("/")[1]: value for key, value in distribution.items()}
 
         # Build the state at the current time-step, by using the `environment::states()` method. However, since the
         # state at the current time-step is deterministic, the output vector has to be stretched to the number of
@@ -236,7 +240,7 @@ class Trajectron(ProbabilisticEnvironment):
         return graph, distribution_output
 
     def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs
-                                      ) -> typing.Tuple[typing.Dict[str, torch.Tensor], GMM2D]:
+                                      ) -> typing.Tuple[typing.Dict[str, torch.Tensor], typing.Dict[str, GMM2D]]:
         """Build a connected graph over `t_horizon` time-steps for ados only.
 
         The graph should span over the time-horizon of the inputted number of time-steps and contain the state

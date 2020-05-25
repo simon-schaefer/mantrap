@@ -15,8 +15,9 @@ class ProbabilisticEnvironment(GraphBasedEnvironment):
     # Simulation graph ########################################################
     ###########################################################################
     def build_connected_graph(self, ego_trajectory: torch.Tensor, return_distribution: bool = False, **kwargs
-        ) -> typing.Union[typing.Dict[str, torch.Tensor],
-                          typing.Tuple[typing.Dict[str, torch.Tensor], MultiModalDistribution]]:
+                              ) -> typing.Union[typing.Dict[str, torch.Tensor],
+                                                typing.Tuple[typing.Dict[str, torch.Tensor],
+                                                             typing.Dict[str, MultiModalDistribution]]]:
         """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
         the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
         using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
@@ -47,12 +48,14 @@ class ProbabilisticEnvironment(GraphBasedEnvironment):
 
     @abc.abstractmethod
     def _build_connected_graph(self, ego_trajectory: torch.Tensor, **kwargs
-                               ) -> typing.Tuple[typing.Dict[str, torch.Tensor], MultiModalDistribution]:
+                               ) -> typing.Tuple[typing.Dict[str, torch.Tensor],
+                                                 typing.Dict[str, MultiModalDistribution]]:
         raise NotImplementedError
 
     def build_connected_graph_wo_ego(self, t_horizon: int, return_distribution: bool = False, **kwargs
-        ) -> typing.Union[typing.Dict[str, torch.Tensor],
-                          typing.Tuple[typing.Dict[str, torch.Tensor], MultiModalDistribution]]:
+                                     ) -> typing.Union[typing.Dict[str, torch.Tensor],
+                                                       typing.Tuple[typing.Dict[str, torch.Tensor],
+                                                                    typing.Dict[str, MultiModalDistribution]]]:
         """Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
         the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
         using the resulting values for computing the next time-step's results in a Markovian manner. Instead the whole
@@ -81,7 +84,8 @@ class ProbabilisticEnvironment(GraphBasedEnvironment):
 
     @abc.abstractmethod
     def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs
-                                      ) -> typing.Tuple[typing.Dict[str, torch.Tensor], MultiModalDistribution]:
+                                      ) -> typing.Tuple[typing.Dict[str, torch.Tensor],
+                                                        typing.Dict[str, MultiModalDistribution]]:
         raise NotImplementedError
 
     ###########################################################################
