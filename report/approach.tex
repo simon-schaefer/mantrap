@@ -27,17 +27,20 @@ In general each pedestrian's trajectory is probabilistic and multimodal. Thereby
 \xped[k]_t \sim \mathbf{\tilde{\xi}_t^k}(\mathbf{\tilde{\mu}_t^k}, \mathbf{\tilde{\Sigma}_t^k}, \mathbf{\tilde{\pi}_t^k})	
 \end{equation}
 
-Similar to the robot the pedestrians are modelled as single point masses. The pedestrian's trajectories are predicted using some model $\tilde{\Phi}$ which is assumed to be known. As described above in general for some pedestrian $k$ the model $\tilde{\Phi}_k$ outputs a multi-modal distribution over the next state $\xped[k]_{t+1}$ conditioned on the trajectory of the robot $\x_{0:t}$, the trajectory of every other pedestrian in the scene $\xped[j]_{0:t} (j \neq k)$ and the trajectory of the pedestrian $k$ itself, i.e. $\xped[k]_{0:t}$. Moreover the function $\tilde{\Phi}$ is generally not shared over all pedestrian, but individually for each one.
+Similar to the robot the pedestrians are modelled as single point masses, both underlying speed bounds defined by the $L_1$ norm of their velocities. 
+\newline
+The pedestrian's trajectories are predicted using some model $\tilde{\Phi}$ which is assumed to be known. As described above in general for some pedestrian $k$ the model $\tilde{\Phi}_k$ outputs a multi-modal distribution over the next state $\xped[k]_{t+1}$ conditioned on the trajectory of the robot $\x_{0:t}$, the trajectory of every other pedestrian in the scene $\xped[j]_{0:t} (j \neq k)$ and the trajectory of the pedestrian $k$ itself, i.e. $\xped[k]_{0:t}$. Moreover the function $\tilde{\Phi}$ is generally not shared over all pedestrian, but individually for each one.
 
 \begin{equation}
 \xped[k]_{t+1} = \tilde{\Phi}_k(\x_{0:t}, \xped[i]_{0:t}) \quad \forall i \in [0, K]	
 \end{equation}
 
-Furthermore both the robot and the pedestrians underly constraints for their minimal and maximal control effort. Thus, the sets of feasible control inputs $\mathcal{U}$ and $\mathcal{\tilde{U}}$ respectively, are defined as 
+Furthermore both the robot and the pedestrians underly constraints for their minimal and maximal control effort. Thus, the sets of feasible control inputs $\mathcal{U}$ and $\mathcal{\tilde{U}}$ respectively, are defined using the $L_1$-norm:
 
 \begin{align}
-\mathcal{U} &= \{\u | \u \in \mathbb{R}^2, u_{min} \leq ||\u||_2 \leq u_{max}\} \\
-\mathcal{\tilde{U}} &= \{\uped[] | \uped[] \in \mathbb{R}^2, \tilde{u}_{min} \leq ||\uped[]||_2 \leq \tilde{u}_{max}\} 
+\mathcal{U} &= \{\u | \u \in \mathbb{R}^2, ||\u||_1 \leq u_{max}\} \\
+\mathcal{\tilde{U}} &= \{\uped[] | \uped[] \in \mathbb{R}^2, ||\uped[]||_1 \leq \tilde{u}_{max}\} 
+\label{eq:controls_bounds}
 \end{align}
  
 Within project \project I want to find a robot trajectory $\x_{0:T}$ over some discrete time horizon $N$ that trade-offs between minimising the travel time from the its current state to some goal state in $\mathcal{X}_f = \{\mathbf{g} | \mathbf{g} \in \mathcal{X} \}$ on the one side and the interference with the pedestrians in the scene on the other side, with respect to its dynamic as well as safety boundaries. For further simplification a perfect knowledge about the current and all past states of surrounding agents $\xped[k]_{0:t} \forall k \in [0, K]$ is assumed. 
@@ -61,18 +64,17 @@ Formally, the solution to this problem can be represented as the following optim
 \min_{\u_{0:T-1}} \quad w_{goal} J_{goal}(\x_{0:T}) + w_{int} \sum_{k=0}^M \mathbb{E}_{\xped[k]_{0:T}}[J_{int}(\x_{0:T}, \xped[j]_{0:T})]
 \end{equation}
 \begin{align}
-\textrm{s.t. } \quad & \x_{t+1} = f(\x_t, \u_t) & \forall t \in [0, N] \\
-& \xped[k] = \tilde{\Phi}_k(\x_{0:t}, \xped[i]_{0:t}) & \forall k \in [0, K], \forall t \in [0, N]\\
+\textrm{s.t. } \quad & \x_{t+1} = f(\x_t, \u_t) & \forall t \in [0, T - 1] \\
+& \xped[k] = \tilde{\Phi}_k(\x_{0:t}, \xped[i]_{0:t}) & \forall k \in [0, K], \forall t \in [0, T]\\
 & g_{safety}(\x_{0:T}, \xped[k]_{0:T}) \leq 0 & \forall k \in [0, K] \\
-& \x \in \mathcal{X} & \forall t \in [0, N]\\
-& \u_t \in \mathcal{U} & \forall t \in [0, N]\\
-& \x_0 \in \mathcal{X}_0 \\
-& \x_N \in \mathcal{X}_f
+& \x_t \in \mathcal{X} & \forall t \in [0, T]\\
+& \u_t \in \mathcal{U} & \forall t \in [0, T]\\
+& \x_0 \in \mathcal{X}_0
 \end{align} 
 \label{eq:formulation}
 \end{problem}
 
-Hence, the objective function is a weighted sum of a goad-driven $J_{goal}(\cdot)$ and some interaction-driven term $J_{int}(\cdot)$, which are further explained in section \ref{text:approach/objective}. The constraints are a combination of dynamics constraints, safety constraints as well as initial and final state restrictions, which are discussed in section \ref{text:approach/constraint}.
+The objective function is a weighted sum of a goad-driven $J_{goal}(\cdot)$ and some interaction-driven term $J_{int}(\cdot)$, which are further explained in section \ref{text:approach/objective}. The constraints are a combination of dynamics constraints, safety constraints as well as initial and final state restrictions, which are discussed in section \ref{text:approach/constraint}. Note that the terminal state $\x_T$ of the planned trajectory is not constrained to be in the terminal set $\mathcal{X}_f$. As stated in chapter \ref{text:introduction} within this project the safety and undisturbed gait of pedestrians is considered to be more important than reaching the goal state time-optimally. While the goal-driven objective $J_{goal}(\cdot)$ introduces an incentive to approach the goal state, constraining the terminal state to be in the terminal set would, informally speaking, remove the possibility of detouring in order to not interfere a pedestrians movement. 
 
 % todo: nonzero in equality \& inequality Jacobian, Hessian, number of variables, number of constraints 
 
@@ -85,7 +87,9 @@ Since no further assumptions about the pedestrian trajectory prediction model $\
 In project \project safety is induced by constraint, thus obtaining a feasible solution is crucial, also if the algorithm might be aborted before convergence due to runtime constraints. For this reason an interior-point method has been used within the project. The interior-point method \ac{IPOPT} \cite{Wachter2006} has shown to be applicable in many robotics applications, and has shown to be valuable even in case of very tough runtime constraints such as solving the feedforward commands in high-performance automated driving at 50 Hz in \cite{Spielberge2019} or motion planning for legged robotics \cite{Winkler2018}. There it has been used in this project as well.\footnote{From today's point of view it turned out, after tweaking the performance of the optimisation core as best as possible, it turns out that in fact the number of objective function calls is the bottleneck of the algorithm. Therefore comparing the capacity of interior-point solver such as \ac{IPOPT} with \ac{SQP} solvers such as \ac{GuSTO} remains for future work.} 
 
 \subsubsection{Implementation Details} 
-The algorithm has been implemented in Python 3.7 using PyTorch \cite{pytorch}. Next to executing computations highly efficiently by vectorisation and batching PyTorch's automatic differentiation framework allows to compute gradients at low computational cost as well as modular, i.e. without the need to explicitly define its closed form. This is the core of prediction-based optimisation, enabling to define objectives and constraints (such as $J_{int}$), which depend on a complex graph-based computation, and still being able to derive their gradient without  costly and inaccurate numerical approximations.
+The algorithm has been implemented in Python 3.7 using PyTorch \cite{pytorch}. Next to executing computations highly efficiently by vectorisation and batching PyTorch's automatic differentiation framework allows to compute gradients at low computational cost as well as modular, i.e. without the need to explicitly define its closed form. This is the core of prediction-based optimisation, enabling to define objectives and constraints (such as $J_{int}$), which depend on a complex graph-based computation, and still being able to derive their gradient without  costly and inaccurate numerical approximations. 
+\newline 
+Furthermore the algorithm has been implemented highly modular, allowing to easily use pre-defined simulation environments, objective, constraint functions or new solvers and switch between them without much knowledge about the underlying implementation. To pave the way for further projects based on this project it has been widely documented using Sphinx\footnote{Automated code documentation: https://www.sphinx-doc.org/en/master/}, for further information please visit the \href{https://simon-schaefer.github.io/mantrap/}{project's website}.  
 \newline
 The system's integrity has been verified by roughly 1000 unit- and integration tests, secured over the code development by the continuous integration framework CircleCI\footnote{Automated testing framework: https://circleci.com} and CodeCov\footnote{Testing coverage reports: https://codecov.io}.
 
@@ -122,16 +126,15 @@ As demonstrated, the goal-objectives gradient can be derived by multiplying the 
 \pd{J_{goal}}{\x_{0:T}} &= \pd{}{\x_{0:T}} \frac{1}{N} \sum_{t = 0}^N (\x_t - \mathbf{g})^2 \\
 &= \frac{2}{T} \begin{bmatrix} (\x_1 - \mathbf{g}) & \hdots & (\x_T - \mathbf{g}) \end{bmatrix}^T
 \end{align}
-
 \begin{align}
 \pd{\x_{0:T}}{\u_{0:T-1}} &= \pd{}{\u_{0:T-1}} \begin{bmatrix} A \x_0 \\ A_n \x_0 + B_n \u_{0:T-1} \end{bmatrix} \\
 &= \begin{bmatrix} \mathbf{0}_{n \times m} \\ B_n \end{bmatrix}
+\label{eq:goal_gradient_dynamics}
 \end{align}
 
 with $A_n, B_n$ the stacked state-space description matrices as described in section \ref{text:approach/runtime/unrolling}. 
 \newline
 Overall the goal objective and its gradient are very efficient, cheap to compute, having linear complexity with the length of the planning horizon $T$ and being independent from the number of pedestrians. Furthermore it is strictly convex, which improves the optimisation convergence speed. Therefore it is quite valuable for warm-starting the optimisation algorithm, as further explained in section \ref{text:approach/runtime/warm_starting}.
-
 
 %todo: final speed objective
 
@@ -145,7 +148,45 @@ Overall the goal objective and its gradient are very efficient, cheap to compute
 
 \subsection{Dynamics Constraints}
 \label{text:approach/constraint/dynamics}
+The dynamics constraints subsides all constraints in problem \ref{eq:formulation} that are not directly related to safety, i.e. 
 
+\begin{align}
+\label{eq:constraint_f}
+&\x_{t+1} = f(\x_t, \u_t) \qquad& \forall t \in [0, T - 1] \\
+\label{eq:constraint_x}
+&\x_t \in \mathcal{X} & \forall t \in [0, T]\\
+\label{eq:constraint_u}
+&\u_t \in \mathcal{U} & \forall t \in [0, T]\\
+\label{eq:constraint_x0}
+&\x_0 \in \mathcal{X}_0
+\end{align}
+
+Using the shooting trajectory optimisation paradigm the decision variables are the robot's control inputs  $\u_t \in \mathcal{U}$ so that the states $\x_t$ are obtained by unrolling the controls starting at some initial state $\x_0 \in \mathcal{X}_0$ and iteratively using the robot's dynamics $f(\cdot)$. \ac{IPOPT} on the other side solves a general \ac{NLP} of the form \cite{Wachter2006} \\
+
+\begin{problem}{General IPOPT problem formulation}
+\begin{align}
+\min_{x \in \mathbb{R}^n} \quad & f(x) \\
+\textrm{s.t. } \quad & g^L \leq g(x) \leq g^U \\
+& x^L \leq x \leq x^U 
+\end{align}
+\label{eq:formulation_ipopt}
+\end{problem}
+
+As indicated in section \ref{text:approach/formulation} the bounds of the controls $\u_t$ have a shape, as the decision variable $x$ in problem \ref{eq:formulation_ipopt}. Therefore \ref{eq:constraint_u} is implicitly posed, without further ado, just by using the robot's control input bounds as bounds of the decision variable. Also the constraints \ref{eq:constraint_f} and  \ref{eq:constraint_x0} are satisfied by the problem design, using the shooting method, leaving merely the constraint \ref{eq:constraint_x} to be explicitly defined. The state $\x$ of the robot incorporates both, its position and its velocity. While the prediction models, objectives and constraints depend only  relative measures regarding the agent's positions and therefore the positional subset of $\mathcal{X}$ can be safely assumed as being unbounded ($\mathcal{X}_{pos} = \mathbb{R}^2$). Due to the speed boundaries that are imposed on the robot ($||v||_1 \leq v_{max}$, comp. section \ref{text:approach/formulation}), in order for the solution to be feasible a maximal speed constraint has to be established:
+
+\begin{equation}
+\x_t \in \mathcal{X} \Rightarrow g_{v_{max}}(\x_t) = ||\dot{\x}_t||_1 \leq v_{max} \quad \forall t \in [0, T]
+\label{eq:constraint_v_max}
+\end{equation}
+
+Computing the jacobian for constraint \ref{eq:constraint_v_max} is straight-forward using chain rule and exploiting the linear robot dynamics (as above when deriving the goal objective's gradient in equation \ref{eq:goal_gradient_dynamics}):  
+
+\begin{align}
+\nabla g_{v_{max}} &= \pd{g_{v_{max}}}{\u_{0:T-1}} = \pd{g_{v_{max}}}{\x_{0:T}} \cdot \pd{\x_{0:T}}{\u_{0:T-1}} \\
+\Rightarrow \pd{g_{v_{max}}}{\x_{0:T}} &= [sign(\x_1) \hdots sign(\x_T)]^T \\
+\Rightarrow \pd{\x_{0:T}}{\u_{0:T-1}} &= \begin{bmatrix} \mathbf{0}_{n \times m} \\ B_n \end{bmatrix}
+\end{align}
+ 
 
 \subsection{Reachability Constraint}
 \label{text:approach/constraint/reachability}
@@ -154,6 +195,7 @@ Overall the goal objective and its gradient are very efficient, cheap to compute
 
 % todo: constraint formulation (e.g. min-distance constraints split to be more accurate or summed to compute jacobian faster)
 % todo: Quellen: neural network representation of value function to make it differentiable (Karen: reachability, Kyle David Julian: network representation to make sure all the corner cases are met)
+% todo: turns out being a linear constraint (see 1D graph)
 
 \section{Runtime Optimisation}
 \label{text:approach/runtime}
@@ -201,11 +243,10 @@ Within project \project the algorithm has been warm-started by solving the optim
 \begin{problem}{Simplified \project optimisation problem for warm-starting}
 \begin{align}
 \min_{\u_{0:T-1}} \quad & J_{goal}(\x_{0:T}) \\
-\textrm{s.t. } \quad & \x_{t+1} = f(\x_t, \u_t) & \forall t \in [0, N] \\
-& \x \in \mathcal{X} & \forall t \in [0, N]\\
-& \u_t \in \mathcal{U} & \forall t \in [0, N]\\
-& \x_0 \in \mathcal{X}_0 \\
-& \x_N \in \mathcal{X}_f
+\textrm{s.t. } \quad & \x_{t+1} = f(\x_t, \u_t) & \forall t \in [0, T - 1] \\
+& \x \in \mathcal{X} & \forall t \in [0, T]\\
+& \u_t \in \mathcal{U} & \forall t \in [0, T]\\
+& \x_0 \in \mathcal{X}_0
 \end{align} 
 \label{eq:formulation_warm_starting}
 \end{problem}
