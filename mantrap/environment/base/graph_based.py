@@ -218,7 +218,7 @@ class GraphBasedEnvironment(abc.ABC):
         to each child-class.
 
         :param ego_controls: ego control input (pred_horizon, 2).
-        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :param return_more: return the system controls and probabilities.
         :param kwargs: additional arguments for graph construction.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """
@@ -254,7 +254,7 @@ class GraphBasedEnvironment(abc.ABC):
         between the ados while ignoring the ego.
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
-        :param return_more: return the system inputs (at every time -> trajectory) and probabilities of each mode.
+        :param return_more: return the system controls and probabilities.
         :param kwargs: additional arguments for graph construction.
         :return: predicted trajectories for ados in the scene (either one or multiple for each ado).
         """

@@ -1,2 +1,3 @@
 from mantrap.environment.base.graph_based import GraphBasedEnvironment
 from mantrap.environment.base.iterative import IterativeEnvironment
+from mantrap.environment.base.probabilistic import ProbabilisticEnvironment

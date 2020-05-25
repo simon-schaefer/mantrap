@@ -7,6 +7,81 @@ import mantrap.utility.shaping
 
 
 ###########################################################################
+# Distributions ###########################################################
+###########################################################################
+class MultiModalDistribution(abc.ABC):
+
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
+    def log_prob(self, value):
+        raise NotImplementedError
+
+
+class GMM2D(MultiModalDistribution):
+    """Gaussian Mixture Model using 2D Multivariate Gaussians each of as N components:
+    Cholesky decompesition and affine transformation for sampling:
+
+    .. math:: Z \\sim N(0, I)
+
+    .. math:: S = \\mu + LZ
+
+    .. math:: S \\sim N(\\mu, \\Sigma) \\rightarrow N(\\mu, LL^T)
+
+    where :math:`L = chol(\\Sigma)` and
+
+    .. math:: \\Sigma = \\left[ {\begin{array}{cc} \\sigma^2_x & \\rho \\sigma_x \\sigma_y \\
+                        \\rho \\sigma_x \\sigma_y & \\sigma^2_y \\ \\end{array} } \\right]
+
+    such that
+
+    .. math:: L = chol(\\Sigma) = \\left[ {\\begin{array}{cc} \\sigma_x & 0 \\
+                  \\rho \\sigma_y & \\sigma_y \\sqrt{1-\rho^2} \\ \\end{array} } \\right]
+
+    Re-Implementation of GMM2D model used in GenTrajectron (B. Ivanovic, M. Pavone).
+
+    :param log_pis: Log Mixing Proportions :math:`log(\\pi)`. [..., N]
+    :param mus: Mixture Components mean :math:`\\mu`. [..., N * 2]
+    :param log_sigmas: Log Standard Deviations :math:`log(\\sigma_d)`. [..., N * 2]
+    :param corrs: Cholesky factor of correlation :math:`\\rho`. [..., N]
+    """
+    def __init__(self, mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor, corrs: torch.Tensor):
+        super(GMM2D, self).__init__()
+        self.mus = mus
+        self.log_pis = log_pis
+        self.log_sigmas = log_sigmas
+        self.sigmas = torch.exp(self.log_sigmas)
+        self.corrs = corrs
+        self.one_minus_rho2 = torch.ones(1) - torch.pow(corrs, 2)
+
+    def log_prob(self, values: torch.Tensor) -> torch.Tensor:
+        """Calculates the log probability of a value using the PDF for bi-variate normal distributions:
+
+        .. math::
+            f(x | \\mu, \\sigma, \\rho)={\\frac {1}{2\\pi \\sigma _{x}\\sigma _{y}{\\sqrt {1-\\rho ^{2}}}}}\\exp
+            \\left(-{\\frac {1}{2(1-\\rho ^{2})}}\\left[{\\frac {(x-\\mu _{x})^{2}}{\\sigma _{x}^{2}}}+
+            {\\frac {(y-\\mu _{y})^{2}}{\\sigma _{y}^{2}}}-{\\frac {2\\rho (x-\\mu _{x})(y-\\mu _{y})}
+            {\\sigma _{x}\\sigma _{y}}}\\right]\\right)
+
+        :param values: The log probability density function is evaluated at those values.
+        :returns: log probability of these values
+        """
+        value_un_squeezed = torch.unsqueeze(values, dim=-2)
+        dx = value_un_squeezed - self.mus
+
+        exp_nominator = ((torch.sum((dx / self.sigmas) ** 2, dim=-1)  # first and second term of exp nominator
+                          - 2 * self.corrs * torch.prod(dx, dim=-1) / torch.prod(self.sigmas, dim=-1)))
+
+        component_log_p = -(2 * math.log(2 * math.pi)
+                            + torch.log(self.one_minus_rho2)
+                            + 2 * torch.sum(self.log_sigmas, dim=-1)
+                            + exp_nominator / self.one_minus_rho2) / 2
+
+        return torch.logsumexp(self.log_pis + component_log_p, dim=-1)
+
+
+###########################################################################
 # Numerical Methods #######################################################
 ###########################################################################
 class Derivative2:

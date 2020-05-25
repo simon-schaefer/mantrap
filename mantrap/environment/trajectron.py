@@ -11,12 +11,13 @@ import mantrap.agents
 import mantrap.constants
 import mantrap.utility.io
 import mantrap.utility.maths
+from mantrap.utility.maths import GMM2D
 import mantrap.utility.shaping
 
-from .base.graph_based import GraphBasedEnvironment
+from .base import ProbabilisticEnvironment
 
 
-class Trajectron(GraphBasedEnvironment):
+class Trajectron(ProbabilisticEnvironment):
     """Trajectron-based environment model (B. Ivanovic, T. Salzmann, M. Pavone).
 
     The Trajectron model requires to get some robot position. Therefore, in order to minimize the
@@ -150,7 +151,8 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
-    def _build_connected_graph(self, ego_trajectory: torch.Tensor, **kwargs) -> typing.Dict[str, torch.Tensor]:
+    def _build_connected_graph(self, ego_trajectory: torch.Tensor, **kwargs
+                               ) -> typing.Tuple[typing.Dict[str, torch.Tensor], GMM2D]:
         """Build a connected graph based on the ego's trajectory.
 
         The graph should span over the time-horizon of the length of the ego's trajectory and contain the state
@@ -197,6 +199,9 @@ class Trajectron(GraphBasedEnvironment):
             robot_present_and_future=trajectory_w_acc
         )
 
+        # Build ado-wise dictionary distribution of probability distributions.
+        distribution_output = distribution.copy()
+
         # Build the state at the current time-step, by using the `environment::states()` method. However, since the
         # state at the current time-step is deterministic, the output vector has to be stretched to the number of
         # modes (while having the same state for modes that are originated from the same ado).
@@ -228,9 +233,10 @@ class Trajectron(GraphBasedEnvironment):
                 # Adapt weight as determined from prediction (repetitive but very cheap).
                 self._ado_ghosts[m_ghost].weight = ado_weights[m_ado, m_mode] / ado_weights[m_ado, :].sum()  # norming
 
-        return graph
+        return graph, distribution_output
 
-    def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs) -> typing.Dict[str, torch.Tensor]:
+    def _build_connected_graph_wo_ego(self, t_horizon: int, **kwargs
+                                      ) -> typing.Tuple[typing.Dict[str, torch.Tensor], GMM2D]:
         """Build a connected graph over `t_horizon` time-steps for ados only.
 
         The graph should span over the time-horizon of the inputted number of time-steps and contain the state
@@ -443,10 +449,6 @@ class Trajectron(GraphBasedEnvironment):
     @property
     def is_multi_modal(self) -> bool:
         return True
-
-    @property
-    def is_deterministic(self) -> bool:
-        return False
 
     @property
     def is_differentiable_wrt_ego(self) -> bool:
