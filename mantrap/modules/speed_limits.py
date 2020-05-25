@@ -9,31 +9,31 @@ import mantrap.utility.shaping
 from .base import PureConstraintModule
 
 
-class ControlLimitModule(PureConstraintModule):
-    """Maximal control input at every point in time.
+class SpeedLimitModule(PureConstraintModule):
+    """Maximal robot speed at every point in time.
 
-    For computing this constraint simply the norm of the planned control input is determined and compared to the
-    maximal agent's control limit. For 0 < t < T_{planning}:
+    For computing this constraint simply the norm of the velocity stored in the trajectory itself is determined
+    and compared to the maximal agent's speed limit. For 0 < t < T_{planning}:
 
-    .. math:: ||u(t)||_2 < u_{max}
+    .. math:: v_{min} <= v(t) < v_{max}
+
+    These are many constraints, 2 * T_{planning} to be exact. However all of them are linear, and therefore
+    easy to use within the optimisation as well as efficient to compute.
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, **unused):
-        super(ControlLimitModule, self).__init__(env=env, t_horizon=t_horizon)
+        super(SpeedLimitModule, self).__init__(env=env, t_horizon=t_horizon)
 
     def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                             ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
-        The max control constraints simply are computed by transforming the given trajectory to control input
-        (deterministic dynamics). Then take the L2 norm over the "cartesian" axis to get the norm of the
-        control input at every time-step.
+        The max speed constraints simply are computed by extracting the velocities over the full ego trajectory.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-        return torch.norm(ego_controls, dim=1).flatten().float()
+        return ego_trajectory[:, 2:4].flatten().float()
 
     def _compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -47,10 +47,10 @@ class ControlLimitModule(PureConstraintModule):
         a numpy array. Hence, not computing based on numpy arrays would just introduce an un-necessary
         `.detach().numpy()`.
 
-        When the gradient shall be computed with respect to the controls, then computing the gradient analytically
-        is very straight-forward, by just applying the following formula:
+        When the gradient shall be computed with respect to the controls, then computing the gradient
+        analytically is very straight-forward, by just applying the chain rule.
 
-        .. math:: \\frac{ d ||u|| }{ du_i } = \\frac{u_i}{||u||_2}
+        .. math::\\grad g(x) = \\frac{dg(x)}{dz} = \\frac{dg(x)}{dx} \\frac{dx}{du}
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
@@ -67,15 +67,14 @@ class ControlLimitModule(PureConstraintModule):
                 return None
 
             # Otherwise compute Jacobian using formula in method's description above.
-            t_horizon, u_size = ego_controls.shape
-            u_norm = torch.norm(ego_controls, dim=1).flatten().detach().numpy()
-            u_norm[u_norm == 0.0] = 1e-6  # remove nan values when computing (1 / u_norm)
-            u = ego_controls.flatten().numpy()
-
-            u_norm_stretched = np.repeat(u_norm, t_horizon * u_size)
-            u_stretched = np.concatenate([u] * t_horizon)
-            jacobian = np.repeat(np.eye(t_horizon), u_size) * 1 / u_norm_stretched * u_stretched
-            return jacobian.flatten()
+            t_horizon, _ = ego_controls.shape
+            _, x_size = ego_trajectory.shape
+            dx_du = self._env.ego.dx_du(ego_controls, dt=self._env.dt).detach().numpy()
+            dg_dx = np.zeros((2 * (t_horizon + 1), (t_horizon + 1) * x_size))
+            for t in range(t_horizon + 1):
+                for k in range(2):
+                    dg_dx[2 * t + k, t * x_size + 2 + k] = 1
+            return np.matmul(dg_dx, dx_du).flatten()
 
     def _gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
@@ -83,7 +82,7 @@ class ControlLimitModule(PureConstraintModule):
         itself requires a gradient, the objective/constraint value, stored from the last computation
         (`_current_`-variables) has to require a gradient as well.
 
-        Since the ego trajectory directly depends on the controls, the gradient always exists.
+        Since the velocities are part of the given ego_trajectory, the gradient should always exist.
         """
         return True
 
@@ -93,23 +92,16 @@ class ControlLimitModule(PureConstraintModule):
     def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         """Lower and upper bounds for constraint values.
 
-        The boundaries of this constraint depend on the exact implementation of the agent, however most agents
-        are isotropic, so assuming to have equal control boundaries in both cartesian directions and also
-        have its lower bound smaller or equal to zero, so that we can simplify the constraint to only have an
-        upper bound (since the lower bound zero is anyways given and a L2-norm is semi-positive).
+        The speed boundaries are a property of the robot agent.
         """
-        lower, upper = self._env.ego.control_limits()
-        if lower <= 0:
-            return None, upper
-        else:
-            return lower, upper
+        return self._env.ego.speed_limits
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
-        return self.t_horizon
+        return 2 * self.t_horizon
 
     ###########################################################################
     # Constraint Properties ###################################################
     ###########################################################################
     @property
     def name(self) -> str:
-        return "control_limits"
+        return "speed_limits"

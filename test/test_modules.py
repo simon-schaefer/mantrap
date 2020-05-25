@@ -182,7 +182,8 @@ def test_objective_goal_distribution():
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.modules.ControlLimitModule,
                                           mantrap.modules.baselines.MinDistanceModule,
-                                          mantrap.modules.HJReachabilityModule])
+                                          mantrap.modules.HJReachabilityModule,
+                                          mantrap.modules.SpeedLimitModule])
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
                                        mantrap.environment.PotentialFieldEnvironment,
                                        mantrap.environment.SocialForcesEnvironment,
@@ -269,6 +270,7 @@ class TestConstraints:
                                                                     grad_wrt=ego_controls,
                                                                     ado_ids=env.ado_ids,
                                                                     tag="test")
+
         if jacobian_analytical is None or not module._gradient_condition():
             pytest.skip()
 
@@ -291,14 +293,14 @@ def test_control_limit_violation(env_class, num_modes):
     _, upper_bound = module._constraint_boundaries()
 
     # In this first scenario the ego has zero velocity over the full horizon.
-    controls = torch.zeros((module._t_horizon, 2))
+    controls = torch.zeros((module.t_horizon, 2))
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test")
     assert violation == 0
 
     # In this second scenario the ego has non-zero random velocity in x-direction, but always below the maximal
     # allowed speed (random -> [0, 1]).
-    controls[:, 0] = torch.rand(module._t_horizon) * upper_bound  # single integrator, so no velocity summation !
+    controls[:, 0] = torch.rand(module.t_horizon) * upper_bound  # single integrator, so no velocity summation !
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test2")
     assert violation == 0
@@ -309,6 +311,29 @@ def test_control_limit_violation(env_class, num_modes):
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test3")
     assert violation > 0
+
+
+@pytest.mark.parametrize("env_class", environments)
+@pytest.mark.parametrize("num_modes", [1, 2])
+def test_speed_limit_violation(env_class, num_modes):
+    position, velocity = torch.tensor([-5, 0.1]), torch.zeros(2)
+    env = env_class(mantrap.agents.IntegratorDTAgent, {"position": position, "velocity": velocity})
+    if num_modes > 1 and not env.is_multi_modal:
+        pytest.skip()
+
+    module = mantrap.modules.SpeedLimitModule(env=env, t_horizon=5)
+    lower_bound, upper_bound = module._constraint_boundaries()
+
+    # In this first scenario the ego has velocities at the upper or lower bound over the full horizon.
+    ego_trajectory = torch.ones((module.t_horizon + 1, 5)) * upper_bound
+    ego_trajectory[2, :] = torch.ones(module.t_horizon + 1) * lower_bound
+    violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test")
+    assert violation == 0
+
+    # In the second scenario, one of the velocities is over the bounds.
+    ego_trajectory[2, 2] = upper_bound + 0.1
+    violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test")
+    assert np.isclose(violation, 0.1)
 
 
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
