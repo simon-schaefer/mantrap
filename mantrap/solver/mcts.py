@@ -100,7 +100,7 @@ class MonteCarloTreeSearch(SearchIntermediate, ZControlIntermediate):
         return [(mantrap.modules.GoalNormModule, {"optimize_speed": False, "weight": 1.0}),
                 (mantrap.modules.InteractionPositionModule, {"weight": 1.0}),
                 mantrap.modules.ControlLimitModule,
-                mantrap.modules.MinDistanceModule]
+                mantrap.modules.baselines.MinDistanceModule]
 
     ###########################################################################
     # Solver properties #######################################################

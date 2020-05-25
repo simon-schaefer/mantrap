@@ -4,7 +4,7 @@ import torch
 
 import mantrap.constants
 
-from .base import PureConstraintModule
+from mantrap.modules.base import PureConstraintModule
 
 
 class MinDistanceModule(PureConstraintModule):

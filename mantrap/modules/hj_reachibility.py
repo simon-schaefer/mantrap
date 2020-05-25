@@ -319,7 +319,7 @@ class HJReachabilityModule(OptimizationModule):
         hyper_params = mat["params"]
         assert mantrap.constants.PED_SPEED_MAX == hyper_params["v_max_ped"]
         assert mantrap.constants.ROBOT_ACC_MAX == hyper_params["a_max_robot"]
-        assert mantrap.constants.ROBOT_SPEED_MAX == hyper_params["v_max_robot"]
+        assert mantrap.constants.ROBOT_SPEED_MAX <= hyper_params["v_max_robot"]  # state-dimension not constraint
 
         return value_function, gradients, grid_size_by_dim, value_tau, (grid_min, grid_max)
 

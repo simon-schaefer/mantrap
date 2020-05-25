@@ -181,7 +181,7 @@ def test_objective_goal_distribution():
 # Constraints #############################################################
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.modules.ControlLimitModule,
-                                          mantrap.modules.MinDistanceModule,
+                                          mantrap.modules.baselines.MinDistanceModule,
                                           mantrap.modules.HJReachabilityModule])
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
                                        mantrap.environment.PotentialFieldEnvironment,
@@ -329,7 +329,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
 
     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
-    module = mantrap.modules.MinDistanceModule(env=env, t_horizon=controls.shape[0])
+    module = mantrap.modules.baselines.MinDistanceModule(env=env, t_horizon=controls.shape[0])
     lower_bound, _ = module._constraint_boundaries()
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
     assert violation == 0
@@ -339,7 +339,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     ado_kwargs = {"goal": ado_start_pos, "num_modes": num_modes}
     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
 
-    module = mantrap.modules.MinDistanceModule(env=env, t_horizon=controls.shape[0])
+    module = mantrap.modules.baselines.MinDistanceModule(env=env, t_horizon=controls.shape[0])
     lower_bound, _ = module._constraint_boundaries()
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
     assert violation > 0

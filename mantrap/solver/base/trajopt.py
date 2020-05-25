@@ -94,7 +94,6 @@ class TrajOptSolver(abc.ABC):
         # deque is way more efficient than the list type for storing simple floating point numbers in a sequence.
         self._log = None
         self._iteration = None
-        self._core_opt = None
 
         # Initialize child class.
         self.initialize(**solver_params)
