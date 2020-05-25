@@ -13,10 +13,12 @@ from .atomics import __interactive_save_video
 
 def visualize_heat_map(
     images: np.ndarray,
-    bounds: typing.Tuple[typing.List, typing.List],
-    color_bounds: typing.Tuple[float, float],
+    bounds: typing.Tuple[typing.Tuple[float, float], typing.Tuple[float, float]],
+    color_bounds: typing.Tuple[float, float] = None,
     choices: np.ndarray = None,
     resolution: float = 0.1,
+    title: str = None,
+    ax_labels: typing.Tuple[str, str] = None,
     file_path: str = None,
 ):
     """Visualize the given images as heat-maps.
@@ -26,11 +28,13 @@ def visualize_heat_map(
     made can be added to the plot, e.g. if the images are objective values in dependence on some optimization
     variable, then the variables chosen by the optimizer can be visualized.
 
-    :param images: heat-map images to plot (#steps, N, M).
-    :param bounds: lower and upper bounds for image dimensions.
-    :param color_bounds: min and max value for heat-map color-bar.
+    :param images: heat-map images to plot (#steps, Nx, Ny).
+    :param bounds: lower and upper bounds for image dimensions ((lower1, lower2), (upper1, upper2)).
+    :param color_bounds: min and max value for heat-map color-bar, a_min and a_max if None.
     :param choices: chosen variables as described above (#steps, 2).
     :param resolution: image resolution to convert discrete image grid points to bounds.
+    :param title: figure title, only steps-title if None.
+    :param ax_labels: axes labels tuple, no labels if None.
     :param file_path: gif storage path (if None, then output is HTML5 video !).
     """
     # Derive image ticks from bounds and resolution data.
@@ -39,6 +43,10 @@ def visualize_heat_map(
     num_grid_points_x = int((upper[0] - lower[0]) / resolution)
     num_grid_points_y = int((upper[1] - lower[1]) / resolution)
     plot_z_values = choices is not None
+
+    if color_bounds is None:
+        color_bounds = (np.amin(images), np.amax(images))
+    assert color_bounds[0] < color_bounds[1]
 
     assert len(images.shape) == 3
     if plot_z_values:
@@ -77,13 +85,18 @@ def visualize_heat_map(
         if plot_z_values:
             line.set_xdata(z_values_coords[k, 0])
             line.set_ydata(z_values_coords[k, 1])
-        ax.set_title(f"optimization landscape - step {k}")
+        if title is not None:
+            ax.set_title(f"{title} - step {k}")
+        else:
+            ax.set_title(f"step {k}")
         ax.set_xticks(np.linspace(0, num_grid_points_x, num=num_ticks))
         ax.set_xticklabels(np.round(np.linspace(lower[0], upper[0], num=num_ticks), 1))
         ax.set_yticks(np.linspace(0, num_grid_points_y, num=num_ticks))
         ax.set_yticklabels(np.round(np.linspace(lower[1], upper[1], num=num_ticks), 1))
-        ax.set_xlabel("z1")
-        ax.set_ylabel("z2")
+        if ax_labels is not None:
+            assert len(ax_labels) == 2
+            ax.set_xlabel(ax_labels[0])
+            ax.set_ylabel(ax_labels[1])
         return ax
 
     # Start matplotlib animation with an image per time-step.

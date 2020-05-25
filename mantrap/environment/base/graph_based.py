@@ -819,6 +819,14 @@ class GraphBasedEnvironment(abc.ABC):
         return self._env_params[mantrap.constants.PK_X_AXIS], self._env_params[mantrap.constants.PK_Y_AXIS]
 
     @property
+    def x_axis(self) -> typing.Tuple[float, float]:
+        return self._env_params[mantrap.constants.PK_X_AXIS]
+
+    @property
+    def y_axis(self) -> typing.Tuple[float, float]:
+        return self._env_params[mantrap.constants.PK_Y_AXIS]
+
+    @property
     def config_name(self) -> str:
         return self._env_params[mantrap.constants.PK_CONFIG]
 

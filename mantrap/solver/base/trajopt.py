@@ -627,10 +627,11 @@ class TrajOptSolver(abc.ABC):
             # Finally draw all the created images in plot using the `visualize_heat_map` function
             # defined in the internal visualization package.
             path = self._visualize_output_format(name="heat_map")
-            bounds = (lower[:2], upper[:2])
+            bounds = (lower[:2], upper[:2])  # two-dimensions
             c_min, c_max = float(np.nanmin(images)), float(np.nanmax(images))
-            return visualize_heat_map(images, bounds=bounds, color_bounds=(c_min, c_max),
-                                      choices=zs, resolution=resolution, file_path=path)
+            return visualize_heat_map(images, bounds=bounds, color_bounds=(c_min, c_max), choices=zs,
+                                      resolution=resolution, title="optimization landscape",
+                                      ax_labels=("z1", "z2"), file_path=path)
 
     def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
         """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
