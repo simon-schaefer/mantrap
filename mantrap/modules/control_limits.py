@@ -85,7 +85,7 @@ class ControlLimitModule(PureConstraintModule):
         itself requires a gradient, the objective/constraint value, stored from the last computation
         (`_current_`-variables) has to require a gradient as well.
 
-        Since the velocities are part of the given ego_trajectory, the gradient should always exist.
+        Since the ego trajectory directly depends on the controls, the gradient always exists.
         """
         return True
 

@@ -65,10 +65,11 @@ class HJReachabilityModule(OptimizationModule):
         # grid_min = (min_x, min_y, min_vx_robot, min_vy_robot)
         # grid_max = (min_x, min_y, min_vx_robot, min_vy_robot)
         x_axis, y_axis = env.axes
+        v_min, v_max = env.ego.speed_limits
         assert grid_max[0] - grid_min[0] >= 2 * (x_axis[1] - x_axis[0])
         assert grid_max[1] - grid_min[1] >= 2 * (y_axis[1] - y_axis[0])
-        assert grid_min[2] == grid_min[3] <= -env.ego.speed_max
-        assert grid_max[2] == grid_max[3] >= env.ego.speed_max
+        assert grid_min[2] == grid_min[3] <= v_min
+        assert grid_max[2] == grid_max[3] >= v_max
 
         # Get value function time-intervals in order to determine which value function grid we need
         # when we want to make a statement about the full time horizon (planning horizon) of the

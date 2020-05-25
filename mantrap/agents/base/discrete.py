@@ -480,8 +480,9 @@ class DTAgent(abc.ABC):
     # Agent properties ########################################################
     ###########################################################################
     @property
-    def speed_max(self) -> float:
-        return mantrap.constants.PED_SPEED_MAX if not self.is_robot else mantrap.constants.ROBOT_SPEED_MAX
+    def speed_limits(self) -> typing.Tuple[float, float]:
+        v_max = mantrap.constants.PED_SPEED_MAX if not self.is_robot else mantrap.constants.ROBOT_SPEED_MAX
+        return -v_max, v_max
 
     @property
     def acceleration_max(self) -> float:

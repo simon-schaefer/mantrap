@@ -83,7 +83,7 @@ class IntegratorDTAgent(LinearDTAgent):
         """
         .. math:: [- v_{max}, v_{max}]
         """
-        return -self.speed_max, self.speed_max
+        return self.speed_limits
 
     ###########################################################################
     # Agent Properties ########################################################

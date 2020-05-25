@@ -90,7 +90,7 @@ class ORCAEnvironment(IterativeEnvironment):
                 # Find new velocity based on line constraints. Preferred velocity would be the going from the
                 # current position to the goal directly with maximal speed. However when the goal has been reached
                 # set the preferred velocity to zero (not original ORCA).
-                speed_max = ghost.agent.speed_max
+                _, speed_max = ghost.agent.speed_limits
                 vel_preferred = ghost.params[mantrap.constants.PK_GOAL] - ghost.agent.position
                 goal_distance = torch.norm(vel_preferred)
                 if goal_distance.item() < mantrap.constants.ORCA_MAX_GOAL_DISTANCE:
