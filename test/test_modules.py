@@ -55,7 +55,7 @@ class TestObjectives:
 
         # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
         # Then assert equality (or numerical equality) between both results.
-        objective = module._compute_objective(ego_trajectory, ado_ids=None, tag="test")
+        objective = module._compute_objective(ego_trajectory, ado_ids=env.ado_ids, tag="test")
         gradient_auto_grad = module._compute_gradient_autograd(objective, grad_wrt=ego_controls)
         assert np.allclose(gradient_analytical, gradient_auto_grad, atol=0.01)
 

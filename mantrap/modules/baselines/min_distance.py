@@ -49,8 +49,6 @@ class MinDistanceModule(PureConstraintModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-
-        ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
         num_constraints_per_step = len(ado_ids) * self._env.num_modes
         horizon = ego_trajectory.shape[0]
         # This constraint is only defined with respect to other agents, so if no other agents are taken into

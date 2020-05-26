@@ -173,8 +173,8 @@ class TestSearchSolvers:
         solver = solver_class(env, goal=torch.zeros(2), t_planning=5)
 
         z0 = np.random.uniform(*solver.z_bounds)
-        obj_0, _ = solver._evaluate(z0, ado_ids=None, tag="")
-        _, obj_best, _ = solver._optimize(z0, ado_ids=None)
+        obj_0, _ = solver._evaluate(z0, ado_ids=env.ado_ids, tag="")
+        _, obj_best, _ = solver._optimize(z0, ado_ids=env.ado_ids)
 
         assert obj_0 >= obj_best
 

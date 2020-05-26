@@ -44,8 +44,6 @@ class InteractionPositionModule(PureObjectiveModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        # Per default (i.e. if `ado_ids`) is None use all ado ids defined in the environment.
-        ado_ids = ado_ids if ado_ids is not None else self._env.ado_ids
         # The objective can only work if any ado agents are taken into account, otherwise return None.
         if len(ado_ids) == 0 or self._env.num_ghosts == 0:
             return None
