@@ -4,31 +4,37 @@ import torch
 
 import mantrap.constants
 import mantrap.environment
+import mantrap.utility.maths
 
-from .base import PureObjectiveModule
+from mantrap.modules.base import PureObjectiveModule
 
 
-class InteractionPositionModule(PureObjectiveModule):
-    """Loss based on positional interaction between robot and ados.
+class InteractionAccelerationModule(PureObjectiveModule):
+    """Loss based on accelerational interaction between robot and ados.
 
-    As a proxy for interaction based on the position of every ado is computed in a (fictional) scene without an
-    ego (robot) and compared to the actual occurring positions in the scene, as in intuitive measure for the change
-    the robot's presence introduces to the scene.
+    As a proxy for interaction based on the acceleration of every ado is computed in a (fictional) scene without an
+    ego (robot) and compared to the actual occurring accelerations in the scene. As for autonomous driving the
+    acceleration can be expressed "moving comfort", since a change in acceleration, especially a sudden change like
+    strong de-acceleration, decreases the comfort of the agent.
 
     Re-Predicting it every time-step would be more correct, however it would also require a lot more computational
     effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
     that would occur, if the ego is not there from the beginning.
 
-    .. math:: objective = \\sum_{T} \\sum_{ghosts} || pos_{t,i} - pos_{t,i}^{wo} ||_2
+    .. math:: objective = \\sum_{T} \\sum_{ghosts} || acc_{t,i} - acc_{t,i}^{wo} ||_2
 
-    :param env: solver's environment environment for predicting the behaviour without interaction.
+    :param env: environment for predicting the behaviour without interaction.
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, weight: float = 1.0,
                  **unused):
-        super(InteractionPositionModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
+        super(InteractionAccelerationModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
 
         if env.num_ghosts > 0:
-            self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]
+            ado_states_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)
+            self._derivative_2 = mantrap.utility.maths.Derivative2(horizon=self.t_horizon + 1,
+                                                                   dt=self._env.dt,
+                                                                   num_axes=2)
+            self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
 
     def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                            ) -> typing.Union[torch.Tensor, None]:
@@ -36,7 +42,7 @@ class InteractionPositionModule(PureObjectiveModule):
 
         To compute the objective value first predict the behaviour of all agents (and modes) in the scene in the
         planning horizon, conditioned on the ego trajectory. Then iterate over every ghost in the scene and
-        find the deviation between the positions of a specific agent at the specific point in time conditioned
+        find the deviation between the acceleration of a specific agent at the specific point in time conditioned
         on the ego trajectory and unconditioned. Multiply by the weights of the modes, in order to encounter for
         difference in importance between these modes.
 
@@ -58,11 +64,15 @@ class InteractionPositionModule(PureObjectiveModule):
         objective = torch.zeros(1)
         for ado_id in ado_ids:
             for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
-                for t in range(ego_trajectory.shape[0]):
-                    m_ado, m_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
-                    ado_position = graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"]
-                    ado_position_wo = self._ado_positions_wo[m_ado, m_mode, t, :]
-                    objective += torch.norm(ado_position - ado_position_wo) * ghost.weight
+                for t in range(1, ego_trajectory.shape[0] - 2):
+                    i_ado, i_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
+                    ado_acceleration = self._derivative_2.compute_single(
+                        graph[f"{ghost.id}_{t - 1}_{mantrap.constants.GK_POSITION}"],
+                        graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"],
+                        graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"],
+                    )
+                    ado_acceleration_wo = self._ado_accelerations_wo[i_ado, i_mode, t, :]
+                    objective += torch.norm(ado_acceleration - ado_acceleration_wo) * ghost.weight
 
         return objective
 
@@ -82,4 +92,4 @@ class InteractionPositionModule(PureObjectiveModule):
     ###########################################################################
     @property
     def name(self) -> str:
-        return "interaction_pos"
+        return "interact_acc"

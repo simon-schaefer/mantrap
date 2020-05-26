@@ -98,7 +98,7 @@ class MonteCarloTreeSearch(SearchIntermediate, ZControlIntermediate):
     @staticmethod
     def module_defaults() -> typing.Union[typing.List[typing.Tuple], typing.List]:
         return [(mantrap.modules.GoalNormModule, {"optimize_speed": False, "weight": 1.0}),
-                (mantrap.modules.InteractionPositionModule, {"weight": 1.0}),
+                (mantrap.modules.baselines.InteractionPositionModule, {"weight": 1.0}),
                 mantrap.modules.ControlLimitModule,
                 mantrap.modules.SpeedLimitModule,
                 mantrap.modules.baselines.MinDistanceModule]
