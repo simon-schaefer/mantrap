@@ -684,7 +684,7 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_prediction(self, ego_trajectory: torch.Tensor, enforce: bool = False):
+    def visualize_prediction(self, ego_trajectory: torch.Tensor, enforce: bool = False, **vis_kwargs):
         """Visualize the predictions for the scene based on the given ego trajectory.
 
         In order to be use the general `visualize()` function defined in the `mantrap.visualization` - package the ego
@@ -720,10 +720,11 @@ class GraphBasedEnvironment(abc.ABC):
                 ado_planned_wo=ado_stretched_wo,
                 plot_path_only=True,
                 env=self,
-                file_path=self._visualize_output_format(name="prediction")
+                file_path=self._visualize_output_format(name="prediction"),
+                **vis_kwargs
             )
 
-    def visualize_prediction_wo_ego(self, t_horizon: int, enforce: bool = False):
+    def visualize_prediction_wo_ego(self, t_horizon: int, enforce: bool = False, **vis_kwargs):
         """Visualize the predictions for the scene based on the given ego trajectory.
 
         In order to be use the general `visualize()` function defined in the `mantrap.visualization` - package the ego
@@ -745,7 +746,11 @@ class GraphBasedEnvironment(abc.ABC):
                 ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
 
             output_path = self._visualize_output_format(name="prediction_wo_ego")
-            return visualize_overview(ado_planned_wo=ado_stretched_wo, plot_path_only=True, env=self, file_path=output_path)
+            return visualize_overview(ado_planned_wo=ado_stretched_wo,
+                                      plot_path_only=True,
+                                      env=self,
+                                      file_path=output_path,
+                                      **vis_kwargs)
 
     def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
         """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,

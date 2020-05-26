@@ -17,12 +17,34 @@ def visualize_overview(
     ego_planned: torch.Tensor = None,
     ado_planned: torch.Tensor = None,
     ego_goal: torch.Tensor = None,
-    file_path: str = None,
     obj_dict: typing.Dict[str, typing.List[torch.Tensor]] = None,
     inf_dict: typing.Dict[str, typing.List[torch.Tensor]] = None,
     ego_trials: typing.List[typing.List[torch.Tensor]] = None,
-    plot_path_only: bool = False
+    plot_path_only: bool = False,
+    legend: bool = False,
+    kde: bool = False,
+    frame_interval: float = mantrap.constants.VISUALIZATION_FRAME_DELAY,
+    restart_delay: float = mantrap.constants.VISUALIZATION_RESTART_DELAY,
+    file_path: str = None,
 ):
+    """Visualize robot/ado trajectories extended by state or optimization data.
+
+   :param ado_planned_wo: ado trajectories without robot (num_ados, num_modes, t_horizon + 1, 5).
+   :param env: simulation environment, just used statically here (e.g. to convert ids to agents, roll out
+               trajectories, etc.
+   :param ego_planned: planned/optimized ego trajectory (t_horizon + 1, 5).
+   :param ado_planned: according ado trajectory conditioned on ego_planned (num_ados, num_modes, t_horizon + 1, 5).
+   :param ego_goal: optimization robot goal state.
+   :param obj_dict: dictionary storing the objective values by objective module and optimization iteration.
+   :param inf_dict: dictionary storing the constraint infeasibility values by constraint module and opt. iteration.
+   :param ego_trials: trial ego trajectories during optimization.
+   :param plot_path_only: plot only path (main) plot not stats plots.
+   :param legend: draw legend in paths plot (might be a mess for many agents).
+   :param kde: plot probabilistic trajectory distributions as kde plot (instead of single modes) per timestep.
+   :param frame_interval: delay from one to another frame in [ms].
+   :param restart_delay: delay for GIF restart after it has been finished [ms].
+   :param file_path: storage path, if None return as HTML video object.
+    """
     num_vertical_plots = 2  # paths (2)
     num_env_steps = ado_planned_wo.shape[0]
     assert num_env_steps > 1
@@ -84,6 +106,8 @@ def visualize_overview(
             env=env,
             ego_goal=ego_goal,
             ego_traj_trials=ego_trials_k,
+            legend=legend,
+            kde=kde,
             ax=axs[0]
         )
 
@@ -147,6 +171,5 @@ def visualize_overview(
         return axs
 
     anim = matplotlib.animation.FuncAnimation(fig, update, frames=num_env_steps,
-                                              interval=mantrap.constants.VISUALIZATION_FRAME_DELAY,
-                                              repeat_delay=mantrap.constants.VISUALIZATION_RESTART_DELAY)
+                                              interval=frame_interval, repeat_delay=restart_delay)
     return __interactive_save_video(anim, file_path=file_path)

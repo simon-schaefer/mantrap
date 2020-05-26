@@ -495,7 +495,7 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_scenes(self, plot_path_only: bool = False,  tag: str = mantrap.constants.TAG_OPTIMIZATION):
+    def visualize_scenes(self, plot_path_only: bool = False, tag: str = mantrap.constants.TAG_OPTIMIZATION, **vis_keys):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory), if __debug__ is True (otherwise no logging).
 
@@ -521,8 +521,11 @@ class TrajOptSolver(abc.ABC):
                 ado_planned=self.log[f"{tag}/ado_planned_end"],
                 ado_planned_wo=self.log[f"{tag}/ado_planned_wo_end"],
                 ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],
-                ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict, env=self.env,
-                plot_path_only=plot_path_only, file_path=self._visualize_output_format("scenes")
+                ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict,
+                env=self.env,
+                plot_path_only=plot_path_only,
+                file_path=self._visualize_output_format("scenes"),
+                **vis_keys
             )
 
     def visualize_heat_map(self, propagation: str = "log", resolution: float = 0.1):

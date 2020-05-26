@@ -92,7 +92,8 @@ FILTER_EUCLIDEAN_RADIUS = 7.0  # [m] attention radius of ego for planning
 CONFIG_UNKNOWN = "unknown"
 VISUALIZATION_AGENT_RADIUS = 0.1
 VISUALIZATION_DIRECTORY = "outputs/"
-VISUALIZATION_FRAME_DELAY = 1000  # [ms]
+VISUALIZATION_FRAME_DELAY = 400  # [ms]
 VISUALIZATION_RESTART_DELAY = 2000  # [ms]
 
-COLORS = [[1, 0, 0], [0, 0, 1], [0.5, 0.5, 0.5], [0, 1, 1], [1, 0, 1]]
+COLORS = [[1, 0, 0], [0, 0, 1], [0.5, 0.5, 0.5], [0.0, 0.8, 0.4], [0.2, 0.6, 0.1], [0.4, 0.1, 0.8],
+          [0.5, 0.0, 1.0], [0.6, 1.0, 0.0], [0.4, 0.7, 0.7], [1, 0, 1]]

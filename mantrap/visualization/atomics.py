@@ -3,6 +3,7 @@ import typing
 import matplotlib.animation
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 import torch
 
 import mantrap.utility.shaping
@@ -14,6 +15,7 @@ def __draw_agent_representation(
     color: typing.Union[np.ndarray, str],
     env_axes: typing.Tuple[typing.Tuple[float, float], typing.Tuple[float, float]],
     ax: plt.Axes,
+    alpha: float = 1.0
 ):
     """Add circle for agent and agent id description. If the state (position) is outside of the scene, just
     do not plot it, return directly instead."""
@@ -22,38 +24,46 @@ def __draw_agent_representation(
     if not (env_axes[0][0] < state[0] < env_axes[0][1]) or not (env_axes[1][0] < state[1] < env_axes[1][1]):
         return
     state = state.detach().numpy()
-    ado_circle = plt.Circle(state[0:2], radius=0.2, color=color, clip_on=True)
+    ado_circle = plt.Circle(state[0:2], radius=0.2, color=color, clip_on=True, alpha=alpha)
     ax.add_artist(ado_circle)
     if name is not None:
         ax.text(state[0], state[1], name, fontsize=8)
     return ax
 
 
-def __draw_trajectory_axis(
-    env_axes: typing.Tuple[typing.Tuple[float, float], typing.Tuple[float, float]],
-    ax: plt.Axes
-):
+def __draw_trajectory_axis(env_axes: typing.Tuple[typing.Tuple, typing.Tuple], ax: plt.Axes, legend: bool = True
+                           ):
     # Set axes limitations for x- and y-axis and add legend and grid to visualization.
     ax.set_xlim(*env_axes[0])
     ax.set_ylim(*env_axes[1])
     ax.grid()
-    ax.legend()
+    if legend:
+        ax.legend()
     return ax
 
 
 def __draw_trajectories(
     ado_trajectories_wo: torch.Tensor,
     env: mantrap.environment.base.GraphBasedEnvironment,
+    legend: bool,
+    kde: bool,
     ax: plt.Axes,
     ego_trajectory: torch.Tensor = None,
     ado_trajectories: torch.Tensor = None,
     ego_goal: typing.Union[torch.Tensor, None] = None,
-    ego_traj_trials: typing.List[torch.Tensor] = None
+    ego_traj_trials: typing.List[torch.Tensor] = None,
 ):
     """Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as the
     resulting ado trajectories based on some environment."""
     assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories_wo, ados=env.num_ados)
     planning_horizon = ado_trajectories_wo.shape[2]
+
+    # Check ado trajectories and decide whether to mainly plot the without trajectories or the conditioned
+    # trajectories (if they are defined).
+    ado_traj_main = ado_trajectories_wo.detach().clone()
+    if ado_trajectories is not None:
+        assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, planning_horizon, ados=env.num_ados)
+        ado_traj_main = ado_trajectories.detach().clone()
 
     # Plot ego trajectory.
     if ego_trajectory is not None:
@@ -74,23 +84,45 @@ def __draw_trajectories(
             ego_traj_trial_np = ego_traj_trial.detach().numpy()
             ax.plot(ego_traj_trial_np[:, 0], ego_traj_trial_np[:, 1], "--", color=env.ego.color, alpha=0.04)
 
-    # Plot current and base resulting simulated ado trajectories in the scene.
+    # If kde then plot the distribution of the ado position probability distribution, additional to
+    # the single ghosts, but only for the current time-step (t-index = 0).
+    if kde:
+        ados = env.ados()
+        for i_ado in range(ado_traj_main.shape[0]):
+            ado_id = ados[i_ado].id
+            ado_color = ados[i_ado].color
+            ado_pos_main = ado_traj_main[i_ado, :, 0, :].detach()
+
+            # If all modes are at the same position, e.g. at the initial state, the resulting stacked
+            # position matrix is singular and cannot be plotted as kde-plot. Then only draw a single
+            # agent representation.
+            if torch.allclose(ado_pos_main[:, 0:2], ado_pos_main[0, 0:2]):
+                state = ado_pos_main[0, :]
+                ax = __draw_agent_representation(state, color=ado_color, name=ado_id, env_axes=env.axes, ax=ax)
+
+            # Otherwise draw the distribution using seaborn's kde-plot over the x- and y-positions
+            # stacked over all modes.
+            else:
+                sns.kdeplot(ado_pos_main[:, 0].numpy(), ado_pos_main[:, 1].numpy(),
+                            ax=ax, shade=True, shade_lowest=False, color=ado_color, alpha=0.8)
+
+    # Plot each ghosts in single agent representation and its future trajectory.
+    ghosts_alpha = 1.0 if not kde else 0.2
     for ghost in env.ghosts:
         i_ado, i_mode = env.convert_ghost_id(ghost_id=ghost.id)
         ado_id, ado_color = ghost.id, ghost.agent.color
+
         ado_pos_wo = ado_trajectories_wo[i_ado, i_mode, :, 0:2].detach().numpy()
-
-        ax.plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "--", color=ado_color, label=f"{ado_id}_wo")
+        ax.plot(ado_pos_wo[:, 0], ado_pos_wo[:, 1], "--", alpha=ghosts_alpha, color=ado_color, label=f"{ado_id}_wo")
         if ado_trajectories is not None:
-            assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, planning_horizon, ados=env.num_ados)
             ado_pos = ado_trajectories[i_ado, i_mode, :, 0:2].detach().numpy()
-            ax.plot(ado_pos[:, 0], ado_pos[:, 1], "-*", color=ado_color, label=f"{ado_id}")
-            agent_rep_state = ado_trajectories[i_ado, i_mode, 0, :]
-        else:
-            agent_rep_state = ado_trajectories_wo[i_ado, i_mode, 0, :]
-        ax = __draw_agent_representation(agent_rep_state, color=ado_color, name=ado_id, env_axes=env.axes, ax=ax)
+            ax.plot(ado_pos[:, 0], ado_pos[:, 1], "-*", alpha=ghosts_alpha, color=ado_color, label=f"{ado_id}")
 
-    ax = __draw_trajectory_axis(env.axes, ax=ax)
+        ghost_state = ado_traj_main[i_ado, i_mode, 0, :]
+        ax = __draw_agent_representation(ghost_state, color=ado_color, name=ado_id, env_axes=env.axes,
+                                         alpha=ghosts_alpha, ax=ax)
+
+    ax = __draw_trajectory_axis(env.axes, ax=ax, legend=legend)
     return ax
 
 
