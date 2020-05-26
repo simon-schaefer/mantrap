@@ -47,9 +47,36 @@
             
   <div class="section" id="module-mantrap.visualization.overview">
 <span id="visualisation"></span><h1>Visualisation<a class="headerlink" href="#module-mantrap.visualization.overview" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt id="mantrap.visualization.overview.visualize_overview">
+<code class="sig-prename descclassname">mantrap.visualization.overview.</code><code class="sig-name descname">visualize_overview</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ado_planned_wo</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ego_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_goal</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">obj_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>torch.Tensor<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">inf_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>torch.Tensor<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_trials</span><span class="p">:</span> <span class="n">List<span class="p">[</span>List<span class="p">[</span>torch.Tensor<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot_path_only</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">legend</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">kde</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">frame_interval</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">400</span></em>, <em class="sig-param"><span class="n">restart_delay</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">2000</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.overview.visualize_overview" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualize robot/ado trajectories extended by state or optimization data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ado_planned_wo</strong> – ado trajectories without robot (num_ados, num_modes, t_horizon + 1, 5).</p></li>
+<li><p><strong>env</strong> – simulation environment, just used statically here (e.g. to convert ids to agents, roll out
+trajectories, etc.</p></li>
+<li><p><strong>ego_planned</strong> – planned/optimized ego trajectory (t_horizon + 1, 5).</p></li>
+<li><p><strong>ado_planned</strong> – according ado trajectory conditioned on ego_planned (num_ados, num_modes, t_horizon + 1, 5).</p></li>
+<li><p><strong>ego_goal</strong> – optimization robot goal state.</p></li>
+<li><p><strong>obj_dict</strong> – dictionary storing the objective values by objective module and optimization iteration.</p></li>
+<li><p><strong>inf_dict</strong> – dictionary storing the constraint infeasibility values by constraint module and opt. iteration.</p></li>
+<li><p><strong>ego_trials</strong> – trial ego trajectories during optimization.</p></li>
+<li><p><strong>plot_path_only</strong> – plot only path (main) plot not stats plots.</p></li>
+<li><p><strong>legend</strong> – draw legend in paths plot (might be a mess for many agents).</p></li>
+<li><p><strong>kde</strong> – plot probabilistic trajectory distributions as kde plot (instead of single modes) per timestep.</p></li>
+<li><p><strong>frame_interval</strong> – delay from one to another frame in [ms].</p></li>
+<li><p><strong>restart_delay</strong> – delay for GIF restart after it has been finished [ms].</p></li>
+<li><p><strong>file_path</strong> – storage path, if None return as HTML video object.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <span class="target" id="module-mantrap.visualization.heat_map"></span><dl class="py function">
 <dt id="mantrap.visualization.heat_map.visualize_heat_map">
-<code class="sig-prename descclassname">mantrap.visualization.heat_map.</code><code class="sig-name descname">visualize_heat_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">images</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em>, <em class="sig-param"><span class="n">bounds</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>List<span class="p">, </span>List<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">choices</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">resolution</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.heat_map.visualize_heat_map" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">mantrap.visualization.heat_map.</code><code class="sig-name descname">visualize_heat_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">images</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em>, <em class="sig-param"><span class="n">bounds</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">color_bounds</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">choices</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">resolution</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">title</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ax_labels</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>str<span class="p">, </span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.heat_map.visualize_heat_map" title="Permalink to this definition">¶</a></dt>
 <dd><p>Visualize the given images as heat-maps.</p>
 <p>The images are plotted as an animation (GIF) and labeled using the boundaries defined in <cite>bounds</cite>.
 Additionally, e.g. for the visualization of objective and constraint violation values, the “choices”
@@ -58,24 +85,20 @@ variable, then the variables chosen by the optimizer can be visualized.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>images</strong> – heat-map images to plot (#steps, N, M).</p></li>
-<li><p><strong>bounds</strong> – lower and upper bounds for image dimensions.</p></li>
+<li><p><strong>images</strong> – heat-map images to plot (#steps, Nx, Ny).</p></li>
+<li><p><strong>bounds</strong> – lower and upper bounds for image dimensions ((lower1, lower2), (upper1, upper2)).</p></li>
+<li><p><strong>color_bounds</strong> – min and max value for heat-map color-bar, a_min and a_max if None.</p></li>
 <li><p><strong>choices</strong> – chosen variables as described above (#steps, 2).</p></li>
 <li><p><strong>resolution</strong> – image resolution to convert discrete image grid points to bounds.</p></li>
+<li><p><strong>title</strong> – figure title, only steps-title if None.</p></li>
+<li><p><strong>ax_labels</strong> – axes labels tuple, no labels if None.</p></li>
 <li><p><strong>file_path</strong> – gif storage path (if None, then output is HTML5 video !).</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
-<span class="target" id="module-mantrap.visualization.curves"></span><dl class="py function">
-<dt id="mantrap.visualization.curves.visualize_curves">
-<code class="sig-prename descclassname">mantrap.visualization.curves.</code><code class="sig-name descname">visualize_curves</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">curve_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>float<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">y_label</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.curves.visualize_curves" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plot and label several values over the iteration (list iteration), all together in one plot.
-Either save the image as png file (if <cite>file_path</cite> is set) or let the figure open for <cite>plt.show()</cite>.</p>
-</dd></dl>
-
-<span class="target" id="module-mantrap.visualization.trajectories"></span></div>
+</div>
 
 
           </div>

@@ -37,17 +37,17 @@ Interaction-Driven Objectives
 
 Acceleration Interaction
 ~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: mantrap.modules.acc_interact
+.. automodule:: mantrap.modules.baselines.acc_interact
     :members:
 
 Position Interaction
 ~~~~~~~~~~~~~~~~~~~~
-.. automodule:: mantrap.modules.pos_interact
+.. automodule:: mantrap.modules.baselines.pos_interact
     :members:
 
 Control-Effort Constraints
 --------------------------
-.. automodule:: mantrap.modules.baselines.control_limits
+.. automodule:: mantrap.modules.control_limits
     :members:
 
 Safety-Constraints

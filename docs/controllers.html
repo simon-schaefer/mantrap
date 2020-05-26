@@ -16,7 +16,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Evaluation" href="evaluation.html" />
-    <link rel="prev" title="Filter Modules" href="filter.html" />
+    <link rel="prev" title="Attention Modules" href="attention.html" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
 <!--[if lte IE 6]>
@@ -38,7 +38,7 @@
           <a href="evaluation.html" title="Evaluation"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="filter.html" title="Filter Modules"
+          <a href="attention.html" title="Attention Modules"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
       </ul>
@@ -51,37 +51,8 @@
             
   <div class="section" id="controller">
 <h1>Controller<a class="headerlink" href="#controller" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-mantrap.controller.p_ahead">
-<span id="pi-control"></span><h2>PI Control<a class="headerlink" href="#module-mantrap.controller.p_ahead" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt id="mantrap.controller.p_ahead.p_ahead_controller">
-<code class="sig-prename descclassname">mantrap.controller.p_ahead.</code><code class="sig-name descname">p_ahead_controller</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">agent</span><span class="p">:</span> <span class="n"><a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a></span></em>, <em class="sig-param"><span class="n">path</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">max_sim_time</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dtc</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">speed_reference</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">breaking_acc</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.controller.p_ahead.p_ahead_controller" title="Permalink to this definition">¶</a></dt>
-<dd><p>Look-ahead based P-Controller inspired by pure pursuit controller implemented in PythonRobotics library.</p>
-<p>This controller separates the optimization of “steering” and acceleration input and iteratively determines the
-control input to stay on the given path by alternating between calculating u (control) and simulating the
-agent’s behaviour given that input. Therefore in every step first the nearest point, which is the point on
-the given path which is closest to the state of the agent, and the target point, the point it should steer
-to are computed. Given these points, the current agent’s state and a reference speed profile along the path
-(constant speed, linearly breaking at the end) some control input is determined which maneuvers the agent to
-the target point.</p>
-<p>The algorithm is similar to the pure pursuit algorithm but using generalized dynamics. Due to high amount of
-repetitions, the small degree of dimensionality (assuming 2D) and since no gradient is required, the scalar
-implementation using native python types only is preferred. Compared to a PyTorch based implementation
-(167 ms ± 16.7 ms) it is way more efficient (5.17 ms ± 65.6 µs).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>agent</strong> – agent to control (including its state and dynamics).</p></li>
-<li><p><strong>path</strong> – path positions to track (N, 2).</p></li>
-<li><p><strong>max_sim_time</strong> – maximal time to forward simulate with dtc simulation time-steps [s].</p></li>
-<li><p><strong>dtc</strong> – control simulation time-steps (output controls will be discretized using dtc).</p></li>
-<li><p><strong>speed_reference</strong> – reference speed (constant phase of speed profile), max agent’s speed per default [m/s].</p></li>
-<li><p><strong>breaking_acc</strong> – maximal acceleration during breaking, max agent’s acceleration per default [m/s^2].</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
+<div class="section" id="pi-control">
+<h2>PI Control<a class="headerlink" href="#pi-control" title="Permalink to this headline">¶</a></h2>
 </div>
 </div>
 
@@ -94,14 +65,14 @@ implementation using native python types only is preferred. Compared to a PyTorc
   <h3><a href="index.html">Table of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Controller</a><ul>
-<li><a class="reference internal" href="#module-mantrap.controller.p_ahead">PI Control</a></li>
+<li><a class="reference internal" href="#pi-control">PI Control</a></li>
 </ul>
 </li>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="filter.html"
-                        title="previous chapter">Filter Modules</a></p>
+  <p class="topless"><a href="attention.html"
+                        title="previous chapter">Attention Modules</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="evaluation.html"
                         title="next chapter">Evaluation</a></p>
@@ -139,7 +110,7 @@ implementation using native python types only is preferred. Compared to a PyTorc
           <a href="evaluation.html" title="Evaluation"
              >next</a> |</li>
         <li class="right" >
-          <a href="filter.html" title="Filter Modules"
+          <a href="attention.html" title="Attention Modules"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
       </ul>

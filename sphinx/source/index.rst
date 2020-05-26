@@ -11,7 +11,6 @@ Code in Detail
    environment.rst
    solver.rst
    modules.rst
-   filter.rst
-   controllers.rst
+   attention.rst
    evaluation.rst
    visualisation.rst

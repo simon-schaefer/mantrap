@@ -15,7 +15,7 @@
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Filter Modules" href="filter.html" />
+    <link rel="next" title="Attention Modules" href="attention.html" />
     <link rel="prev" title="Solver" href="solver.html" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
@@ -35,7 +35,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="filter.html" title="Filter Modules"
+          <a href="attention.html" title="Attention Modules"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="solver.html" title="Solver"
@@ -57,7 +57,7 @@
 <span id="base-class"></span><h3>Base class<a class="headerlink" href="#module-mantrap.modules.base.optimization_module" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.modules.base.optimization_module.OptimizationModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.base.optimization_module.</code><code class="sig-name descname">OptimizationModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">has_slack</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">slack_weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.base.optimization_module.</code><code class="sig-name descname">OptimizationModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">has_slack</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">slack_weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="py method">
 <dt id="mantrap.modules.base.optimization_module.OptimizationModule.compute_constraint">
 <code class="sig-name descname">compute_constraint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.compute_constraint" title="Permalink to this definition">¶</a></dt>
@@ -227,13 +227,13 @@ for hard constraints without any inter-connection to the objective function.</p>
 <span id="goal-norm"></span><h3>Goal-Norm<a class="headerlink" href="#module-mantrap.modules.goal_norm" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.modules.goal_norm.GoalNormModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.goal_norm.</code><code class="sig-name descname">GoalNormModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">optimize_speed</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unsued</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.goal_norm.GoalNormModule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.goal_norm.</code><code class="sig-name descname">GoalNormModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">optimize_speed</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unsued</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.goal_norm.GoalNormModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Objective based on goal distance of every point of planned robot trajectory.</p>
 <p>Next to avoiding interaction with other agents the robot should reach the goal state in a finite amount of
 time. Therefore the distance of every trajectory point to the goal state is taken to account, which is
 minimized the faster the robot gets to the goal.</p>
 <div class="math notranslate nohighlight">
-\[objective = \sum_{T} || pos_t - goal ||_2\]</div>
+\[objective = 1/T \sum_{T} (pos_t - goal)^2\]</div>
 <p>However, it is more important for the last rather than the first trajectory points to be close to the goal.
 Using some strictly-increasing distribution to weight the importance of the distance at every point in time
 did not lead to the expect result, while complicating the optimization. When we want to trade-off the
@@ -270,11 +270,11 @@ the larger the trajectory index the larger the weight of the point-wise distance
 </div>
 <div class="section" id="interaction-driven-objectives">
 <h2>Interaction-Driven Objectives<a class="headerlink" href="#interaction-driven-objectives" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="module-mantrap.modules.acc_interact">
-<span id="acceleration-interaction"></span><h3>Acceleration Interaction<a class="headerlink" href="#module-mantrap.modules.acc_interact" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="module-mantrap.modules.baselines.acc_interact">
+<span id="acceleration-interaction"></span><h3>Acceleration Interaction<a class="headerlink" href="#module-mantrap.modules.baselines.acc_interact" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
-<dt id="mantrap.modules.acc_interact.InteractionAccelerationModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.acc_interact.</code><code class="sig-name descname">InteractionAccelerationModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.acc_interact.InteractionAccelerationModule" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.modules.baselines.acc_interact.InteractionAccelerationModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.acc_interact.</code><code class="sig-name descname">InteractionAccelerationModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Loss based on accelerational interaction between robot and ados.</p>
 <p>As a proxy for interaction based on the acceleration of every ado is computed in a (fictional) scene without an
 ego (robot) and compared to the actual occurring accelerations in the scene. As for autonomous driving the
@@ -293,11 +293,11 @@ that would occur, if the ego is not there from the beginning.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-mantrap.modules.pos_interact">
-<span id="position-interaction"></span><h3>Position Interaction<a class="headerlink" href="#module-mantrap.modules.pos_interact" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="module-mantrap.modules.baselines.pos_interact">
+<span id="position-interaction"></span><h3>Position Interaction<a class="headerlink" href="#module-mantrap.modules.baselines.pos_interact" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
-<dt id="mantrap.modules.pos_interact.InteractionPositionModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.pos_interact.</code><code class="sig-name descname">InteractionPositionModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.pos_interact.InteractionPositionModule" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.modules.baselines.pos_interact.InteractionPositionModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.pos_interact.</code><code class="sig-name descname">InteractionPositionModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.pos_interact.InteractionPositionModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Loss based on positional interaction between robot and ados.</p>
 <p>As a proxy for interaction based on the position of every ado is computed in a (fictional) scene without an
 ego (robot) and compared to the actual occurring positions in the scene, as in intuitive measure for the change
@@ -316,11 +316,11 @@ that would occur, if the ego is not there from the beginning.</p>
 
 </div>
 </div>
-<div class="section" id="module-mantrap.modules.baselines.control_limits">
-<span id="control-effort-constraints"></span><h2>Control-Effort Constraints<a class="headerlink" href="#module-mantrap.modules.baselines.control_limits" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.modules.control_limits">
+<span id="control-effort-constraints"></span><h2>Control-Effort Constraints<a class="headerlink" href="#module-mantrap.modules.control_limits" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
-<dt id="mantrap.modules.baselines.control_limits.ControlLimitModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.control_limits.</code><code class="sig-name descname">ControlLimitModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.control_limits.ControlLimitModule" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.modules.control_limits.ControlLimitModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.control_limits.</code><code class="sig-name descname">ControlLimitModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.control_limits.ControlLimitModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Maximal control input at every point in time.</p>
 <p>For computing this constraint simply the norm of the planned control input is determined and compared to the
 maximal agent’s control limit. For 0 &lt; t &lt; T_{planning}:</p>
@@ -349,6 +349,32 @@ state only depends on the relative position as well as the velocity of the robot
 pedestrian (which is a system input).</p>
 <p>The coupled system dynamics then are given as:</p>
 <p>Since <cite>sigma</cite> is a slack variable the according weight in the objective function should be comparably large.</p>
+<dl class="py method">
+<dt id="mantrap.modules.hj_reachibility.HJReachabilityModule.state_relative">
+<em class="property">static </em><code class="sig-name descname">state_relative</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x_r</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">u_r</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">x_ped</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">u_ped</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule.state_relative" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the relative state and dynamics (see module description):</p>
+<p>Since the states of robot and pedestrian as well as the action of the robot are known, at the time
+of evaluating the constraint, only the pedestrians controls are unknown. However in HJ reachability
+we look for the controls that minimize the value function, by evaluating the value function for
+several assignments of <cite>u_ped</cite> and finding the arg-min. In this context this function assumes that
+all states as well as the robots control are “unique” while it can handle a whole bunch of
+different pedestrian controls and computes the relative state for each of them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x_r</strong> – robot’s state (x, y, vx, vy)</p></li>
+<li><p><strong>u_r</strong> – robot’s control input (ux, uy).</p></li>
+<li><p><strong>x_ped</strong> – pedestrian’s state (px, py, vpx, vpy).</p></li>
+<li><p><strong>u_ped</strong> – pedestrian control input  (upx, upy).</p></li>
+<li><p><strong>dt</strong> – time-step [s] for applying dynamics on current state.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>next state for each pedestrian control input.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -398,11 +424,11 @@ the number of convergence steps might be increased.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#interaction-driven-objectives">Interaction-Driven Objectives</a><ul>
-<li><a class="reference internal" href="#module-mantrap.modules.acc_interact">Acceleration Interaction</a></li>
-<li><a class="reference internal" href="#module-mantrap.modules.pos_interact">Position Interaction</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.baselines.acc_interact">Acceleration Interaction</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.baselines.pos_interact">Position Interaction</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#module-mantrap.modules.baselines.control_limits">Control-Effort Constraints</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.control_limits">Control-Effort Constraints</a></li>
 <li><a class="reference internal" href="#safety-constraints">Safety-Constraints</a><ul>
 <li><a class="reference internal" href="#module-mantrap.modules.hj_reachibility">HJ-Reachability</a></li>
 <li><a class="reference internal" href="#module-mantrap.modules.baselines.min_distance">Minimal-Distance</a></li>
@@ -416,8 +442,8 @@ the number of convergence steps might be increased.</p>
   <p class="topless"><a href="solver.html"
                         title="previous chapter">Solver</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="filter.html"
-                        title="next chapter">Filter Modules</a></p>
+  <p class="topless"><a href="attention.html"
+                        title="next chapter">Attention Modules</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -449,7 +475,7 @@ the number of convergence steps might be increased.</p>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="filter.html" title="Filter Modules"
+          <a href="attention.html" title="Attention Modules"
              >next</a> |</li>
         <li class="right" >
           <a href="solver.html" title="Solver"
