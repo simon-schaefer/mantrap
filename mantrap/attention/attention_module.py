@@ -7,8 +7,8 @@ import numpy as np
 from mantrap.environment.base.graph_based import GraphBasedEnvironment
 
 
-class FilterModule(abc.ABC):
-    """General filter class.
+class AttentionModule(abc.ABC):
+    """General attention class.
 
     The filter selects the "important" ados/modes from the list of all ados in the scene. The selection is returned
     as list of indices of the chosen ados which should be taken into account in further computations.

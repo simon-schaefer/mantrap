@@ -3,11 +3,11 @@ import torch
 
 import mantrap.constants
 
-from .filter_module import FilterModule
+from .attention_module import AttentionModule
 
 
-class EuclideanModule(FilterModule):
-    """Filter based on the euclidean distance between current ego's and ado's positions.
+class EuclideanModule(AttentionModule):
+    """Attention based on the euclidean distance between current ego's and ado's positions.
 
     The euclidean filter selects the ados that are close, i.e. in a certain euclidean distance from the ego position.
     Thereby merely the positions at time t = t_current are taken into account

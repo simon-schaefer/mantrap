@@ -4,7 +4,7 @@ import mantrap.utility
 import mantrap.agents
 import mantrap.environment
 
-import mantrap.filter
+import mantrap.attention
 import mantrap.modules
 
 import mantrap.solver

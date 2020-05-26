@@ -9,7 +9,7 @@ import torch
 
 import mantrap.constants
 import mantrap.environment
-import mantrap.filter
+import mantrap.attention
 import mantrap.modules
 import mantrap.utility
 
@@ -36,7 +36,7 @@ class TrajOptSolver(abc.ABC):
     :param t_planning: planning horizon, i.e. how many future time-steps shall be taken into account in planning.
     :param multiprocessing: use multiprocessing for optimization.
     :param modules: List of optimization modules and according kwargs (if required).
-    :param filter_module: Filter module name (None = no filter).
+    :param attention_module: Filter module name (None = no filter).
     :param eval_env: environment that should be used for evaluation ("real" environment).
     :param config_name: name of solver configuration.
     """
@@ -46,7 +46,7 @@ class TrajOptSolver(abc.ABC):
         goal: torch.Tensor,
         t_planning: int = mantrap.constants.SOLVER_HORIZON_DEFAULT,
         modules: typing.Union[typing.List[typing.Tuple], typing.List] = None,
-        filter_module: mantrap.filter.FilterModule.__class__ = None,
+        attention_module: mantrap.attention.AttentionModule.__class__ = None,
         eval_env: mantrap.environment.base.GraphBasedEnvironment = None,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN,
         **solver_params
@@ -83,10 +83,10 @@ class TrajOptSolver(abc.ABC):
             module_object = module(t_horizon=self.planning_horizon, goal=self.goal, env=self.env, **module_kwargs)
             self._module_dict[module_object.name] = module_object
 
-        # Filter module for "importance" selection of which ados to include into optimization.
-        self._filter_module = None
-        if filter_module is not None:
-            self._filter_module = filter_module(env=self.env, t_horizon=self.planning_horizon)
+        # Attention module for "importance" selection of which ados to include into optimization.
+        self._attention_module = None
+        if attention_module is not None:
+            self._attention_module = attention_module(env=self.env, t_horizon=self.planning_horizon)
 
         # Logging variables. Using default-dict(deque) whenever a new entry is created, it does not have to be checked
         # whether the related key is already existing, since if it is not existing, it is created with a queue as
@@ -108,7 +108,7 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Solving #################################################################
     ###########################################################################
-    def solve(self, time_steps: int, **solver_kwargs) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+    def solve(self, time_steps: int, **kwargs) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal environment with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
@@ -140,7 +140,7 @@ class TrajOptSolver(abc.ABC):
             self._iteration = k
 
             # Solve optimisation problem.
-            z_k, _, optimization_log = self.optimize(z_warm_start, tag=mantrap.constants.TAG_OPTIMIZATION)
+            z_k, _, optimization_log = self.optimize(z_warm_start, tag=mantrap.constants.TAG_OPTIMIZATION, **kwargs)
             ego_controls_k = self.z_to_ego_controls(z_k.detach().numpy())
             assert mantrap.utility.shaping.check_ego_controls(ego_controls_k, t_horizon=self.planning_horizon)
 
@@ -195,8 +195,8 @@ class TrajOptSolver(abc.ABC):
     def optimize(self, z0: torch.Tensor, tag: str, **kwargs
                  ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
         # Filter the important ghost indices from the current scene state.
-        if self._filter_module is not None:
-            ado_ids = self._filter_module.compute()
+        if self._attention_module is not None:
+            ado_ids = self._attention_module.compute()
             logging.debug(f"solver [{tag}]: optimizing w.r.t. important ado ids = {ado_ids}")
         else:
             ado_ids = self.env.ado_ids  # all ado ids (not filtered)
@@ -324,8 +324,8 @@ class TrajOptSolver(abc.ABC):
         if __debug__ is True:
             ado_planned = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
             ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_trajectory.shape[0])
-            self._log_append(ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo, tag=tag)
-            self._log_append(obj_overall=objective, tag=tag)
+            self._log_append(tag, ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo)
+            self._log_append(tag, obj_overall=objective)
             module_log = {f"{mantrap.constants.LT_OBJECTIVE}_{key}": mod.obj_current(tag=tag)
                           for key, mod in self.module_dict.items()}
             self._log_append(**module_log, tag=tag)
@@ -688,7 +688,7 @@ class TrajOptSolver(abc.ABC):
         return [mantrap.constants.LK_OVERALL_PERFORMANCE] + list(self.module_dict.keys())
 
     def filter_module(self) -> str:
-        return self._filter_module.name() if self._filter_module is not None else "none"
+        return self._attention_module.name() if self._attention_module is not None else "none"
 
     ###########################################################################
     # Logging parameters ######################################################

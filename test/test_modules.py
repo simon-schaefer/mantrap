@@ -7,7 +7,7 @@ import torch
 
 import mantrap.agents
 import mantrap.environment
-import mantrap.filter
+import mantrap.attention
 import mantrap.modules
 import mantrap.utility.maths
 
@@ -373,11 +373,11 @@ def test_min_distance_constraint_violation(env_class, num_modes):
 ###########################################################################
 # Filter ##################################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", [mantrap.filter.EuclideanModule,
-                                          mantrap.filter.ReachabilityModule])
+@pytest.mark.parametrize("module_class", [mantrap.attention.EuclideanModule,
+                                          mantrap.attention.ReachabilityModule])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
-class TestFilter:
+class TestAttention:
 
     @staticmethod
     def test_runtime(module_class, env_class, num_modes):

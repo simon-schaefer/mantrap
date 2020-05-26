@@ -1,11 +1,11 @@
 import numpy as np
 import torch
 
-from .filter_module import FilterModule
+from .attention_module import AttentionModule
 
 
-class ReachabilityModule(FilterModule):
-    """Filter based on forward reachability analysis between the ego and all ados.
+class ReachabilityModule(AttentionModule):
+    """Attention based on forward reachability analysis between the ego and all ados.
 
     The reachability deals with the problem that simple euclidean-distance based filtering does not take the agents
     current velocity into account, merely the position. Forward reachability analysis the boundaries of the area

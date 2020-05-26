@@ -7,7 +7,7 @@ import torch
 import mantrap.constants
 import mantrap.agents
 import mantrap.environment
-import mantrap.filter
+import mantrap.attention
 import mantrap.modules
 import mantrap.solver
 import mantrap.utility.shaping
@@ -16,22 +16,22 @@ environments = [mantrap.environment.KalmanEnvironment,
                 mantrap.environment.PotentialFieldEnvironment,
                 mantrap.environment.SocialForcesEnvironment,
                 mantrap.environment.Trajectron]
-filters = [mantrap.filter.EuclideanModule,
-           mantrap.filter.ReachabilityModule]
+attentions = [mantrap.attention.EuclideanModule,
+              mantrap.attention.ReachabilityModule]
 
 
 def scenario(
     solver_class: mantrap.solver.base.TrajOptSolver.__class__,
     env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
     num_modes: int = 1,
-    filter_class: str = None,
+    attention_class: str = None,
     **solver_kwargs
 ):
     env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 2])})
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
     env.add_ado(position=torch.tensor([3, 2]), num_modes=num_modes)
-    solver = solver_class(env, goal=torch.tensor([1, 1]), filter_module=filter_class, **solver_kwargs)
+    solver = solver_class(env, goal=torch.tensor([1, 1]), attention_module=attention_class, **solver_kwargs)
     z0 = solver.warm_start().detach().numpy()
     return env, solver, z0
 
@@ -45,17 +45,17 @@ def scenario(
                                           mantrap.solver.baselines.ORCASolver])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 3])
-@pytest.mark.parametrize("filter_class", filters)
+@pytest.mark.parametrize("attention_class", attentions)
 class TestSolvers:
 
     @staticmethod
-    def test_convergence(solver_class, env_class, num_modes, filter_class):
+    def test_convergence(solver_class, env_class, num_modes, attention_class):
         dt = mantrap.constants.ENV_DT_DEFAULT
         ego_goal_distance = (mantrap.constants.PED_SPEED_MAX / 2) * dt
         env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-ego_goal_distance, 0])}, dt=dt)
         env.add_ado(position=torch.ones(2) * 10, velocity=torch.zeros(2))
 
-        solver_kwargs = {"filter_module": filter_class, "t_planning": 1}
+        solver_kwargs = {"attention_module": attention_class, "t_planning": 1}
         solver = solver_class(env, goal=torch.zeros(2), objectives=[("goal", 1.0)], constraints=[], **solver_kwargs)
 
         z0 = solver.warm_start()
@@ -68,8 +68,9 @@ class TestSolvers:
             assert torch.all(torch.isclose(ego_trajectory_opt[k, 0:2], solver.goal, atol=0.5))
 
     @staticmethod
-    def test_formulation(solver_class, env_class, num_modes, filter_class):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes, filter_class=filter_class)
+    def test_formulation(solver_class, env_class, num_modes, attention_class):
+        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes,
+                                   attention_class=attention_class)
 
         # Test output shapes.
         objective = solver.objective(z=z0, tag="core0")
@@ -78,8 +79,8 @@ class TestSolvers:
         assert constraints.size == sum([c.num_constraints(ado_ids=env.ado_ids) for c in solver.modules])
 
     @staticmethod
-    def test_z_to_ego_trajectory(solver_class, env_class, num_modes, filter_class):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes, filter_class=filter_class)
+    def test_z_to_ego_trajectory(solver_class, env_class, num_modes, attention_class):
+        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes, attention_class=attention_class)
         ego_trajectory_initial = solver.z_to_ego_trajectory(z0).detach().numpy()[:, 0:2]
 
         x02 = np.reshape(ego_trajectory_initial, (-1, 2))
@@ -87,20 +88,20 @@ class TestSolvers:
             assert any([np.isclose(np.linalg.norm(xk - xi), 0, atol=2.0) for xk in ego_trajectory_initial])
 
     @staticmethod
-    def test_num_optimization_variables(solver_class, env_class, num_modes, filter_class):
-        _, solver, _ = scenario(solver_class, env_class=env_class, num_modes=num_modes, filter_class=filter_class)
+    def test_num_optimization_variables(solver_class, env_class, num_modes, attention_class):
+        _, solver, _ = scenario(solver_class, env_class=env_class, num_modes=num_modes, attention_class=attention_class)
         lb, ub = solver.optimization_variable_bounds()
 
         assert len(lb) == solver.num_optimization_variables()
         assert len(ub) == solver.num_optimization_variables()
 
     @staticmethod
-    def test_solve(solver_class, env_class, num_modes, filter_class):
+    def test_solve(solver_class, env_class, num_modes, attention_class):
         env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
-        solver = solver_class(env, filter_module=filter_class, goal=torch.zeros(2), t_planning=5)
+        solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
         assert solver.planning_horizon == 5
         assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
@@ -138,13 +139,13 @@ class TestSolvers:
             assert math.isclose(violation, 0.0, abs_tol=1e-3)
 
     @staticmethod
-    def test_warm_start(solver_class, env_class, num_modes, filter_class):
+    def test_warm_start(solver_class, env_class, num_modes, attention_class):
         env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0]),
                                                            "velocity": torch.ones(2)})
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
-        solver = solver_class(env, filter_module=filter_class, goal=torch.zeros(2), t_planning=5)
+        solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
         # Solve simplified optimization problem.
         z0 = solver.warm_start().detach().numpy()
@@ -184,12 +185,13 @@ class TestSearchSolvers:
 @pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 3])
-@pytest.mark.parametrize("filter_class", filters)
+@pytest.mark.parametrize("attention_class", attentions)
 class TestIPOPTSolvers:
 
     @staticmethod
-    def test_formulation(solver_class, env_class, num_modes, filter_class):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes, filter_class=filter_class)
+    def test_formulation(solver_class, env_class, num_modes, attention_class):
+        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes,
+                                   attention_class=attention_class)
 
         # Test output shapes.
         grad = solver.gradient(z=z0)
