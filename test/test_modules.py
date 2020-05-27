@@ -21,7 +21,8 @@ environments = [mantrap.environment.KalmanEnvironment,
 ###########################################################################
 # Objectives ##############################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", [mantrap.modules.baselines.InteractionPositionModule,
+@pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
+                                          mantrap.modules.baselines.InteractionPositionModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule,
                                           mantrap.modules.GoalNormModule,
                                           mantrap.modules.baselines.GoalSumModule])
@@ -151,7 +152,8 @@ class TestObjectives:
         assert np.mean(gradient_run_times) < 0.02 * num_modes  # 50 Hz
 
 
-@pytest.mark.parametrize("module_class", [mantrap.modules.baselines.InteractionPositionModule,
+@pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
+                                          mantrap.modules.baselines.InteractionPositionModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
