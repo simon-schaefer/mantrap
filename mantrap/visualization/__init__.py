@@ -1,2 +1,3 @@
 from mantrap.visualization.heat_map import visualize_heat_map
 from mantrap.visualization.overview import visualize_overview
+from mantrap.visualization.trajectories import visualize_trajectories

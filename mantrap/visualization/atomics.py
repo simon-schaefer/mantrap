@@ -51,7 +51,7 @@ def __draw_trajectories(
     ego_trajectory: torch.Tensor = None,
     ado_trajectories: torch.Tensor = None,
     ego_goal: typing.Union[torch.Tensor, None] = None,
-    ego_traj_trials: typing.List[torch.Tensor] = None,
+    ego_trajectory_trials: typing.List[torch.Tensor] = None,
 ):
     """Plot current and base solution in the scene. This includes the determined ego trajectory (x) as well as the
     resulting ado trajectories based on some environment."""
@@ -60,10 +60,10 @@ def __draw_trajectories(
 
     # Check ado trajectories and decide whether to mainly plot the without trajectories or the conditioned
     # trajectories (if they are defined).
-    ado_traj_main = ado_trajectories_wo.detach().clone()
+    ado_trajectory_main = ado_trajectories_wo.detach().clone()
     if ado_trajectories is not None:
         assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, planning_horizon, ados=env.num_ados)
-        ado_traj_main = ado_trajectories.detach().clone()
+        ado_trajectory_main = ado_trajectories.detach().clone()
 
     # Plot ego trajectory.
     if ego_trajectory is not None:
@@ -79,19 +79,19 @@ def __draw_trajectories(
         ax.plot(ego_goal[0], ego_goal[1], "rx", markersize=15.0, label="goal")
 
     # Plot trial trajectories during optimisation process.
-    if ego_traj_trials is not None:
-        for ego_traj_trial in ego_traj_trials:
-            ego_traj_trial_np = ego_traj_trial.detach().numpy()
-            ax.plot(ego_traj_trial_np[:, 0], ego_traj_trial_np[:, 1], "--", color=env.ego.color, alpha=0.04)
+    if ego_trajectory_trials is not None:
+        for trial in ego_trajectory_trials:
+            trial_np = trial.detach().numpy()
+            ax.plot(trial_np[:, 0], trial_np[:, 1], "--", color=env.ego.color, alpha=0.04)
 
     # If kde then plot the distribution of the ado position probability distribution, additional to
     # the single ghosts, but only for the current time-step (t-index = 0).
     if kde:
         ados = env.ados()
-        for i_ado in range(ado_traj_main.shape[0]):
+        for i_ado in range(ado_trajectory_main.shape[0]):
             ado_id = ados[i_ado].id
             ado_color = ados[i_ado].color
-            ado_pos_main = ado_traj_main[i_ado, :, 0, :].detach()
+            ado_pos_main = ado_trajectory_main[i_ado, :, 0, :].detach()
 
             # If all modes are at the same position, e.g. at the initial state, the resulting stacked
             # position matrix is singular and cannot be plotted as kde-plot. Then only draw a single
@@ -118,7 +118,7 @@ def __draw_trajectories(
             ado_pos = ado_trajectories[i_ado, i_mode, :, 0:2].detach().numpy()
             ax.plot(ado_pos[:, 0], ado_pos[:, 1], "-*", alpha=ghosts_alpha, color=ado_color, label=f"{ado_id}")
 
-        ghost_state = ado_traj_main[i_ado, i_mode, 0, :]
+        ghost_state = ado_trajectory_main[i_ado, i_mode, 0, :]
         ax = __draw_agent_representation(ghost_state, color=ado_color, name=ado_id, env_axes=env.axes,
                                          alpha=ghosts_alpha, ax=ax)
 

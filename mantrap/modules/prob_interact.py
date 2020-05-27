@@ -55,7 +55,7 @@ class InteractionProbabilityModule(PureObjectiveModule):
             _, dist = env.build_connected_graph_wo_ego(t_horizon, return_distribution=True)
             self._mus_un_conditioned = {key: x.mus.view(-1, t_horizon, 2).detach()
                                         for key, x in dist.items()}  # type: typing.Dict[str, torch.Tensor]
-            self._pis_un_conditioned = {key: x.log_pis.view(-1, t_horizon).detach()
+            self._pis_un_conditioned = {key: torch.exp(x.log_pis).view(-1, t_horizon).detach()
                                         for key, x in dist.items()}  # type: typing.Dict[str, torch.Tensor]
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str

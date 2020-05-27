@@ -105,7 +105,7 @@ def visualize_overview(
             ado_trajectories_wo=ado_planned_wo_k,
             env=env,
             ego_goal=ego_goal,
-            ego_traj_trials=ego_trials_k,
+            ego_trajectory_trials=ego_trials_k,
             legend=legend,
             kde=kde,
             ax=axs[0]
