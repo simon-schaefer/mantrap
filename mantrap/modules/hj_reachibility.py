@@ -232,7 +232,7 @@ class HJReachabilityModule(OptimizationModule):
             # all other gradient entries are zero.
             dx_rel_du = np.zeros((4, t_horizon, u_size))
             dx_rel_du[2, 0, 0] = self._env.dt
-            dx_rel_du[2, 0, 1] = self._env.dt
+            dx_rel_du[3, 0, 1] = self._env.dt
             dx_rel_du = dx_rel_du.reshape(4, -1)
             for i_ado, ado_id in enumerate(ado_ids):
                 # Compute pre-computed gradient at evaluated relative state (see constraint_core).

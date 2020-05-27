@@ -51,6 +51,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         :param z0: initial value of optimization variables.
         :param tag: name of optimization call (name of the core).
         :param ado_ids: identifiers of ados that should be taken into account during optimization.
+        :param max_cpu_time: maximal cpu runtime for optimization.
         :returns: z_opt (optimal values of optimization variable vector)
                   objective_opt (optimal objective value)
                   optimization_log (logging dictionary for this optimization = self.log)
@@ -59,20 +60,25 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         sampling_start_time = time.time()
 
         # Then start searching loop for finding more optimal trajectories.
-        z_best, obj_best, iteration = None, np.inf, 0
-        while (time.time() - sampling_start_time) < max_cpu_time:
-            z_best_candidate, obj_best_candidate, iteration_candidate, is_finished = self._optimize_inner(
-                z_best, obj_best, iteration, tag, ado_ids)
+        z_iteration, obj_iteration, iteration = None, np.inf, 0
+        z_best, obj_best = None, None
+        while True:
+            z_candidate, obj_candidate, iteration_candidate, is_finished = self._optimize_inner(
+                z_iteration, obj_iteration, iteration, tag, ado_ids)
 
             # Update iteration variables (z_best, obj_best, iteration) only if the objective has been
             # improved over the iteration.
-            if obj_best_candidate <= obj_best:
-                z_best = z_best_candidate
-                obj_best = obj_best_candidate
+            if obj_candidate <= obj_iteration:
+                z_iteration = z_candidate
+                obj_iteration = obj_candidate
                 iteration = iteration_candidate
 
             # If solver claims to be finished, end the iteration before the runtime has exceeded.
-            if is_finished:
+            # Additionally check whether loop has terminated already, then do not reset these values,
+            # because somehow the loop iterates one more time after breaking for `RandomSearch`.
+            if (is_finished or (time.time() - sampling_start_time) > max_cpu_time) and z_iteration is not None:
+                z_best = z_iteration.copy()
+                obj_best = obj_iteration
                 break
 
         # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
@@ -83,7 +89,8 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         return ego_controls, obj_best, self.log
 
     @abc.abstractmethod
-    def _optimize_inner(self, z_best: np.ndarray, obj_best: float, iteration: int, tag: str, ado_ids: typing.List[str]
+    def _optimize_inner(self, z_best: typing.Union[None, np.ndarray], obj_best: float, iteration: int,
+                        tag: str, ado_ids: typing.List[str]
                         ) -> typing.Tuple[np.ndarray, float, int, bool]:
         """Inner optimization/search function.
 

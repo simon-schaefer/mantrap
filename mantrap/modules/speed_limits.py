@@ -97,7 +97,7 @@ class SpeedLimitModule(PureConstraintModule):
         return self._env.ego.speed_limits
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
-        return 2 * self.t_horizon
+        return 2 * (self.t_horizon + 1)  # trajectory has length t_horizon + 1 !
 
     ###########################################################################
     # Constraint Properties ###################################################
