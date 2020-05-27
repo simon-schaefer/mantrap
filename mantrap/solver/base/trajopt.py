@@ -287,7 +287,9 @@ class TrajOptSolver(abc.ABC):
         By default these modules are assumed to be the goal objective function and the controls limit
         constraint, dynamics constraint fulfilled by the solver's structure.
         """
-        return [mantrap.modules.GoalNormModule, mantrap.modules.ControlLimitModule]
+        return [mantrap.modules.GoalNormModule,
+                mantrap.modules.ControlLimitModule,
+                mantrap.modules.SpeedLimitModule]
 
     @abc.abstractmethod
     def num_optimization_variables(self) -> int:

@@ -41,8 +41,7 @@ def scenario(
 ###########################################################################
 @pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver,
                                           mantrap.solver.MonteCarloTreeSearch,
-                                          mantrap.solver.baselines.RandomSearch,
-                                          mantrap.solver.baselines.ORCASolver])
+                                          mantrap.solver.baselines.RandomSearch])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 3])
 @pytest.mark.parametrize("attention_class", attentions)
