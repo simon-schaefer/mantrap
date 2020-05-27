@@ -4,6 +4,9 @@
 .. image:: https://codecov.io/gh/simon-schaefer/mantrap/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/simon-schaefer/mantrap
 
+.. image:: https://img.shields.io/badge/docs-EulerTour-blue.svg
+  :target: http://simon-schaefer.github.io/mantrap/
+
 mantrap
 =======
 
