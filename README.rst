@@ -54,12 +54,13 @@ Afterwards install the NLP-solver `IPOPT <https://coin-or.github.io/Ipopt/>`_ an
    ./coinbrew install Ipopt
 
    # Set PKG_CONFIG_PATH environment variable to IPOPT build directory
-   export PKG_CONFIG_PATH="path/to/mantrap/third_party/IPOPT/build/Ipopt/master"
-   export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/third_party/IPOPT/build/ThirdParty/Mumps/2.0"
-   export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/third_party/IPOPT/build/ThirdParty/Metis/2.0"
+   export PKG_CONFIG_PATH="path/to/mantrap/third_party/Ipopt/build/Ipopt/master"
+   export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/third_party/Ipopt/build/ThirdParty/Mumps/2.0"
+   export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/third_party/Ipopt/build/ThirdParty/Metis/2.0"
 
-   # Install cyipopt following https://pypi.org/project/ipopt/
+   # Install cyipopt (https://pypi.org/project/ipopt/)
    # Download binary files from https://pypi.org/project/ipopt/#files
+   # Copy unpacked directory in third_party and rename to cyipopt
    # Then install by running
    cd third_party/cyipopt
    python setup.py install

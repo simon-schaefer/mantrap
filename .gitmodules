@@ -1,8 +1,6 @@
-
 [submodule "third_party/ORCA"]
 	path = third_party/ORCA
 	url = https://github.com/snape/RVO2
-	
 
 [submodule "third_party/HJReachibility"]
 	path = third_party/HJReachibility

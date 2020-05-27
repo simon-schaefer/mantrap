@@ -2,7 +2,7 @@
 
 # Setup environment variables.
 PROJECT_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-EXTERNAL_HOME="$PROJECT_HOME/external"
+EXTERNAL_HOME="$PROJECT_HOME/third_party"
 VIRTUAL_ENV=".venv_mantrap"
 echo 'Setting up project ...'
 

@@ -5,38 +5,36 @@ __pycache__/
 *.pyc
 *.egg-info/
 build/
-
-# Unit test / coverage reports
-.pytest_cache/
+.ipynb_checkpoints/
 
 # Compiled Object files
 *.slo
 *.lo
 *.o
-
 # Compiled Dynamic libraries
 *.so
 *.dylib
-
 # Compiled Static libraries
 *.lai
 *.la
 *.a
 
+# Unit test / coverage reports
+.pytest_cache/
+
 # Code Environments
 .venv_*/
 .DS_Store
+.idea/
 
-# Jupyter Notebook
-.ipynb_checkpoints/
-
-# External libraries.
-third_party/
-
-# Output files.
-outputs/
-
-# Documentation files.
-*.pptx
+# Debugging, intermediate and documentation files.
 report/main.pdf
-!/report/images/
+outputs/
+third_party/reachability/
+third_party/trajectron_models/
+
+# IPOPT build files.
+third_party/cyipopt/
+third_party/Ipopt/build/
+third_party/Ipopt/Ipopt/
+third_party/Ipopt/ThirdParty/
