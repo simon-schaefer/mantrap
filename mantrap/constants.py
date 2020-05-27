@@ -11,7 +11,7 @@ LT_GRADIENT = "grad"  # LT = Log-Type
 LT_CONSTRAINT = "inf"
 LT_OBJECTIVE = "obj"
 
-LK_OVERALL_PERFORMANCE = "overall" # LK = Log-Keys (module names, ...)
+LK_OVERALL_PERFORMANCE = "overall"  # LK = Log-Keys (module names, ...)
 
 TAG_OPTIMIZATION = "optimization"  # logging tags
 TAG_WARM_START = "warm_start"

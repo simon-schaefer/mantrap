@@ -403,7 +403,7 @@ class Trajectron(ProbabilisticEnvironment):
 
         # Load configuration files.
         model, iteration = mantrap.constants.TRAJECTRON_MODEL
-        trajectron_path = mantrap.utility.io.build_os_path(f"external/trajectron_models/{model}")
+        trajectron_path = mantrap.utility.io.build_os_path(f"third_party/trajectron_models/{model}")
         config = {"trajectron_model_path": trajectron_path, "trajectron_model_iteration": iteration}
         with open(config_path) as trajectron_config_file:
             config.update(json.load(trajectron_config_file))
@@ -437,7 +437,7 @@ class Trajectron(ProbabilisticEnvironment):
 
     @staticmethod
     def module_os_path() -> str:
-        module_path = mantrap.utility.io.build_os_path("external/GenTrajectron/code", make_dir=False, free=False)
+        module_path = mantrap.utility.io.build_os_path("third_party/GenTrajectron/code", make_dir=False, free=False)
         assert os.path.isdir(module_path)
         return module_path
 

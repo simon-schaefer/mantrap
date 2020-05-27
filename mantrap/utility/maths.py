@@ -11,8 +11,10 @@ import mantrap.utility.shaping
 ###########################################################################
 class MultiModalDistribution(abc.ABC):
 
-    def __init__(self):
-        pass
+    def __init__(self, mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor):
+        self.mus = mus
+        self.log_pis = log_pis
+        self.log_sigmas = log_sigmas
 
     @abc.abstractmethod
     def log_prob(self, value):
@@ -47,10 +49,7 @@ class GMM2D(MultiModalDistribution):
     :param corrs: Cholesky factor of correlation :math:`\\rho`. [..., N]
     """
     def __init__(self, mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor, corrs: torch.Tensor):
-        super(GMM2D, self).__init__()
-        self.mus = mus
-        self.log_pis = log_pis
-        self.log_sigmas = log_sigmas
+        super(GMM2D, self).__init__(mus=mus, log_pis=log_pis, log_sigmas=log_sigmas)
         self.sigmas = torch.exp(self.log_sigmas)
         self.corrs = corrs
         self.one_minus_rho2 = torch.ones(1) - torch.pow(corrs, 2)
@@ -191,4 +190,4 @@ def normal_line(start: torch.Tensor, end: torch.Tensor):
 # Logic ###################################################################
 ###########################################################################
 def tensors_close(x: torch.Tensor, y: torch.Tensor, a_tol: float = 0.5) -> bool:
-    return x.shape == x.shape and torch.all(torch.isclose(x, y, atol=a_tol))
+    return x.shape == y.shape and torch.all(torch.isclose(x, y, atol=a_tol))

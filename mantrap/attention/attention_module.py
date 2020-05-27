@@ -4,7 +4,7 @@ import typing
 
 import numpy as np
 
-from mantrap.environment.base.graph_based import GraphBasedEnvironment
+import mantrap.environment
 
 
 class AttentionModule(abc.ABC):
@@ -18,7 +18,7 @@ class AttentionModule(abc.ABC):
     :param t_horizon: planning time horizon in number of time-steps (>= 1).
     :param env: environment object reference.
     """
-    def __init__(self, env: GraphBasedEnvironment, t_horizon: int):
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int):
         self._env = env
         self._t_horizon = t_horizon
 
@@ -48,6 +48,10 @@ class AttentionModule(abc.ABC):
     @property
     def ids_current(self) -> typing.List[str]:
         return self._ids_current
+
+    @property
+    def env(self) -> mantrap.environment.base.GraphBasedEnvironment:
+        return self._env
 
     @property
     def t_horizon(self) -> int:

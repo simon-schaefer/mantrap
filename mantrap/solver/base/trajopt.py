@@ -318,6 +318,7 @@ class TrajOptSolver(abc.ABC):
         :param tag: name of optimization call (name of the core).
         :return: weighted sum of objective values w.r.t. `z`.
         """
+        ado_ids = ado_ids if ado_ids is not None else self.env.ado_ids
         ego_trajectory = self.z_to_ego_trajectory(z)
         objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag=tag) for m in self.modules])
 
@@ -362,6 +363,7 @@ class TrajOptSolver(abc.ABC):
         :param return_violation: flag whether to return the overall constraint violation value as well.
         :return: constraints vector w.r.t. `z`.
         """
+        ado_ids = ado_ids if ado_ids is not None else self.env.ado_ids
         ego_trajectory = self.z_to_ego_trajectory(z)
         constraints = np.concatenate([m.constraint(ego_trajectory, tag=tag, ado_ids=ado_ids) for m in self.modules])
         violation = float(np.sum([m.compute_violation_internal(tag=tag) for m in self.modules]))

@@ -118,6 +118,7 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         gradient implementations of the objective modules. Sum all these gradients together for the
         final gradient estimate.
         """
+        ado_ids = ado_ids if ado_ids is not None else self.env.ado_ids
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
         gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, tag=tag, ado_ids=ado_ids) for m in self.modules]
         gradient = np.sum(gradient, axis=0)
@@ -139,10 +140,13 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         jacobian implementations of the constraints modules. Concatenate all these gradients together
         for the final jacobian estimate.
         """
+        ado_ids = ado_ids if ado_ids is not None else self.env.ado_ids
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
+
         jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, tag=tag, ado_ids=ado_ids) for m in self.modules]
         jacobian = [x for x in jacobian if x.size > 0]
         jacobian = np.concatenate(jacobian)
+        
         return jacobian
 
     # wrong hessian should just affect rate of convergence, not convergence in general

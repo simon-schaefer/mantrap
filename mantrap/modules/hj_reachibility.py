@@ -55,7 +55,7 @@ class HJReachabilityModule(OptimizationModule):
 
         # Read pre-computed value and gradient description for 2D case.
         value_function, gradients, grid_size_by_dim, tau, (grid_min, grid_max) = self.unpack_mat_file(
-            mat_file_path=os.path.join(mantrap.utility.io.build_os_path("external/reachability"), data_file)
+            mat_file_path=os.path.join(mantrap.utility.io.build_os_path("third_party/reachability"), data_file)
         )
 
         # Check same environment parameters in pre-computation and internal environment.
@@ -76,7 +76,7 @@ class HJReachabilityModule(OptimizationModule):
         # constraints in its (!) time-steps, they not necessarily have to be synced.
         t_horizon_s = self.t_horizon * self._env.dt  # constraints time-horizon in seconds
         assert tau[-1] >= t_horizon_s
-        T = int(np.argmax(tau > t_horizon_s))  # arg(value_function @ t = t_horizon in seconds)
+        t_value = int(np.argmax(tau > t_horizon_s))  # arg(value_function @ t = t_horizon in seconds)
 
         # Due to the curse of dimensionality the value function (and its gradient) cannot be computed with
         # sufficiently small grid resolution. Even if the pre-computed tensors would be very large in size
@@ -84,8 +84,8 @@ class HJReachabilityModule(OptimizationModule):
         # Thus, we use (linear) interpolation by exploiting the regular grid structure of the value function
         # tensor, implemented in the `scipy.interpolate` library.
         grid = [np.linspace(grid_min[i], grid_max[i], num=grid_size_by_dim[i]) for i in range(4)]
-        self._value_function = scipy.interpolate.RegularGridInterpolator(grid, value_function[T, :, :, :, :])
-        self._gradients = [scipy.interpolate.RegularGridInterpolator(grid, gradients[i, T, :, :, :, :])
+        self._value_function = scipy.interpolate.RegularGridInterpolator(grid, value_function[t_value, :, :, :, :])
+        self._gradients = [scipy.interpolate.RegularGridInterpolator(grid, gradients[i, t_value, :, :, :, :])
                            for i in range(4)]
 
         # For analytical jacobian and debugging - store variables for auto-grad.

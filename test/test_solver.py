@@ -158,9 +158,7 @@ class TestSolvers:
                         env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                         num_modes: int,
                         attention_class: mantrap.attention.AttentionModule.__class__):
-        env = env_class(mantrap.agents.IntegratorDTAgent,
-                        ego_position=torch.tensor([-8, 0]),
-                        ego_velocity=torch.ones(2))
+        env = env_class(mantrap.agents.IntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)

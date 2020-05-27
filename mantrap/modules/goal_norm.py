@@ -33,8 +33,8 @@ class GoalNormModule(PureObjectiveModule):
     :param optimize_speed: include cost for zero velocity at goal state.
     """
     def __init__(self, goal: torch.Tensor, env: mantrap.environment.base.GraphBasedEnvironment,
-                 optimize_speed: bool = False, **unsued):
-        super(GoalNormModule, self).__init__(env=env, weight=0.5)  # normalization-factor
+                 optimize_speed: bool = False, weight: float = 0.5, **unsued):
+        super(GoalNormModule, self).__init__(env=env, weight=weight)  # normalization-factor
 
         assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
