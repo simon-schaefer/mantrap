@@ -4,7 +4,7 @@
 .. image:: https://codecov.io/gh/simon-schaefer/mantrap/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/simon-schaefer/mantrap
 
-.. image:: https://img.shields.io/badge/docs-EulerTour-blue.svg
+.. image:: https://img.shields.io/badge/docs-mantrap-blue.svg
   :target: http://simon-schaefer.github.io/mantrap/
 
 mantrap
@@ -45,29 +45,7 @@ Afterwards install the NLP-solver `IPOPT <https://coin-or.github.io/Ipopt/>`_ an
 
 .. code-block:: bash
 
-   # Download
-   # Install Ipopt NLP solver.
-   cd third_party/Ipopt
-   chmod u+x coinbrew
-   brew install bash  # update bash version (>= 4.0)
-
-   mkdir build
-   ./coinbrew fetch Ipopt
-   ./coinbrew build Ipopt --prefix=/path/to/build --test
-   ./coinbrew install Ipopt
-
-   # Set PKG_CONFIG_PATH environment variable to IPOPT build directory
-   export PKG_CONFIG_PATH="path/to/mantrap/third_party/Ipopt/build/Ipopt/master"
-   export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/third_party/Ipopt/build/ThirdParty/Mumps/2.0"
-   export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/path/to/mantrap/mantrap/third_party/Ipopt/build/ThirdParty/Metis/2.0"
-
-   # Install cyipopt (https://pypi.org/project/ipopt/)
-   # Download binary files from https://pypi.org/project/ipopt/#files
-   # Copy unpacked directory in third_party and rename to cyipopt
-   # Then install by running
-   cd third_party/cyipopt
-   python setup.py install
-
+   bash third_party/Ipopt/install.bash
 
 In order to ensure a working Trajectron model the branch :code:`online_with_torch` has to be checkout.
 
