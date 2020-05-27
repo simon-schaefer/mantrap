@@ -55,7 +55,7 @@ install:
 # command to run tests. since trajectron is private so far, all modules connected to it are not
 # yet tested, this will be changed once trajectron is being integrated publicly
 script:
-  - coverage run -m pytest test/test_agents.py test/test_utility.py
+  - coverage run -m pytest test/
 
 # Push the results back to codecov
 after_success:

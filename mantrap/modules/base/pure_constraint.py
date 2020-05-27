@@ -26,8 +26,8 @@ class PureConstraintModule(OptimizationModule, abc.ABC):
     ###########################################################################
     # Objective ###############################################################
     ###########################################################################
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                           ) -> typing.Union[torch.Tensor, None]:
+    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                       ) -> typing.Union[torch.Tensor, None]:
         """Returning `None` as an objective automatically ends objective and gradient computation
         and returns default values (zero). """
         return None
@@ -35,7 +35,7 @@ class PureConstraintModule(OptimizationModule, abc.ABC):
     ###########################################################################
     # Gradient ################################################################
     ###########################################################################
-    def _compute_gradient_analytically(
+    def compute_gradient_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         return None

@@ -23,8 +23,8 @@ class SpeedLimitModule(PureConstraintModule):
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, **unused):
         super(SpeedLimitModule, self).__init__(env=env, t_horizon=t_horizon)
 
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                            ) -> typing.Union[torch.Tensor, None]:
+    def constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                        ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         The max speed constraints simply are computed by extracting the velocities over the full ego trajectory.
@@ -35,7 +35,7 @@ class SpeedLimitModule(PureConstraintModule):
         """
         return ego_trajectory[:, 2:4].flatten().float()
 
-    def _compute_jacobian_analytically(
+    def compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute Jacobian matrix analytically.
@@ -76,7 +76,7 @@ class SpeedLimitModule(PureConstraintModule):
                     dg_dx[2 * t + k, t * x_size + 2 + k] = 1
             return np.matmul(dg_dx, dx_du).flatten()
 
-    def _gradient_condition(self) -> bool:
+    def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
         objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
         itself requires a gradient, the objective/constraint value, stored from the last computation
@@ -89,7 +89,7 @@ class SpeedLimitModule(PureConstraintModule):
     ###########################################################################
     # Constraint Bounds #######################################################
     ###########################################################################
-    def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
+    def constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         """Lower and upper bounds for constraint values.
 
         The speed boundaries are a property of the robot agent.

@@ -11,23 +11,26 @@ from mantrap_evaluation.metrics import *
 def test_minimal_distance_principle():
     ego_trajectory = mantrap.utility.maths.straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
 
-    ado_traj_1 = torch.zeros((1, 1, 10, 2))
-    distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_traj_1)
+    ado_trajectory_1 = torch.zeros((1, 1, 10, 2))
+    distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectory_1)
     assert np.isclose(distance, 0.1, atol=1e-3)
 
-    ado_traj_2 = mantrap.utility.maths.straight_line(torch.ones(2), torch.ones(2) * 10, steps=10).view(1, 1, -1, 2)
-    ado_traj_2 = torch.cat((ado_traj_1, ado_traj_2))
-    distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_traj_2)
+    ado_trajectory_2 = mantrap.utility.maths.straight_line(torch.ones(2), torch.ones(2) * 10, steps=10)
+    ado_trajectory_2 = ado_trajectory_2.view(1, 1, -1, 2)
+    ado_trajectory_2 = torch.cat((ado_trajectory_1, ado_trajectory_2))
+    distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectory_2)
     assert np.isclose(distance, 0.1, atol=1e-3)
 
-    ado_traj_3 = mantrap.utility.maths.straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
-    ado_traj_3[5, :] = torch.tensor([5, 0.1])
-    distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_traj_3.view(1, 1, -1, 2))
+    ado_trajectory_3 = mantrap.utility.maths.straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
+    ado_trajectory_3[5, :] = torch.tensor([5, 0.1])
+    ado_trajectory_3 = ado_trajectory_3.view(1, 1, -1, 2)
+    distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectory_3)
     assert not np.isclose(distance, 0.0, atol=1e-3)  # tolerance, not time-equivalent at (5, 0.1) (!)
 
-    ado_traj_3 = mantrap.utility.maths.straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
-    ado_traj_3[-1, :] = torch.tensor([5, 0.1])
-    distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_traj_3.view(1, 1, -1, 2))
+    ado_trajectory_3 = mantrap.utility.maths.straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
+    ado_trajectory_3[-1, :] = torch.tensor([5, 0.1])
+    ado_trajectory_3 = ado_trajectory_3.view(1, 1, -1, 2)
+    distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectory_3)
     assert np.isclose(distance, 0.0, atol=1e-3)  # now time-equivalent at (5, 0.1) (!)
 
 
@@ -108,13 +111,13 @@ def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__
     # score w.r.t. only the first part and for the combined ado trajectory should be the same.
     env_test = env.copy()
 
-    ado_traj_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
-    metric_score_1 = metric_ado_effort(ado_trajectories=ado_traj_1, env=env)
+    ado_trajectory_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
+    metric_score_1 = metric_ado_effort(ado_trajectories=ado_trajectory_1, env=env)
 
-    env_test.step_reset(ego_state_next=None, ado_states_next=ado_traj_1[:, 0, -1, :])
-    ado_traj_2 = env_test.predict_wo_ego(t_horizon=4).detach()
-    ado_traj_12 = torch.cat((ado_traj_1, ado_traj_2), dim=2)
-    ado_traj_12[:, :, :, -1] = torch.linspace(0, 7 * env.dt, steps=8)
-    metric_score_12 = metric_ado_effort(ado_trajectories=ado_traj_12, env=env)
+    env_test.step_reset(ego_state_next=None, ado_states_next=ado_trajectory_1[:, 0, -1, :])
+    ado_trajectory_2 = env_test.predict_wo_ego(t_horizon=4).detach()
+    ado_trajectory_12 = torch.cat((ado_trajectory_1, ado_trajectory_2), dim=2)
+    ado_trajectory_12[:, :, :, -1] = torch.linspace(0, 7 * env.dt, steps=8)
+    metric_score_12 = metric_ado_effort(ado_trajectories=ado_trajectory_12, env=env)
     if env.is_deterministic:
         assert np.isclose(metric_score_1, metric_score_12, atol=1e-3)

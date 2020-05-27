@@ -19,7 +19,7 @@ class MonteCarloTreeSearch(SearchIntermediate, ZControlIntermediate):
                         ) -> typing.Tuple[np.ndarray, float, int, bool]:
         """Inner optimization/search function.
 
-        ATTENTION: See self-containment comment in `_optimize()` method description.
+        ATTENTION: See self-containment comment in `optimize_core()` method description.
 
         MCTS (Monte-Carlo-Tree-Search) iteratively optimizes thr trajectory by sampling-based estimating the
         actual cost-to-go assigned to some choice of optimization variable value. Therefore until the end
@@ -64,7 +64,7 @@ class MonteCarloTreeSearch(SearchIntermediate, ZControlIntermediate):
                 zij = np.random.uniform(lb[2*(iteration+1):], ub[2*(iteration+1):])
                 zij = np.concatenate((zi_prior, zij))
                 assert len(zij) == self.planning_horizon * 2
-                obj_ij, violation_ij = self._evaluate(zij, tag=tag, ado_ids=ado_ids)
+                obj_ij, violation_ij = self.evaluate(zij, tag=tag, ado_ids=ado_ids)
 
                 # Check whether sample ij is feasible, i.e. constraint violation below some threshold.
                 # In case append the value to the objective values for the prior sample i.

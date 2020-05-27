@@ -17,13 +17,13 @@ class GoalSumModule(GoalNormModule):
     def __init__(self, goal: torch.Tensor, **unused):
         super(GoalSumModule, self).__init__(goal, optimize_speed=False, **unused)
 
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                           ) -> typing.Union[torch.Tensor, None]:
+    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                       ) -> typing.Union[torch.Tensor, None]:
         goal_distances = torch.sum((ego_trajectory[:, 0:2] - self._goal).pow(2), dim=1)
         weights = torch.linspace(0.2, 1.0, steps=goal_distances.numel()).detach()
         return torch.sum(goal_distances * weights)
 
-    def _compute_gradient_analytically(
+    def compute_gradient_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         return None

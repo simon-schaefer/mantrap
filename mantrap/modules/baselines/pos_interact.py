@@ -5,7 +5,7 @@ import torch
 import mantrap.constants
 import mantrap.environment
 
-from mantrap.modules.base import PureObjectiveModule
+from ..base import PureObjectiveModule
 
 
 class InteractionPositionModule(PureObjectiveModule):
@@ -30,8 +30,8 @@ class InteractionPositionModule(PureObjectiveModule):
         if env.num_ghosts > 0:
             self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]
 
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                           ) -> typing.Union[torch.Tensor, None]:
+    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                       ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         To compute the objective value first predict the behaviour of all agents (and modes) in the scene in the
@@ -64,7 +64,7 @@ class InteractionPositionModule(PureObjectiveModule):
 
         return objective
 
-    def _gradient_condition(self) -> bool:
+    def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
         objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
         itself requires a gradient, the objective/constraint value, stored from the last computation

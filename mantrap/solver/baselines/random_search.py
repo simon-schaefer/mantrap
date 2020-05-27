@@ -13,7 +13,7 @@ class RandomSearch(ZControlIntermediate, SearchIntermediate):
                         ) -> typing.Tuple[np.ndarray, float, int, bool]:
         """Inner optimization/search function.
 
-        ATTENTION: See self-containment comment in `_optimize()` method description.
+        ATTENTION: See self-containment comment in `optimize_core()` method description.
 
         In random search in every step we basically use sample a new assignment of z within its bounds and
         compare it to the best assignment so far. If it is feasible and has a smaller objective value,
@@ -28,7 +28,7 @@ class RandomSearch(ZControlIntermediate, SearchIntermediate):
         :returns: updated best z-values, updated best objective, outer loop iteration, termination flag.
         """
         z_sample = np.random.uniform(*self.z_bounds)
-        objective, constraint_violation = self._evaluate(z=z_sample, tag=tag, ado_ids=ado_ids)
+        objective, constraint_violation = self.evaluate(z=z_sample, tag=tag, ado_ids=ado_ids)
 
         if objective < obj_best and constraint_violation < mantrap.constants.SOLVER_CONSTRAINT_LIMIT:
             obj_best = objective

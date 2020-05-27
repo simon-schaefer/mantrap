@@ -103,8 +103,8 @@ class HJReachabilityModule(OptimizationModule):
     ###########################################################################
     # Objective ###############################################################
     ###########################################################################
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                           ) -> typing.Union[torch.Tensor, None]:
+    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                       ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         Since the module imposes soft constraints on the backward reachability value gradient, the
@@ -122,9 +122,9 @@ class HJReachabilityModule(OptimizationModule):
     ###########################################################################
     # Constraint ##############################################################
     ###########################################################################
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str,
-                            enable_auto_grad: bool = False,
-                            ) -> typing.Union[torch.Tensor, None]:
+    def constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str,
+                        enable_auto_grad: bool = False,
+                        ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
@@ -169,7 +169,7 @@ class HJReachabilityModule(OptimizationModule):
 
         return constraints
 
-    def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
+    def constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         return 0.0, 0.0  # slack variable => inequality to equality constraint
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
@@ -178,7 +178,7 @@ class HJReachabilityModule(OptimizationModule):
     ###########################################################################
     # Jacobian ################################################################
     ###########################################################################
-    def _compute_jacobian_analytically(
+    def compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute Jacobian matrix analytically.
@@ -219,7 +219,7 @@ class HJReachabilityModule(OptimizationModule):
 
             # By evaluating the constraints with the current input states we ensure that the internal
             # variables (relative states) are up-to-date.
-            self._compute_constraint(ego_trajectory=ego_trajectory, ado_ids=ado_ids, tag=tag, enable_auto_grad=False)
+            self.constraint_core(ego_trajectory=ego_trajectory, ado_ids=ado_ids, tag=tag, enable_auto_grad=False)
 
             # Otherwise compute Jacobian using formula in method's description above. The partial derivative
             t_horizon, u_size = ego_controls.shape
@@ -235,8 +235,8 @@ class HJReachabilityModule(OptimizationModule):
             dx_rel_du[2, 0, 1] = self._env.dt
             dx_rel_du = dx_rel_du.reshape(4, -1)
             for i_ado, ado_id in enumerate(ado_ids):
-                # Compute pre-computed gradient at evaluated relative state (see _compute_constraint).
-                value_gradient = self.value_gradient(self._x_rel[f"{tag}/{ado_id}"])
+                # Compute pre-computed gradient at evaluated relative state (see constraint_core).
+                value_gradient = self.value_gradient(self.x_relative[f"{tag}/{ado_id}"])
 
                 # Combine both partial gradients into the jacobian.
                 jacobian[i_ado, :] = np.matmul(value_gradient, dx_rel_du)
@@ -246,7 +246,7 @@ class HJReachabilityModule(OptimizationModule):
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
-    def _gradient_condition(self) -> bool:
+    def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
         objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
         itself requires a gradient, the objective/constraint value, stored from the last computation
@@ -327,6 +327,10 @@ class HJReachabilityModule(OptimizationModule):
     ###########################################################################
     # Module Properties #######################################################
     ###########################################################################
+    @property
+    def x_relative(self) -> typing.Dict[str, np.ndarray]:
+        return self._x_rel
+
     @property
     def name(self) -> str:
         return "hj_reachability"

@@ -25,7 +25,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
     ###########################################################################
     # Optimization ############################################################
     ###########################################################################
-    def _optimize(
+    def optimize_core(
         self,
         z0: torch.Tensor,
         ado_ids: typing.List[str],
@@ -40,7 +40,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
         the optimization but only the ones with ids defined in `ado_ids`.
 
-        ATTENTION: Since several `_optimize()` calls are spawned in parallel, one for every process, but
+        ATTENTION: Since several `optimize_core()` calls are spawned in parallel, one for every process, but
         originating from the same solver class, the method should be self-contained. Hence, no internal
         variables should be updated, since this would lead to race conditions !
 
@@ -77,7 +77,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
 
         # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
         # be the best iteration (logging within objective and constraint function).
-        self._evaluate(z=z_best, tag=tag, ado_ids=ado_ids)
+        self.evaluate(z=z_best, tag=tag, ado_ids=ado_ids)
         ego_controls = self.z_to_ego_controls(z=z_best)
         assert mantrap.utility.shaping.check_ego_controls(ego_controls, t_horizon=self.planning_horizon)
         return ego_controls, obj_best, self.log
@@ -87,7 +87,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
                         ) -> typing.Tuple[np.ndarray, float, int, bool]:
         """Inner optimization/search function.
 
-        ATTENTION: See self-containment comment in `_optimize()` method description.
+        ATTENTION: See self-containment comment in `optimize_core()` method description.
 
         :param z_best: best assignment of optimization vector so far.
         :param obj_best: according objective function value.
@@ -98,7 +98,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         """
         raise NotImplementedError
 
-    def _evaluate(self, z: np.ndarray, ado_ids: typing.List[str], tag: str) -> typing.Tuple[float, float]:
+    def evaluate(self, z: np.ndarray, ado_ids: typing.List[str], tag: str) -> typing.Tuple[float, float]:
         """Evaluate "value" of z-values, i.e. some choice of optimization variable assignment, by computing
         the overall objective value as well as the constraint violation (aka the feasibility of the choice). """
         objective = self.objective(z, tag=tag, ado_ids=ado_ids)

@@ -45,18 +45,18 @@ class TestObjectives:
         # Compute analytical gradient, if it is not defined (= returning `None`) just skip this
         # test since there is nothing to test here anymore.
         module = module_class(goal=torch.rand(2) * 8, env=env, t_horizon=t_horizon)
-        gradient_analytical = module._compute_gradient_analytically(ego_trajectory=ego_trajectory,
-                                                                    grad_wrt=ego_controls,
-                                                                    ado_ids=env.ado_ids,
-                                                                    tag="test")
+        gradient_analytical = module.compute_gradient_analytically(ego_trajectory=ego_trajectory,
+                                                                   grad_wrt=ego_controls,
+                                                                   ado_ids=env.ado_ids,
+                                                                   tag="test")
 
         if gradient_analytical is None:
             pytest.skip()
 
         # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
         # Then assert equality (or numerical equality) between both results.
-        objective = module._compute_objective(ego_trajectory, ado_ids=env.ado_ids, tag="test")
-        gradient_auto_grad = module._compute_gradient_autograd(objective, grad_wrt=ego_controls)
+        objective = module.objective_core(ego_trajectory, ado_ids=env.ado_ids, tag="test")
+        gradient_auto_grad = module.compute_gradient_auto_grad(objective, grad_wrt=ego_controls)
         assert np.allclose(gradient_analytical, gradient_auto_grad, atol=0.01)
 
     @staticmethod
@@ -98,18 +98,18 @@ class TestObjectives:
         module = module_class(env=env, t_horizon=5)
 
         # Compare the environment with the module-internally's environment states.
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
         # Add agent to environment (i.e. change the environment) and check again.
         env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
         # Step environment (i.e. change environment internally) and check again.
         env.step(ego_action=torch.rand(2))
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
     @staticmethod
     def test_runtime(module_class, env_class, num_modes):
@@ -193,7 +193,9 @@ def test_objective_goal_distribution():
 class TestConstraints:
 
     @staticmethod
-    def test_runtime(module_class, env_class, num_modes):
+    def test_runtime(module_class: mantrap.modules.base.OptimizationModule.__class__,
+                     env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                     num_modes: int):
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
@@ -217,11 +219,13 @@ class TestConstraints:
         assert np.mean(jacobian_run_times) < 0.05 * num_modes  # 20 Hz
 
     @staticmethod
-    def test_violation(module_class, env_class, num_modes):
+    def test_violation(module_class: mantrap.modules.base.OptimizationModule.__class__,
+                       env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                       num_modes: int):
         """In order to test the constraint violation in general test it in a scene with static and far-distant
         agent(s), with  respect to the ego, and static ego robot. In this configurations all constraints should
         be met. """
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent,ego_position=torch.tensor([-5, 0.1]))
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.ones(2) * 9, goal=torch.ones(2) * 9, num_modes=num_modes)
@@ -232,7 +236,9 @@ class TestConstraints:
         assert violation == 0
 
     @staticmethod
-    def test_internal_env_update(module_class, env_class, num_modes):
+    def test_internal_env_update(module_class: mantrap.modules.base.OptimizationModule.__class__,
+                                 env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                                 num_modes: int):
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
@@ -240,21 +246,23 @@ class TestConstraints:
         module = module_class(env=env, t_horizon=5)
 
         # Compare the environment with the module-internally's environment states.
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
         # Add agent to environment (i.e. change the environment) and check again.
         env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
         # Step environment (i.e. change environment internally) and check again.
         env.step(ego_action=torch.rand(2))
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
     @staticmethod
-    def test_jacobian_analytical(module_class, env_class, num_modes):
+    def test_jacobian_analytical(module_class: mantrap.modules.base.OptimizationModule.__class__,
+                                 env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                                 num_modes: int):
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.rand(2))
         env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10, num_modes=1)
         env.add_ado(position=torch.rand(2) * 8, goal=torch.rand(2) * (-10), num_modes=1)
@@ -266,31 +274,32 @@ class TestConstraints:
         # Compute analytical jacobian, if it is not defined (= returning `None`) just skip this
         # test since there is nothing to test here anymore.
         module = module_class(env=env, t_horizon=5)
-        jacobian_analytical = module._compute_jacobian_analytically(ego_trajectory=ego_trajectory,
-                                                                    grad_wrt=ego_controls,
-                                                                    ado_ids=env.ado_ids,
-                                                                    tag="test")
+        jacobian_analytical = module.compute_jacobian_analytically(ego_trajectory=ego_trajectory,
+                                                                   grad_wrt=ego_controls,
+                                                                   ado_ids=env.ado_ids,
+                                                                   tag="test")
 
-        if jacobian_analytical is None or not module._gradient_condition():
+        if jacobian_analytical is None or not module.gradient_condition():
             pytest.skip()
 
         # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
         # Then assert equality (or numerical equality) between both results.
-        constraints = module._compute_constraint(ego_trajectory, ado_ids=env.ado_ids, tag="test")
-        jacobian_auto_grad = module._compute_gradient_autograd(constraints, grad_wrt=ego_controls)
+        constraints = module.constraint_core(ego_trajectory, ado_ids=env.ado_ids, tag="test")
+        jacobian_auto_grad = module.compute_gradient_auto_grad(constraints, grad_wrt=ego_controls)
         assert np.allclose(jacobian_analytical, jacobian_auto_grad, atol=0.01)
 
 
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
-def test_control_limit_violation(env_class, num_modes):
+def test_control_limit_violation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                                 num_modes: int):
     position, velocity = torch.tensor([-5, 0.1]), torch.zeros(2)
     env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
 
     module = mantrap.modules.ControlLimitModule(env=env, t_horizon=5)
-    _, upper_bound = module._constraint_boundaries()
+    _, upper_bound = module.constraint_limits()
 
     # In this first scenario the ego has zero velocity over the full horizon.
     controls = torch.zeros((module.t_horizon, 2))
@@ -315,14 +324,14 @@ def test_control_limit_violation(env_class, num_modes):
 
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("num_modes", [1, 2])
-def test_speed_limit_violation(env_class, num_modes):
+def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__, num_modes: int):
     position, velocity = torch.tensor([-5, 0.1]), torch.zeros(2)
     env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
 
     module = mantrap.modules.SpeedLimitModule(env=env, t_horizon=5)
-    lower_bound, upper_bound = module._constraint_boundaries()
+    lower_bound, upper_bound = module.constraint_limits()
 
     # In this first scenario the ego has velocities at the upper or lower bound over the full horizon.
     ego_trajectory = torch.ones((module.t_horizon + 1, 5)) * upper_bound
@@ -342,7 +351,8 @@ def test_speed_limit_violation(env_class, num_modes):
                                        mantrap.environment.ORCAEnvironment,
                                        mantrap.environment.Trajectron])
 @pytest.mark.parametrize("num_modes", [1, 2])
-def test_min_distance_constraint_violation(env_class, num_modes):
+def test_min_distance_constraint_violation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                                           num_modes: int):
     position, velocity = torch.ones(2) * 9, torch.zeros(2)
     env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
     if num_modes > 1 and not env.is_multi_modal:
@@ -355,7 +365,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
 
     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
     module = mantrap.modules.baselines.MinDistanceModule(env=env, t_horizon=controls.shape[0])
-    lower_bound, _ = module._constraint_boundaries()
+    lower_bound, _ = module.constraint_limits()
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
     assert violation == 0
 
@@ -365,7 +375,7 @@ def test_min_distance_constraint_violation(env_class, num_modes):
     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
 
     module = mantrap.modules.baselines.MinDistanceModule(env=env, t_horizon=controls.shape[0])
-    lower_bound, _ = module._constraint_boundaries()
+    lower_bound, _ = module.constraint_limits()
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
     assert violation > 0
 
@@ -380,7 +390,9 @@ def test_min_distance_constraint_violation(env_class, num_modes):
 class TestAttention:
 
     @staticmethod
-    def test_runtime(module_class, env_class, num_modes):
+    def test_runtime(module_class: mantrap.attention.AttentionModule.__class__,
+                     env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                     num_modes: int):
         env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
@@ -397,7 +409,9 @@ class TestAttention:
         assert np.mean(filter_run_times) < 0.01  # 100 Hz
 
     @staticmethod
-    def test_internal_env_update(module_class, env_class, num_modes):
+    def test_internal_env_update(module_class: mantrap.attention.AttentionModule.__class__,
+                                 env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                                 num_modes: int):
         env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
@@ -405,18 +419,18 @@ class TestAttention:
         module = module_class(env=env, t_horizon=5)
 
         # Compare the environment with the module-internally's environment states.
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
         # Add agent to environment (i.e. change the environment) and check again.
         env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10), num_modes=num_modes)
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
         # Step environment (i.e. change environment internally) and check again.
         env.step(ego_action=torch.rand(2))
-        assert torch.all(torch.eq(module._env.states()[0], env.states()[0]))
-        assert torch.all(torch.eq(module._env.states()[1], env.states()[1]))
+        assert torch.all(torch.eq(module.env.states()[0], env.states()[0]))
+        assert torch.all(torch.eq(module.env.states()[1], env.states()[1]))
 
 
 ###########################################################################
@@ -427,7 +441,7 @@ class TestAttention:
 class TestHJReachability:
 
     @staticmethod
-    def test_ego_type_failing(env_class, num_modes):
+    def test_ego_type_failing(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__, num_modes: int):
         env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=torch.zeros(2))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
@@ -439,7 +453,7 @@ class TestHJReachability:
             mantrap.modules.HJReachabilityModule(env, t_horizon=5)
 
     @staticmethod
-    def test_constraint(env_class, num_modes):
+    def test_constraint(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__, num_modes: int):
         env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.zeros(2))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
@@ -451,9 +465,9 @@ class TestHJReachability:
         module.constraint(ego_trajectory, ado_ids=env.ado_ids, tag="test")
 
     @staticmethod
-    def test_jacobian_analytical(env_class, num_modes):
+    def test_jacobi_analytical(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__, num_modes: int):
         """In opposite to the other optimization modules here the full jacobian cannot be computed
-        automatically using PyTorchs autograd framework. However the "remaining" partial derivatives
+        automatically using PyTorch's auto_grad framework. However the "remaining" partial derivatives
         can be computed, i.e. all except of the pre-computed one, since they are based on online
         PyTorch computations and hence have a gradient function assigned to them. """
 
@@ -466,24 +480,24 @@ class TestHJReachability:
 
         # Initialize HJ module and compute partial derivative dx_rel/du_robot using auto-grad.
         module = mantrap.modules.HJReachabilityModule(env=env, t_horizon=5)
-        _ = module._compute_constraint(ego_trajectory, ado_ids=env.ado_ids, tag="test", enable_auto_grad=True)
+        _ = module.constraint_core(ego_trajectory, ado_ids=env.ado_ids, tag="test", enable_auto_grad=True)
         dx_rel_du_auto_grad = []
         for ado_id in env.ado_ids:
-            x_rel = module._x_rel[f"test/{ado_id}"]
+            x_rel = module.x_relative[f"test/{ado_id}"]
             grad = [torch.autograd.grad(x, ego_controls, retain_graph=True)[0] for x in x_rel]
             dx_rel_du_auto_grad.append(torch.stack(grad).reshape(4, -1))
         dx_rel_du_auto_grad = torch.stack(dx_rel_du_auto_grad)
 
-        # Compute the same partial derivative analytically, by calling the `_compute_jacobian_analytically()`
+        # Compute the same partial derivative analytically, by calling the `compute_jacobian_analytically()`
         # function. Since we cannot inverse a vector (dJ/dx_rel), we can check whether the jacobian
         # computed using the pre-computed dJ/dx_rel and the auto-grad (!) dx_rel/du results in the same
-        # jacobian as the result of `_compute_jacobian_analytically()`, which is only the case if
+        # jacobian as the result of `compute_jacobian_analytically()`, which is only the case if
         # dx_rel/du(auto-grad) = dx_rel/du(analytic) since dJ/dx has non-zero elements.
-        jacobian_analytical = module._compute_jacobian_analytically(ego_trajectory, grad_wrt=ego_controls,
-                                                                    ado_ids=env.ado_ids, tag="test")
-        dJ_dx_rel = []
+        jacobian_analytical = module.compute_jacobian_analytically(ego_trajectory, grad_wrt=ego_controls,
+                                                                   ado_ids=env.ado_ids, tag="test")
+        dj_dx_rel = []
         for ado_id in env.ado_ids:
-            dJ_dx_rel.append(module.value_gradient(x=module._x_rel[f"test/{ado_id}"]))
-        jacobian_auto_grad = np.matmul(np.stack(dJ_dx_rel), dx_rel_du_auto_grad)
+            dj_dx_rel.append(module.value_gradient(x=module.x_relative[f"test/{ado_id}"]))
+        jacobian_auto_grad = np.matmul(np.stack(dj_dx_rel), dx_rel_du_auto_grad)
 
         assert np.allclose(jacobian_analytical, jacobian_auto_grad)

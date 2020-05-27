@@ -40,8 +40,8 @@ class GoalNormModule(PureObjectiveModule):
         self._goal = goal
         self._optimize_speed = optimize_speed
 
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                           ) -> typing.Union[torch.Tensor, None]:
+    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                       ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         To compute the goal-based objective simply take the L2 norm between all positions on the ego trajectory
@@ -65,7 +65,7 @@ class GoalNormModule(PureObjectiveModule):
 
         return cost
 
-    def _compute_gradient_analytically(
+    def compute_gradient_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute objective gradient vector analytically.
@@ -103,7 +103,7 @@ class GoalNormModule(PureObjectiveModule):
 
         return np.matmul(dJ_dx.flatten(), dx_du)
 
-    def _gradient_condition(self) -> bool:
+    def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
         objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
         itself requires a gradient, the objective/constraint value, stored from the last computation

@@ -14,7 +14,7 @@ from .trajopt import TrajOptSolver
 
 class IPOPTIntermediate(TrajOptSolver, abc.ABC):
 
-    def _optimize(
+    def optimize_core(
         self,
         z0: torch.Tensor,
         ado_ids: typing.List[str],
@@ -30,7 +30,7 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
         the optimization but only the ones with ids defined in `ado_ids`.
 
-        ATTENTION: Since several `_optimize()` calls are spawned in parallel, one for every process, but
+        ATTENTION: Since several `optimize_core()` calls are spawned in parallel, one for every process, but
         originating from the same solver class, the method should be self-contained. Hence, no internal
         variables should be updated, since this would lead to race conditions !
 

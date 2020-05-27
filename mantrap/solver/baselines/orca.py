@@ -18,8 +18,8 @@ class ORCASolver(ZControlIntermediate):
     for every agent in the scene (by following the ORCA algorithm and assumptions) and returning the velocity
     which is associated to the agent representing the ego agent.
     """
-    def _optimize(self, z0: torch.Tensor, tag: str, ado_ids: typing.List[str], **kwargs
-                  ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
+    def optimize_core(self, z0: torch.Tensor, tag: str, ado_ids: typing.List[str], **kwargs
+                      ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.
 
          Given some initial value `z0` find the optimal allocation for z with respect to the internally defined

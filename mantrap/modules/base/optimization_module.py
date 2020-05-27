@@ -8,6 +8,7 @@ import mantrap.environment
 
 
 class OptimizationModule(abc.ABC):
+
     def __init__(self, t_horizon: int,  weight: float = 0.0,
                  env: mantrap.environment.base.GraphBasedEnvironment = None,
                  has_slack: bool = False, slack_weight: float = 0.0):
@@ -96,7 +97,7 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        obj_value = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        obj_value = self.objective_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
         if self._has_slack:
             obj_value = torch.zeros(1) if obj_value is None else obj_value
@@ -106,8 +107,8 @@ class OptimizationModule(abc.ABC):
         return obj_value
 
     @abc.abstractmethod
-    def _compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                           ) -> typing.Union[torch.Tensor, None]:
+    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                       ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         The objective value should be returned either as PyTorch tensor or `None`. It cannot be simplified as
@@ -139,7 +140,7 @@ class OptimizationModule(abc.ABC):
         # Analytical solutions are more exact and (usually more efficient) to compute, when known, compared
         # to the numerical "graphical" solution. Therefore, first check whether an analytical solution is
         # defined for this module.
-        gradient_analytical = self._compute_gradient_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids, tag=tag)
+        gradient_analytical = self.compute_gradient_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids, tag=tag)
         if gradient_analytical is not None:
             gradient = gradient_analytical
 
@@ -151,22 +152,22 @@ class OptimizationModule(abc.ABC):
             # Compute the objective value and check whether a gradient between the value and the
             # ego_trajectory input (which has been assured to require a gradient) exists, if the
             # module-conditions for that are met.
-            objective = self._compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
+            objective = self.objective_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
             # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
             # In general the objective might not be affected by the `ego_trajectory`, then it does not have
             # a gradient function and the gradient is not defined. Then the objective gradient is assumed
             # to be zero.
-            if objective is None or not self._gradient_condition():
+            if objective is None or not self.gradient_condition():
                 gradient = np.zeros(grad_wrt.numel())
 
             # Otherwise compute the gradient "numerically" using the PyTorch autograd package.
             else:
-                gradient = self._compute_gradient_autograd(objective, grad_wrt=grad_wrt)
+                gradient = self.compute_gradient_auto_grad(objective, grad_wrt=grad_wrt)
 
         return self._return_gradient(gradient, tag=tag)
 
-    def _compute_gradient_analytically(
+    def compute_gradient_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute objective gradient vector analytically.
@@ -217,7 +218,7 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        constraints = self.constraint_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
         # Update slack variables (if any are defined for this module).
         if self._has_slack and constraints is not None:
@@ -228,8 +229,8 @@ class OptimizationModule(abc.ABC):
         return constraints
 
     @abc.abstractmethod
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                            ) -> typing.Union[torch.Tensor, None]:
+    def constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                        ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
@@ -259,7 +260,7 @@ class OptimizationModule(abc.ABC):
         # Analytical solutions are more exact and (usually more efficient) to compute, when known, compared
         # to the numerical "graphical" solution. Therefore, first check whether an analytical solution is
         # defined for this module.
-        jacobian_analytical = self._compute_jacobian_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids, tag=tag)
+        jacobian_analytical = self.compute_jacobian_analytically(ego_trajectory, grad_wrt, ado_ids=ado_ids, tag=tag)
         if jacobian_analytical is not None:
             jacobian = jacobian_analytical
 
@@ -269,7 +270,7 @@ class OptimizationModule(abc.ABC):
             # input (which has been assured to require a gradient) exists, if the module-conditions for
             # that are met.
             assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
-            constraints = self._compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+            constraints = self.constraint_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
             # If constraint vector is None, directly return empty jacobian vector.
             if constraints is None:
@@ -281,14 +282,14 @@ class OptimizationModule(abc.ABC):
             else:
                 # If constraints are not None (exist) but the gradient cannot be computed, e.g. since the
                 # constraints do not depend on the ego_trajectory, then return a zero jacobian.
-                if not self._gradient_condition():
+                if not self.gradient_condition():
                     grad_size = int(grad_wrt.numel())
                     constraint_size = int(constraints.numel())
                     jacobian = np.zeros(grad_size * constraint_size)
 
                 # Otherwise determine the jacobian numerically using the PyTorch autograd package.
                 else:
-                    jacobian = self._compute_gradient_autograd(constraints, grad_wrt=grad_wrt)
+                    jacobian = self.compute_gradient_auto_grad(constraints, grad_wrt=grad_wrt)
 
         # Add slack variables jacobian term, which basically is identical to the jacobian of
         # the constraint, just negative.
@@ -297,7 +298,7 @@ class OptimizationModule(abc.ABC):
 
         return jacobian
 
-    def _compute_jacobian_analytically(
+    def compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute Jacobian matrix analytically.
@@ -322,7 +323,7 @@ class OptimizationModule(abc.ABC):
     # Autograd Differentiation ################################################
     ###########################################################################
     @staticmethod
-    def _compute_gradient_autograd(x: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
+    def compute_gradient_auto_grad(x: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
         """Compute derivative of x with respect to grad_wrt.
 
         Compute the gradient/jacobian/etc. of some vector x with respect to some tensor `grad_wrt`
@@ -379,7 +380,7 @@ class OptimizationModule(abc.ABC):
         of x, which would create a lot of overhead due to repeated computations (as well as being quite not
         general and unreadable due to nesting instead of batching) and therefore not accelerate the computations.
 
-        :params x: gradient input flat vector.
+        :param x: gradient input flat vector.
         :param grad_wrt: tensor with respect to gradients should be computed.
         :returns: flattened gradient tensor (x.size * grad_wrt.size)
         """
@@ -404,10 +405,10 @@ class OptimizationModule(abc.ABC):
     # Constraint Bounds #######################################################
     ###########################################################################
     def constraint_boundaries(self, ado_ids: typing.List[str]
-    ) -> typing.Tuple[typing.Union[typing.List[float], typing.List[None]],
-                      typing.Union[typing.List[float], typing.List[None]]]:
+                              ) -> typing.Tuple[typing.Union[typing.List[typing.Union[float, None]]],
+                                                typing.Union[typing.List[typing.Union[float, None]]]]:
         # Module-individual constraint boundaries.
-        lower, upper = self._constraint_boundaries()
+        lower, upper = self.constraint_limits()
         num_constraints = self._num_constraints(ado_ids=ado_ids)  # number of internal constraints (!)
         lower_bounds = (lower * np.ones(num_constraints)).tolist() if lower is not None else [None] * num_constraints
         upper_bounds = (upper * np.ones(num_constraints)).tolist() if upper is not None else [None] * num_constraints
@@ -419,7 +420,7 @@ class OptimizationModule(abc.ABC):
             upper_bounds = upper_bounds + [None] * num_constraints
         return lower_bounds, upper_bounds
 
-    def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
+    def constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         """Lower and upper bounds for constraint values."""
         raise NotImplementedError
 
@@ -484,7 +485,7 @@ class OptimizationModule(abc.ABC):
     # Utility #################################################################
     ###########################################################################
     @abc.abstractmethod
-    def _gradient_condition(self) -> bool:
+    def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
         objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
         itself requires a gradient, the objective/constraint value, stored from the last computation
@@ -527,6 +528,10 @@ class OptimizationModule(abc.ABC):
     @property
     def weight(self) -> float:
         return self._weight
+
+    @property
+    def env(self) -> typing.Union[mantrap.environment.base.GraphBasedEnvironment, None]:
+        return self._env
 
     @property
     def t_horizon(self) -> int:

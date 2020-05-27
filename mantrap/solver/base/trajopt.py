@@ -201,12 +201,12 @@ class TrajOptSolver(abc.ABC):
         else:
             ado_ids = self.env.ado_ids  # all ado ids (not filtered)
 
-        # Computation is done in `_optimize()` class that is implemented in child class.
-        return self._optimize(z0, ado_ids=ado_ids, tag=tag, **kwargs)
+        # Computation is done in `optimize_core()` class that is implemented in child class.
+        return self.optimize_core(z0, ado_ids=ado_ids, tag=tag, **kwargs)
 
     @abc.abstractmethod
-    def _optimize(self, z0: torch.Tensor, tag: str, ado_ids: typing.List[str], **kwargs
-                  ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
+    def optimize_core(self, z0: torch.Tensor, tag: str, ado_ids: typing.List[str], **kwargs
+                      ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.
 
         Given some initial value `z0` find the optimal allocation for z with respect to the internally defined
@@ -214,7 +214,7 @@ class TrajOptSolver(abc.ABC):
         values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
         the optimization but only the ones with ids defined in `ado_ids`.
 
-        ATTENTION: Since several `_optimize()` calls are spawned in parallel, one for every process, but
+        ATTENTION: Since several `optimize_core()` calls are spawned in parallel, one for every process, but
         originating from the same solver class, the method should be self-contained. Hence, no internal
         variables should be updated, since this would lead to race conditions ! If class variables have
         to be altered and used within this function, then assign them to the process tag !

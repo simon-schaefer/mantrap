@@ -20,8 +20,8 @@ class ControlLimitModule(PureConstraintModule):
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, **unused):
         super(ControlLimitModule, self).__init__(env=env, t_horizon=t_horizon)
 
-    def _compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                            ) -> typing.Union[torch.Tensor, None]:
+    def constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                        ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         The max control constraints simply are computed by transforming the given trajectory to control input
@@ -35,7 +35,7 @@ class ControlLimitModule(PureConstraintModule):
         ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
         return torch.norm(ego_controls, dim=1).flatten().float()
 
-    def _compute_jacobian_analytically(
+    def compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:
         """Compute Jacobian matrix analytically.
@@ -77,7 +77,7 @@ class ControlLimitModule(PureConstraintModule):
             jacobian = np.repeat(np.eye(t_horizon), u_size) * 1 / u_norm_stretched * u_stretched
             return jacobian.flatten()
 
-    def _gradient_condition(self) -> bool:
+    def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
         objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
         itself requires a gradient, the objective/constraint value, stored from the last computation
@@ -90,7 +90,7 @@ class ControlLimitModule(PureConstraintModule):
     ###########################################################################
     # Constraint Bounds #######################################################
     ###########################################################################
-    def _constraint_boundaries(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
+    def constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         """Lower and upper bounds for constraint values.
 
         The boundaries of this constraint depend on the exact implementation of the agent, however most agents
