@@ -184,7 +184,7 @@ class TestObjectiveInteraction:
 
 
 def test_objective_goal_distribution():
-    env = mantrap.environment.PotentialFieldEnvironment()
+    env = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, ego_position=torch.zeros(2))
     goal_state = torch.tensor([4.1, 8.9])
     ego_trajectory = torch.rand((11, 4))
 

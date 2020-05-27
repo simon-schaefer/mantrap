@@ -36,9 +36,6 @@ class TestEnvironment:
         env.add_ado(position=torch.tensor([6, 7]), velocity=torch.ones(2), num_modes=num_modes)
 
         assert torch.all(torch.eq(env.ghosts[0].agent.position, torch.tensor([6, 7]).float()))
-
-        print(env.ghosts[0].agent.velocity)
-
         assert torch.all(torch.eq(env.ghosts[0].agent.velocity, torch.ones(2)))
 
     @staticmethod

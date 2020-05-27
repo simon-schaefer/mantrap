@@ -232,9 +232,6 @@ def test_unrolling(position: torch.Tensor, velocity: torch.Tensor, dt: float, n:
     assert torch.all(torch.eq(ego_trajectory[:, 1], ego_trajectory_y_exp))
     assert torch.all(torch.eq(ego_trajectory[:, 2], torch.ones(n + 1) * velocity[0]))
     assert torch.all(torch.eq(ego_trajectory[:, 3], torch.ones(n + 1) * velocity[1]))
-
-    print(ego_trajectory[:, 4], torch.linspace(0, n, n + 1))
-
     assert torch.all(torch.eq(ego_trajectory[:, 4], torch.linspace(0, n, n + 1)))
 
 

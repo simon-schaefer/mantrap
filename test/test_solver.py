@@ -225,7 +225,6 @@ class TestIPOPTSolvers:
         if all([module.gradient_condition() for module in solver.modules]):
             assert jacobian.size == num_constraints * z0.size
         else:
-            print(jacobian.size, num_constraints * z0.size)
             assert jacobian.size <= num_constraints * z0.size
 
 
