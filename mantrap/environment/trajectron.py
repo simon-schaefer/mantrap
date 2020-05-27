@@ -34,7 +34,9 @@ class Trajectron(ProbabilisticEnvironment):
     def __init__(
         self,
         ego_type: mantrap.agents.base.DTAgent.__class__ = None,
-        ego_kwargs: typing.Dict[str, typing.Any] = None,
+        ego_position: torch.Tensor = None,
+        ego_velocity: torch.Tensor = torch.zeros(2),
+        ego_history: torch.Tensor = None,
         dt: float = mantrap.constants.ENV_DT_DEFAULT,
         **env_kwargs
     ):
@@ -44,7 +46,7 @@ class Trajectron(ProbabilisticEnvironment):
         assert dt == self.config["dt"]
 
         # Initialize environment mother class.
-        super(Trajectron, self).__init__(ego_type, ego_kwargs, dt=dt, **env_kwargs)
+        super(Trajectron, self).__init__(ego_type, ego_position, ego_velocity, ego_history, dt=dt, **env_kwargs)
 
         # For prediction un-conditioned on the ego (`predict_wo_ego()`) we need a pseudo-ego trajectory, since the
         # input dimensions for the trajectron have to stay the same.

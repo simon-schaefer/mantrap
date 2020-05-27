@@ -31,13 +31,6 @@ class GraphBasedEnvironment(abc.ABC):
 
     The simulated world is two-dimensional and defined in the area limited by the passed `x_axis` and `y_axis`. It has
     a constant environment time-step `dt`.
-
-    :param ego_type: agent class of ego agent (should be agent child-class).
-    :param ego_kwargs: initialization arguments of ego agent such as position, velocity, etc.
-    :param x_axis: environment environment limitation in x-direction.
-    :param y_axis: environment environment limitation in y-direction.
-    :param dt: environment time-step [s].
-    :param config_name: configuration name of initialized environment (for logging purposes only).
     """
 
     class Ghost:
@@ -84,20 +77,36 @@ class GraphBasedEnvironment(abc.ABC):
     def __init__(
         self,
         ego_type: mantrap.agents.base.DTAgent.__class__ = None,
-        ego_kwargs: typing.Dict[str, typing.Any] = None,
+        ego_position: torch.Tensor = None,
+        ego_velocity: torch.Tensor = torch.zeros(2),
+        ego_history: torch.Tensor = None,
         x_axis: typing.Tuple[float, float] = mantrap.constants.ENV_X_AXIS_DEFAULT,
         y_axis: typing.Tuple[float, float] = mantrap.constants.ENV_Y_AXIS_DEFAULT,
         dt: float = mantrap.constants.ENV_DT_DEFAULT,
+        time: float = 0.0,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN
     ):
+        """Graph-Based environment initialization.
+
+        :param ego_type: agent class of ego agent (should be agent child-class).
+        :param ego_position: initial ego/robot position in 2D, must be defined if `ego_type` is defined.
+        :param ego_velocity: initial ego/robot velocity in 2D, zero by default.
+        :param ego_history: initial ego state history, None (only current state) by default.
+        :param x_axis: environment environment limitation in x-direction.
+        :param y_axis: environment environment limitation in y-direction.
+        :param dt: environment time-step [s].
+        :param config_name: configuration name of initialized environment (for logging purposes only).
+        """
         assert x_axis[0] < x_axis[1]
         assert y_axis[0] < y_axis[1]
         assert dt > 0.0
 
         if ego_type is not None:
-            self._ego = ego_type(**ego_kwargs, is_robot=True, dt=dt, identifier=mantrap.constants.ID_EGO)
+            assert ego_position is not None
+            self._ego = ego_type(ego_position, velocity=ego_velocity, history=ego_history,
+                                 time=time, is_robot=True, dt=dt, identifier=mantrap.constants.ID_EGO)
         else:
-            assert ego_kwargs is None
+            assert ego_position is None
             self._ego = None
 
         self._ado_ghosts = []
@@ -111,7 +120,7 @@ class GraphBasedEnvironment(abc.ABC):
         self._env_params[mantrap.constants.PK_Y_AXIS] = y_axis
         self._env_params[mantrap.constants.PK_CONFIG] = config_name
         self._dt = dt
-        self._time = 0
+        self._time = time
 
         # Perform sanity check for environment and agents.
         assert self.sanity_check()
@@ -597,9 +606,9 @@ class GraphBasedEnvironment(abc.ABC):
                 position = self.ego.position
                 velocity = self.ego.velocity
                 history = self.ego.history
-                ego_kwargs = {"position": position, "velocity": velocity, "history": history, "time": self.time}
+                ego_kwargs = {"ego_position": position, "ego_velocity": velocity, "ego_history": history}
 
-            env_copy = env_type(ego_type, ego_kwargs, dt=self.dt, **self._env_params)
+            env_copy = env_type(ego_type, **ego_kwargs, dt=self.dt, time=self.time, **self._env_params)
 
             # Add internal ado agents to newly created environment.
             env_copy = self._copy_ados(env_copy=env_copy)

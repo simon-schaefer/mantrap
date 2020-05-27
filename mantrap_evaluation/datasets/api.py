@@ -23,7 +23,7 @@ def create_environment(
     assert ado_goals is None or all([mantrap.utility.shaping.check_goal(goal) for goal in ado_goals])
     assert num_modes >= 1
 
-    ego_kwargs = {"position": ego_state[0:2], "velocity": ego_state[2:4]} if ego_type is not None else None
+    ego_kwargs = {"ego_position": ego_state[0:2], "ego_velocity": ego_state[2:4]} if ego_type is not None else None
     env = env_type(ego_type=ego_type, ego_kwargs=ego_kwargs, config_name=config_name, **env_kwargs)
     for m_ado, history in enumerate(ado_histories):
         ado_kwargs = {

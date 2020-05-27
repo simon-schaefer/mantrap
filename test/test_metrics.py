@@ -87,7 +87,7 @@ def test_directness(velocity_profiles: torch.Tensor, directness_score: float):
                                        mantrap.environment.ORCAEnvironment,
                                        mantrap.environment.Trajectron])
 def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-    env = env_class(mantrap.agents.DoubleIntegratorDTAgent, {"position": torch.tensor([5, 0])})
+    env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([5, 0]))
     env.add_ado(position=torch.zeros(2), velocity=torch.tensor([1, 0]))
 
     # When the ado trajectories are exactly the same as predicting them without an ego, the score should be zero.

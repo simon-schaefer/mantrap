@@ -27,7 +27,7 @@ def scenario(
     attention_class: str = None,
     **solver_kwargs
 ):
-    env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-5, 2])})
+    env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 2]))
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
     env.add_ado(position=torch.tensor([3, 2]), num_modes=num_modes)
@@ -52,7 +52,7 @@ class TestSolvers:
     def test_convergence(solver_class, env_class, num_modes, attention_class):
         dt = mantrap.constants.ENV_DT_DEFAULT
         ego_goal_distance = (mantrap.constants.PED_SPEED_MAX / 2) * dt
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-ego_goal_distance, 0])}, dt=dt)
+        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-ego_goal_distance, 0]), dt=dt)
         env.add_ado(position=torch.ones(2) * 10, velocity=torch.zeros(2))
 
         solver_kwargs = {"attention_module": attention_class, "t_planning": 1}
@@ -97,7 +97,7 @@ class TestSolvers:
 
     @staticmethod
     def test_solve(solver_class, env_class, num_modes, attention_class):
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
@@ -140,8 +140,9 @@ class TestSolvers:
 
     @staticmethod
     def test_warm_start(solver_class, env_class, num_modes, attention_class):
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0]),
-                                                           "velocity": torch.ones(2)})
+        env = env_class(mantrap.agents.IntegratorDTAgent,
+                        ego_position=torch.tensor([-8, 0]),
+                        ego_velocity=torch.ones(2))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
@@ -168,7 +169,7 @@ class TestSearchSolvers:
 
     @staticmethod
     def test_improvement(solver_class, env_class):
-        env = env_class(mantrap.agents.IntegratorDTAgent, {"position": torch.tensor([-8, 0])})
+        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
         env.add_ado(position=torch.tensor([9, 9]))  # far-away
         solver = solver_class(env, goal=torch.zeros(2), t_planning=5)
 
@@ -214,7 +215,8 @@ def test_ignoring_solver(env_class):
     ego_position = torch.tensor([-3, 0])
     ego_velocity = torch.ones(2)
     env = env_class(mantrap.agents.DoubleIntegratorDTAgent,
-                    {"position": ego_position, "velocity": ego_velocity},
+                    ego_position=ego_position,
+                    ego_velocity=ego_velocity,
                     dt=0.4)
     env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
 

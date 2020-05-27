@@ -2,7 +2,6 @@ from collections import namedtuple
 
 import numpy as np
 import pytest
-from scipy.stats import uniform
 import torch
 
 import mantrap.agents
@@ -26,7 +25,7 @@ class TestEnvironment:
     @staticmethod
     def test_initialization(environment_class, num_modes: int):
         ego_position = torch.rand(2).float()
-        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=ego_position)
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
 
@@ -46,7 +45,7 @@ class TestEnvironment:
         ado_init_position = torch.zeros(2)
         ado_init_velocity = torch.ones(2)
         ego_init_position = torch.tensor([-4, 6])
-        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_init_position})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=ego_init_position)
 
         # In order to be able to verify the generated trajectories easily, we assume uni-modality here.
         env.add_ado(position=ado_init_position, velocity=ado_init_velocity, num_modes=1)
@@ -72,7 +71,7 @@ class TestEnvironment:
     @staticmethod
     def test_step_reset(environment_class, num_modes: int):
         ego_position = torch.rand(2)
-        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=ego_position)
 
         # In order to be able to verify the generated trajectories easily, we assume uni-modality here.
         env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), num_modes=1)
@@ -103,7 +102,7 @@ class TestEnvironment:
     @staticmethod
     def test_build_connected_graph(environment_class, num_modes: int):
         ego_position = torch.rand(2)
-        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=ego_position)
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([3, 0]), goal=torch.tensor([-4, 0]), num_modes=num_modes)
@@ -122,8 +121,7 @@ class TestEnvironment:
         goal = torch.tensor([5, 0])
         path = mantrap.utility.maths.straight_line(start=position, end=goal, steps=11)
 
-        ego_kwargs = {"position": position, "velocity": torch.zeros(2)}
-        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs=ego_kwargs)
+        env = environment_class(mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=torch.zeros(2))
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([3, 0]), velocity=torch.ones(2), goal=torch.zeros(2), num_modes=num_modes)
@@ -136,7 +134,7 @@ class TestEnvironment:
     @staticmethod
     def test_detaching(environment_class, num_modes: int):
         ego_position = torch.rand(2)
-        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=ego_position)
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([3, 0]), goal=torch.tensor([-4, 0]), num_modes=num_modes)
@@ -166,7 +164,7 @@ class TestEnvironment:
         ados_goal = torch.stack([torch.zeros(2), torch.ones(2)])
 
         # Create example environment scene to  copy later on. Then copy the example environment.
-        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_init_pos})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=ego_init_pos)
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=ados_init_pos[0], velocity=ados_init_vel[0], goal=ados_goal[0], num_modes=num_modes)
@@ -211,7 +209,7 @@ class TestEnvironment:
     @staticmethod
     def test_states(environment_class, num_modes: int):
         ego_position = torch.tensor([-5, 0])
-        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_kwargs={"position": ego_position})
+        env = environment_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=ego_position)
         if num_modes > 1 and not env.is_multi_modal:
             pytest.skip()
         env.add_ado(position=torch.tensor([3, 0]), velocity=torch.rand(2), goal=torch.rand(2), num_modes=num_modes)
@@ -298,8 +296,8 @@ def test_social_forces_static_ado_pair_prediction():
     ],
 )
 def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
-    env_1 = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, {"position": pos_1})
-    env_2 = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, {"position": pos_2})
+    env_1 = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, ego_position=pos_1)
+    env_2 = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, ego_position=pos_2)
 
     forces = torch.zeros((2, 2))
     gradients = torch.zeros((2, 2))
