@@ -22,13 +22,13 @@ install:
   - pip install -e .
 
   - echo "IPOPT installation"
-  - cd external/Ipopt || return
+  - cd third_party/Ipopt || return
   - mkdir build
   - ./coinbrew fetch Ipopt --no-prompt
-  - ./coinbrew build Ipopt --prefix=/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build --test --no-prompt
+  - ./coinbrew build Ipopt --prefix=/home/travis/build/simon-schaefer/mantrap/third_party/Ipopt/build --test --no-prompt
   - ./coinbrew install Ipopt  --no-prompt
 
-  - cd /home/travis/build/simon-schaefer/mantrap/external
+  - cd /home/travis/build/simon-schaefer/mantrap/third_party
   - git clone https://github.com/coin-or-tools/ThirdParty-Mumps.git
   - cd ThirdParty-Mumps
   - ./get.Mumps
@@ -36,20 +36,20 @@ install:
   - make
   - sudo make install
 
-  - export PKG_CONFIG_PATH="/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build/Ipopt/master"
-  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build/ThirdParty/Mumps/2.0"
-  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build/ThirdParty/Metis/2.0"
-  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/external/ThirdParty-Mumps/"
+  - export PKG_CONFIG_PATH="/home/travis/build/simon-schaefer/mantrap/third_party/Ipopt/build/Ipopt/master"
+  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/third_party/Ipopt/build/ThirdParty/Mumps/2.0"
+  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/third_party/Ipopt/build/ThirdParty/Metis/2.0"
+  - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/home/travis/build/simon-schaefer/mantrap/third_party/ThirdParty-Mumps/"
 
   - echo "CYIPOPT installation"
-  - cd /home/travis/build/simon-schaefer/mantrap/external
+  - cd /home/travis/build/simon-schaefer/mantrap/third_party
   - wget https://files.pythonhosted.org/packages/05/57/a7c5a86a8f899c5c109f30b8cdb278b64c43bd2ea04172cbfed721a98fac/ipopt-0.1.9.tar.gz
   - tar -xzvf ipopt-0.1.9.tar.gz
   - mv ipopt-0.1.9 cyipopt
   - cd cyipopt || return
   - python setup.py install
 
-  - export LD_LIBRARY_PATH="/home/travis/build/simon-schaefer/mantrap/external/Ipopt/build/lib"
+  - export LD_LIBRARY_PATH="/home/travis/build/simon-schaefer/mantrap/third_party/Ipopt/build/lib"
   - cd /home/travis/build/simon-schaefer/mantrap
 
 # command to run tests. since trajectron is private so far, all modules connected to it are not
