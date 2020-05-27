@@ -1,15 +1,15 @@
 
-[submodule "external/ORCA"]
-	path = external/ORCA
+[submodule "third_party/ORCA"]
+	path = third_party/ORCA
 	url = https://github.com/snape/RVO2
 	
 
-[submodule "external/HJReachibility"]
-	path = external/HJReachibility
+[submodule "third_party/HJReachibility"]
+	path = third_party/HJReachibility
 	url = https://github.com/simon-schaefer/HJReachibility
 	branch = master
 
-[submodule "external/GenTrajectron"]
- 	path = external/GenTrajectron
+[submodule "third_party/GenTrajectron"]
+ 	path = third_party/GenTrajectron
     url = https://github.com/simon-schaefer/GenTrajectron
     branch = online_with_torch

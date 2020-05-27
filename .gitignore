@@ -31,7 +31,7 @@ build/
 .ipynb_checkpoints/
 
 # External libraries.
-external/
+third_party/
 
 # Output files.
 outputs/
