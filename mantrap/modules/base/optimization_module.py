@@ -44,6 +44,8 @@ class OptimizationModule(abc.ABC):
         # Giving every optimization module access to a (large) simulation environment object is not
         # necessary and an un-necessary use of space, even when it is just a pointer.
         self._env = env  # may be None
+        if env is not None:
+            assert env.ego is not None
 
         # Logging variables for objective and gradient values. For logging the latest variables are stored
         # as class parameters and appended to the log when calling the `logging()` function, in order to avoid
