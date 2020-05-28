@@ -45,8 +45,8 @@ def visualize_heat_map(
     plot_z_values = choices is not None
 
     if color_bounds is None:
-        color_bounds = (np.amin(images), np.amax(images))
-    assert color_bounds[0] < color_bounds[1]
+        color_bounds = (float(np.nanmin(images)), float(np.nanmax(images)))
+    assert color_bounds[0] <= color_bounds[1]
 
     assert len(images.shape) == 3
     if plot_z_values:
