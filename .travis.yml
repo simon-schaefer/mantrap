@@ -25,8 +25,9 @@ install:
 
   - echo "Python requirement installation"
   - pip install -r ops/requirements.txt
-  - cp ops/setup.py .
-  - pip install -e .
+  - export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH
+  - pip3 install -r "${EXTERNAL_HOME}"/sgan/requirements.txt
+  - export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH/third_party/sgan
   - pip install -r third_party/GenTrajectron/requirements.txt
 
   - echo "IPOPT installation"

@@ -2,8 +2,10 @@
 	path = third_party/HJReachibility
 	url = https://github.com/simon-schaefer/HJReachibility
 	branch = master
-
 [submodule "third_party/GenTrajectron"]
  	path = third_party/GenTrajectron
     url = https://github.com/simon-schaefer/GenTrajectron
     branch = online_with_torch
+[submodule "third_party/sgan"]
+	path = third_party/sgan
+	url = https://github.com/agrimgupta92/sgan.git

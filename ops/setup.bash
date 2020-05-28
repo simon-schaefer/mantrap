@@ -21,12 +21,14 @@ source "${PROJECT_HOME}"/"${VIRTUAL_ENV}"/bin/activate
 echo $'\nInstalling package ...'
 cd "${PROJECT_HOME}" || return
 pip3 install -r "${PROJECT_HOME}"/ops/requirements.txt
-cp "${PROJECT_HOME}"/ops/setup.py "${PROJECT_HOME}"
-pip3 install -e .
-rm "${PROJECT_HOME}"/setup.py
+echo mantrap > "${VIRTUAL_ENV}"/lib/python3.7/site-packages/mantrap.pth
+echo mantrap_evaluation > "${VIRTUAL_ENV}"/lib/python3.7/site-packages/mantrap_evaluation.pth
 
 # Install external libraries requirements.
+pip3 install -r "${EXTERNAL_HOME}"/sgan/requirements.txt
+echo "${EXTERNAL_HOME}"/sgan > "${VIRTUAL_ENV}"/lib/python3.7/site-packages/sgan.pth
 pip3 install -r "${EXTERNAL_HOME}"/GenTrajectron/requirements.txt
+
 
 # Create output directory.
 mkdir "${PROJECT_HOME}"/outputs
