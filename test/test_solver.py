@@ -185,6 +185,30 @@ class TestSolvers:
         assert np.all(np.less_equal(z0_flat, upper))
         assert np.all(np.greater_equal(z0_flat, lower))
 
+    @staticmethod
+    def test_encoding(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
+                      env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                      num_modes: int,
+                      attention_class: mantrap.attention.AttentionModule.__class__,
+                      warm_start_method: str):
+        ego_position = torch.zeros(2)
+        ego_velocity = torch.rand(2)
+        ado_position = torch.rand(2) * 3  # closer position
+        ado_2_position = torch.tensor([4, 5])
+        ego_goal = torch.rand(2) * 5
+
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position, ego_velocity=ego_velocity)
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
+        env.add_ado(position=ado_position, num_modes=num_modes)
+        env.add_ado(position=ado_2_position, num_modes=num_modes)
+        solver = solver_class(env, attention_module=attention_class, goal=ego_goal, t_planning=5)
+
+        encoding = solver.encode()
+        assert torch.allclose(encoding[2:4], ego_velocity)
+        t = mantrap.utility.maths.rotation_matrix(ego_position, ego_goal)
+        assert torch.allclose(encoding[0:2], torch.matmul(t, ado_position))
+
 
 ###########################################################################
 # Test - Search Solver ####################################################

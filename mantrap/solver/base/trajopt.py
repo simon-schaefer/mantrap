@@ -421,6 +421,44 @@ class TrajOptSolver(abc.ABC):
         raise NotImplementedError
 
     ###########################################################################
+    # Encoding ################################################################
+    ###########################################################################
+    def encode(self) -> torch.Tensor:
+        """Encode the current environment-goal-setup in a four-dimensional continuous space.
+
+        To represent a given scene completely the following elements have to be taken into
+        account: the robot state (position, acceleration, type),  the ado states (position,
+        velocity, history, type) and the goal state. However to reduce dimensionality of
+        the representation, we simplify the problem to only encode the current states (no
+        history) and assume single integrator ado and double integrator robot dynamics.
+        As a consequence the ado's velocity can be ignored as well (since it can change
+        instantly due to the single integrator dynamics).
+
+        The most important information with respect to the trajectory optimization surely
+        is the relative position of the goal state, in robot coordinates. Therefore as
+        an encoding the ado positions are transformed into the coordinate system spanned
+        by the line from the robot's to the goal position (and its orthogonal). The
+        transformed coordinates of the closest pedestrian (w.r.t. the robot) as well as
+        the robot's velocity form the scene encoding.
+
+        .. math::\\vec{s} = \\begin{bmatrix} \\eta_P & \\mu_P & vx_R & vy_R \\end{bmatrix}^T
+
+        :return: four-dimensional scene representation.
+        """
+        with torch.no_grad():
+            ego_state, ado_states = self.env.states()
+
+            # Compute robot-goal-coordinate transformation.
+            t = mantrap.utility.maths.rotation_matrix(ego_state[0:2], self.goal)
+
+            # Determine closest pedestrian using L2-norm-distance.
+            ado_distances = torch.norm(ado_states[:, 0:2] - ego_state[0:2], dim=1)
+            i_ado_closest = torch.argmin(ado_distances)
+            ado_pos_t = torch.matmul(t, ado_states[i_ado_closest, 0:2])
+
+            return torch.cat((ado_pos_t, ego_state[2:4]))
+
+    ###########################################################################
     # Logging #################################################################
     ###########################################################################
     def __intermediate_log(self, ego_controls_k: torch.Tensor):

@@ -186,6 +186,16 @@ def normal_line(start: torch.Tensor, end: torch.Tensor):
     return torch.tensor([direction[1], -direction[0]])
 
 
+def rotation_matrix(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """Create rotation matrix from angle of vector from x -> y."""
+    assert x.numel() == y.numel() == 2
+
+    xy = y - x
+    theta = torch.atan2(xy[1], xy[0])
+    return torch.tensor([[torch.cos(theta), torch.sin(theta)],
+                         [-torch.sin(theta), torch.cos(theta)]])
+
+
 ###########################################################################
 # Logic ###################################################################
 ###########################################################################
