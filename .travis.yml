@@ -59,6 +59,11 @@ install:
   - export LD_LIBRARY_PATH="/home/travis/build/simon-schaefer/mantrap/third_party/Ipopt/build/lib"
   - cd /home/travis/build/simon-schaefer/mantrap
 
+  - cd third_party
+  - sudo apt-get install unzip
+  - wget $RESSOURCES_URL -O ressoures.zip
+  - unzip ressoures.zip
+
 # command to run tests. since trajectron is private so far, all modules connected to it are not
 # yet tested, this will be changed once trajectron is being integrated publicly
 script:
