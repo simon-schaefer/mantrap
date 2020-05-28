@@ -221,6 +221,8 @@ class TestSearchSolvers:
     @staticmethod
     def test_improvement(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                          env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
+        np.random.seed(0)
+
         env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
         env.add_ado(position=torch.tensor([9, 9]))  # far-away
         solver = solver_class(env, goal=torch.zeros(2), t_planning=5)
