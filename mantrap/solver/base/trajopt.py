@@ -105,10 +105,24 @@ class TrajOptSolver(abc.ABC):
         """Method can be overwritten when further initialization is required."""
         pass
 
+    @classmethod
+    def solver_hard(
+        cls,
+        env: mantrap.environment.base.GraphBasedEnvironment,
+        goal: torch.Tensor,
+        t_planning: int = mantrap.constants.SOLVER_HORIZON_DEFAULT,
+        config_name: str = mantrap.constants.CONFIG_UNKNOWN,
+        **solver_params
+    ):
+        """Create internal solver version with only "hard" optimization modules."""
+        modules_hard = cls.module_hard()
+        return cls(env, goal, t_planning=t_planning, modules=modules_hard, config_name=config_name, **solver_params)
+
     ###########################################################################
     # Solving #################################################################
     ###########################################################################
-    def solve(self, time_steps: int, **kwargs) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+    def solve(self, time_steps: int, warm_start_method: str = mantrap.constants.WARM_START_HARD, **kwargs
+              ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         """Find the ego trajectory given the internal environment with the current scene as initial condition.
         Therefore iteratively solve the problem for the scene at t = t_k, update the scene using the internal simulator
         and the derived ego policy and repeat until t_k = `horizon` or until the goal has been reached.
@@ -116,6 +130,7 @@ class TrajOptSolver(abc.ABC):
         This method changes the internal environment by forward simulating it over the prediction horizon.
 
         :param time_steps: how many time-steps shall be solved (not planning horizon !).
+        :param warm_start_method: warm-starting method (see .warm_start()).
         :return: derived ego trajectory [horizon + 1, 5].
         :return: derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
         """
@@ -132,7 +147,7 @@ class TrajOptSolver(abc.ABC):
             ado_trajectories[m_ado, 0, 0, :] = ghost.agent.state_with_time
 
         # Warm-start the optimization using a simplified optimization formulation.
-        z_warm_start = self.warm_start()
+        z_warm_start = self.warm_start(method=warm_start_method)
 
         logging.debug(f"Starting trajectory optimization solving for planning horizon {time_steps} steps ...")
         for k in range(time_steps):
@@ -231,7 +246,25 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Problem formulation - Warm-Starting #####################################
     ###########################################################################
-    def warm_start(self) -> torch.Tensor:
+    def warm_start(self, method: str = mantrap.constants.WARM_START_HARD) -> torch.Tensor:
+        """Compute warm-start for optimization decision variables z.
+
+        - hard: solve the same optimization process but use the hard optimization modules (
+                objectives and constraints) only.
+
+        - encoding:
+
+        :param method: method to use.
+        :return: initial z values.
+        """
+        if method == mantrap.constants.WARM_START_HARD:
+            return self._warm_start_hard()
+        elif method == mantrap.constants.WARM_START_ENCODING:
+            return self._warm_start_encoding()
+        else:
+            raise ValueError(f"Invalid warm starting-method {method} !")
+
+    def _warm_start_hard(self) -> torch.Tensor:
         """Warm-Starting optimization using solution for hard modules only.
 
         In order to warm start the optimization solve the same optimization process but use the hard
@@ -256,18 +289,8 @@ class TrajOptSolver(abc.ABC):
         z_opt_hard, _, _ = solver_hard.optimize(z0=torch.from_numpy(z_init), tag=mantrap.constants.TAG_WARM_START)
         return z_opt_hard
 
-    @classmethod
-    def solver_hard(
-        cls,
-        env: mantrap.environment.base.GraphBasedEnvironment,
-        goal: torch.Tensor,
-        t_planning: int = mantrap.constants.SOLVER_HORIZON_DEFAULT,
-        config_name: str = mantrap.constants.CONFIG_UNKNOWN,
-        **solver_params
-    ):
-        """Create internal solver version with only "hard" optimization modules."""
-        modules_hard = cls.module_hard()
-        return cls(env, goal, t_planning=t_planning, modules=modules_hard, config_name=config_name, **solver_params)
+    def _warm_start_encoding(self) -> torch.Tensor:
+        raise NotImplementedError
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
