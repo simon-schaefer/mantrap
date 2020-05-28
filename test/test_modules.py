@@ -172,8 +172,8 @@ class TestObjectives:
             module.gradient(ego_trajectory, grad_wrt=ego_controls, ado_ids=env.ado_ids, tag="test")
             gradient_run_times.append(time.time() - start_time)
 
-        assert np.mean(objective_run_times) < 0.02 * num_modes  # 50 Hz
-        assert np.mean(gradient_run_times) < 0.03 * num_modes  # 33 Hz
+        assert np.mean(objective_run_times) < 0.04 * num_modes  # 25 Hz
+        assert np.mean(gradient_run_times) < 0.04 * num_modes  # 25 Hz
 
 
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,

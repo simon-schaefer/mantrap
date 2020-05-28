@@ -18,7 +18,7 @@ class AttentionModule(abc.ABC):
     :param t_horizon: planning time horizon in number of time-steps (>= 1).
     :param env: environment object reference.
     """
-    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int):
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, **unused):
         self._env = env
         self._t_horizon = t_horizon
 
