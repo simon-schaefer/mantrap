@@ -6,6 +6,7 @@ pandas==0.25.1
 
 jupyter  # visuatlization
 matplotlib  # visualization
+seaborn  # visualization
 sphinx  # documentation
 
 Cython  # IPOPT dependency
