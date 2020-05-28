@@ -74,7 +74,8 @@ class HJReachabilityModule(OptimizationModule):
         # Get value function time-intervals in order to determine which value function grid we need
         # when we want to make a statement about the full time horizon (planning horizon) of the
         # constraints in its (!) time-steps, they not necessarily have to be synced.
-        t_horizon_s = self.t_horizon * self._env.dt  # constraints time-horizon in seconds
+        safety_horizon = 1  # self.t_horizon
+        t_horizon_s = safety_horizon * self._env.dt  # constraints time-horizon in seconds
         assert tau[-1] >= t_horizon_s
         t_value = int(np.argmax(tau > t_horizon_s))  # arg(value_function @ t = t_horizon in seconds)
 

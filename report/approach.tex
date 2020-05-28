@@ -214,6 +214,7 @@ Computing the jacobian for constraint \ref{eq:constraint_v_max} is straight-forw
 % todo: constraint formulation (e.g. min-distance constraints split to be more accurate or summed to compute jacobian faster)
 % todo: Quellen: neural network representation of value function to make it differentiable (Karen: reachability, Kyle David Julian: network representation to make sure all the corner cases are met)
 % todo: turns out being a linear constraint (see 1D graph)
+%todo: special case => current state is infeasible, then convert to cost of high weight
 
 % Reachability Meeting
 % Is max_u min_d the same as min_d max_u, so conditioning the disturbance on the input instead of the other way around ? ==> minimax-theorem, depending on function ==> factor out grad V times f

@@ -91,8 +91,11 @@ class OptimizationModule(abc.ABC):
         
         Add slack based part of objective function. The value of the slack variable can only be
         updated if the constraints have been computed before. However using general optimization
-        frameworks we cannot enforce the order to method calls, therefore to be surely synched
+        frameworks we cannot enforce the order to method calls, therefore to be surely synced
         we have to compute the constraints here first (!).
+        Add the slack-based objective if the constraint is violated, otherwise add zero (since
+        a constraint should not be optimised, just be feasible). The large `slack_weight` will
+        thereby force the optimiser to make some decision to become feasible again.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
@@ -104,7 +107,8 @@ class OptimizationModule(abc.ABC):
         if self._has_slack:
             obj_value = torch.zeros(1) if obj_value is None else obj_value
             _ = self.compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
-            obj_value += self._slack_weight * self._slack[tag].sum()
+            slack_non_zero = torch.max(self._slack[tag], torch.zeros_like(self._slack[tag]))
+            obj_value += self._slack_weight * slack_non_zero.sum()
 
         return obj_value
 
@@ -226,7 +230,6 @@ class OptimizationModule(abc.ABC):
         if self._has_slack and constraints is not None:
             self._slack[tag] = - constraints
             constraints = constraints + self._slack[tag]  # constraint - slack (slacked variables)
-            constraints = torch.cat((constraints, - self._slack[tag]))
 
         return constraints
 
@@ -292,11 +295,6 @@ class OptimizationModule(abc.ABC):
                 # Otherwise determine the jacobian numerically using the PyTorch autograd package.
                 else:
                     jacobian = self.compute_gradient_auto_grad(constraints, grad_wrt=grad_wrt)
-
-        # Add slack variables jacobian term, which basically is identical to the jacobian of
-        # the constraint, just negative.
-        if self._has_slack:
-            jacobian = np.concatenate((jacobian, -jacobian), axis=0)
 
         return jacobian
 
@@ -417,9 +415,6 @@ class OptimizationModule(abc.ABC):
 
         # Slack variable introduced boundaries. We assume that the number of slack variables
         # is equal to number of constraint, i.e. that each constraint of the module is "soft".
-        if self._has_slack:
-            lower_bounds = lower_bounds + [0.0] * num_constraints
-            upper_bounds = upper_bounds + [None] * num_constraints
         return lower_bounds, upper_bounds
 
     def constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
@@ -427,9 +422,7 @@ class OptimizationModule(abc.ABC):
         raise NotImplementedError
 
     def num_constraints(self, ado_ids: typing.List[str]) -> int:
-        num_module_constraints = self._num_constraints(ado_ids=ado_ids)
-        num_slack_constraints = num_module_constraints if self._has_slack else 0
-        return num_module_constraints + num_slack_constraints
+        return self._num_constraints(ado_ids=ado_ids)
 
     @abc.abstractmethod
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
