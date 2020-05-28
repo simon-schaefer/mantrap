@@ -276,12 +276,38 @@ Within project \project the algorithm has been warm-started by solving the optim
 \label{eq:formulation_warm_starting}
 \end{problem}
 
-Since the simplified optimisation problem in problem \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\tilde{\Phi}$ it is much easier and more efficient to solve, being a convex quadratic program.
+Since the simplified optimisation problem in problem \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\tilde{\Phi}$ it is much easier and more efficient to solve, being a convex quadratic program. \\
+
+\begin{figure}[!ht]
+\begin{center}
+\begin{tikzpicture}
+
+	\node (R) at (0, 0) [circle, shade, draw] {Robot};
+	\node (G) at (8, 4) [circle, shade, draw] {Goal};
+	\node (P1) at (2, 3) [circle, fill=orange, draw] {$P_1$};
+	\node (P2) at (8, 1) [circle, fill=yellow, draw] {$P_2$};
+	
+	\tkzDefPointBy[projection=onto R--G](P1)  \tkzGetPoint{P1m}
+	\tkzDefPointBy[projection=onto R--G](P2)  \tkzGetPoint{P2m}
+	
+	\draw[->, dotted, very thick] (R) to node[above] {} (G);
+	\draw (P1m) -- (P1) node[midway, sloped, above] {$\mu_{P1}$};
+	\draw (R) -- (P1m) node[midway, sloped, above] {$\eta_{P1}$};
+	\draw (P2m) -- (P2) node[midway, sloped, above] {$\mu_{P2}$};
+	\draw (R) -- (P2m) node[midway, sloped, below] {$\eta_{P1}$};
+	
+\end{tikzpicture}
+\end{center}
+\label{img:robot_goal_encoding}
+\end{figure}
 
 %todo: pre-computation warm-starting since going straight is often not a good choice
+%todo: influence of number of pedestrian in encoding on initial cost
 
 % Warm-Starting Meeting
-% Warm-start using pre-computation (similarity by trajectron latent space vs manual encoding) ==> discrete latent space so could be total mess (perturbation sensitivity ??)
+% Warm-start using pre-computation (similarity by trajectron latent space vs manual encoding) ==> discrete latent space so could be total mess (perturbation sensitivity ??) ==> see jupyter notebook evaluation and reminder
+
+%Does pre-computed set contain every possible scenario ? No but just warm-start so not required, there will be a constrained optimisation afterwards anyway
 
 \subsection{Attention}
 \label{text:approach/runtime/filtering}

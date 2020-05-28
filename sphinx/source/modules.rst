@@ -35,6 +35,11 @@ Goal-Sum
 Interaction-Driven Objectives
 -----------------------------
 
+Probability Interaction
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: mantrap.modules.prob_interact
+    :members:
+
 Acceleration Interaction
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. automodule:: mantrap.modules.baselines.acc_interact
