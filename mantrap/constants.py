@@ -72,6 +72,9 @@ SOLVER_HORIZON_DEFAULT = 5  # number of future time-steps to be taken into accou
 SOLVER_CONSTRAINT_LIMIT = 1e-3  # limit of sum of constraints to be fulfilled
 SOLVER_GOAL_END_DISTANCE = 0.5  # [m] maximal distance to goal to finish optimization.
 
+WARM_START_HARD = "hard"  # warm-starting methods
+WARM_START_ENCODING = "encoding"
+
 IPOPT_MAX_CPU_TIME_DEFAULT = 3.0  # [s] maximal IPOPT solver CPU time.
 IPOPT_OPTIMALITY_TOLERANCE = 0.01  # maximal optimality error to return solution (see documentation).
 IPOPT_AUTOMATIC_JACOBIAN = "finite-difference-values"  # method for Jacobian approximation (if flag is True).
@@ -84,7 +87,7 @@ MCTS_NUMBER_DEPTH_SAMPLES = 5  # number of samples in depth (i.e. trajectories t
 CONSTRAINT_MIN_L2_DISTANCE = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 CONSTRAINT_VIOLATION_PRECISION = 1e-5  # allowed precision error when determining constraint violation.
 
-FILTER_EUCLIDEAN_RADIUS = 7.0  # [m] attention radius of ego for planning
+ATTENTION_EUCLIDEAN_RADIUS = 7.0  # [m] attention radius of ego for planning
 
 #######################################
 # visualization parameters ############

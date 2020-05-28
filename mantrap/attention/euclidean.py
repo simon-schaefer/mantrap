@@ -23,7 +23,7 @@ class EuclideanModule(AttentionModule):
         with torch.no_grad():
             ego_state, ado_states = self._env.states()
             euclidean_distances = torch.norm(ado_states[:, 0:2] - ego_state[0:2], dim=1)
-            in_attention = (euclidean_distances < mantrap.constants.FILTER_EUCLIDEAN_RADIUS).numpy()
+            in_attention = (euclidean_distances < mantrap.constants.ATTENTION_EUCLIDEAN_RADIUS).numpy()
             in_indices = np.nonzero(in_attention)[0]
 
         return in_indices

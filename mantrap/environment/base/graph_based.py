@@ -276,25 +276,6 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     # Scene ###################################################################
     ###########################################################################
-    def states(self) -> typing.Tuple[torch.Tensor, torch.Tensor]:
-        """Return current states of ego and ado agents in the scene. Since the current state is known for every
-        ado the states are deterministic and uni-modal. States are returned as vector including temporal dimension.
-
-        :returns: ego state vector including temporal dimension (5).
-        :returns: ado state vectors including temporal dimension (num_ados, 5).
-        """
-        ado_states = torch.zeros((self.num_ados, 5))
-        for ado_id in self.ado_ids:
-            m_ado = self.index_ado_id(ado_id=ado_id)
-            m_ghost = self.convert_ado_id(ado_id=ado_id, mode_index=0)  # 0 independent from num_modes
-            ado_states[m_ado, :] = self.ghosts[m_ghost].agent.state_with_time
-        ego_state = self.ego.state_with_time if self.ego is not None else None
-
-        if ego_state is not None:
-            assert mantrap.utility.shaping.check_ego_state(ego_state, enforce_temporal=True)
-        assert mantrap.utility.shaping.check_ado_states(ado_states, enforce_temporal=True, num_ados=self.num_ados)
-        return ego_state, ado_states
-
     def add_ado(
         self,
         position: torch.Tensor,
@@ -353,6 +334,28 @@ class GraphBasedEnvironment(abc.ABC):
         # Perform sanity check for environment and agents.
         assert self.sanity_check()
         return ado
+
+    ###########################################################################
+    # Scene State #############################################################
+    ###########################################################################
+    def states(self) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+        """Return current states of ego and ado agents in the scene. Since the current state is known for every
+        ado the states are deterministic and uni-modal. States are returned as vector including temporal dimension.
+
+        :returns: ego state vector including temporal dimension (5).
+        :returns: ado state vectors including temporal dimension (num_ados, 5).
+        """
+        ado_states = torch.zeros((self.num_ados, 5))
+        for ado_id in self.ado_ids:
+            m_ado = self.index_ado_id(ado_id=ado_id)
+            m_ghost = self.convert_ado_id(ado_id=ado_id, mode_index=0)  # 0 independent from num_modes
+            ado_states[m_ado, :] = self.ghosts[m_ghost].agent.state_with_time
+        ego_state = self.ego.state_with_time if self.ego is not None else None
+
+        if ego_state is not None:
+            assert mantrap.utility.shaping.check_ego_state(ego_state, enforce_temporal=True)
+        assert mantrap.utility.shaping.check_ado_states(ado_states, enforce_temporal=True, num_ados=self.num_ados)
+        return ego_state, ado_states
 
     def ados(self) -> typing.List[mantrap.agents.base.DTAgent]:
         """Return a list of ado agents associated to each ghost.
@@ -659,6 +662,9 @@ class GraphBasedEnvironment(abc.ABC):
                 assert ghost.agent.__eq__(other_ghost.agent, check_class=False)
         return True
 
+    ###########################################################################
+    # Sanity Check ############################################################
+    ###########################################################################
     def sanity_check(self) -> bool:
         """Check for the sanity of the scene and agents.
         In order to check the sanity of the environment some general properties must hold, such as the number and order

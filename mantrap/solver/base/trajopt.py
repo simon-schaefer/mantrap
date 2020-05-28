@@ -714,7 +714,8 @@ class TrajOptSolver(abc.ABC):
     def module_names(self) -> typing.List[str]:
         return [mantrap.constants.LK_OVERALL_PERFORMANCE] + list(self.module_dict.keys())
 
-    def filter_module(self) -> str:
+    @property
+    def attention_module(self) -> str:
         return self._attention_module.name() if self._attention_module is not None else "none"
 
     ###########################################################################
