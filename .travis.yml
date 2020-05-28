@@ -63,6 +63,9 @@ install:
   - sudo apt-get install unzip
   - wget $RESSOURCES_URL -O ressoures.zip
   - unzip ressoures.zip
+  - mv mantrap/trajectron_models .
+  - mv mantrap/reachability .
+  - cd /home/travis/build/simon-schaefer/mantrap
 
 # command to run tests. since trajectron is private so far, all modules connected to it are not
 # yet tested, this will be changed once trajectron is being integrated publicly

@@ -21,11 +21,11 @@ environments = [mantrap.environment.KalmanEnvironment,
 def create_scene(module_class: mantrap.modules.base.OptimizationModule.__class__,
                  env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                  num_modes: int):
-    env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
+    env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
     if num_modes > 1 and not env.is_multi_modal:
         pytest.skip()
     env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10, num_modes=num_modes)
-    module = module_class(env=env, t_horizon=5)
+    module = module_class(env=env, t_horizon=5, goal=torch.rand(2))  # must be general here for all modules ...
     return module, env
 
 
@@ -172,8 +172,8 @@ class TestObjectives:
             module.gradient(ego_trajectory, grad_wrt=ego_controls, ado_ids=env.ado_ids, tag="test")
             gradient_run_times.append(time.time() - start_time)
 
-        assert np.mean(objective_run_times) < 0.01 * num_modes  # 100 Hz
-        assert np.mean(gradient_run_times) < 0.02 * num_modes  # 50 Hz
+        assert np.mean(objective_run_times) < 0.02 * num_modes  # 50 Hz
+        assert np.mean(gradient_run_times) < 0.03 * num_modes  # 33 Hz
 
 
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
@@ -474,8 +474,9 @@ class TestHJReachability:
         automatically using PyTorch's auto_grad framework. However the "remaining" partial derivatives
         can be computed, i.e. all except of the pre-computed one, since they are based on online
         PyTorch computations and hence have a gradient function assigned to them. """
-
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.rand(2))
+        if num_modes > 1 and not env.is_multi_modal:
+            pytest.skip()
         env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10, num_modes=num_modes)
 
         ego_controls = torch.rand((5, 2)) / 10.0
