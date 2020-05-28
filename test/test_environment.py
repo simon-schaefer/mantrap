@@ -149,7 +149,7 @@ class TestEnvironment:
         for j in range(env.num_ghosts):
             ado_id, _ = env.split_ghost_id(ghost_id=env.ghosts[j].id)
             i_ado = env.index_ado_id(ado_id=ado_id)
-            env._ado_ghosts[j].agent.update(action=ado_controls[i_ado, 0, 0, :], dt=env.dt)
+            env.ghosts[j].agent.update(action=ado_controls[i_ado, 0, 0, :], dt=env.dt)
         if env.is_differentiable_wrt_ego:
             assert env.ghosts[0].agent.position.grad_fn is not None
 
@@ -242,7 +242,6 @@ class TestParametrized:
     @staticmethod
     def test_parametrized_ghosts_init(env_class: mantrap.environment.base.IterativeEnvironment.__class__):
         position = torch.tensor([-1, 0])
-        velocity = torch.tensor([0.1, 0.2])
         num_modes = 2
         # For the sake of easy testing simulate some kind of direc delta distribution.
         v0s = np.random.rand(num_modes)

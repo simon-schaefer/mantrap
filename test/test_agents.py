@@ -158,15 +158,15 @@ class TestAgent:
 
         # Define pseudo-objective function randomly from trajectory.
         weights = torch.rand(trajectory.numel()).view(*trajectory.shape).float()
-        J = torch.sum(weights * trajectory)
-        dJ_dx = torch.autograd.grad(J, trajectory, retain_graph=True)[0].detach().numpy()
+        j = torch.sum(weights * trajectory)
+        dj_dx = torch.autograd.grad(j, trajectory, retain_graph=True)[0].detach().numpy()
 
         # Compute gradient using chain rule.
         dx_du = agent.dx_du(controls, dt=dt).detach().numpy()
-        gradient_chain = np.matmul(dJ_dx.flatten(), dx_du)
+        gradient_chain = np.matmul(dj_dx.flatten(), dx_du)
 
-        # Compute gradient for pseudo-objective using autograd package.
-        gradient_auto_grad = torch.autograd.grad(J, controls, retain_graph=True)[0].flatten().detach().numpy()
+        # Compute gradient for pseudo-objective using auto_grad package.
+        gradient_auto_grad = torch.autograd.grad(j, controls, retain_graph=True)[0].flatten().detach().numpy()
         assert np.allclose(gradient_chain, gradient_auto_grad)
 
 
