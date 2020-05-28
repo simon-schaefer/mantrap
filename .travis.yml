@@ -2,6 +2,13 @@ language: python
 python:
   - "3.7"
 
+# de-activate submodules for now (while Trajectron is private)
+git:
+  submodules: false
+before_install:
+  - echo -e "machine github.com\n  login simon-schaefer\n  password $CI_USER_PASSWORD" >~/.netrc
+  - git submodule update --init --recursive
+
 # installation add-ons (for travis ci linux-based system)
 addons:
   apt:
