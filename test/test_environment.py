@@ -348,6 +348,16 @@ def test_trajectron_mode_selection():
 
 
 ###########################################################################
+# Test - SGAN Environment #################################################
+###########################################################################
+# def absolute_to_relative(trajectory: torch.Tensor) -> torch.Tensor:
+#     t_horizon, num_agents, dim = trajectory.shape
+#     trajectory_rel = trajectory - trajectory[0, :, :].unsqueeze(dim=0)
+#     trajectory_rel = trajectory_rel[1:, :, :] - trajectory_rel[:-1, :, :]
+#     return torch.cat((torch.zeros(1, num_agents, dim), trajectory_rel), dim=0)
+
+
+###########################################################################
 # Test - ORCA Environment #################################################
 ###########################################################################
 # Comparison to original implementation of ORCA which can be found in

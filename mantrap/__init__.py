@@ -44,7 +44,7 @@ def __set_logging_preferences():
     logging.StreamHandler.emit = remove_bytes_from_logging(logging.StreamHandler.emit)
     logging.basicConfig(
         level=logging.DEBUG if is_debug else logging.WARNING,
-        format="[%(asctime)-8s:%(msecs)03d %(levelname)-6s] %(message)-s",
+        format="[%(levelname)-6s > %(filename)s: %(lineno)4d (%(asctime)-8s:%(msecs)03d)] %(message)-s",
         datefmt="%H:%M:%S"
     )
     logging.getLogger("matplotlib").setLevel(logging.ERROR)
