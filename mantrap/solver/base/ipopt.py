@@ -105,7 +105,7 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         The IPOPT solver already uses the optimization variable boundaries as control limit, since we
         optimize for z = controls. Therefore only the goal module is required as a hard module.
         """
-        return [mantrap.modules.GoalNormModule]
+        return [mantrap.modules.GoalNormModule, mantrap.modules.SpeedLimitModule]
 
     ###########################################################################
     # Optimization formulation - Gradient #####################################
