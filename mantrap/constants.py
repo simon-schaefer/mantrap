@@ -55,13 +55,6 @@ SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between age
 
 POTENTIAL_FIELD_V0_DEFAULT = 4.0  # [m2s-2] repulsive field constant.
 
-ORCA_AGENT_RADIUS = 1.0  # ado collision radius [m].
-ORCA_EPS_NUMERIC = 0.0001
-ORCA_SUB_TIME_STEP = 0.01  # [s] interval the simulation time-steps are divided in.
-ORCA_MAX_GOAL_DISTANCE = 0.5  # [m] maximal distance to goal to have zero preferred velocity.
-ORCA_SAFE_TIME = 0.8  # [s] time interval of guaranteed no collisions. The larger it is, the tighter the
-# constraints, but more deviating paths.
-
 TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
 TRAJECTRON_DEFAULT_HISTORY_LENGTH = 5
 

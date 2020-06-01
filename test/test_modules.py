@@ -231,7 +231,6 @@ def test_objective_goal_distribution():
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
                                        mantrap.environment.PotentialFieldEnvironment,
                                        mantrap.environment.SocialForcesEnvironment,
-                                       mantrap.environment.ORCAEnvironment,
                                        mantrap.environment.Trajectron])
 @pytest.mark.parametrize("num_modes", [1, 2])
 class TestConstraints:
@@ -376,7 +375,6 @@ def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnv
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
                                        mantrap.environment.PotentialFieldEnvironment,
                                        mantrap.environment.SocialForcesEnvironment,
-                                       mantrap.environment.ORCAEnvironment,
                                        mantrap.environment.Trajectron])
 @pytest.mark.parametrize("num_modes", [1, 2])
 def test_min_distance_constraint_violation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,

@@ -17,7 +17,6 @@ import mantrap.utility.shaping
 @pytest.mark.parametrize("environment_class", [mantrap.environment.KalmanEnvironment,
                                                mantrap.environment.PotentialFieldEnvironment,
                                                mantrap.environment.SocialForcesEnvironment,
-                                               mantrap.environment.ORCAEnvironment,
                                                mantrap.environment.Trajectron])
 @pytest.mark.parametrize("num_modes", [1, 2, 5])
 class TestEnvironment:
@@ -366,49 +365,49 @@ def test_trajectron_mode_selection():
 # orca_dt = 10.0
 # sim_dt = 0.25
 # sim_speed_max = 4.0
-@pytest.mark.xfail(raises=AssertionError)
-def test_orca_single_agent():
-    env = mantrap.environment.ORCAEnvironment(dt=0.25)
-    env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), goal=torch.ones(2) * 4)
-
-    pos_expected = torch.tensor([[0, 0], [0.70710, 0.70710], [1.4142, 1.4142], [2.1213, 2.1213], [2.8284, 2.8284]])
-    ado_trajectories = env.predict_wo_ego(t_horizon=pos_expected.shape[0])
-    assert torch.isclose(torch.norm(ado_trajectories[0, 0, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)
-
-
-@pytest.mark.xfail(raises=AssertionError)
-def test_orca_two_agents():
-    env = mantrap.environment.ORCAEnvironment(dt=0.25)
-    env.add_ado(position=torch.tensor([-5, 0.1]), velocity=torch.zeros(2), goal=torch.tensor([5, 0]))
-    env.add_ado(position=torch.tensor([5, -0.1]), velocity=torch.zeros(2), goal=torch.tensor([-5, 0]))
-
-    pos_expected = torch.tensor(
-        [
-            [
-                [-5, 0.1],
-                [-4.8998, 0.107995],
-                [-4.63883, 0.451667],
-                [-3.65957, 0.568928],
-                [-2.68357, 0.6858],
-                [-1.7121, 0.802128],
-                [-0.747214, 0.917669],
-                [0.207704, 1.03202],
-                [1.18529, 0.821493],
-                [2.16288, 0.61097],
-            ],
-            [
-                [5, -0.1],
-                [4.8998, -0.107995],
-                [4.63883, -0.451667],
-                [3.65957, -0.568928],
-                [2.68357, -0.6858],
-                [1.7121, -0.802128],
-                [0.747214, -0.917669],
-                [-0.207704, -1.03202],
-                [-1.18529, -0.821493],
-                [-2.16288, -0.61097],
-            ],
-        ]
-    ).view(2, 1, -1, 2)
-    ado_trajectories = env.predict_wo_ego(t_horizon=pos_expected.shape[2])
-    assert torch.isclose(torch.norm(ado_trajectories[:, :, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)
+# @pytest.mark.xfail(raises=AssertionError)
+# def test_orca_single_agent():
+#     env = mantrap.environment.ORCAEnvironment(dt=0.25)
+#     env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), goal=torch.ones(2) * 4)
+#
+#     pos_expected = torch.tensor([[0, 0], [0.70710, 0.70710], [1.4142, 1.4142], [2.1213, 2.1213], [2.8284, 2.8284]])
+#     ado_trajectories = env.predict_wo_ego(t_horizon=pos_expected.shape[0])
+#     assert torch.isclose(torch.norm(ado_trajectories[0, 0, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)
+#
+#
+# @pytest.mark.xfail(raises=AssertionError)
+# def test_orca_two_agents():
+#     env = mantrap.environment.ORCAEnvironment(dt=0.25)
+#     env.add_ado(position=torch.tensor([-5, 0.1]), velocity=torch.zeros(2), goal=torch.tensor([5, 0]))
+#     env.add_ado(position=torch.tensor([5, -0.1]), velocity=torch.zeros(2), goal=torch.tensor([-5, 0]))
+#
+#     pos_expected = torch.tensor(
+#         [
+#             [
+#                 [-5, 0.1],
+#                 [-4.8998, 0.107995],
+#                 [-4.63883, 0.451667],
+#                 [-3.65957, 0.568928],
+#                 [-2.68357, 0.6858],
+#                 [-1.7121, 0.802128],
+#                 [-0.747214, 0.917669],
+#                 [0.207704, 1.03202],
+#                 [1.18529, 0.821493],
+#                 [2.16288, 0.61097],
+#             ],
+#             [
+#                 [5, -0.1],
+#                 [4.8998, -0.107995],
+#                 [4.63883, -0.451667],
+#                 [3.65957, -0.568928],
+#                 [2.68357, -0.6858],
+#                 [1.7121, -0.802128],
+#                 [0.747214, -0.917669],
+#                 [-0.207704, -1.03202],
+#                 [-1.18529, -0.821493],
+#                 [-2.16288, -0.61097],
+#             ],
+#         ]
+#     ).view(2, 1, -1, 2)
+#     ado_trajectories = env.predict_wo_ego(t_horizon=pos_expected.shape[2])
+#     assert torch.isclose(torch.norm(ado_trajectories[:, :, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)

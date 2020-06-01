@@ -87,7 +87,6 @@ def test_directness(velocity_profiles: torch.Tensor, directness_score: float):
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
                                        mantrap.environment.PotentialFieldEnvironment,
                                        mantrap.environment.SocialForcesEnvironment,
-                                       mantrap.environment.ORCAEnvironment,
                                        mantrap.environment.Trajectron])
 def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
     env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([5, 0]))
