@@ -67,6 +67,9 @@ class DTAgent(abc.ABC):
             self._history = state_un_squeezed
         assert torch.isclose(self._history[-1, -1], self.state_with_time[-1])  # times synced ?
 
+        # Store pre-computed linearized dynamics matrices.
+        self._dynamics_matrices_dict = {}
+
         # Initialize agent properties.
         self._is_robot = is_robot
 
@@ -174,6 +177,18 @@ class DTAgent(abc.ABC):
         # Perform sanity check for agent properties.
         assert self.sanity_check()
         return action, state_new
+
+    def update_inverse(self, state_next: torch.Tensor, dt: float) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+        """Update internal state (position, velocity and history) by backward integrating the agent's dynamics,
+        i.e. by using the inverse dynamics to compute the executed action between the current and given next position
+        and then execute this action again, to obtain the complete updated state as well as ensure feasibility.
+
+        :param state_next: next state (5).
+        :param dt: forward integration time step [s].
+        :returns: executed control action and new agent state
+        """
+        action = self.inverse_dynamics(state=state_next, state_previous=self.state, dt=dt)
+        return self.update(action, dt=dt)
 
     def reset(self, state: torch.Tensor, history: torch.Tensor = None):
         """Reset the complete state of the agent by resetting its position and velocity. Either adapt the agent's
@@ -350,41 +365,10 @@ class DTAgent(abc.ABC):
         """
         raise NotImplementedError
 
-    ###########################################################################
-    # Agent control functions #################################################
-    ###########################################################################
-    @abc.abstractmethod
-    def go_to_point(
-        self,
-        state: typing.Tuple[float, float, float, float],
-        target_point: typing.Tuple[float, float],
-        speed: float,
-        dt: float
-    ) -> typing.Tuple[typing.Tuple[float, float, float, float], typing.Tuple[float, float]]:
-        """Determine and execute the controls for going for the given state to some target point with respect
-        to the internal dynamics.
-
-        :param state: pos_and_vel_only state vector i.e. (px, py, vx, vy) for starting state.
-        :param target_point: 2D target point (px, py).
-        :param speed: preferable speed for state update [m/s].
-        :param dt: update time interval [s].
-        :returns: updated state at t = t0 + dt and used (cardinal) control input.
-        """
-        raise NotImplementedError
-
     @abc.abstractmethod
     def control_limits(self) -> typing.Tuple[float, float]:
         """Returns agent's control input limitations, i.e. lower and upper bound."""
         raise NotImplementedError
-
-    ###########################################################################
-    # Computation graph #######################################################
-    ###########################################################################
-    def detach(self):
-        """Detach the agent's internal variables (position, velocity, history) from computation tree. This is
-        sometimes required to completely separate subsequent computations in PyTorch."""
-        self._state = self._state.detach()
-        self._history = self._history.detach()
 
     ###########################################################################
     # Utility #################################################################
@@ -398,6 +382,28 @@ class DTAgent(abc.ABC):
 
         assert mantrap.utility.shaping.check_ego_state(state, enforce_temporal=True)
         return state
+
+    def detach(self):
+        """Detach the agent's internal variables (position, velocity, history) from computation tree. This is
+        sometimes required to completely separate subsequent computations in PyTorch."""
+        self._state = self._state.detach()
+        self._history = self._history.detach()
+
+    ###########################################################################
+    # Linearized Dynamics #####################################################
+    ###########################################################################
+    @staticmethod
+    def _dynamics_matrices(dt: float, x: torch.Tensor = None
+                           ) -> typing.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Determine the linearized state-space/dynamics matrices given integration time-step dt."""
+        raise NotImplementedError
+
+    def dynamics_matrices(self, dt: float, x: torch.Tensor = None):
+        if dt not in self._dynamics_matrices_dict.keys():
+            A, B, T = self._dynamics_matrices(dt=dt)
+            self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
+
+        return self._dynamics_matrices_dict[dt]
 
     ###########################################################################
     # Differentiation #########################################################
@@ -459,7 +465,7 @@ class DTAgent(abc.ABC):
 
     @property
     def speed(self) -> float:
-        return torch.norm(self.velocity)
+        return torch.norm(self.velocity).item()
 
     @property
     def state_size(self) -> int:

@@ -42,56 +42,15 @@ class LinearDTAgent(DTAgent, abc.ABC):
         self._dynamics_matrices_rolling_dict = {}
         if dt is not None:
             assert dt > 0
-            A, B, T = self._dynamics_matrices(dt=dt)
-            self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
-            An, Bn, Tn = self._dynamics_rolling_matrices(dt=dt, max_steps=max_steps)
-            self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float(), Tn.float())
+            self.dynamics_matrices(dt=dt)
+            self.dynamics_rolling_matrices(dt=dt, max_steps=max_steps)
 
     ###########################################################################
     # Dynamics ################################################################
     ###########################################################################
     def _dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
-        # Check whether the dynamics matrices have been pre-computed, if not compute them now.
-        if dt not in self._dynamics_matrices_dict.keys():
-            A, B, T = self._dynamics_matrices(dt=dt)
-            self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
-
-        A, B, T = self._dynamics_matrices_dict[dt]
+        A, B, T = self.dynamics_matrices(dt=dt)
         return torch.mv(A, state) + torch.mv(B, action) + T
-
-    @abc.abstractmethod
-    def _dynamics_matrices(self, dt: float) -> typing.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Determine the state-space/dynamics matrices given integration time-step dt. """
-        raise NotImplementedError
-
-    def _dynamics_rolling_matrices(self, dt: float, max_steps: int
-                                   ) -> typing.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Determine matrices for batched trajectory-rolling dynamics using equation shown in the
-        definition of the class, stacked to two matrices An and Bn.
-
-        .. math:: An = [I, A, A^2, ..., A^n]
-        .. math:: Bn = [[B, 0, ..., 0], [AB, B, 0, ..., 0], ..., [A^{n-1} B, ..., B]]
-        .. math:: Tn = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 1], ..., [0, 0, 0, 0, n]]
-
-        :param max_steps: maximal number of pre-computed steps.
-        """
-        A, B, _ = self._dynamics_matrices(dt=dt)
-        A, B = A.float(), B.float()
-        x_size = self.state_size
-        u_size = self.control_size
-
-        An = torch.cat([A.matrix_power(n) for n in range(0, max_steps + 1)])
-        Bn = torch.zeros((x_size * (max_steps + 1), u_size * (max_steps + 1)))
-        for m in range(max_steps + 1):
-            C = torch.cat([torch.mm(A.matrix_power(k), B) for k in range(max_steps + 1 - m)])
-            Bn[x_size * m:, u_size * m:u_size * (m + 1)] = C  # C = m-th column of B
-
-        # Correct for delta time updates (which have been ignored so far).
-        Tn = torch.zeros(x_size * (max_steps + 1))
-        time_indexes = torch.linspace(1, max_steps + 1, steps=max_steps + 1).long()
-        Tn[time_indexes * x_size - 1] = time_indexes.float() - 1  # [0, 1, 2, ...]
-
-        return An, Bn, Tn
 
     @abc.abstractmethod
     def _inverse_dynamics_batch(self, batch: torch.Tensor, dt: float) -> torch.Tensor:
@@ -126,18 +85,13 @@ class LinearDTAgent(DTAgent, abc.ABC):
         t_horizon = controls.shape[0]
         controls = controls.float()
 
-        # Check whether the dynamics matrices have been pre-computed, if not compute them now.
-        if dt not in self._dynamics_matrices_rolling_dict.keys():
-            An, Bn, Tn = self._dynamics_rolling_matrices(dt=dt, max_steps=t_horizon)
-            self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float(), Tn.float())
-
         # Un-squeeze controls if unrolling a single action.
         if len(controls.shape) == 1:
             controls = controls.unsqueeze(dim=0)
         controls_padded = torch.cat((torch.zeros((1, u_size)), controls), dim=0)
 
         # Determine whole trajectory in single batch computation.
-        An, Bn, Tn = self._dynamics_matrices_rolling_dict[dt]
+        An, Bn, Tn = self.dynamics_rolling_matrices(dt=dt, max_steps=t_horizon)
         An_horizon = An[:x_size * (t_horizon + 1), :]  # 5 = state-size
         Bn_horizon = Bn[:x_size * (t_horizon + 1), :u_size * (t_horizon + 1)]
         Tn_horizon = Tn[:x_size * (t_horizon + 1)]
@@ -192,11 +146,7 @@ class LinearDTAgent(DTAgent, abc.ABC):
         :param time_steps: number of discrete time-steps in reachable time-horizon.
         :param dt: time interval which is assumed to be constant over full path sequence [s].
         """
-        if dt not in self._dynamics_matrices_dict.keys():
-            A, B, T = self._dynamics_matrices(dt=dt)
-            self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
-
-        A, B, _ = self._dynamics_matrices_dict[dt]
+        A, B, _ = self.dynamics_matrices(dt)
         A, B = A.float(), B.float()
         x = self.state_with_time
         n = time_steps
@@ -237,15 +187,46 @@ class LinearDTAgent(DTAgent, abc.ABC):
         assert mantrap.utility.shaping.check_ego_controls(controls)
         t_horizon = controls.shape[0]
 
-        # Check whether the dynamics matrices have been pre-computed, if not compute them now.
-        if dt not in self._dynamics_matrices_rolling_dict.keys():
-            An, Bn, Tn = self._dynamics_rolling_matrices(dt=dt, max_steps=t_horizon)
-            self._dynamics_matrices_rolling_dict[dt] = (An.float(), Bn.float(), Tn.float())
-
-        _, Bn, _ = self._dynamics_matrices_rolling_dict[dt]
+        _, Bn, _ = self.dynamics_rolling_matrices(dt=dt, max_steps=t_horizon)
         # The trajectory includes the initial state x0, while the matrix Bn assumes to start at time-step
         # t=1, i.e. with x = x1 as first trajectory point. Therefore stack zeros to the beginning of the
         # jacobian matrix.
         Bn0 = torch.zeros((self.state_size, self.control_size * t_horizon))
         Bn1_n = Bn[:self.state_size * t_horizon, :self.control_size * t_horizon]
         return torch.cat((Bn0, Bn1_n))
+
+    ###########################################################################
+    # State-Space Representation ##############################################
+    ###########################################################################
+    def dynamics_rolling_matrices(self, dt: float, max_steps: int
+                                  ) -> typing.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Determine matrices for batched trajectory-rolling dynamics using equation shown in the
+        definition of the class, stacked to two matrices An and Bn.
+
+        .. math:: An = [I, A, A^2, ..., A^n]
+        .. math:: Bn = [[B, 0, ..., 0], [AB, B, 0, ..., 0], ..., [A^{n-1} B, ..., B]]
+        .. math:: Tn = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 1], ..., [0, 0, 0, 0, n]]
+
+        :param dt: dynamics integration time-step [s].
+        :param max_steps: maximal number of pre-computed steps.
+        """
+        if dt not in self._dynamics_matrices_rolling_dict.keys():
+            A, B, _ = self._dynamics_matrices(dt=dt)
+            A, B = A.float(), B.float()
+            x_size = self.state_size
+            u_size = self.control_size
+
+            An = torch.cat([A.matrix_power(n) for n in range(0, max_steps + 1)])
+            Bn = torch.zeros((x_size * (max_steps + 1), u_size * (max_steps + 1)))
+            for m in range(max_steps + 1):
+                C = torch.cat([torch.mm(A.matrix_power(k), B) for k in range(max_steps + 1 - m)])
+                Bn[x_size * m:, u_size * m:u_size * (m + 1)] = C  # C = m-th column of B
+
+            # Correct for delta time updates (which have been ignored so far).
+            Tn = torch.zeros(x_size * (max_steps + 1))
+            time_indexes = torch.linspace(1, max_steps + 1, steps=max_steps + 1).long()
+            Tn[time_indexes * x_size - 1] = time_indexes.float() - 1  # [0, 1, 2, ...]
+
+            self._dynamics_matrices_rolling_dict[dt] = An.float(), Bn.float(), Tn.float()
+
+        return self._dynamics_matrices_rolling_dict[dt]
