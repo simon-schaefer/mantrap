@@ -142,9 +142,8 @@ class TrajOptSolver(abc.ABC):
 
         # Initialize trajectories with current state and environment time.
         ego_trajectory_opt[0] = self._env.ego.state_with_time
-        for ghost in self.env.ghosts:
-            m_ado, m_mode = self.env.convert_ghost_id(ghost_id=ghost.id)
-            ado_trajectories[m_ado, 0, 0, :] = ghost.agent.state_with_time
+        for m_ado, ado in enumerate(self.env.ados):
+            ado_trajectories[m_ado, 0, 0, :] = ado.state_with_time
 
         # Warm-start the optimization using a simplified optimization formulation.
         z_warm_start = self.warm_start(method=warm_start_method)
@@ -173,7 +172,7 @@ class TrajOptSolver(abc.ABC):
 
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
-            self._env.step_reset(ego_state_next=ego_state, ado_states_next=ado_states)
+            self._env.step_reset(ego_next=ego_state, ado_next=ado_states)
             ego_trajectory_opt[k + 1, :] = ego_state
             ado_trajectories[:, 0, k + 1, :] = ado_states
 
@@ -466,9 +465,9 @@ class TrajOptSolver(abc.ABC):
             # For logging purposes unroll and predict the scene for the derived ego controls.
             ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
             self._log_append(ego_planned=ego_opt_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
-            ado_planned = self._env.predict_w_controls(ego_controls=ego_controls_k)
+            ado_planned = self.env.predict_w_controls(ego_controls=ego_controls_k)
             self._log_append(ado_planned=ado_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
-            ado_planned_wo = self._env.predict_wo_ego(t_horizon=ego_controls_k.shape[0] + 1)
+            ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_controls_k.shape[0] + 1)
             self._log_append(ado_planned_wo=ado_planned_wo, tag=mantrap.constants.TAG_OPTIMIZATION)
 
     @staticmethod
