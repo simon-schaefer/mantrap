@@ -15,9 +15,12 @@ import mantrap.solver
 #######################################
 def __set_type_defaults():
     import torch
-
     torch.set_default_dtype(torch.float32)
 
+
+def __set_seed():
+    import torch
+    torch.manual_seed(0)
 
 #######################################
 # Logging preferences #################
@@ -57,3 +60,4 @@ def __set_logging_preferences():
 
 __set_type_defaults()
 __set_logging_preferences()
+__set_seed()
