@@ -23,15 +23,12 @@ attentions = [mantrap.attention.EuclideanModule,
 def scenario(
     solver_class: mantrap.solver.base.TrajOptSolver.__class__,
     env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-    num_modes: int = 1,
     attention_class: str = None,
     warm_start_method: str = mantrap.constants.WARM_START_HARD,
     **solver_kwargs
 ):
-    env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 2]))
-    if num_modes > 1 and not env.is_multi_modal:
-        pytest.skip()
-    env.add_ado(position=torch.tensor([3, 2]), num_modes=num_modes)
+    env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 2]))
+    env.add_ado(position=torch.tensor([3, 2]))
     solver = solver_class(env, goal=torch.tensor([1, 1]), attention_module=attention_class, **solver_kwargs)
     z0 = solver.warm_start(method=warm_start_method).detach().numpy()
     return env, solver, z0
@@ -44,7 +41,6 @@ def scenario(
                                           mantrap.solver.MonteCarloTreeSearch,
                                           mantrap.solver.baselines.RandomSearch])
 @pytest.mark.parametrize("env_class", environments)
-@pytest.mark.parametrize("num_modes", [1, 3])
 @pytest.mark.parametrize("attention_class", attentions)
 @pytest.mark.parametrize("warm_start_method", [mantrap.constants.WARM_START_HARD])
 class TestSolvers:
@@ -52,12 +48,11 @@ class TestSolvers:
     @staticmethod
     def test_convergence(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                          env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-                         num_modes: int,
                          attention_class: mantrap.attention.AttentionModule.__class__,
                          warm_start_method: str):
         dt = mantrap.constants.ENV_DT_DEFAULT
         ego_goal_distance = (mantrap.constants.PED_SPEED_MAX / 2) * dt
-        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-ego_goal_distance, 0]), dt=dt)
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-ego_goal_distance, 0]), dt=dt)
         env.add_ado(position=torch.ones(2) * 10, velocity=torch.zeros(2))
 
         solver_kwargs = {"attention_module": attention_class, "t_planning": 1}
@@ -75,10 +70,9 @@ class TestSolvers:
     @staticmethod
     def test_formulation(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                          env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-                         num_modes: int,
                          attention_class: mantrap.attention.AttentionModule.__class__,
                          warm_start_method: str):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes,
+        env, solver, z0 = scenario(solver_class, env_class=env_class,
                                    attention_class=attention_class, warm_start_method=warm_start_method)
 
         # Test output shapes.
@@ -90,10 +84,9 @@ class TestSolvers:
     @staticmethod
     def test_z_to_ego_trajectory(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                                  env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-                                 num_modes: int,
                                  attention_class: mantrap.attention.AttentionModule.__class__,
                                  warm_start_method: str):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes,
+        env, solver, z0 = scenario(solver_class, env_class=env_class,
                                    attention_class=attention_class, warm_start_method=warm_start_method)
         ego_trajectory_initial = solver.z_to_ego_trajectory(z0).detach().numpy()[:, 0:2]
 
@@ -104,10 +97,9 @@ class TestSolvers:
     @staticmethod
     def test_num_optimization_variables(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                                         env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-                                        num_modes: int,
                                         attention_class: mantrap.attention.AttentionModule.__class__,
                                         warm_start_method: str):
-        _, solver, _ = scenario(solver_class, env_class=env_class, num_modes=num_modes,
+        _, solver, _ = scenario(solver_class, env_class=env_class,
                                 attention_class=attention_class, warm_start_method=warm_start_method)
         lb, ub = solver.optimization_variable_bounds()
 
@@ -117,13 +109,10 @@ class TestSolvers:
     @staticmethod
     def test_solve(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                    env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-                   num_modes: int,
                    attention_class: mantrap.attention.AttentionModule.__class__,
                    warm_start_method: str):
-        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
-        if num_modes > 1 and not env.is_multi_modal:
-            pytest.skip()
-        env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
+        env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
         assert solver.planning_horizon == 5
@@ -138,11 +127,9 @@ class TestSolvers:
 
         # Test output shapes.
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
-        modes_exp = 1  # output path is deterministic, so uni-modal
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory_opt, t_horizon=t_horizon_exp)
-        assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon_exp,
-                                                              ados=env.num_ados, modes=modes_exp)
-        assert tuple(ado_planned.shape) == (solver_horizon, 1, num_modes, solver.planning_horizon + 1, 5)
+        assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon_exp, ados=env.num_ados)
+        assert tuple(ado_planned.shape) == (solver_horizon, 1, solver.planning_horizon + 1, 5)
         assert tuple(ego_opt_planned.shape) == (solver_horizon, solver.planning_horizon + 1, 5)
 
         # Test ado planned trajectories - depending on environment engine. Therefore only time-stamps can be tested.
@@ -166,13 +153,10 @@ class TestSolvers:
     @staticmethod
     def test_warm_start(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                         env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-                        num_modes: int,
                         attention_class: mantrap.attention.AttentionModule.__class__,
                         warm_start_method: str):
-        env = env_class(mantrap.agents.IntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
-        if num_modes > 1 and not env.is_multi_modal:
-            pytest.skip()
-        env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]), num_modes=num_modes)
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
+        env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
         # Warm-starting.
@@ -188,7 +172,6 @@ class TestSolvers:
     @staticmethod
     def test_encoding(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                       env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-                      num_modes: int,
                       attention_class: mantrap.attention.AttentionModule.__class__,
                       warm_start_method: str):
         ego_position = torch.zeros(2)
@@ -198,11 +181,10 @@ class TestSolvers:
         ego_goal = torch.rand(2) * 5
 
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position, ego_velocity=ego_velocity)
-        if num_modes > 1 and not env.is_multi_modal:
-            pytest.skip()
-        env.add_ado(position=ado_position, num_modes=num_modes)
-        env.add_ado(position=ado_2_position, num_modes=num_modes)
-        solver = solver_class(env, attention_module=attention_class, goal=ego_goal, t_planning=5)
+        env.add_ado(position=ado_position)
+        env.add_ado(position=ado_2_position)
+        solver = solver_class(env, goal=ego_goal, t_planning=5,
+                              warm_start_method=warm_start_method, attention_module=attention_class)
 
         encoding = solver.encode()
         assert torch.allclose(encoding[2:4], ego_velocity)
@@ -239,17 +221,14 @@ class TestSearchSolvers:
 ###########################################################################
 @pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver])
 @pytest.mark.parametrize("env_class", environments)
-@pytest.mark.parametrize("num_modes", [1, 3])
 @pytest.mark.parametrize("attention_class", attentions)
 class TestIPOPTSolvers:
 
     @staticmethod
     def test_formulation(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                          env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
-                         num_modes: int,
                          attention_class: mantrap.attention.AttentionModule.__class__):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, num_modes=num_modes,
-                                   attention_class=attention_class)
+        env, solver, z0 = scenario(solver_class, env_class=env_class, attention_class=attention_class)
 
         # Test output shapes.
         grad = solver.gradient(z=z0)
