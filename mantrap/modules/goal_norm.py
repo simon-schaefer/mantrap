@@ -88,12 +88,12 @@ class GoalNormModule(PureObjectiveModule):
 
         with torch.no_grad():
             # Compute controls from trajectory, if not equal to `grad_wrt` return None.
-            ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+            ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
             if not mantrap.utility.maths.tensors_close(ego_controls, grad_wrt):
                 return None
 
             # Compute dx/du from the agent's dynamics.
-            dx_du = self._env.ego.dx_du(ego_controls, dt=self._env.dt).detach().numpy()
+            dx_du = self.env.ego.dx_du(ego_controls, dt=self.env.dt).detach().numpy()
 
             # Compute dJ/dx which is simply the derivative of the squared over all positions.
             T = ego_trajectory.shape[0]

@@ -11,7 +11,7 @@ class MinDistanceModule(PureConstraintModule):
     """Constraint for minimal distance between the robot (ego) and any other agent (ado) over all time.
 
     For computing the minimal distance between the ego and every ado the scene is forward simulated given the
-    planned ego trajectory, using the `build_connected_graph()` method. Then the minimal distance between ego
+    planned ego trajectory, using the `compute_distributions()` method. Then the minimal distance between ego
     and every ado is computed for every time-step of the trajectory. For 0 < t < T_{planning}:
 
     .. math:: min_t || pos(t) - pos^{ado}_{0:2}(t) || > D
@@ -27,6 +27,7 @@ class MinDistanceModule(PureConstraintModule):
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, **unused):
         super(MinDistanceModule, self).__init__(env=env)
+        raise NotImplementedError
 
     def constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                         ) -> typing.Union[torch.Tensor, None]:
@@ -49,28 +50,29 @@ class MinDistanceModule(PureConstraintModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        num_constraints_per_step = len(ado_ids) * self._env.num_modes
-        horizon = ego_trajectory.shape[0]
-        # This constraint is only defined with respect to other agents, so if no other agents are taken into
-        # account then return None directly.
-        if len(ado_ids) == 0:
-            return None
-
-        # Otherwise compute the constraint as described above. It is important to take all agents into account
-        # during the environment forward prediction step (`build_connected_graph()`) to not introduce possible
-        # behavioural changes into the forward prediction, which occur due to a reduction of the agents in the
-        # scene.
-        graph = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
-        constraints = torch.zeros((num_constraints_per_step, horizon))
-        for m_ado, ado_id in enumerate(ado_ids):
-            ghosts = self._env.ghosts_by_ado_id(ado_id=ado_id)
-            for m_ghost, ghost in enumerate(ghosts):
-                for t in range(horizon):
-                    m = m_ado * len(ghosts) + m_ghost
-                    ado_position = graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"]
-                    ego_position = ego_trajectory[t, 0:2]
-                    constraints[m, t] = torch.norm(ado_position - ego_position)
-        return torch.min(constraints.flatten()).view(1, ).float()
+        return None
+        # num_constraints_per_step = len(ado_ids)
+        # horizon = ego_trajectory.shape[0]
+        # # This constraint is only defined with respect to other agents, so if no other agents are taken into
+        # # account then return None directly.
+        # if len(ado_ids) == 0:
+        #     return None
+        #
+        # # Otherwise compute the constraint as described above. It is important to take all agents into account
+        # # during the environment forward prediction step (`compute_distributions()`) to not introduce possible
+        # # behavioural changes into the forward prediction, which occur due to a reduction of the agents in the
+        # # scene.
+        # graph = self._env.compute_distributions(ego_trajectory=ego_trajectory, ego_grad=False)
+        # constraints = torch.zeros((num_constraints_per_step, horizon))
+        # for m_ado, ado_id in enumerate(ado_ids):
+        #     ghosts = self._env.ghosts_by_ado_id(ado_id=ado_id)
+        #     for m_ghost, ghost in enumerate(ghosts):
+        #         for t in range(horizon):
+        #             m = m_ado * len(ghosts) + m_ghost
+        #             ado_position = graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"]
+        #             ego_position = ego_trajectory[t, 0:2]
+        #             constraints[m, t] = torch.norm(ado_position - ego_position)
+        # return torch.min(constraints.flatten()).view(1, ).float()
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

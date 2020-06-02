@@ -32,7 +32,7 @@ class ControlLimitModule(PureConstraintModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+        ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
         return torch.norm(ego_controls, dim=1).flatten().float()
 
     def compute_jacobian_analytically(
@@ -62,7 +62,7 @@ class ControlLimitModule(PureConstraintModule):
         with torch.no_grad():
 
             # Compute controls from trajectory, if not equal to `grad_wrt` return None.
-            ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+            ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
             if not mantrap.utility.maths.tensors_close(ego_controls, grad_wrt):
                 return None
 
@@ -98,7 +98,7 @@ class ControlLimitModule(PureConstraintModule):
         have its lower bound smaller or equal to zero, so that we can simplify the constraint to only have an
         upper bound (since the lower bound zero is anyways given and a L2-norm is semi-positive).
         """
-        lower, upper = self._env.ego.control_limits()
+        lower, upper = self.env.ego.control_limits()
         if lower <= 0:
             return None, upper
         else:

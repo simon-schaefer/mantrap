@@ -22,7 +22,7 @@ class ReachabilityModule(AttentionModule):
             in_indices = np.zeros(self._env.num_ados)
 
             ego_boundary = self._env.ego.reachability_boundary(time_steps=self._t_horizon, dt=self._env.dt)
-            for m, ado in enumerate(self._env.ados()):
+            for m, ado in enumerate(self._env.ados):
                 ado_boundary = ado.reachability_boundary(time_steps=self._t_horizon, dt=self._env.dt)
                 in_indices[m] = ego_boundary.does_intersect(ado_boundary)
             in_indices = np.nonzero(in_indices)[0]

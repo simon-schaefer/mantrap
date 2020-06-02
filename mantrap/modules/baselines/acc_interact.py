@@ -1,10 +1,10 @@
 import typing
 
 import torch
+import torch.distributions
 
 import mantrap.constants
 import mantrap.environment
-import mantrap.utility.maths
 
 from ..base import PureObjectiveModule
 
@@ -21,7 +21,7 @@ class InteractionAccelerationModule(PureObjectiveModule):
     effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
     that would occur, if the ego is not there from the beginning.
 
-    .. math:: objective = \\sum_{T} \\sum_{ghosts} || acc_{t,i} - acc_{t,i}^{wo} ||_2
+    .. math:: objective = \\sum_{T} \\sum_{ados} || acc_{t,i} - acc_{t,i}^{wo} ||_2
 
     :param env: environment for predicting the behaviour without interaction.
     """
@@ -29,50 +29,49 @@ class InteractionAccelerationModule(PureObjectiveModule):
                  **unused):
         super(InteractionAccelerationModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
 
-        if env.num_ghosts > 0:
-            ado_states_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)
+        if env.is_multi_modal:
+            raise NotImplementedError
+
+        if env.num_ados > 0:
             self._derivative_2 = mantrap.utility.maths.Derivative2(horizon=self.t_horizon + 1,
-                                                                   dt=self._env.dt,
+                                                                   dt=self.env.dt,
                                                                    num_axes=2)
-            self._ado_accelerations_wo = self._derivative_2.compute(ado_states_wo[:, :, :, 0:2])
+            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon + 1)
+            self._ado_accelerations_wo = self.distribution_to_acceleration(dist_dict)
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                        ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
-        To compute the objective value first predict the behaviour of all agents (and modes) in the scene in the
-        planning horizon, conditioned on the ego trajectory. Then iterate over every ghost in the scene and
-        find the deviation between the acceleration of a specific agent at the specific point in time conditioned
-        on the ego trajectory and unconditioned. Multiply by the weights of the modes, in order to encounter for
-        difference in importance between these modes.
+        To compute the objective value first predict the behaviour of all agents in the scene in the planning
+        horizon, conditioned on the ego trajectory. Then compare the (mode-wise if multi-modal) means of
+        the previously computed un-conditioned (see initialization) and the conditioned distribution, in
+        terms of their second derivative, i.e. acceleration.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
         # The objective can only work if any ado agents are taken into account, otherwise return None.
-        if len(ado_ids) == 0 or self._env.num_ghosts == 0:
+        if len(ado_ids) == 0 or self._env.num_ados == 0:
             return None
 
         # If more than zero ado agents are taken into account, compute the objective as described.
         # It is important to take all agents into account during the environment forward prediction step
-        # (`build_connected_graph()`) to not introduce possible behavioural changes into the forward prediction,
+        # (`compute_distributions()`) to not introduce possible behavioural changes into the forward prediction,
         # which occur due to a reduction of the agents in the scene.
-        graph = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
-        objective = torch.zeros(1)
-        for ado_id in ado_ids:
-            for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
-                for t in range(1, ego_trajectory.shape[0] - 2):
-                    i_ado, i_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
-                    ado_acceleration = self._derivative_2.compute_single(
-                        graph[f"{ghost.id}_{t - 1}_{mantrap.constants.GK_POSITION}"],
-                        graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"],
-                        graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"],
-                    )
-                    ado_acceleration_wo = self._ado_accelerations_wo[i_ado, i_mode, t, :]
-                    objective += torch.norm(ado_acceleration - ado_acceleration_wo) * ghost.weight
+        dist_dict = self.env.compute_distributions(ego_trajectory=ego_trajectory)
+        acceleration = self.distribution_to_acceleration(dist_dict)
+        return torch.sum(torch.norm(acceleration - self._ado_accelerations_wo, dim=-1))
 
-        return objective
+    def distribution_to_acceleration(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
+                                     ) -> torch.Tensor:
+        """Compute ado-wise accelerations from positional distribution dict mean values."""
+        accelerations = torch.zeros((self.env.num_ados, self.t_horizon, 2))
+        for ado_id, distribution in dist_dict.items():
+            m_ado = self.env.index_ado_id(ado_id)
+            accelerations[m_ado, :, :] = self._derivative_2.compute(distribution.mean)
+        return accelerations
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

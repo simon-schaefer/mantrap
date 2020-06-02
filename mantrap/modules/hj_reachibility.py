@@ -135,13 +135,13 @@ class HJReachabilityModule(OptimizationModule):
                                  computation (for debugging & testing only).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
-        ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
-        ego_state, ado_states = self._env.states()
+        ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+        ego_state, ado_states = self.env.states()
 
         with torch.set_grad_enabled(mode=enable_auto_grad):
             constraints = torch.zeros(len(ado_ids))
             u_robot = ego_controls[0, :]
-            dt = self._env.dt
+            dt = self.env.dt
 
             # To compute the value function of the next state we have to compute the "worst-case" disturbance
             # first, which is in HJ Reachability, the disturbance that minimizes the value function (in our case).
@@ -154,7 +154,7 @@ class HJReachabilityModule(OptimizationModule):
             u_ped = torch.stack((u_ped_x.flatten(), u_ped_y.flatten())).reshape(-1, 2)
 
             for i_ado, ado_id in enumerate(ado_ids):
-                m_ado = self._env.index_ado_id(ado_id=ado_id)
+                m_ado = self.env.index_ado_id(ado_id=ado_id)
                 x_ped = ado_states[m_ado, :]
                 x_rel_next = self.state_relative(ego_state, u_r=u_robot, x_ped=x_ped, u_ped=u_ped, dt=dt)
                 values = self.value_function(x=x_rel_next.detach().numpy())
@@ -214,7 +214,7 @@ class HJReachabilityModule(OptimizationModule):
         with torch.no_grad():
 
             # Compute controls from trajectory, if not equal to `grad_wrt` return None.
-            ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
+            ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
             if not mantrap.utility.maths.tensors_close(ego_controls.detach(), grad_wrt):
                 raise NotImplementedError
 
@@ -232,8 +232,8 @@ class HJReachabilityModule(OptimizationModule):
             # robot controls (last two entries). However only the first control action of the robot is used, hence
             # all other gradient entries are zero.
             dx_rel_du = np.zeros((4, t_horizon, u_size))
-            dx_rel_du[2, 0, 0] = self._env.dt
-            dx_rel_du[3, 0, 1] = self._env.dt
+            dx_rel_du[2, 0, 0] = self.env.dt
+            dx_rel_du[3, 0, 1] = self.env.dt
             dx_rel_du = dx_rel_du.reshape(4, -1)
             for i_ado, ado_id in enumerate(ado_ids):
                 # Compute pre-computed gradient at evaluated relative state (see constraint_core).

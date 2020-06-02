@@ -43,20 +43,24 @@ class InteractionProbabilityModule(PureObjectiveModule):
 
     :param env: solver's environment environment for predicting the behaviour without interaction.
     """
-    _env: mantrap.environment.base.ProbabilisticEnvironment  # typing hint
 
-    def __init__(self, env: mantrap.environment.base.ProbabilisticEnvironment, t_horizon: int, weight: float = 1.0,
+    def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, weight: float = 1.0,
                  **unused):
         super(InteractionProbabilityModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
 
         # Determine mean trajectories and weights of unconditioned distribution. Therefore compute the
         # unconditioned distribution and store the resulting values in an ado-id-keyed dictionary.
-        if not env.is_deterministic and env.num_ados > 0:
-            _, dist = env.build_connected_graph_wo_ego(t_horizon, return_distribution=True)
-            self._mus_un_conditioned = {key: x.mus.view(-1, t_horizon, 2).detach()
-                                        for key, x in dist.items()}  # type: typing.Dict[str, torch.Tensor]
-            self._pis_un_conditioned = {key: torch.exp(x.log_pis).view(-1, t_horizon).detach()
-                                        for key, x in dist.items()}  # type: typing.Dict[str, torch.Tensor]
+        if env.num_ados > 0:
+            dist_dict = env.compute_distributions_wo_ego(t_horizon)
+            self._mus_un_conditioned = {}
+            self._pis_un_conditioned = {}
+            for ado_id, distribution in dist_dict.items():
+                self._mus_un_conditioned[ado_id] = distribution.mean
+                if isinstance(distribution, mantrap.utility.maths.GMM2D):
+                    self._pis_un_conditioned[ado_id] = torch.exp(distribution.log_pis)
+                else:
+                    assert not self.env.is_multi_modal
+                    self._pis_un_conditioned[ado_id] = torch.ones(1)  # uni-modal
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                        ) -> typing.Union[torch.Tensor, None]:
@@ -68,15 +72,15 @@ class InteractionProbabilityModule(PureObjectiveModule):
         """
         # The objective can only work if any ado agents are taken into account, otherwise return None.
         # If the environment is not deterministic the output distribution is not defined, hence return None.
-        if len(ado_ids) == 0 or self._env.num_ghosts == 0 or self.env.is_deterministic:
+        if len(ado_ids) == 0 or self.env.num_ados == 0:
             return None
 
         # Compute the conditioned distribution. Then for every ado in the ado_ids`-list determine the `
         # probability of occurring in this distribution, using the distributions core methods.
-        _, distribution = self._env.build_connected_graph(ego_trajectory, return_distribution=True)
+        dist_dict = self.env.compute_distributions(ego_trajectory, return_distribution=True)
         objective = torch.zeros(1)
         for ado_id in ado_ids:
-            p = distribution[ado_id].log_prob(self._mus_un_conditioned[ado_id])
+            p = dist_dict[ado_id].log_prob(self._mus_un_conditioned[ado_id])
             w = self._pis_un_conditioned[ado_id]
             objective += torch.sum(torch.mul(w, p))
 

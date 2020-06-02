@@ -1,8 +1,8 @@
 import typing
 
 import torch
+import torch.distributions
 
-import mantrap.constants
 import mantrap.environment
 
 from ..base import PureObjectiveModule
@@ -19,7 +19,7 @@ class InteractionPositionModule(PureObjectiveModule):
     effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
     that would occur, if the ego is not there from the beginning.
 
-    .. math:: objective = \\sum_{T} \\sum_{ghosts} || pos_{t,i} - pos_{t,i}^{wo} ||_2
+    .. math:: objective = \\sum_{T} \\sum_{ados} || pos_{t,i} - pos_{t,i}^{wo} ||_2
 
     :param env: solver's environment environment for predicting the behaviour without interaction.
     """
@@ -27,7 +27,10 @@ class InteractionPositionModule(PureObjectiveModule):
                  **unused):
         super(InteractionPositionModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
 
-        if env.num_ghosts > 0:
+        if env.is_multi_modal:
+            raise NotImplementedError
+
+        if env.num_ados > 0:
             self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -45,24 +48,25 @@ class InteractionPositionModule(PureObjectiveModule):
         :param tag: name of optimization call (name of the core).
         """
         # The objective can only work if any ado agents are taken into account, otherwise return None.
-        if len(ado_ids) == 0 or self._env.num_ghosts == 0:
+        if len(ado_ids) == 0 or self.env.num_ados == 0:
             return None
 
         # If more than zero ado agents are taken into account, compute the objective as described.
         # It is important to take all agents into account during the environment forward prediction step
-        # (`build_connected_graph()`) to not introduce possible behavioural changes into the forward prediction,
+        # (`compute_distributions()`) to not introduce possible behavioural changes into the forward prediction,
         # which occur due to a reduction of the agents in the scene.
-        graph = self._env.build_connected_graph(ego_trajectory=ego_trajectory, ego_grad=False)
-        objective = torch.zeros(1)
-        for ado_id in ado_ids:
-            for ghost in self._env.ghosts_by_ado_id(ado_id=ado_id):
-                for t in range(ego_trajectory.shape[0]):
-                    m_ado, m_mode = self._env.convert_ghost_id(ghost_id=ghost.id)
-                    ado_position = graph[f"{ghost.id}_{t}_{mantrap.constants.GK_POSITION}"]
-                    ado_position_wo = self._ado_positions_wo[m_ado, m_mode, t, :]
-                    objective += torch.norm(ado_position - ado_position_wo) * ghost.weight
+        dist_dict = self.env.compute_distributions(ego_trajectory=ego_trajectory)
+        positions = self.distribution_to_positions(dist_dict)
+        return torch.sum(torch.norm(positions - self._ado_positions_wo, dim=-1))
 
-        return objective
+    def distribution_to_positions(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
+                                  ) -> torch.Tensor:
+        """Compute ado-wise positions from positional distribution dict mean values."""
+        positions = torch.zeros((self.env.num_ados, self.t_horizon, 2))
+        for ado_id, distribution in dist_dict.items():
+            m_ado = self.env.index_ado_id(ado_id)
+            positions[m_ado, :, :] = distribution.mean
+        return positions
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

@@ -460,9 +460,9 @@ class OptimizationModule(abc.ABC):
         if constraints is None or constraints.size == 0:
             return 0.0
 
-        assert self._env is not None
+        assert self.env is not None
         violation = np.zeros(constraints.size)
-        lower_bounds, upper_bounds = self.constraint_boundaries(ado_ids=self._env.ado_ids)
+        lower_bounds, upper_bounds = self.constraint_boundaries(ado_ids=self.env.ado_ids)
         for ic, constraint in enumerate(constraints):
             lower = lower_bounds[ic] if lower_bounds[ic] is not None else -np.inf
             upper = upper_bounds[ic] if upper_bounds[ic] is not None else np.inf
