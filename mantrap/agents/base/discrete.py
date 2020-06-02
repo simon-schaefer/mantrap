@@ -34,6 +34,7 @@ class DTAgent(abc.ABC):
     :param time: current time stamp, default = 0.0.
     :param history: current agent's state history (N, 5), default = no history.
     :param identifier: agent's pre-set identifier, default = none so initialized randomly during initialization.
+    :param agent_params: dictionary of additional parameters stored in agent object.
     """
 
     def __init__(
@@ -43,8 +44,9 @@ class DTAgent(abc.ABC):
         time: float = 0,
         history: torch.Tensor = None,
         is_robot: bool = False,
+        color: np.ndarray = None,
         identifier: str = None,
-        **unused
+        **agent_params
     ):
         assert mantrap.utility.shaping.check_2d_vector(position)  # (x, y)
         assert mantrap.utility.shaping.check_2d_vector(velocity)  # (vx, vy)
@@ -70,14 +72,16 @@ class DTAgent(abc.ABC):
         # Store pre-computed linearized dynamics matrices.
         self._dynamics_matrices_dict = {}
 
-        # Initialize agent properties.
+        # Initialize agent properties (is_robot, color, additional parameters).
         self._is_robot = is_robot
-
-        # Create random agent color (reddish), for evaluation only.
         if is_robot:
-            self._color = np.zeros(3)
+            self._color = np.zeros(3)  # = black
+        elif color is not None:
+            assert color.size == 3
+            self._color = color
         else:
             self._color = np.array(random.choice(mantrap.constants.COLORS))
+        self._params = agent_params
 
         # Random identifier.
         letters = string.ascii_lowercase
@@ -400,7 +404,7 @@ class DTAgent(abc.ABC):
 
     def dynamics_matrices(self, dt: float, x: torch.Tensor = None):
         if dt not in self._dynamics_matrices_dict.keys():
-            A, B, T = self._dynamics_matrices(dt=dt)
+            A, B, T = self._dynamics_matrices(dt=dt, x=x)
             self._dynamics_matrices_dict[dt] = (A.float(), B.float(), T.float())
 
         return self._dynamics_matrices_dict[dt]
@@ -497,6 +501,10 @@ class DTAgent(abc.ABC):
     @property
     def is_robot(self) -> bool:
         return self._is_robot
+
+    @property
+    def params(self) -> typing.Dict[str, typing.Any]:
+        return self._params
 
     ###########################################################################
     # Visualization/Utility properties ########################################
