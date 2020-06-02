@@ -1,16 +1,14 @@
 import typing
 
-import numpy as np
 import torch
 
 import mantrap.agents
 import mantrap.constants
 
-from ..base.graph_based import GraphBasedEnvironment
-from ..base.iterative import IterativeEnvironment
+from ..base.particle import ParticleEnvironment
 
 
-class PotentialFieldEnvironment(IterativeEnvironment):
+class PotentialFieldEnvironment(ParticleEnvironment):
     """Simplified version of social forces environment class.
 
     The simplified model assumes static agents (ados) in the scene, having zero velocity (if not stated otherwise)
@@ -18,73 +16,63 @@ class PotentialFieldEnvironment(IterativeEnvironment):
     interaction between ego and ado, no inter-ado interaction and goal pulling force. Since the ados would not move
     at all without an ego agent in the scene, the interaction loss simply comes down the the distance of every position
     of the ados in time to their initial (static) position.
+
+    Although theoretically  a force introduces an acceleration as the ado's control input (double not single
+    integrator dynamics), accelerations are simplified to act as velocities, which is reasonable due to the fast
+    reaction time of the pedestrian, which is way faster than the environment sampling rate.
     """
 
     ###########################################################################
-    # Scene ###################################################################
+    # Particle simulations ####################################################
     ###########################################################################
-    def add_ado(self, position: torch.Tensor, velocity: torch.Tensor = torch.zeros(2),
-                num_modes: int = 1, v0s: np.ndarray = None, weights: np.ndarray = None, **ado_kwargs
-                ) -> mantrap.agents.base.DTAgent:
-        # In order to introduce multi-modality and stochastic effects the underlying v0 parameters of the potential
-        # field environment are sampled from distributions, each for one mode. If not stated the default parameters
-        # are used as Gaussian distribution around the default value.
-        assert (weights is not None) == (type(v0s) == np.ndarray)
-        if type(v0s) != np.ndarray:
-            v0s, weights = self.ado_mode_params(mantrap.constants.SOCIAL_FORCES_DEFAULT_V0, num_modes=num_modes)
+    def create_particles(self,
+                         num_particles: int,
+                         v0_dict: typing.Dict[str, typing.Tuple[float, float]] = None,
+                         ) -> typing.Tuple[typing.List[typing.List[mantrap.agents.IntegratorDTAgent]], torch.Tensor]:
+        """Create particles from internal parameter distribution.
 
-        # Fill ghost argument list with mode parameters.
-        args_list = [{mantrap.constants.PK_V0: v0s[i]} for i in range(num_modes)]
+        In order to create parameters sample from the underlying parameter distributions, which are modelled
+        as independent, uni-modal Gaussian distributions, individual for each ado. So build the distribution,
+        sample N = num_particles values for each ado and parameter and create N copies of each ado (particle)
+        storing the sampled parameter.
 
-        # Finally add ado ghosts to environment.
-        return super(PotentialFieldEnvironment, self).add_ado(
-            ado_type=mantrap.agents.DoubleIntegratorDTAgent,
-            position=position, velocity=velocity,
-            num_modes=num_modes, weights=weights, arg_list=args_list, **ado_kwargs
-        )
+        :param num_particles: number of particles per ado.
+        :param v0_dict: parameter v0 gaussian distribution (mean, variance) by ado_id, if None then gaussian
+                        with mean = `mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT` and variance = mean/4,
+                        similarly for each ado.
+        :return: list of N = num_particles for every ado in the scene.
+        :return: probability (pdf) of each particle (num_ados, num_particles).
+        """
+        if v0_dict is None:
+            v0_default = mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT
+            v0_dict = {ado_id: (v0_default, v0_default / 4) for ado_id in self.ado_ids}
 
-    ###########################################################################
-    # Simulation Graph ########################################################
-    ###########################################################################
-    def build_graph(self, ego_state: torch.Tensor = None, k: int = 0,  **graph_kwargs
-                    ) -> typing.Dict[str, torch.Tensor]:
-        # Graph initialization - Add ados and ego to graph (position, velocity and goals).
-        graph = self.write_state_to_graph(ego_state, k=k, **graph_kwargs)
+        return super(PotentialFieldEnvironment, self).create_particles(num_particles, param_dicts={"v0": v0_dict})
 
-        # Make graph with resulting force as an output.
-        for ghost in self.ghosts:
-            gpos = graph[f"{ghost.id}_{k}_{mantrap.constants.GK_POSITION}"]
-            force = torch.zeros(2)
+    def simulate_particle(self,
+                          particle: mantrap.agents.IntegratorDTAgent,
+                          means_t: torch.Tensor,
+                          ego_state_t: torch.Tensor = None
+                          ) -> mantrap.agents.IntegratorDTAgent:
+        """Forward simulate particle for one time-step (t -> t + 1).
 
-            if ego_state is not None:
-                ego_pos = graph[f"{mantrap.constants.ID_EGO}_{k}_{mantrap.constants.GK_POSITION}"]
-                delta = gpos - ego_pos
-                delta = torch.sign(delta) * torch.exp(- torch.abs(delta))
-                ego_force = ghost.params[mantrap.constants.PK_V0] * delta * ghost.weight
-                force = torch.add(force, ego_force)
+        As described in the class description the potential field environment merely takes into account the
+        repulsive force with respect to the ego, not to other ados, and introduces it as direct control input
+        for the particle.
 
-            graph[f"{ghost.id}_{k}_{mantrap.constants.GK_CONTROL}"] = force
+        :param particle: particle agent to simulate.
+        :param means_t: means of positional and velocity distribution at time t (num_ados, 4).
+        :param ego_state_t: ego/robot state at time t.
+        """
+        controls = particle.velocity
 
-        return graph
+        if ego_state_t is not None:
+            delta = particle.position - ego_state_t[0:2]
+            delta = torch.sign(delta) * torch.exp(- torch.abs(delta))
+            controls += particle.params["v0"] * delta
 
-    ###########################################################################
-    # Operators ###############################################################
-    ###########################################################################
-    def _copy_ados(self, env_copy: GraphBasedEnvironment) -> GraphBasedEnvironment:
-        for i in range(self.num_ados):
-            ghosts_ado = self.ghosts_by_ado_index(ado_index=i)
-            ado_id, _ = self.split_ghost_id(ghost_id=ghosts_ado[0].id)
-            env_copy.add_ado(
-                position=ghosts_ado[0].agent.position,  # same over all ghosts of same ado
-                velocity=ghosts_ado[0].agent.velocity,  # same over all ghosts of same ado
-                history=ghosts_ado[0].agent.history,  # same over all ghosts of same ado
-                time=self.time,
-                weights=np.array([ghost.weight for ghost in ghosts_ado] if env_copy.is_multi_modal else [1]),
-                num_modes=self.num_modes if env_copy.is_multi_modal else 1,
-                identifier=self.split_ghost_id(ghost_id=ghosts_ado[0].id)[0],
-                v0s=np.array([ghost.params[mantrap.constants.PK_V0] for ghost in ghosts_ado]),
-            )
-        return env_copy
+        particle.update(action=controls, dt=self.dt)
+        return particle
 
     ###########################################################################
     # Simulation parameters ###################################################
@@ -92,14 +80,6 @@ class PotentialFieldEnvironment(IterativeEnvironment):
     @property
     def name(self) -> str:
         return "potential_field"
-
-    @property
-    def is_multi_modal(self) -> bool:
-        return True
-
-    @property
-    def is_deterministic(self) -> bool:
-        return True
 
     @property
     def is_differentiable_wrt_ego(self) -> bool:

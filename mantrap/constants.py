@@ -3,10 +3,6 @@
 #######################################
 ID_EGO = "ego"
 
-GK_CONTROL = "control"  # GK = Graph-Key
-GK_POSITION = "position"
-GK_VELOCITY = "velocity"
-
 LT_GRADIENT = "grad"  # LT = Log-Type
 LT_CONSTRAINT = "inf"
 LT_OBJECTIVE = "obj"
@@ -18,13 +14,8 @@ TAG_WARM_START = "warm_start"
 TAG_VISUALIZATION = "visualization"
 
 PK_CONFIG = "config_name"  # PK = Parameter-Key
-PK_NUM_CONTROL_POINTS = "num_control_points"
 PK_GOAL = "goal"
-PK_TAU = "tau"
 PK_T_PLANNING = "t_planning"
-PK_OPTIMIZE_SPEED = "optimize_speed"
-PK_V0 = "v0"
-PK_SIGMA = "sigma"
 PK_X_AXIS = "x_axis"
 PK_Y_AXIS = "y_axis"
 
@@ -46,6 +37,11 @@ AGENT_MAX_PRE_COMPUTATION = 20  # maximal number of pre-computed time-steps for 
 ENV_DT_DEFAULT = 0.4
 ENV_X_AXIS_DEFAULT = (-10, 10)
 ENV_Y_AXIS_DEFAULT = (-10, 10)
+ENV_VAR_INITIAL = 1e-6  # variance of initial distribution at t = t0.
+
+ENV_NUM_PARTICLES = 5  # number of particles for estimating positional distribution for particle based predictions.
+
+KALMAN_ADDITIVE_NOISE = 0.2  # additive noise per prediction time-step (Q in Kalman equations).
 
 SOCIAL_FORCES_DEFAULT_TAU = 0.4  # [s] relaxation time (assumed to be uniform over all agents).
 SOCIAL_FORCES_DEFAULT_V0 = 4.0  # [m2s-2] repulsive field constant.

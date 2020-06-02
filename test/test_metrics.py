@@ -95,8 +95,7 @@ def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__
     # When the ado trajectories are exactly the same as predicting them without an ego, the score should be zero.
     ado_traj = env.predict_wo_ego(t_horizon=10)
     metric_score = metric_ado_effort(ado_trajectories=ado_traj, env=env)
-    if env.is_deterministic:
-        assert np.isclose(metric_score, 0.0)
+    assert np.isclose(metric_score, 0.0)
 
     # Otherwise it is very hard to predict the exact score, but we know it should be non-zero and positive.
     ado_traj = env.predict_w_controls(ego_controls=torch.ones(5, 2))
@@ -113,10 +112,9 @@ def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__
     ado_trajectory_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
     metric_score_1 = metric_ado_effort(ado_trajectories=ado_trajectory_1, env=env)
 
-    env_test.step_reset(ego_state_next=None, ado_states_next=ado_trajectory_1[:, 0, -1, :])
+    env_test.step_reset(ego_next=None, ado_next=ado_trajectory_1[:, 0, -1, :])
     ado_trajectory_2 = env_test.predict_wo_ego(t_horizon=4).detach()
     ado_trajectory_12 = torch.cat((ado_trajectory_1, ado_trajectory_2), dim=2)
     ado_trajectory_12[:, :, :, -1] = torch.linspace(0, 7 * env.dt, steps=8)
     metric_score_12 = metric_ado_effort(ado_trajectories=ado_trajectory_12, env=env)
-    if env.is_deterministic:
-        assert np.isclose(metric_score_1, metric_score_12, atol=1e-3)
+    assert np.isclose(metric_score_1, metric_score_12, atol=1e-3)

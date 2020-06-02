@@ -2,6 +2,7 @@ import abc
 import math
 
 import torch
+import torch.distributions
 
 import mantrap.utility.shaping
 
@@ -9,19 +10,7 @@ import mantrap.utility.shaping
 ###########################################################################
 # Distributions ###########################################################
 ###########################################################################
-class MultiModalDistribution(abc.ABC):
-
-    def __init__(self, mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor):
-        self.mus = mus
-        self.log_pis = log_pis
-        self.log_sigmas = log_sigmas
-
-    @abc.abstractmethod
-    def log_prob(self, value):
-        raise NotImplementedError
-
-
-class GMM2D(MultiModalDistribution):
+class GMM2D(torch.distributions.Distribution):
     """Gaussian Mixture Model using 2D Multivariate Gaussians each of as N components:
     Cholesky decompesition and affine transformation for sampling:
 
@@ -43,16 +32,30 @@ class GMM2D(MultiModalDistribution):
 
     Re-Implementation of GMM2D model used in GenTrajectron (B. Ivanovic, M. Pavone).
 
-    :param log_pis: Log Mixing Proportions :math:`log(\\pi)`. [..., N]
-    :param mus: Mixture Components mean :math:`\\mu`. [..., N * 2]
-    :param log_sigmas: Log Standard Deviations :math:`log(\\sigma_d)`. [..., N * 2]
-    :param corrs: Cholesky factor of correlation :math:`\\rho`. [..., N]
+    :param log_pis: Log Mixing Proportions (t_horizon, num_modes).
+    :param mus: Mixture Components mean (t_horizon, num_modes, 2)
+    :param log_sigmas: Log Standard Deviations (t_horizon, num_modes, 2)
+    :param corrs: Cholesky factor of correlation (t_horizon, num_modes).
     """
     def __init__(self, mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor, corrs: torch.Tensor):
-        super(GMM2D, self).__init__(mus=mus, log_pis=log_pis, log_sigmas=log_sigmas)
+        super(GMM2D, self).__init__()
+        t_horizon, self.components = log_pis.shape
+        self.dimensions = 2
+        assert mus.shape == (t_horizon, self.components, 2)
+        assert log_sigmas.shape == (t_horizon, self.components, 2)
+        assert corrs.shape == (t_horizon, self.components)
+
+        self.log_pis = log_pis - torch.logsumexp(log_pis, dim=-1, keepdim=True)  # [..., N]
+        self.mus = mus
+        self.log_sigmas = log_sigmas
         self.sigmas = torch.exp(self.log_sigmas)
         self.corrs = corrs
         self.one_minus_rho2 = torch.ones(1) - torch.pow(corrs, 2)
+
+        self.pis_cat_dist = torch.distributions.Categorical(logits=log_pis)
+        L1 = torch.stack([self.sigmas[..., 0], torch.zeros_like(log_pis)], dim=-1)
+        L2 = torch.stack([self.sigmas[..., 1] * corrs, self.sigmas[..., 1] * self.one_minus_rho2], dim=-1)
+        self.L = torch.stack([L1, L2], dim=-2)
 
     def log_prob(self, values: torch.Tensor) -> torch.Tensor:
         """Calculates the log probability of a value using the PDF for bi-variate normal distributions:
@@ -78,6 +81,27 @@ class GMM2D(MultiModalDistribution):
                             + exp_nominator / self.one_minus_rho2) / 2
 
         return torch.logsumexp(self.log_pis + component_log_p, dim=-1)
+
+    def rsample(self, sample_shape=torch.Size()):
+        """Generates a sample_shape shaped re-parameterized sample or sample_shape shaped batch of
+        re-parameterized  samples if the distribution parameters are batched.
+
+        :param sample_shape: Shape of the samples
+        :return: Samples from the GMM.
+        """
+        samples = torch.randn(size=sample_shape + self.mus.shape).unsqueeze(dim=-1)
+        mvn_samples = self.mus + torch.matmul(self.L, samples).squeeze(dim=-1)
+        component_cat_samples = self.pis_cat_dist.sample(sample_shape)
+        selector = torch.eye(self.components)[component_cat_samples].unsqueeze(dim=-1)
+        return torch.sum(mvn_samples * selector, dim=-2)
+
+    @property
+    def mean(self):
+        return self.mus
+
+    @property
+    def stddev(self):
+        return self.sigmas
 
 
 ###########################################################################
