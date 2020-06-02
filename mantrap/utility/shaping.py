@@ -65,18 +65,6 @@ def check_ado_states(x: torch.Tensor, num_ados: int = None, enforce_temporal: bo
     return True
 
 
-def check_ado_controls(x: torch.Tensor, t_horizon: int = None, num_ados: int = None, num_modes: int = None) -> bool:
-    assert not torch.any(torch.isnan(x))
-    assert len(x.shape) == 4  # (num_ados, num_modes, t_horizon, dims)
-    if t_horizon is not None:
-        assert x.shape[2] == t_horizon
-    if num_ados is not None:
-        assert x.shape[0] == num_ados
-    if num_modes is not None:
-        assert x.shape[1] == num_modes
-    return True
-
-
 def check_ado_trajectories(x: torch.Tensor, t_horizon: int = None, ados: int = None, num_samples: int = None) -> bool:
     assert not torch.any(torch.isnan(x))
     assert len(x.shape) == 4  # (num_ados,num_samples,t_horizon, 2)
@@ -93,16 +81,6 @@ def check_ado_trajectories(x: torch.Tensor, t_horizon: int = None, ados: int = N
 
 def check_goal(x: torch.Tensor) -> bool:
     return check_2d_vector(x)
-
-
-def check_weights(x: torch.Tensor, num_ados: int = None, num_modes: int = None) -> bool:
-    assert not torch.any(torch.isnan(x))
-    assert len(x.shape) == 2  # (num_ados, num_modes)
-    if num_ados is not None:
-        assert x.shape[0] == num_ados
-    if num_modes is not None:
-        assert x.shape[1] == num_modes
-    return True
 
 
 def check_2d_vector(x: torch.Tensor) -> bool:

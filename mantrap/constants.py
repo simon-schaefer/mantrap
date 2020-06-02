@@ -69,7 +69,7 @@ IPOPT_OPTIMALITY_TOLERANCE = 0.01  # maximal optimality error to return solution
 IPOPT_AUTOMATIC_JACOBIAN = "finite-difference-values"  # method for Jacobian approximation (if flag is True).
 IPOPT_AUTOMATIC_HESSIAN = "limited-memory"  # method for Hessian approximation.
 
-SEARCH_MAX_CPU_TIME = 1.0  # [s] maximal sampling CPU time.
+SEARCH_MAX_CPU_TIME = 0.5  # [s] maximal sampling CPU time.
 MCTS_NUMBER_BREADTH_SAMPLES = 5  # number of samples in breadth (i.e. z-values to estimate value from).
 MCTS_NUMBER_DEPTH_SAMPLES = 5  # number of samples in depth (i.e. trajectories to estimate value).
 

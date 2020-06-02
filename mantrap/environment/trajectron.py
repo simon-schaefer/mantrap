@@ -214,11 +214,12 @@ class Trajectron(GraphBasedEnvironment):
         # To include the initial state in the distribution (Trajectron outputs distributions from [1, T + 1],
         # we define initial value matrices, expressing our perfect knowledge about the initial state
         # (perfect perception assumption).
+        m = self.num_modes
         ado_positions = ado_states[:, 0:2].view(self.num_ados, 1, 2)
-        ado_positions_stacked = torch.stack(25 * [ado_positions], dim=-2).detach()
-        log_sigma_initial = math.log(mantrap.constants.ENV_VAR_INITIAL) * torch.ones((1, 25, 2)).detach()
-        log_pis_initial = math.log(1 / 25) * torch.ones((1, 25)).detach()
-        corrs_initial = math.sqrt(mantrap.constants.ENV_VAR_INITIAL) * torch.ones((1, 25)).detach()  # un-correlated
+        ado_positions_stacked = torch.stack(m * [ado_positions], dim=-2).detach()
+        log_sigma_initial = math.log(mantrap.constants.ENV_VAR_INITIAL) * torch.ones((1, m, 2)).detach()
+        log_pis_initial = math.log(1 / m) * torch.ones((1, m)).detach()
+        corrs_initial = math.sqrt(mantrap.constants.ENV_VAR_INITIAL) * torch.ones((1, m)).detach()  # un-correlated
 
         # Build ado-wise dictionary distribution of probability distributions. The Trajectron distribution is a
         # dictionary mapping the GenTrajectron tag ("{class_id}/{id}") to a distribution object, defined in gmm2d.py
@@ -232,10 +233,10 @@ class Trajectron(GraphBasedEnvironment):
 
             # Convert the distribution into the project-custom definition of a GMM, since some properties
             # as e.g. mean are not defined in gmm2d.py and since another shape format is used.
-            mus = dist.mus.view(t_horizon, 25, 2)   # t_horizon, num_modes, num_dims = 2 (= x, y)
-            log_sigmas = dist.log_sigmas.view(t_horizon, 25, 2)
-            corrs = dist.corrs.view(t_horizon, 25)
-            log_pis = dist.log_pis.view(t_horizon, 25)
+            mus = dist.mus.view(t_horizon, m, 2)   # t_horizon, num_modes, num_dims = 2 (= x, y)
+            log_sigmas = dist.log_sigmas.view(t_horizon, m, 2)
+            corrs = dist.corrs.view(t_horizon, m)
+            log_pis = dist.log_pis.view(t_horizon, m)
 
             # According to the project's convention the distribution must contain the initial distribution
             # (which is completely certain) as well.
@@ -387,8 +388,8 @@ class Trajectron(GraphBasedEnvironment):
         return "trajectron"
 
     @property
-    def is_multi_modal(self) -> bool:
-        return True
+    def num_modes(self) -> int:
+        return 25
 
     @property
     def is_differentiable_wrt_ego(self) -> bool:
