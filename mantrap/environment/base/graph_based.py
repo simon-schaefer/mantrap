@@ -583,7 +583,7 @@ class GraphBasedEnvironment(abc.ABC):
         raise NotImplementedError
 
     @property
-    def is_multi_modal(self) -> bool:
+    def num_modes(self) -> int:
         raise NotImplementedError
 
     @property

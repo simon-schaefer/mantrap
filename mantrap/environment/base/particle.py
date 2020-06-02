@@ -196,5 +196,5 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
     # Simulation parameters ###################################################
     ###########################################################################
     @property
-    def is_multi_modal(self) -> bool:
-        return False
+    def num_modes(self) -> int:
+        return 1

@@ -113,8 +113,8 @@ class KalmanEnvironment(GraphBasedEnvironment):
         return "kalman"
 
     @property
-    def is_multi_modal(self) -> bool:
-        return False
+    def num_modes(self) -> int:
+        return 1
 
     @property
     def is_differentiable_wrt_ego(self) -> bool:
