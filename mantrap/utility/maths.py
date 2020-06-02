@@ -69,8 +69,7 @@ class GMM2D(torch.distributions.Distribution):
         :param values: The log probability density function is evaluated at those values.
         :returns: log probability of these values
         """
-        value_un_squeezed = torch.unsqueeze(values, dim=-2)
-        dx = value_un_squeezed - self.mus
+        dx = values - self.mus
 
         exp_nominator = ((torch.sum((dx / self.sigmas) ** 2, dim=-1)  # first and second term of exp nominator
                           - 2 * self.corrs * torch.prod(dx, dim=-1) / torch.prod(self.sigmas, dim=-1)))
@@ -142,7 +141,10 @@ class Derivative2:
             self._diff_mat = self._diff_mat.unsqueeze(0)
 
     def compute(self, x: torch.Tensor) -> torch.Tensor:
-        return torch.matmul(self._diff_mat, x)
+        if len(x.shape) == 3:
+            return torch.matmul(self._diff_mat, torch.transpose(x, 0, 1))
+        else:
+            return torch.matmul(self._diff_mat, x)
 
     def compute_single(self, x: torch.Tensor, x_prev: torch.Tensor, x_next: torch.Tensor) -> torch.Tensor:
         return (x_prev - 2 * x + x_next) / self._dt**2

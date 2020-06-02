@@ -26,12 +26,9 @@ class InteractionPositionModule(PureObjectiveModule):
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, weight: float = 1.0,
                  **unused):
         super(InteractionPositionModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
-
-        if env.is_multi_modal:
-            raise NotImplementedError
-
         if env.num_ados > 0:
-            self._ado_positions_wo = self._env.predict_wo_ego(t_horizon=self.t_horizon + 1)[:, :, :, 0:2]
+            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
+            self._ado_positions_wo = self.distribution_to_positions(dist_dict)
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                        ) -> typing.Union[torch.Tensor, None]:
@@ -62,10 +59,11 @@ class InteractionPositionModule(PureObjectiveModule):
     def distribution_to_positions(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
                                   ) -> torch.Tensor:
         """Compute ado-wise positions from positional distribution dict mean values."""
-        positions = torch.zeros((self.env.num_ados, self.t_horizon, 2))
+        sample_length = self.env.num_modes * (self.t_horizon + 1)
+        positions = torch.zeros((self.env.num_ados * sample_length, 2))
         for ado_id, distribution in dist_dict.items():
             m_ado = self.env.index_ado_id(ado_id)
-            positions[m_ado, :, :] = distribution.mean
+            positions[m_ado * sample_length:(m_ado + 1) * sample_length, :] = distribution.mean.view(-1, 2)
         return positions
 
     def gradient_condition(self) -> bool:

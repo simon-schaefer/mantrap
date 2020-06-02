@@ -28,15 +28,11 @@ class InteractionAccelerationModule(PureObjectiveModule):
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, weight: float = 1.0,
                  **unused):
         super(InteractionAccelerationModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
-
-        if env.is_multi_modal:
-            raise NotImplementedError
-
         if env.num_ados > 0:
             self._derivative_2 = mantrap.utility.maths.Derivative2(horizon=self.t_horizon + 1,
                                                                    dt=self.env.dt,
                                                                    num_axes=2)
-            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon + 1)
+            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
             self._ado_accelerations_wo = self.distribution_to_acceleration(dist_dict)
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -67,10 +63,13 @@ class InteractionAccelerationModule(PureObjectiveModule):
     def distribution_to_acceleration(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
                                      ) -> torch.Tensor:
         """Compute ado-wise accelerations from positional distribution dict mean values."""
-        accelerations = torch.zeros((self.env.num_ados, self.t_horizon, 2))
+        sample_length = self.env.num_modes * (self.t_horizon + 1)
+        accelerations = torch.zeros((self.env.num_ados * sample_length, 2))
         for ado_id, distribution in dist_dict.items():
             m_ado = self.env.index_ado_id(ado_id)
-            accelerations[m_ado, :, :] = self._derivative_2.compute(distribution.mean)
+            m_l = m_ado * sample_length
+            m_u = m_l + sample_length
+            accelerations[m_l:m_u, :] = self._derivative_2.compute(distribution.mean).view(-1, 2)
         return accelerations
 
     def gradient_condition(self) -> bool:

@@ -59,8 +59,8 @@ class InteractionProbabilityModule(PureObjectiveModule):
                 if isinstance(distribution, mantrap.utility.maths.GMM2D):
                     self._pis_un_conditioned[ado_id] = torch.exp(distribution.log_pis)
                 else:
-                    assert not self.env.is_multi_modal
-                    self._pis_un_conditioned[ado_id] = torch.ones(1)  # uni-modal
+                    assert self.env.num_modes == 1
+                    self._pis_un_conditioned[ado_id] = None
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                        ) -> typing.Union[torch.Tensor, None]:
@@ -77,14 +77,19 @@ class InteractionProbabilityModule(PureObjectiveModule):
 
         # Compute the conditioned distribution. Then for every ado in the ado_ids`-list determine the `
         # probability of occurring in this distribution, using the distributions core methods.
-        dist_dict = self.env.compute_distributions(ego_trajectory, return_distribution=True)
+        dist_dict = self.env.compute_distributions(ego_trajectory)
         objective = torch.zeros(1)
         for ado_id in ado_ids:
             p = dist_dict[ado_id].log_prob(self._mus_un_conditioned[ado_id])
             w = self._pis_un_conditioned[ado_id]
-            objective += torch.sum(torch.mul(w, p))
+            if w is None:  # uni-modal
+                objective += torch.sum(p)
+            else:  # multi-modal
+                objective += torch.sum(torch.matmul(p, w))
 
-        return objective
+        # We want to maximize the probability of the unconditioned trajectories in the conditioned
+        # distribution, so we minimize its negative value.
+        return - objective
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
