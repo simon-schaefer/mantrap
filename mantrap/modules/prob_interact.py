@@ -35,7 +35,7 @@ class InteractionProbabilityModule(PureObjectiveModule):
     so cannot be used for its optimisation.
 
     2) Unconditioned path projection: Another approach is to compute (and maximize) the probability of the
-    mean unconditioned trajectories (mode-wise) appearing in the conditioned distribution. While it only takes
+    mean conditioned trajectories (mode-wise) appearing in the unconditioned distribution. While it only takes
     into account the mean values (and weights) it is very efficient to compute while still taking the full
     conditioned distribution into account and has shown to be "optimise-able" in the training of Trajectron.
     Since the distributions itself are constant, while the sampled trajectories vary, the objective is also
@@ -51,16 +51,7 @@ class InteractionProbabilityModule(PureObjectiveModule):
         # Determine mean trajectories and weights of unconditioned distribution. Therefore compute the
         # unconditioned distribution and store the resulting values in an ado-id-keyed dictionary.
         if env.num_ados > 0:
-            dist_dict = env.compute_distributions_wo_ego(t_horizon)
-            self._mus_un_conditioned = {}
-            self._pis_un_conditioned = {}
-            for ado_id, distribution in dist_dict.items():
-                self._mus_un_conditioned[ado_id] = distribution.mean
-                if isinstance(distribution, mantrap.utility.maths.GMM2D):
-                    self._pis_un_conditioned[ado_id] = torch.exp(distribution.log_pis)
-                else:
-                    assert self.env.num_modes == 1
-                    self._pis_un_conditioned[ado_id] = None
+            self._dist_un_conditioned = env.compute_distributions_wo_ego(t_horizon)
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                        ) -> typing.Union[torch.Tensor, None]:
@@ -80,16 +71,14 @@ class InteractionProbabilityModule(PureObjectiveModule):
         dist_dict = self.env.compute_distributions(ego_trajectory)
         objective = torch.zeros(1)
         for ado_id in ado_ids:
-            p = dist_dict[ado_id].log_prob(self._mus_un_conditioned[ado_id])
-            w = self._pis_un_conditioned[ado_id]
-            if w is None:  # uni-modal
-                objective += torch.sum(p)
-            else:  # multi-modal
-                objective += torch.sum(torch.matmul(p, w))
+            p = self._dist_un_conditioned[ado_id].log_prob(dist_dict[ado_id].mean)
+            objective += torch.sum(p)
 
         # We want to maximize the probability of the unconditioned trajectories in the conditioned
         # distribution, so we minimize its negative value.
-        return - objective
+        objective_min = - objective
+        objective_min = objective_min.clamp_max(100.0)
+        return objective_min
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
@@ -100,7 +89,7 @@ class InteractionProbabilityModule(PureObjectiveModule):
         If the internal environment is itself differentiable with respect to the ego (trajectory) input, the
         resulting objective value must have a gradient as well.
         """
-        return self._env.is_differentiable_wrt_ego
+        return self.env.is_differentiable_wrt_ego
 
     ###########################################################################
     # Objective Properties ####################################################
