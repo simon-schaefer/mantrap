@@ -60,7 +60,7 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
                 assert len(p_values) == 2  # (mean, variance) of distribution
                 loc, scale = p_values
                 distribution = torch.distributions.Normal(loc=loc, scale=scale)
-                sample_n = distribution.sample_n(n=num_particles)
+                sample_n = distribution.sample((num_particles, ))
                 samples[m_ado, ip, :] = sample_n
                 pdfs[m_ado, ip, :] = distribution.cdf(sample_n)
 

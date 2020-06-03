@@ -42,7 +42,7 @@ class HJReachabilityModule(OptimizationModule):
     Since `sigma` is a slack variable the according weight in the objective function should be comparably large.
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int,  weight: float = 10.0,
-                 data_file: str = "2D_small.mat", **unused):
+                 data_file: str = "2D.mat", **unused):
         super(HJReachabilityModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight,
                                                    has_slack=True, slack_weight=weight)
 

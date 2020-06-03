@@ -183,7 +183,7 @@ class GraphBasedEnvironment(abc.ABC):
         t_horizon = ego_trajectory.shape[0] - 1
 
         dist_dict = self.compute_distributions(ego_trajectory=ego_trajectory)
-        samples = torch.stack([dist_dict[ado_id].sample_n(num_samples) for ado_id in self.ado_ids])
+        samples = torch.stack([dist_dict[ado_id].sample((num_samples, )) for ado_id in self.ado_ids])
         if expand:
             samples = self.expand_ado_trajectories(ado_trajectories=samples)
 
@@ -202,7 +202,7 @@ class GraphBasedEnvironment(abc.ABC):
         assert self.sanity_check(check_ego=False)
 
         dist_dict = self.compute_distributions_wo_ego(t_horizon=t_horizon)
-        samples = torch.stack([dist_dict[ado_id].sample_n(num_samples) for ado_id in self.ado_ids])
+        samples = torch.stack([dist_dict[ado_id].sample((num_samples,)) for ado_id in self.ado_ids])
         if expand:
             samples = self.expand_ado_trajectories(ado_trajectories=samples)
 
