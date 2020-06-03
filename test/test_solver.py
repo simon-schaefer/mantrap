@@ -129,7 +129,7 @@ class TestSolvers:
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory_opt, t_horizon=t_horizon_exp)
         assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon_exp, ados=env.num_ados)
-        assert tuple(ado_planned.shape) == (solver_horizon, 1, solver.planning_horizon + 1, 5)
+        assert tuple(ado_planned.shape) == (solver_horizon, 1, 1, solver.planning_horizon + 1, 2)
         assert tuple(ego_opt_planned.shape) == (solver_horizon, solver.planning_horizon + 1, 5)
 
         # Test ado planned trajectories - depending on environment engine. Therefore only time-stamps can be tested.
@@ -204,8 +204,7 @@ class TestSearchSolvers:
     def test_improvement(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                          env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
         np.random.seed(0)
-
-        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
         env.add_ado(position=torch.tensor([9, 9]))  # far-away
         solver = solver_class(env, goal=torch.zeros(2), t_planning=5)
 
@@ -228,21 +227,26 @@ class TestIPOPTSolvers:
     def test_formulation(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                          env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                          attention_class: mantrap.attention.AttentionModule.__class__):
-        env, solver, z0 = scenario(solver_class, env_class=env_class, attention_class=attention_class)
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
+        env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
+        solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
-        # Test output shapes.
-        grad = solver.gradient(z=z0)
+        ego_controls = torch.rand((solver.planning_horizon, 2))
+        z_controls = solver.ego_controls_to_z(ego_controls)
+
+        grad = solver.gradient(z=z_controls)
+        assert not np.any(np.isnan(grad))
         assert np.linalg.norm(grad) > 0
-        assert grad.size == z0.flatten().size
+        assert grad.size == z_controls.flatten().size
 
-        jacobian = solver.jacobian(z0)
+        jacobian = solver.jacobian(z_controls)
         num_constraints = sum([c.num_constraints(ado_ids=env.ado_ids) for c in solver.modules])
 
         # Jacobian is only defined if the environment
         if all([module.gradient_condition() for module in solver.modules]):
-            assert jacobian.size == num_constraints * z0.size
+            assert jacobian.size == num_constraints * z_controls.size
         else:
-            assert jacobian.size <= num_constraints * z0.size
+            assert jacobian.size <= num_constraints * z_controls.size
 
 
 @pytest.mark.parametrize("env_class", environments)

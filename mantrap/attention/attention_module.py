@@ -1,5 +1,4 @@
 import abc
-import logging
 import typing
 
 import numpy as np
@@ -39,7 +38,6 @@ class AttentionModule(abc.ABC):
     ###########################################################################
     def _return_filtered(self, ids_filtered: typing.List[str]) -> typing.List[str]:
         self._ids_current = ids_filtered
-        logging.debug(f"Module {self.__str__()} computed")
         return self._ids_current
 
     ###########################################################################

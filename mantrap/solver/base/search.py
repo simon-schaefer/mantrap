@@ -1,4 +1,5 @@
 import abc
+import logging
 import time
 import typing
 
@@ -60,8 +61,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         sampling_start_time = time.time()
 
         # Then start searching loop for finding more optimal trajectories.
-        z_iteration, obj_iteration, iteration = None, np.inf, 0
-        z_best, obj_best = None, None
+        z_iteration, obj_iteration, iteration, k = None, np.inf, 0, 0
         while True:
             z_candidate, obj_candidate, iteration_candidate, is_finished = self._optimize_inner(
                 z_iteration, obj_iteration, iteration, tag, ado_ids)
@@ -76,10 +76,14 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
             # If solver claims to be finished, end the iteration before the runtime has exceeded.
             # Additionally check whether loop has terminated already, then do not reset these values,
             # because somehow the loop iterates one more time after breaking for `RandomSearch`.
-            if (is_finished or (time.time() - sampling_start_time) > max_cpu_time) and z_iteration is not None:
+            run_time = time.time() - sampling_start_time
+            if (is_finished or run_time > max_cpu_time) and z_iteration is not None:
                 z_best = z_iteration.copy()
                 obj_best = obj_iteration
                 break
+
+            k += 1
+            logging.debug(f"search iteration {k} => objective {obj_iteration}/{obj_candidate}, time {run_time}s")
 
         # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
         # be the best iteration (logging within objective and constraint function).

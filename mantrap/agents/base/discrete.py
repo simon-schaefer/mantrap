@@ -1,5 +1,4 @@
 import abc
-import logging
 import math
 import random
 import string
@@ -86,7 +85,6 @@ class DTAgent(abc.ABC):
         # Random identifier.
         letters = string.ascii_lowercase
         self._id = identifier if identifier is not None else "".join(random.choice(letters) for _ in range(3))
-        logging.debug(f"agent [{self._id}]: position={self.position}, velocity={self.velocity}, color={self._color}")
 
     ###########################################################################
     # Dynamics ################################################################

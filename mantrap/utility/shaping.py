@@ -69,7 +69,7 @@ def check_ado_trajectories(x: torch.Tensor, t_horizon: int = None, ados: int = N
     assert not torch.any(torch.isnan(x))
     assert len(x.shape) == 4  # (num_ados,num_samples,t_horizon, 2)
 
-    assert x.shape[3] == 2  # (x, y) - positions
+    assert x.shape[3] in [2, 5]  # (x, y) - positions, (x, y, vx, vy, t) - full state
     if ados is not None:
         assert x.shape[0] == ados
     if num_samples is not None:

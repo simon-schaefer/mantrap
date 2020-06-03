@@ -19,8 +19,11 @@ def __set_type_defaults():
 
 
 def __set_seed():
+    import numpy as np
     import torch
+    np.random.seed(0)
     torch.manual_seed(0)
+
 
 #######################################
 # Logging preferences #################
@@ -47,7 +50,7 @@ def __set_logging_preferences():
     logging.StreamHandler.emit = remove_bytes_from_logging(logging.StreamHandler.emit)
     logging.basicConfig(
         level=logging.DEBUG if is_debug else logging.WARNING,
-        format="[%(levelname)-6s > %(filename)s: %(lineno)4d (%(asctime)-8s:%(msecs)03d)] %(message)-s",
+        format="[%(levelname)-6s > %(filename)-10s:%(lineno)4d (%(asctime)-8s:%(msecs)03d)] %(message)-s",
         datefmt="%H:%M:%S"
     )
     logging.getLogger("matplotlib").setLevel(logging.ERROR)
