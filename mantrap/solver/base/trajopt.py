@@ -39,6 +39,7 @@ class TrajOptSolver(abc.ABC):
     :param attention_module: Filter module name (None = no filter).
     :param eval_env: environment that should be used for evaluation ("real" environment).
     :param config_name: name of solver configuration.
+    :param logging: should all the results be logged (necessary for plotting but very costly !!).
     """
     def __init__(
         self,
@@ -49,6 +50,7 @@ class TrajOptSolver(abc.ABC):
         attention_module: mantrap.attention.AttentionModule.__class__ = None,
         eval_env: mantrap.environment.base.GraphBasedEnvironment = None,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN,
+        logging: bool = False,
         **solver_params
     ):
         # Dictionary of solver parameters.
@@ -94,6 +96,7 @@ class TrajOptSolver(abc.ABC):
         # deque is way more efficient than the list type for storing simple floating point numbers in a sequence.
         self._log = None
         self._iteration = None
+        self._is_logging = logging
 
         # Initialize child class.
         self.initialize(**solver_params)
@@ -167,7 +170,7 @@ class TrajOptSolver(abc.ABC):
             # Logging, before the environment step is done and update optimization
             # logging values for optimization results.
             self.__intermediate_log(ego_controls_k=ego_controls_k)
-            if __debug__ is True:
+            if self.is_logging:
                 self._log.update({key: x for key, x in optimization_log.items()})
 
             # Forward simulate environment.
@@ -349,7 +352,7 @@ class TrajOptSolver(abc.ABC):
         ego_trajectory = self.z_to_ego_trajectory(z)
         objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag=tag) for m in self.modules])
 
-        if __debug__ is True:
+        if self.is_logging:
             ado_planned = self.env.sample_w_trajectory(ego_trajectory=ego_trajectory)
             ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_trajectory.shape[0])
             self._log_append(tag, ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo)
@@ -396,7 +399,7 @@ class TrajOptSolver(abc.ABC):
         constraints = np.concatenate([m.constraint(ego_trajectory, tag=tag, ado_ids=ado_ids) for m in self.modules])
         violation = float(np.sum([m.compute_violation_internal(tag=tag) for m in self.modules]))
 
-        if __debug__ is True:
+        if self.is_logging:
             self._log_append(inf_overall=violation, tag=tag)
             module_log = {f"{mantrap.constants.LT_CONSTRAINT}_{key}": mod.inf_current(tag=tag)
                           for key, mod in self.module_dict.items()}
@@ -465,7 +468,7 @@ class TrajOptSolver(abc.ABC):
     # Logging #################################################################
     ###########################################################################
     def __intermediate_log(self, ego_controls_k: torch.Tensor):
-        if __debug__ is True and self.log is not None:
+        if self.is_logging and self.log is not None:
             # For logging purposes unroll and predict the scene for the derived ego controls.
             ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
             self._log_append(ego_planned=ego_opt_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
@@ -492,11 +495,11 @@ class TrajOptSolver(abc.ABC):
 
         # Reset optimization log by re-creating dictionary with entries all keys in the planning horizon. During
         # optimization new values are then added to these created lists.
-        if __debug__ is True:
+        if self.is_logging:
             self._log = {f"{key}_{k}": [] for k in range(log_horizon) for key in self.log_keys_all()}
 
     def _log_append(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **kwargs):
-        if __debug__ is True and self.log is not None:
+        if self.is_logging and self.log is not None:
             for key, value in kwargs.items():
                 x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()
                 self._log[f"{tag}/{key}_{self._iteration}"].append(x)
@@ -509,7 +512,7 @@ class TrajOptSolver(abc.ABC):
         e.g. the last value of the objective tensor `obj_overall` should be the smallest one. However it is hard to
         validate for the general logging key, therefore it is up to the user to implement it correctly.
         """
-        if __debug__ is True:
+        if self.is_logging:
             assert self.log is not None
             # Stack always the last values in the step-dictionaries (lists of logging values for each optimization
             # step), since it is assumed to be the most optimal one (e.g. for IPOPT).
@@ -565,36 +568,37 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     def visualize_scenes(self, plot_path_only: bool = False, tag: str = mantrap.constants.TAG_OPTIMIZATION, **vis_keys):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
-        trajectories conditioned on the planned ego trajectory), if __debug__ is True (otherwise no logging).
+        trajectories conditioned on the planned ego trajectory).
 
         :param plot_path_only: just plot the robot's and ado's trajectories, no further stats.
         :param tag: logging tag to plot, per default optimization tag.
         """
-        if __debug__ is True:
-            from mantrap.visualization import visualize_overview
-            assert self.log is not None
+        from mantrap.visualization import visualize_overview
+        if not self.is_logging:
+            raise LookupError("For visualization the `logging` flag must be activate before solving !")
+        assert self.log is not None
 
-            # From optimization log extract the core (initial condition) which has resulted in the best objective
-            # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
-            # N=t_horizon times to be able to visualize the whole distribution at every time.
-            obj_dict = {key: self.log[f"{tag}/{mantrap.constants.LT_OBJECTIVE}_{key}_end"]
-                        for key in self.module_names}
-            obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.module_names}
-            inf_dict = {key: self.log[f"{tag}/{mantrap.constants.LT_CONSTRAINT}_{key}_end"]
-                        for key in self.module_names}
-            inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.module_names}
+        # From optimization log extract the core (initial condition) which has resulted in the best objective
+        # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
+        # N=t_horizon times to be able to visualize the whole distribution at every time.
+        obj_dict = {key: self.log[f"{tag}/{mantrap.constants.LT_OBJECTIVE}_{key}_end"]
+                    for key in self.module_names}
+        obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.module_names}
+        inf_dict = {key: self.log[f"{tag}/{mantrap.constants.LT_CONSTRAINT}_{key}_end"]
+                    for key in self.module_names}
+        inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.module_names}
 
-            return visualize_overview(
-                ego_planned=self.log[f"{tag}/ego_planned_end"],
-                ado_planned=self.log[f"{tag}/ado_planned_end"],
-                ado_planned_wo=self.log[f"{tag}/ado_planned_wo_end"],
-                ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],
-                ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict,
-                env=self.env,
-                plot_path_only=plot_path_only,
-                file_path=self._visualize_output_format("scenes"),
-                **vis_keys
-            )
+        return visualize_overview(
+            ego_planned=self.log[f"{tag}/ego_planned_end"],
+            ado_planned=self.log[f"{tag}/ado_planned_end"],
+            ado_planned_wo=self.log[f"{tag}/ado_planned_wo_end"],
+            ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],
+            ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict,
+            env=self.env,
+            plot_path_only=plot_path_only,
+            file_path=self._visualize_output_format("scenes"),
+            **vis_keys
+        )
 
     def visualize_heat_map(self, propagation: str = "log", resolution: float = 0.1):
         """Visualize heat map of objective and constraint function for planned ego trajectory at initial
@@ -616,98 +620,95 @@ class TrajOptSolver(abc.ABC):
         - "constant": Keep z-values constant over whole time-horizon, e.g. when the optimization variables are
                       the robot's controls than use the same action over the full time-horizon. Hence, the
                       optimization variable space has to be sampled only once per time-step.
-
-        Plot only if __debug__ is True (otherwise no logging).
         """
-        if __debug__ is True:
-            from mantrap.visualization import visualize_heat_map
-            assert propagation in ["log", "constant"]
+        from mantrap.visualization import visualize_heat_map
+        assert propagation in ["log", "constant"]
 
-            num_time_steps = self.planning_horizon
-            lower, upper = self.optimization_variable_bounds()
-            assert len(lower) == len(upper) == 2 * num_time_steps  # 2D (!)
+        num_time_steps = self.planning_horizon
+        lower, upper = self.optimization_variable_bounds()
+        assert len(lower) == len(upper) == 2 * num_time_steps  # 2D (!)
 
-            # Create optimization variable mesh grid with given resolution.
-            # Assumption: Same optimization variable bounds over full time horizon
-            # and over all optimization variables, strong assumption but should hold
-            # within this project (!).
-            # + resolution since otherwise np.arange will stop at upper - resolution (!)
-            x_grid, y_grid = np.meshgrid(np.arange(lower[0], upper[0] + resolution, step=resolution),
-                                         np.arange(lower[1], upper[1] + resolution, step=resolution))
-            points = np.stack((x_grid, y_grid)).transpose().reshape(-1, 2)
-            grid_shape = x_grid.shape
+        # Create optimization variable mesh grid with given resolution.
+        # Assumption: Same optimization variable bounds over full time horizon
+        # and over all optimization variables, strong assumption but should hold
+        # within this project (!).
+        # + resolution since otherwise np.arange will stop at upper - resolution (!)
+        x_grid, y_grid = np.meshgrid(np.arange(lower[0], upper[0] + resolution, step=resolution),
+                                     np.arange(lower[1], upper[1] + resolution, step=resolution))
+        points = np.stack((x_grid, y_grid)).transpose().reshape(-1, 2)
+        grid_shape = x_grid.shape
 
-            # Receive planned ego trajectories from log (propagation = log).
-            z_values_prior = None
-            if propagation == "log":
-                assert self.log is not None
-                ego_planned = self.log[f"{mantrap.constants.TAG_OPTIMIZATION}/ego_planned_end"]
-                ego_planned = ego_planned[0, :, :]  # initial system state
-                z_values_prior = self.ego_trajectory_to_z(ego_trajectory=ego_planned)
-                assert z_values_prior.size == self.planning_horizon * 2  # 2D !
+        # Receive planned ego trajectories from log (propagation = log).
+        z_values_prior = None
+        if propagation == "log":
+            assert self.log is not None
+            ego_planned = self.log[f"{mantrap.constants.TAG_OPTIMIZATION}/ego_planned_end"]
+            ego_planned = ego_planned[0, :, :]  # initial system state
+            z_values_prior = self.ego_trajectory_to_z(ego_trajectory=ego_planned)
+            assert z_values_prior.size == self.planning_horizon * 2  # 2D !
 
-            # Iterate over all points, compute objective and constraint violation and write
-            # both in images. For simplification take all ados into account for this  visualization,
-            # by setting `ado_ids = None`.
-            images = np.zeros((num_time_steps, *grid_shape))
-            for t in range(num_time_steps):
-                objective_values = np.zeros(grid_shape)
-                constraint_values = np.zeros(grid_shape)
-                for i, point in enumerate(points):
-                    ix = i % grid_shape[1]
-                    iy = i // grid_shape[1]
+        # Iterate over all points, compute objective and constraint violation and write
+        # both in images. For simplification take all ados into account for this  visualization,
+        # by setting `ado_ids = None`.
+        images = np.zeros((num_time_steps, *grid_shape))
+        for t in range(num_time_steps):
+            objective_values = np.zeros(grid_shape)
+            constraint_values = np.zeros(grid_shape)
+            for i, point in enumerate(points):
+                ix = i % grid_shape[1]
+                iy = i // grid_shape[1]
 
-                    # Use the chosen optimization variable state trajectory until the current state,
-                    # then add the current point to it and transform back to ego trajectory, which
-                    # can be used to determine the objective/constraint values.
-                    if propagation == "log":
-                        zs = np.concatenate((z_values_prior[:t*2], point))  # cat flat z values to flat point
-                    elif propagation == "constant":
-                        zs = np.array([point] * (t + 1)).flatten()
-                    else:
-                        raise ValueError(f"Invalid propagation mode {propagation} !")
+                # Use the chosen optimization variable state trajectory until the current state,
+                # then add the current point to it and transform back to ego trajectory, which
+                # can be used to determine the objective/constraint values.
+                if propagation == "log":
+                    zs = np.concatenate((z_values_prior[:t*2], point))  # cat flat z values to flat point
+                elif propagation == "constant":
+                    zs = np.array([point] * (t + 1)).flatten()
+                else:
+                    raise ValueError(f"Invalid propagation mode {propagation} !")
 
-                    # Transform optimization value to ego trajectory, which is required for objective and
-                    # constraint violation computations.
-                    ego_trajectory = self.z_to_ego_trajectory(zs)
+                # Transform optimization value to ego trajectory, which is required for objective and
+                # constraint violation computations.
+                ego_trajectory = self.z_to_ego_trajectory(zs)
 
-                    # Compute the objective/constraint values and add to images.
-                    ado_ids = self.env.ado_ids
-                    tag = mantrap.constants.TAG_VISUALIZATION
-                    objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
-                                        for m in self.modules])
-                    violation = np.sum([m.compute_violation(ego_trajectory, ado_ids=ado_ids, tag=tag)
-                                        for m in self.modules])
-                    objective_values[ix, iy] = float(objective)
-                    constraint_values[ix, iy] = float(violation)
+                # Compute the objective/constraint values and add to images.
+                ado_ids = self.env.ado_ids
+                tag = mantrap.constants.TAG_VISUALIZATION
+                objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
+                                    for m in self.modules])
+                violation = np.sum([m.compute_violation(ego_trajectory, ado_ids=ado_ids, tag=tag)
+                                    for m in self.modules])
+                objective_values[ix, iy] = float(objective)
+                constraint_values[ix, iy] = float(violation)
 
-                # Merge objective and constraint values by setting all values in an infeasible region
-                # (= constraint violation > 0) to nan value, that will be assigned to a special color
-                # in the heat-map later on.
-                objective_values[constraint_values > 0.0] = np.nan
+            # Merge objective and constraint values by setting all values in an infeasible region
+            # (= constraint violation > 0) to nan value, that will be assigned to a special color
+            # in the heat-map later on.
+            objective_values[constraint_values > 0.0] = np.nan
 
-                # Copy resulting objective values into results image.
-                images[t, :, :] = objective_values.copy()
+            # Copy resulting objective values into results image.
+            images[t, :, :] = objective_values.copy()
 
-            # When known convert the optimized z-values to a usable shape. When not known simply do not plot
-            # them in the heat-map (by passing `None`).
-            zs = None
-            if propagation == "log":
-                zs = z_values_prior.reshape(-1, 2)
+        # When known convert the optimized z-values to a usable shape. When not known simply do not plot
+        # them in the heat-map (by passing `None`).
+        zs = None
+        if propagation == "log":
+            zs = z_values_prior.reshape(-1, 2)
 
-            # Find image bounds (both value and axes bounds).
-            bounds = (lower[:2], upper[:2])  # two-dimensions
-            if not np.all(np.isnan(images)):  # not  all values are non (i.e. infeasible)
-                c_min, c_max = float(np.nanmin(images)), float(np.nanmax(images))
-            else:
-                c_min, c_max = -np.inf, np.inf
+        # Find image bounds (both value and axes bounds).
+        bounds = (lower[:2], upper[:2])  # two-dimensions
+        if not np.all(np.isnan(images)):  # not  all values are non (i.e. infeasible)
+            c_min, c_max = float(np.nanmin(images)), float(np.nanmax(images))
+        else:
+            c_min, c_max = -np.inf, np.inf
 
-            # Finally draw all the created images in plot using the `visualize_heat_map` function
-            # defined in the internal visualization package.
-            path = self._visualize_output_format(name="heat_map")
-            return visualize_heat_map(images, bounds=bounds, color_bounds=(c_min, c_max), choices=zs,
-                                      resolution=resolution, title="optimization landscape",
-                                      ax_labels=("z1", "z2"), file_path=path)
+        # Finally draw all the created images in plot using the `visualize_heat_map` function
+        # defined in the internal visualization package.
+        path = self._visualize_output_format(name="heat_map")
+        return visualize_heat_map(images, bounds=bounds, color_bounds=(c_min, c_max), choices=zs,
+                                  resolution=resolution, title="optimization landscape",
+                                  ax_labels=("z1", "z2"), file_path=path)
 
     def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
         """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
@@ -770,6 +771,10 @@ class TrajOptSolver(abc.ABC):
     @property
     def log(self) -> typing.Dict[str, typing.Union[torch.Tensor, typing.List[torch.Tensor]]]:
         return self._log
+
+    @property
+    def is_logging(self) -> bool:
+        return self._is_logging
 
     @property
     def config_name(self) -> str:

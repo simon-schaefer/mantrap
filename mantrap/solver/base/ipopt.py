@@ -81,8 +81,8 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         nlp.addOption("hessian_approximation", mantrap.constants.IPOPT_AUTOMATIC_HESSIAN)
 
         # The larger the `print_level` value, the more print output IPOPT will provide.
-        nlp.addOption("print_level", 5 if __debug__ is True else 0)
-        if __debug__ is True:
+        nlp.addOption("print_level", 5 if self.is_logging else 0)
+        if self.is_logging:
             nlp.addOption("print_timing_statistics", "yes")
             # nlp.addOption("derivative_test", "first-order")
             # nlp.addOption("derivative_test_tol", 1e-4)

@@ -497,7 +497,7 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_prediction(self, ego_trajectory: torch.Tensor, enforce: bool = False, **vis_kwargs):
+    def visualize_prediction(self, ego_trajectory: torch.Tensor, **vis_kwargs):
         """Visualize the predictions for the scene based on the given ego trajectory.
 
         In order to be use the general `visualize()` function defined in the `mantrap.visualization` - package the ego
@@ -506,38 +506,37 @@ class GraphBasedEnvironment(abc.ABC):
         plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
         trajectory is repeated to the whole time horizon.
         """
-        if __debug__ is True or enforce:
-            from mantrap.visualization import visualize_overview
-            assert mantrap.utility.shaping.check_ego_trajectory(x=ego_trajectory)
-            t_horizon = ego_trajectory.shape[0]
+        from mantrap.visualization import visualize_overview
+        assert mantrap.utility.shaping.check_ego_trajectory(x=ego_trajectory)
+        t_horizon = ego_trajectory.shape[0]
 
-            # Predict the ado behaviour conditioned on the given ego trajectory.
-            ado_trajectories = self.sample_w_trajectory(ego_trajectory=ego_trajectory)
-            ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
+        # Predict the ado behaviour conditioned on the given ego trajectory.
+        ado_trajectories = self.sample_w_trajectory(ego_trajectory=ego_trajectory)
+        ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
 
-            # Stretch the ego and ado trajectories as described above.
-            ego_stretched = torch.zeros((t_horizon, t_horizon, 5))
-            ado_stretched = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
-            ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
-            for t in range(t_horizon):
-                ego_stretched[t, :(t_horizon - t), :] = ego_trajectory[t:t_horizon, :]
-                ego_stretched[t, (t_horizon - t):, :] = ego_trajectory[-1, :]
-                ado_stretched[t, :, :, :(t_horizon - t), :] = ado_trajectories[:, :, t:t_horizon, :]
-                ado_stretched[t, :, :, (t_horizon - t):, :] = ado_trajectories[:, :, -1, :].unsqueeze(dim=2)
-                ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
-                ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
+        # Stretch the ego and ado trajectories as described above.
+        ego_stretched = torch.zeros((t_horizon, t_horizon, 5))
+        ado_stretched = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
+        ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
+        for t in range(t_horizon):
+            ego_stretched[t, :(t_horizon - t), :] = ego_trajectory[t:t_horizon, :]
+            ego_stretched[t, (t_horizon - t):, :] = ego_trajectory[-1, :]
+            ado_stretched[t, :, :, :(t_horizon - t), :] = ado_trajectories[:, :, t:t_horizon, :]
+            ado_stretched[t, :, :, (t_horizon - t):, :] = ado_trajectories[:, :, -1, :].unsqueeze(dim=2)
+            ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
+            ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
 
-            return visualize_overview(
-                ego_planned=ego_stretched,
-                ado_planned=ado_stretched,
-                ado_planned_wo=ado_stretched_wo,
-                plot_path_only=True,
-                env=self,
-                file_path=self._visualize_output_format(name="prediction"),
-                **vis_kwargs
-            )
+        return visualize_overview(
+            ego_planned=ego_stretched,
+            ado_planned=ado_stretched,
+            ado_planned_wo=ado_stretched_wo,
+            plot_path_only=True,
+            env=self,
+            file_path=self._visualize_output_format(name="prediction"),
+            **vis_kwargs
+        )
 
-    def visualize_prediction_wo_ego(self, t_horizon: int, enforce: bool = False, **vis_kwargs):
+    def visualize_prediction_wo_ego(self, t_horizon: int, **vis_kwargs):
         """Visualize the predictions for the scene based on the given ego trajectory.
 
         In order to be use the general `visualize()` function defined in the `mantrap.visualization` - package the ego
@@ -546,24 +545,23 @@ class GraphBasedEnvironment(abc.ABC):
         plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
         trajectory is repeated to the whole time horizon.
         """
-        if __debug__ is True or enforce:
-            from mantrap.visualization import visualize_overview
+        from mantrap.visualization import visualize_overview
 
-            # Predict the ado behaviour conditioned on the given ego trajectory.
-            ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
+        # Predict the ado behaviour conditioned on the given ego trajectory.
+        ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
 
-            # Stretch the ego and ado trajectories as described above.
-            ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
-            for t in range(t_horizon):
-                ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
-                ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
+        # Stretch the ego and ado trajectories as described above.
+        ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
+        for t in range(t_horizon):
+            ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
+            ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
 
-            output_path = self._visualize_output_format(name="prediction_wo_ego")
-            return visualize_overview(ado_planned_wo=ado_stretched_wo,
-                                      plot_path_only=True,
-                                      env=self,
-                                      file_path=output_path,
-                                      **vis_kwargs)
+        output_path = self._visualize_output_format(name="prediction_wo_ego")
+        return visualize_overview(ado_planned_wo=ado_stretched_wo,
+                                  plot_path_only=True,
+                                  env=self,
+                                  file_path=output_path,
+                                  **vis_kwargs)
 
     def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
         """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
