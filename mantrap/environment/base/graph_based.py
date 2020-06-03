@@ -106,7 +106,7 @@ class GraphBasedEnvironment(abc.ABC):
         # deterministic) the velocity just can be computed by deriving the difference of the sample and the
         # current position of each ado (multiplied by 1/dt).
         ado_states = torch.zeros((self.num_ados, 5))
-        ado_samples = self.predict_w_controls(ego_controls=ego_action.view(1, 2))
+        ado_samples = self.sample_w_controls(ego_controls=ego_action.view(1, 2))
         for m_ado, ado_id in enumerate(self.ado_ids):
             ado_m_position = ado_samples[m_ado, 0, 1, :]
             ado_m_velocity = (ado_m_position - self.ados[m_ado].position) / self.dt
@@ -152,62 +152,113 @@ class GraphBasedEnvironment(abc.ABC):
         assert self.sanity_check()
 
     ###########################################################################
-    # Prediction ##############################################################
+    # Prediction - Samples ####################################################
     ###########################################################################
-    def predict_w_controls(self, ego_controls: torch.Tensor, num_samples: int = 1, **kwargs) -> torch.Tensor:
-        """Predict the ado paths based conditioned on robot controls.
-
-        For predicting the future ado states compute the conditioned distributions and sample from them.
+    def sample_w_controls(self, ego_controls: torch.Tensor, num_samples: int = 1, expand: bool = False
+                          ) -> torch.Tensor:
+        """Predict the ado path samples based conditioned on robot controls.
 
         :param ego_controls: ego control input (pred_horizon, 2).
         :param num_samples: number of samples to return.
-        :param kwargs: additional arguments for graph construction.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2).
+        :param expand: expand ado positions outputs to full state trajectories.
+        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
         """
         assert mantrap.utility.shaping.check_ego_controls(ego_controls)
         assert self.sanity_check(check_ego=True)
 
         ego_trajectory = self.ego.unroll_trajectory(controls=ego_controls, dt=self.dt)
-        return self.predict_w_trajectory(ego_trajectory, num_samples=num_samples, **kwargs)
+        return self.sample_w_trajectory(ego_trajectory, num_samples=num_samples, expand=expand)
 
-    def predict_w_trajectory(self, ego_trajectory: torch.Tensor, num_samples: int = 1, **kwargs) -> torch.Tensor:
-        """Predict the ado paths based conditioned on robot trajectory.
-
-        For predicting the future ado states compute the conditioned distributions and sample from them.
+    def sample_w_trajectory(self, ego_trajectory: torch.Tensor, num_samples: int = 1, expand: bool = False
+                            ) -> torch.Tensor:
+        """Predict the ado path samples based conditioned on robot trajectory.
 
         :param ego_trajectory: ego trajectory (pred_horizon + 1, 5).
         :param num_samples: number of samples to return.
-        :param kwargs: additional arguments for graph construction.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2).
+        :param expand: expand ado positions outputs to full state trajectories.
+        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         assert self.sanity_check(check_ego=True)
         t_horizon = ego_trajectory.shape[0] - 1
 
-        dist_dict = self.compute_distributions(ego_trajectory=ego_trajectory, **kwargs)
+        dist_dict = self.compute_distributions(ego_trajectory=ego_trajectory)
         samples = torch.stack([dist_dict[ado_id].sample_n(num_samples) for ado_id in self.ado_ids])
+        if expand:
+            samples = self.expand_ado_trajectories(ado_trajectories=samples)
         assert mantrap.utility.shaping.check_ado_trajectories(samples, t_horizon + 1, self.num_ados, num_samples)
         return samples
 
-    def predict_wo_ego(self, t_horizon: int, num_samples: int = 1, **kwargs) -> torch.Tensor:
-        """Predict the unconditioned ado paths (i.e. if no robot would be in the scene).
-
-        Predict the environments future for the given time horizon (discrete time).
-        The internal prediction model is dependent on the exact implementation of the internal interaction model
-        between the ados while ignoring the ego.
+    def sample_wo_ego(self, t_horizon: int, num_samples: int = 1, expand: bool = False) -> torch.Tensor:
+        """Predict the unconditioned ado path samples (i.e. if no robot would be in the scene).
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
         :param num_samples: number of samples to return.
-        :param kwargs: additional arguments for graph construction.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2).
+        :param expand: expand ado positions outputs to full state trajectories.
+        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
         """
         assert t_horizon > 0
         assert self.sanity_check(check_ego=False)
 
-        dist_dict = self.compute_distributions_wo_ego(t_horizon=t_horizon, **kwargs)
+        dist_dict = self.compute_distributions_wo_ego(t_horizon=t_horizon)
         samples = torch.stack([dist_dict[ado_id].sample_n(num_samples) for ado_id in self.ado_ids])
+        if expand:
+            samples = self.expand_ado_trajectories(ado_trajectories=samples)
         assert mantrap.utility.shaping.check_ado_trajectories(samples, t_horizon + 1, self.num_ados, num_samples)
         return samples
+
+    ###########################################################################
+    # Prediction - Means ######################################################
+    ###########################################################################
+    def predict_w_controls(self, ego_controls: torch.Tensor, expand: bool = False) -> torch.Tensor:
+        """Predict the ado path distribution means based conditioned on robot controls.
+
+        :param ego_controls: ego control input (pred_horizon, 2).
+        :param expand: expand ado positions outputs to full state trajectories.
+        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        """
+        assert mantrap.utility.shaping.check_ego_controls(ego_controls)
+        assert self.sanity_check(check_ego=True)
+
+        ego_trajectory = self.ego.unroll_trajectory(controls=ego_controls, dt=self.dt)
+        return self.predict_w_trajectory(ego_trajectory, expand=expand)
+
+    def predict_w_trajectory(self, ego_trajectory: torch.Tensor, expand: bool = False) -> torch.Tensor:
+        """Predict the ado path samples based conditioned on robot trajectory.
+
+        :param ego_trajectory: ego trajectory (pred_horizon + 1, 5).
+        :param expand: expand ado positions outputs to full state trajectories.
+        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        """
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+        assert self.sanity_check(check_ego=True)
+        t_horizon = ego_trajectory.shape[0] - 1
+
+        dist_dict = self.compute_distributions(ego_trajectory=ego_trajectory)
+        means = torch.stack([dist_dict[ado_id].mean for ado_id in self.ado_ids])
+        if len(means.shape) == 3:
+            means = means.unsqueeze(dim=1)
+        if expand:
+            means = self.expand_ado_trajectories(ado_trajectories=means)
+        assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon + 1, self.num_ados, 1)
+        return means
+
+    def predict_wo_ego(self, t_horizon: int, expand: bool = False) -> torch.Tensor:
+        """Predict the unconditioned ado path distribution means (i.e. if no robot would be in the scene).
+
+        :param t_horizon: prediction horizon, number of discrete time-steps.
+        :param expand: expand ado positions outputs to full state trajectories.
+        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        """
+        assert t_horizon > 0
+        assert self.sanity_check(check_ego=False)
+
+        dist_dict = self.compute_distributions_wo_ego(t_horizon=t_horizon)
+        means = torch.stack([dist_dict[ado_id].mean for ado_id in self.ado_ids])
+        if expand:
+            means = self.expand_ado_trajectories(ado_trajectories=means)
+        assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon + 1, self.num_ados, 1)
+        return means
 
     ###########################################################################
     # Scene ###################################################################
@@ -268,6 +319,16 @@ class GraphBasedEnvironment(abc.ABC):
             assert mantrap.utility.shaping.check_ego_state(ego_state, enforce_temporal=True)
         assert mantrap.utility.shaping.check_ado_states(ado_states, enforce_temporal=True, num_ados=self.num_ados)
         return ego_state, ado_states
+
+    def expand_ado_trajectories(self, ado_trajectories: torch.Tensor) -> torch.Tensor:
+        assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories)
+        num_ados, num_samples, t_horizon, _ = ado_trajectories.shape
+        trajectories_full = torch.zeros((num_ados, num_samples, t_horizon, 5))
+        for m_ado, ado in enumerate(self.ados):
+            for m_sample in range(num_samples):
+                trajectories_full[m_ado, m_sample, :, :] = \
+                    ado.expand_trajectory(ado_trajectories[m_ado, m_sample, :, 0:2], dt=self.dt)
+        return trajectories_full
 
     ###########################################################################
     # Simulation graph ########################################################
@@ -449,8 +510,8 @@ class GraphBasedEnvironment(abc.ABC):
             t_horizon = ego_trajectory.shape[0]
 
             # Predict the ado behaviour conditioned on the given ego trajectory.
-            ado_trajectories = self.predict_w_trajectory(ego_trajectory=ego_trajectory)
-            ado_trajectories_wo = self.predict_wo_ego(t_horizon=t_horizon)
+            ado_trajectories = self.sample_w_trajectory(ego_trajectory=ego_trajectory)
+            ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
 
             # Stretch the ego and ado trajectories as described above.
             ego_stretched = torch.zeros((t_horizon, t_horizon, 5))
@@ -487,7 +548,7 @@ class GraphBasedEnvironment(abc.ABC):
             from mantrap.visualization import visualize_overview
 
             # Predict the ado behaviour conditioned on the given ego trajectory.
-            ado_trajectories_wo = self.predict_wo_ego(t_horizon=t_horizon)
+            ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
 
             # Stretch the ego and ado trajectories as described above.
             ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))

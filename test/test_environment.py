@@ -1,6 +1,3 @@
-from collections import namedtuple
-
-import numpy as np
 import pytest
 import torch
 
@@ -84,7 +81,7 @@ class TestEnvironment:
         env.add_ado(goal=torch.ones(2), position=torch.tensor([-1, 0]), history=history)
         env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), history=history)
 
-        ado_trajectories = env.predict_wo_ego(t_horizon=t_horizon)
+        ado_trajectories = env.sample_wo_ego(t_horizon=t_horizon)
         assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon=t_horizon + 1, ados=2)
 
     @staticmethod
@@ -169,7 +166,7 @@ class TestEnvironment:
         assert mantrap.utility.shaping.check_ado_states(ado_states, enforce_temporal=True)
 
         # The first entry of every predicted trajectory should be the current state, check that.
-        ado_trajectories = env.predict_wo_ego(t_horizon=2, num_samples=4)
+        ado_trajectories = env.sample_wo_ego(t_horizon=2, num_samples=4)
 
         # print(ado_trajectories[:, 0, 0, :])
         # print(ado_states[0, 0:2])
@@ -191,7 +188,7 @@ def test_social_forces_single_ado_prediction(goal_position: torch.Tensor):
     env = mantrap.environment.SocialForcesEnvironment()
     env.add_ado(goal=goal_position, position=torch.tensor([-1, -5]), velocity=torch.ones(2) * 0.8)
 
-    trajectory_samples = env.predict_wo_ego(t_horizon=100, num_samples=100)
+    trajectory_samples = env.sample_wo_ego(t_horizon=100, num_samples=100)
     trajectory = torch.mean(trajectory_samples, dim=1).squeeze()
     assert torch.isclose(trajectory[-1][0], goal_position[0], atol=0.5)
     assert torch.isclose(trajectory[-1][1], goal_position[1], atol=0.5)
@@ -202,7 +199,7 @@ def test_social_forces_static_ado_pair_prediction():
     env.add_ado(goal=torch.zeros(2), position=torch.tensor([-1, 0]), velocity=torch.tensor([0.1, 0]))
     env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), velocity=torch.tensor([-0.1, 0]))
 
-    trajectories = env.predict_wo_ego(t_horizon=10, num_samples=100)
+    trajectories = env.sample_wo_ego(t_horizon=10, num_samples=100)
     trajectories = torch.mean(trajectories, dim=1).squeeze()
     # Due to the repulsive of the agents between each other, they cannot both go to their goal position (which is
     # the same for both of them). Therefore the distance must be larger then zero basically, otherwise the repulsive
@@ -304,7 +301,7 @@ def test_kalman_distributions():
 #     env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), goal=torch.ones(2) * 4)
 #
 #     pos_expected = torch.tensor([[0, 0], [0.70710, 0.70710], [1.4142, 1.4142], [2.1213, 2.1213], [2.8284, 2.8284]])
-#     ado_trajectories = env.predict_wo_ego(t_horizon=pos_expected.shape[0])
+#     ado_trajectories = env.sample_wo_ego(t_horizon=pos_expected.shape[0])
 #     assert torch.isclose(torch.norm(ado_trajectories[0, 0, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)
 #
 #
@@ -342,5 +339,5 @@ def test_kalman_distributions():
 #             ],
 #         ]
 #     ).view(2, 1, -1, 2)
-#     ado_trajectories = env.predict_wo_ego(t_horizon=pos_expected.shape[2])
+#     ado_trajectories = env.sample_wo_ego(t_horizon=pos_expected.shape[2])
 #     assert torch.isclose(torch.norm(ado_trajectories[:, :, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)

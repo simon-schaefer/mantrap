@@ -256,12 +256,15 @@ class TrajOptSolver(abc.ABC):
         :param method: method to use.
         :return: initial z values.
         """
+        logging.debug(f"solver [warm_start]: method = {method} starting ...")
         if method == mantrap.constants.WARM_START_HARD:
-            return self._warm_start_hard()
+            z_warm_start = self._warm_start_hard()
         elif method == mantrap.constants.WARM_START_ENCODING:
-            return self._warm_start_encoding()
+            z_warm_start = self._warm_start_encoding()
         else:
             raise ValueError(f"Invalid warm starting-method {method} !")
+        logging.debug(f"solver [warm_start]: finished ...")
+        return z_warm_start
 
     def _warm_start_hard(self) -> torch.Tensor:
         """Warm-Starting optimization using solution for hard modules only.
@@ -347,13 +350,14 @@ class TrajOptSolver(abc.ABC):
         objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag=tag) for m in self.modules])
 
         if __debug__ is True:
-            ado_planned = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
-            ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_trajectory.shape[0])
+            ado_planned = self.env.sample_w_trajectory(ego_trajectory=ego_trajectory)
+            ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_trajectory.shape[0])
             self._log_append(tag, ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo)
             self._log_append(tag, obj_overall=objective)
             module_log = {f"{mantrap.constants.LT_OBJECTIVE}_{key}": mod.obj_current(tag=tag)
                           for key, mod in self.module_dict.items()}
             self._log_append(**module_log, tag=tag)
+            # logging.debug(f"objectives: {module_log}")
 
         return float(objective)
 
@@ -465,9 +469,9 @@ class TrajOptSolver(abc.ABC):
             # For logging purposes unroll and predict the scene for the derived ego controls.
             ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
             self._log_append(ego_planned=ego_opt_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
-            ado_planned = self.env.predict_w_controls(ego_controls=ego_controls_k)
+            ado_planned = self.env.sample_w_controls(ego_controls=ego_controls_k)
             self._log_append(ado_planned=ado_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
-            ado_planned_wo = self.env.predict_wo_ego(t_horizon=ego_controls_k.shape[0] + 1)
+            ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_controls_k.shape[0] + 1)
             self._log_append(ado_planned_wo=ado_planned_wo, tag=mantrap.constants.TAG_OPTIMIZATION)
 
     @staticmethod
