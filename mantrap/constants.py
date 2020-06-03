@@ -6,6 +6,9 @@ ID_EGO = "ego"
 LT_GRADIENT = "grad"  # LT = Log-Type
 LT_CONSTRAINT = "inf"
 LT_OBJECTIVE = "obj"
+LT_EGO = "ego"
+LT_ADO = "ado"
+LT_ADO_WO = "ado_wo"
 
 LK_OVERALL_PERFORMANCE = "overall"  # LK = Log-Keys (module names, ...)
 

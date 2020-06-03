@@ -1,4 +1,5 @@
 import abc
+import collections
 import logging
 import os
 import typing
@@ -139,7 +140,7 @@ class TrajOptSolver(abc.ABC):
         """
         ego_trajectory_opt = torch.zeros((time_steps + 1, 5))
         ado_trajectories = torch.zeros((self.env.num_ados, time_steps + 1, 1, 5))
-        self._log_reset(log_horizon=time_steps)
+        self._log_reset()
         env_copy = self.env.copy()
         eval_env_copy = self.eval_env.copy()
 
@@ -169,8 +170,9 @@ class TrajOptSolver(abc.ABC):
 
             # Logging, before the environment step is done and update optimization
             # logging values for optimization results.
-            self.__intermediate_log(ego_controls_k=ego_controls_k)
             if self.is_logging:
+                ego_trajectory_k = self.env.ego.unroll_trajectory(ego_controls_k, dt=self.env.dt)
+                self.__intermediate_log(ego_trajectory=ego_trajectory_k)
                 self._log.update({key: x for key, x in optimization_log.items()})
 
             # Forward simulate environment.
@@ -188,7 +190,10 @@ class TrajOptSolver(abc.ABC):
                 # Log a last time in order to log the final state, after the environment has executed it
                 # its update step. However since the controls have not changed, but still the planned
                 # trajectories should  all have the same shape, the concatenate no action (zero controls).
-                self.__intermediate_log(ego_controls_k=torch.cat((ego_controls_k[1:, :], torch.zeros((1, 2)))))
+                if self.is_logging:
+                    ego_controls = torch.cat((ego_controls_k[1:, :], torch.zeros((1, 2))))
+                    ego_trajectory = self.env.ego.unroll_trajectory(ego_controls, dt=self.env.dt)
+                    self.__intermediate_log(ego_trajectory=ego_trajectory)
                 break
 
         # Cleaning up solver environment and summarizing logging.
@@ -353,14 +358,11 @@ class TrajOptSolver(abc.ABC):
         objective = np.sum([m.objective(ego_trajectory, ado_ids=ado_ids, tag=tag) for m in self.modules])
 
         if self.is_logging:
-            ado_planned = self.env.sample_w_trajectory(ego_trajectory=ego_trajectory)
-            ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_trajectory.shape[0])
-            self._log_append(tag, ego_planned=ego_trajectory, ado_planned=ado_planned, ado_planned_wo=ado_planned_wo)
-            self._log_append(tag, obj_overall=objective)
             module_log = {f"{mantrap.constants.LT_OBJECTIVE}_{key}": mod.obj_current(tag=tag)
                           for key, mod in self.module_dict.items()}
+            module_log[f"{mantrap.constants.LT_OBJECTIVE}_overall"] = objective
             self._log_append(**module_log, tag=tag)
-            # logging.debug(f"objectives: {module_log}")
+            self.__intermediate_log(ego_trajectory=ego_trajectory, tag=tag)
 
         return float(objective)
 
@@ -403,6 +405,7 @@ class TrajOptSolver(abc.ABC):
             self._log_append(inf_overall=violation, tag=tag)
             module_log = {f"{mantrap.constants.LT_CONSTRAINT}_{key}": mod.inf_current(tag=tag)
                           for key, mod in self.module_dict.items()}
+            module_log[f"{mantrap.constants.LT_CONSTRAINT}_overall"] = violation
             self._log_append(**module_log, tag=tag)
 
         return constraints if not return_violation else (constraints, violation)
@@ -467,41 +470,31 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Logging #################################################################
     ###########################################################################
-    def __intermediate_log(self, ego_controls_k: torch.Tensor):
+    def __intermediate_log(self, ego_trajectory: torch.Tensor, tag: str = mantrap.constants.TAG_OPTIMIZATION):
         if self.is_logging and self.log is not None:
-            # For logging purposes unroll and predict the scene for the derived ego controls.
-            ego_opt_planned = self.env.ego.unroll_trajectory(controls=ego_controls_k, dt=self.env.dt)
-            self._log_append(ego_planned=ego_opt_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
-            ado_planned = self.env.sample_w_controls(ego_controls=ego_controls_k)
-            self._log_append(ado_planned=ado_planned, tag=mantrap.constants.TAG_OPTIMIZATION)
-            ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_controls_k.shape[0] + 1)
-            self._log_append(ado_planned_wo=ado_planned_wo, tag=mantrap.constants.TAG_OPTIMIZATION)
-
-    @staticmethod
-    def log_keys() -> typing.List[str]:
-        return ["ego_planned", "ado_planned", "ado_planned_wo"]
+            ado_planned = self.env.sample_w_trajectory(ego_trajectory=ego_trajectory)
+            ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_trajectory.shape[0] - 1)
+            trajectory_log = {f"{mantrap.constants.LT_EGO}_planned": ego_trajectory,
+                              f"{mantrap.constants.LT_ADO}_planned": ado_planned,
+                              f"{mantrap.constants.LT_ADO_WO}_planned": ado_planned_wo}
+            self._log_append(**trajectory_log, tag=tag)
 
     def log_keys_performance(self, tag: str = mantrap.constants.TAG_OPTIMIZATION) -> typing.List[str]:
         objective_keys = [f"{tag}/{mantrap.constants.LT_OBJECTIVE}_{key}" for key in self.module_names]
         constraint_keys = [f"{tag}/{mantrap.constants.LT_CONSTRAINT}_{key}" for key in self.module_names]
         return objective_keys + constraint_keys
 
-    def log_keys_all(self, tag: str = mantrap.constants.TAG_OPTIMIZATION) -> typing.List[str]:
-        return self.log_keys_performance(tag=tag) + [f"{tag}/{key}" for key in self.log_keys()]
-
-    def _log_reset(self, log_horizon: int):
-        # Reset iteration counter.
+    def _log_reset(self):
         self._iteration = 0
-
-        # Reset optimization log by re-creating dictionary with entries all keys in the planning horizon. During
-        # optimization new values are then added to these created lists.
-        if self.is_logging:
-            self._log = {f"{key}_{k}": [] for k in range(log_horizon) for key in self.log_keys_all()}
+        self._log = collections.defaultdict(list)
 
     def _log_append(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **kwargs):
         if self.is_logging and self.log is not None:
             for key, value in kwargs.items():
-                x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()
+                if value is None:
+                    x = None
+                else:
+                    x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()
                 self._log[f"{tag}/{key}_{self._iteration}"].append(x)
 
     def __log_summarize(self):
@@ -514,14 +507,12 @@ class TrajOptSolver(abc.ABC):
         """
         if self.is_logging:
             assert self.log is not None
-            # Stack always the last values in the step-dictionaries (lists of logging values for each optimization
-            # step), since it is assumed to be the most optimal one (e.g. for IPOPT).
-            for key in self.log_keys_all():
-                assert all([f"{key}_{k}" in self.log.keys() for k in range(self._iteration + 1)])
-                summary = [self.log[f"{key}_{k}"][-1] for k in range(self._iteration + 1)
-                           if len(self.log[f"{key}_{k}"]) > 0]
-                summary = torch.stack(summary) if len(summary) > 0 else []
-                self._log[f"{key}_end"] = summary
+
+            # The log values have been added one by one during the optimization, so that they are lists
+            # of tensors, stack them to a single tensor.
+            for key, values in self.log.items():
+                if type(values) == list and len(values) > 0 and all(type(x) == torch.Tensor for x in values):
+                    self._log[key] = torch.stack(values)
 
             # Save the optimization performance for every optimization step into logging file. Since the
             # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
@@ -534,34 +525,36 @@ class TrajOptSolver(abc.ABC):
             csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys if key in self.log.keys()}
             pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
 
-    def log_query(self, key: str, key_type: str, iteration: int = None, tag: str = None
-                  ) -> typing.Union[typing.Dict[str, typing.List[float]], None]:
+    def log_query(self, key: str, key_type: str, iteration: str = "", tag: str = None, as_dict: bool = False
+                  ) -> typing.Union[torch.Tensor, typing.Dict[str, torch.Tensor], None]:
         """Query internal log for some value with given key (log-key-structure: {tag}/{key_type}_{key}).
 
          :param key: query key, e.g. name of objective module.
          :param key_type: type of query (-> mantrap.constants.LK_...).
          :param iteration: optimization iteration to search in, if None then no iteration (summarized value).
          :param tag: logging tag to search in.
+         :param as_dict: return query result as dictionary (even if only one-sized).
          """
         assert self.log is not None
-        assert iteration is None or iteration <= self._iteration
-
-        # Build query by combining arguments into one query string.
-        iteration = "end" if iteration is None else iteration
-        query = f"{key_type}_{key}_{iteration}"
-        if tag is not None:
-            query = f"{tag}/{query}"
+        if iteration == "end":
+            iteration = str(self._iteration)
 
         # Search in log for elements that satisfy the query and return as dictionary. For the sake of
         # runtime the elements are stored as torch tensors in the log, therefore stack and list them.
         results_dict = {}
+        query = f"{key_type}_{key}_{iteration}"
+        if tag is not None:
+            query = f"{tag}/{query}"
         for key, values in self.log.items():
             if query not in key:
                 continue
-            key_short = key.replace(f"_{iteration}", "")
-            key_values = torch.stack(values).tolist() if type(values) == list else values.tolist()
-            results_dict[key_short] = key_values
-        return results_dict
+            results_dict[key] = values
+
+        # If only one element is in the dictionary, return not the dictionary but the item itself.
+        if len(results_dict.keys()) > 1 or as_dict:
+            return results_dict
+        else:
+            return results_dict.popitem()[1]
 
     ###########################################################################
     # Visualization ###########################################################
