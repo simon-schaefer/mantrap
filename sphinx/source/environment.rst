@@ -6,9 +6,9 @@ Graph-Based Environment (abstract)
 .. automodule:: mantrap.environment.base.graph_based
     :members:
 
-Iterative Environments
-----------------------
-.. automodule:: mantrap.environment.base.iterative
+Particle Environments
+---------------------
+.. automodule:: mantrap.environment.base.particle
     :members:
 
 Social Forces
@@ -19,11 +19,6 @@ Social Forces
 Potential Field
 ~~~~~~~~~~~~~~~
 .. automodule:: mantrap.environment.simplified.potential_field
-    :members:
-
-ORCA
-~~~~
-.. automodule:: mantrap.environment.simplified.orca
     :members:
 
 Kalman

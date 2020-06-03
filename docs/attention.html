@@ -15,7 +15,7 @@
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Controller" href="controllers.html" />
+    <link rel="next" title="Evaluation" href="evaluation.html" />
     <link rel="prev" title="Objective and Constraint Modules" href="modules.html" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
@@ -35,7 +35,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="controllers.html" title="Controller"
+          <a href="evaluation.html" title="Evaluation"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="modules.html" title="Objective and Constraint Modules"
@@ -55,7 +55,7 @@
 <span id="base-attention-module-abstract"></span><h2>Base Attention Module (abstract)<a class="headerlink" href="#module-mantrap.attention.attention_module" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt id="mantrap.attention.attention_module.AttentionModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.attention.attention_module.</code><code class="sig-name descname">AttentionModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.attention.attention_module.AttentionModule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.attention.attention_module.</code><code class="sig-name descname">AttentionModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.attention.attention_module.AttentionModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>General attention class.</p>
 <p>The filter selects the “important” ados/modes from the list of all ados in the scene. The selection is returned
 as list of indices of the chosen ados which should be taken into account in further computations.
@@ -75,7 +75,7 @@ and logging the filter, all based on the <cite>_compute()</cite> method which sh
 <span id="euclidean-distance"></span><h3>Euclidean Distance<a class="headerlink" href="#module-mantrap.attention.euclidean" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.attention.euclidean.EuclideanModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.attention.euclidean.</code><code class="sig-name descname">EuclideanModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.attention.euclidean.EuclideanModule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.attention.euclidean.</code><code class="sig-name descname">EuclideanModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.attention.euclidean.EuclideanModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Attention based on the euclidean distance between current ego’s and ado’s positions.</p>
 <p>The euclidean filter selects the ados that are close, i.e. in a certain euclidean distance from the ego position.
 Thereby merely the positions at time t = t_current are taken into account</p>
@@ -92,7 +92,7 @@ less agents in the scene).</p>
 <span id="forward-reachability"></span><h3>Forward Reachability<a class="headerlink" href="#module-mantrap.attention.reachability" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.attention.reachability.ReachabilityModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.attention.reachability.</code><code class="sig-name descname">ReachabilityModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.attention.reachability.ReachabilityModule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.attention.reachability.</code><code class="sig-name descname">ReachabilityModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.attention.reachability.ReachabilityModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Attention based on forward reachability analysis between the ego and all ados.</p>
 <p>The reachability deals with the problem that simple euclidean-distance based filtering does not take the agents
 current velocity into account, merely the position. Forward reachability analysis the boundaries of the area
@@ -130,8 +130,8 @@ and would go beyond the scope of the pre-optimization designed filter.</p>
   <p class="topless"><a href="modules.html"
                         title="previous chapter">Objective and Constraint Modules</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="controllers.html"
-                        title="next chapter">Controller</a></p>
+  <p class="topless"><a href="evaluation.html"
+                        title="next chapter">Evaluation</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -163,7 +163,7 @@ and would go beyond the scope of the pre-optimization designed filter.</p>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="controllers.html" title="Controller"
+          <a href="evaluation.html" title="Evaluation"
              >next</a> |</li>
         <li class="right" >
           <a href="modules.html" title="Objective and Constraint Modules"
@@ -173,7 +173,7 @@ and would go beyond the scope of the pre-optimization designed filter.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
     </div>
   </body>
 </html>

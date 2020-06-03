@@ -83,7 +83,7 @@ class Trajectron(GraphBasedEnvironment):
 
         While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
         individually. To do so initialize single integrator agent using its state vectors, namely position, velocity
-        and its state history. The ado id, color and other parameters can either be passed using the  **ado_kwargs
+        and its state history. The ado id, color and other parameters can either be passed using the ado_kwargs
         option or are created automatically during the agent's initialization.
 
         After initialization check whether the given states are valid, i.e. do  not pass the internal environment
@@ -93,11 +93,12 @@ class Trajectron(GraphBasedEnvironment):
         graph, in which the ado has to be introduced as a node during initialization. Also Trajectron model is
         trained to predict accurately, iff the agent has some history > 1, therefore if no history is given
         build a custom history by stacking the given (position, velocity) state over multiple time-steps. If
-        zero history should be enfored, pass a non None history argument.
+        zero history should be enforced, pass a non None history argument.
 
         :param position: ado initial position (2D).
         :param velocity: ado initial velocity (2D).
         :param history: ado state history (if None then just stacked current state).
+        :param ado_kwargs: addition kwargs for ado initialization.
         """
         # When being queried with an agent's history length of one, the Trajectron will always predict standing
         # still instead of assuming a constant velocity (or likewise). However when the user inputs just one

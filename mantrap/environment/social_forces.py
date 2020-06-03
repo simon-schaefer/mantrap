@@ -176,6 +176,24 @@ class SocialForcesEnvironment(ParticleEnvironment):
         goal: torch.Tensor = torch.zeros(2),
         **ado_kwargs
     ) -> mantrap.agents.IntegratorDTAgent:
+        """Add ado (i.e. non-robot) agent to environment as single integrator.
+
+        While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
+        individually. To do so initialize single integrator agent using its state vectors, namely position, velocity
+        and its state history. The ado id, color and other parameters can either be passed using the ado_kwargs
+        option or are created automatically during the agent's initialization.
+
+        After initialization check whether the given states are valid, i.e. do  not pass the internal environment
+        bounds, e.g. that they are in the given 2D space the environment is defined in.
+
+        Simply add a goal state to the ado definition as required by social forces model
+
+        :param position: ado initial position (2D).
+        :param velocity: ado initial velocity (2D).
+        :param history: ado state history (if None then just stacked current state).
+        :param goal: ado goal position (2D).
+        :param ado_kwargs: addition kwargs for ado initialization.
+        """
         goal = goal.float().detach()
         return super(SocialForcesEnvironment, self).add_ado(position, velocity, history, goal=goal, **ado_kwargs)
 

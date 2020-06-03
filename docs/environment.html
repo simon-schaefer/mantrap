@@ -55,94 +55,54 @@
 <span id="graph-based-environment-abstract"></span><h2>Graph-Based Environment (abstract)<a class="headerlink" href="#module-mantrap.environment.base.graph_based" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.base.graph_based.</code><code class="sig-name descname">GraphBasedEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_kwargs</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.base.graph_based.</code><code class="sig-name descname">GraphBasedEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_position</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">ego_history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="Permalink to this definition">¶</a></dt>
 <dd><p>General environment engine for obstacle-free, interaction-aware, probabilistic and multi-modal agent
 environments. As used in a robotics use-case the environment separates between the ego-agent (the robot) and
 ado-agents (other agents in the scene which are not the robot).</p>
-<p>In order to deal with multi-modality the environment uses so called “ghosts”, which are weighted representations
-of an agent. If for example an agent has two modes, two ghosts objects will be assigned to this agent, while being
-treated independently from each other (just not interacting with each other).</p>
-<p>To store only the ghosts themselves and not the agents was avoids storage overhead and makes it easier to simulate
-several independent modes at the same time. However if only ado representations are required, the most important
-mode of each ado can be collected using the <cite>ados_most_important_mode()</cite> method.</p>
 <p>The internal states basically are the states of the ego and ados and can only be changed by either using the
 <cite>step()</cite> or <cite>step_reset()</cite> function, which simulate how the environment reacts based on some action performed by
 the ego or resets it directly to some given states.</p>
 <p>The simulated world is two-dimensional and defined in the area limited by the passed <cite>x_axis</cite> and <cite>y_axis</cite>. It has
 a constant environment time-step <cite>dt</cite>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_type</strong> – agent class of ego agent (should be agent child-class).</p></li>
-<li><p><strong>ego_kwargs</strong> – initialization arguments of ego agent such as position, velocity, etc.</p></li>
-<li><p><strong>x_axis</strong> – environment environment limitation in x-direction.</p></li>
-<li><p><strong>y_axis</strong> – environment environment limitation in y-direction.</p></li>
-<li><p><strong>dt</strong> – environment time-step [s].</p></li>
-<li><p><strong>config_name</strong> – configuration name of initialized environment (for logging purposes only).</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py class">
-<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.Ghost">
-<em class="property">class </em><code class="sig-name descname">Ghost</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">agent</span><span class="p">:</span> <span class="n"><a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a></span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">identifier</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.Ghost" title="Permalink to this definition">¶</a></dt>
-<dd><p>The Ghost class is a container for an object representing one mode of some ado agent.</p>
-<p>A ghost is defined by its underlying agent (the actual ado), the mode’s weight (importance) and its identifier,
-which is constructed as defined in the <cite>GraphBasedEnvironment::build_ghost_id</cite> method. While it is widely
-not constant, not permitting the underlying agent and identifier to change, its weight might change over
-prediction time, e.g. due to a change in the environment scene.</p>
-<p>Treating the modes as independent objects grants the chance to quickly iterate over all modes, easily include
-the interaction between different permutations of modes and detaching from computation graphs.</p>
-</dd></dl>
-
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.add_ado">
-<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">num_modes</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">weights</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">arg_list</span><span class="p">:</span> <span class="n">List<span class="p">[</span>Dict<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.add_ado" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add (multi-modal) ado (i.e. non-robot) agent to environment.
-While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
-individually. To do so for each mode an agent is initialized using the passed initialization arguments and
-appended to the internal list of ghosts, while staying assignable to the original ado agent by id, i.e.
-ghost_id = ado_id + mode_index. Thereby the ghosts are not sorted, so they at in random order, to be able
-to dynamically change it without having a lot of computational overhead.</p>
+<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.add_ado" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add ado (i.e. non-robot) agent to environment as single integrator.</p>
+<p>To represent pedestrians (ados) single integrator dynamics are best suitable due to their dynamic, reactive
+and fast changing nature.</p>
+<p>While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
+individually. To do so initialize single integrator agent using its state vectors, namely position, velocity
+and its state history. The ado id, color and other parameters can either be passed using the ado_kwargs
+option or are created automatically during the agent’s initialization.</p>
+<p>After initialization check whether the given states are valid, i.e. do  not pass the internal environment
+bounds, e.g. that they are in the given 2D space the environment is defined in.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ado_type</strong> – agent class of creating ado (has to be subclass of Agent-class in agents/).</p></li>
 <li><p><strong>position</strong> – ado initial position (2D).</p></li>
 <li><p><strong>velocity</strong> – ado initial velocity (2D).</p></li>
 <li><p><strong>history</strong> – ado state history (if None then just current state as history).</p></li>
-<li><p><strong>num_modes</strong> – number of modes of multi-modal ado agent (&gt;=1).</p></li>
-<li><p><strong>weights</strong> – mode weight vector, default = uniform distribution.</p></li>
-<li><p><strong>arg_list</strong> – initialization arguments for each mode.</p></li>
+<li><p><strong>ado_kwargs</strong> – addition kwargs for ado initialization.</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.ados">
-<code class="sig-name descname">ados</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span><a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.ados" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a list of ado agents associated to each ghost.</p>
-<p>Due to construction during ado initialization and as asserted in <cite>sanity_check()</cite> the agent of all
-ghosts associated to the same ado (since they represent modes of which). Therefore the current as well
-as the previous states are the same, basically everything that defines the agent, while mode-specific
-parameters are defined outside of the agent. Therefore we can just pick a random ghost, here the mode
-with index 0, to get an ado representation, which is representative for every other mode associated
-to the same ado.</p>
+<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.check_distribution">
+<code class="sig-name descname">check_distribution</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">distribution</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>torch.distributions.distribution.Distribution<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.check_distribution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the distribution dictionary for correctness.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.build_connected_graph">
-<code class="sig-name descname">build_connected_graph</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>str<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.build_connected_graph" title="Permalink to this definition">¶</a></dt>
-<dd><p>Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
-the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
-using the resulting values for computing the next time-step’s results in a Markovian manner. Instead the whole
-graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.</p>
-<p>For building the graph the graphs for each single time-step is built independently while being connected
-using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
-terms of computational effort and space, however end-to-end-differentiable.</p>
+<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.compute_distributions">
+<code class="sig-name descname">compute_distributions</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>str<span class="p">, </span>torch.distributions.distribution.Distribution<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.compute_distributions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a dictionary of positional distributions for every ado as it would be with the presence
+of a robot in the scene.</p>
 <p>Build the graph conditioned on some <cite>ego_trajectory</cite>, which is assumed to be fix while the ados in the scene
-behave accordingly, i.e. in reaction to the ego’s trajectory. The resulting graph will then contain states
-and controls for every agent in the scene for t in [0, t_horizon], which t_horizon = length of ego trajectory.</p>
+behave accordingly, i.e. in reaction to the ego’s trajectory. For the sake of differentiability using the
+by building the dictionary using PyTorch, a computational graph is built in the background which can later
+be used for automatically differentiate between its inputs and outputs.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>ego_trajectory</strong> – ego’s trajectory (t_horizon, 5).</p>
@@ -157,17 +117,10 @@ and controls for every agent in the scene for t in [0, t_horizon], which t_horiz
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.build_connected_graph_wo_ego">
-<code class="sig-name descname">build_connected_graph_wo_ego</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>str<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.build_connected_graph_wo_ego" title="Permalink to this definition">¶</a></dt>
-<dd><p>Build differentiable graph for predictions over multiple time-steps. For the sake of differentiability
-the computation for the nth time-step cannot be done iteratively, i.e. by determining the current states and
-using the resulting values for computing the next time-step’s results in a Markovian manner. Instead the whole
-graph (which is the whole computation) has to be built over n time-steps and evaluated at once by forward pass.</p>
-<p>For building the graph the graphs for each single time-step is built independently while being connected
-using the outputs of the previous time-step and an input for the current time-step. This is quite heavy in
-terms of computational effort and space, however end-to-end-differentiable.</p>
-<p>Build the graph as if no ego robot would be in the scene, whether or not an ego agent is defined internally.
-Therefore, merely the time-horizon for the predictions (= number of prediction time-steps) is passed.</p>
+<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.compute_distributions_wo_ego">
+<code class="sig-name descname">compute_distributions_wo_ego</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>str<span class="p">, </span>torch.distributions.distribution.Distribution<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.compute_distributions_wo_ego" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a dictionary of positional distributions for every ado as it would be without the presence
+of a robot in the scene.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>t_horizon</strong> – number of prediction time-steps.</p>
@@ -176,27 +129,18 @@ Therefore, merely the time-horizon for the predictions (= number of prediction t
 <dd class="field-even"><p>additional graph building arguments.</p>
 </dd>
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>dictionary over every state and control of every ado in the scene for t in [0, t_horizon].</p>
+<dd class="field-odd"><p>ado_id-keyed positional distribution dictionary for times [0, t_horizon].</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.check_graph">
-<code class="sig-name descname">check_graph</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">graph</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>torch.Tensor<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">include_ego</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.check_graph" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check connected graph keys for completeness. The graph is connected for several (discrete) time-steps,
-from 0 to <cite>t_horizon</cite> and should contain a state and control for every agent in the scene for these
-points in time. As the graph is assumed to be complete in keys, a non-complete graph cannot be used for
-further computation.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.copy">
 <code class="sig-name descname">copy</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env_type</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.copy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create copy of environment.</p>
-<p>However just using deepcopy is not supported for tensors that are not detached
-from the PyTorch computation graph. Therefore re-initialize the objects such as the agents in the
-environment and reset their state to the internal current state.</p>
+<p>However just using deepcopy is not supported for tensors that are not detached from the PyTorch
+computation graph. Therefore re-initialize the objects such as the agents in the environment and reset
+their state to the internal current state.</p>
 <p>While copying the environment-type can be defined by the user, which is possible due to standardized
 class interface of every environment-type. When no environment is defined, the default environment
 will be used which is the type of the executing class object.</p>
@@ -205,68 +149,60 @@ will be used which is the type of the executing class object.</p>
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.detach">
 <code class="sig-name descname">detach</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.detach" title="Permalink to this definition">¶</a></dt>
-<dd><p>Detach all internal agents (ego and all ado ghosts) from computation graph. This is sometimes required to
+<dd><p>Detach all internal agents (ego and all ados) from computation graph. This is sometimes required to
 completely separate subsequent computations in PyTorch.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_w_controls">
-<code class="sig-name descname">predict_w_controls</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">return_more</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_w_controls" title="Permalink to this definition">¶</a></dt>
-<dd><p>Predict the environments future for the given time horizon (discrete time).
-The internal prediction model is dependent on the exact implementation of the internal interaction model
-between the ados with each other and between the ados and the ego. The implementation therefore is specific
-to each child-class.</p>
+<code class="sig-name descname">predict_w_controls</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">expand</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_w_controls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict the ado path distribution means based conditioned on robot controls.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>ego_controls</strong> – ego control input (pred_horizon, 2).</p></li>
-<li><p><strong>return_more</strong> – return the system controls and probabilities.</p></li>
-<li><p><strong>kwargs</strong> – additional arguments for graph construction.</p></li>
+<li><p><strong>expand</strong> – expand ado positions outputs to full state trajectories.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>predicted trajectories for ados in the scene (either one or multiple for each ado).</p>
+<dd class="field-even"><p>predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+if no ado in scene, return None instead.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_w_trajectory">
-<code class="sig-name descname">predict_w_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">return_more</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_w_trajectory" title="Permalink to this definition">¶</a></dt>
-<dd><p>Predict the environments future for the given time horizon (discrete time).
-The internal prediction model is dependent on the exact implementation of the internal interaction model
-between the ados with each other and between the ados and the ego. The implementation therefore is specific
-to each child-class.</p>
+<code class="sig-name descname">predict_w_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">expand</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_w_trajectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict the ado path samples based conditioned on robot trajectory.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – ego trajectory (pred_horizon, 4).</p></li>
-<li><p><strong>return_more</strong> – return the system inputs (at every time -&gt; trajectory) and probabilities of each mode.</p></li>
-<li><p><strong>kwargs</strong> – additional arguments for graph construction.</p></li>
+<li><p><strong>ego_trajectory</strong> – ego trajectory (pred_horizon + 1, 5).</p></li>
+<li><p><strong>expand</strong> – expand ado positions outputs to full state trajectories.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>predicted trajectories for ados in the scene (either one or multiple for each ado).</p>
+<dd class="field-even"><p>predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+if no ado in scene, return None instead.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_wo_ego">
-<code class="sig-name descname">predict_wo_ego</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">return_more</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_wo_ego" title="Permalink to this definition">¶</a></dt>
-<dd><p>Predict the environments future for the given time horizon (discrete time).
-The internal prediction model is dependent on the exact implementation of the internal interaction model
-between the ados while ignoring the ego.</p>
+<code class="sig-name descname">predict_wo_ego</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">expand</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.predict_wo_ego" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict the unconditioned ado path distribution means (i.e. if no robot would be in the scene).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>t_horizon</strong> – prediction horizon, number of discrete time-steps.</p></li>
-<li><p><strong>return_more</strong> – return the system controls and probabilities.</p></li>
-<li><p><strong>kwargs</strong> – additional arguments for graph construction.</p></li>
+<li><p><strong>expand</strong> – expand ado positions outputs to full state trajectories.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>predicted trajectories for ados in the scene (either one or multiple for each ado).</p>
+<dd class="field-even"><p>predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+if no ado in scene, return None instead.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -276,9 +212,7 @@ between the ados while ignoring the ego.</p>
 <code class="sig-name descname">same_initial_conditions</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">other</span><span class="p">:</span> <span class="n"><a class="reference internal" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.same_initial_conditions" title="Permalink to this definition">¶</a></dt>
 <dd><p>Similar to __eq__() function, but not enforcing parameters of environment to be completely equivalent,
 merely enforcing the initial conditions to be equal, such as states of agents in scene. Hence, all prediction
-depending parameters, namely the number of modes or agent’s parameters dont have to be equal. As the
-parameters of the ghosts are separated from the agent (and therefore the states and state history), just the
-agents are compared, not the ghosts themselves.</p>
+depending parameters, dont have to be equal.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>other</strong> – comparable environment object.</p>
@@ -287,13 +221,69 @@ agents are compared, not the ghosts themselves.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_w_controls">
+<code class="sig-name descname">sample_w_controls</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">num_samples</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">expand</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_w_controls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict the ado path samples based conditioned on robot controls.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_controls</strong> – ego control input (pred_horizon, 2).</p></li>
+<li><p><strong>num_samples</strong> – number of samples to return.</p></li>
+<li><p><strong>expand</strong> – expand ado positions outputs to full state trajectories.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+if no ado in scene, return None instead.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_w_trajectory">
+<code class="sig-name descname">sample_w_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">num_samples</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">expand</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_w_trajectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict the ado path samples based conditioned on robot trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – ego trajectory (pred_horizon + 1, 5).</p></li>
+<li><p><strong>num_samples</strong> – number of samples to return.</p></li>
+<li><p><strong>expand</strong> – expand ado positions outputs to full state trajectories.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+if no ado in scene, return None instead.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_wo_ego">
+<code class="sig-name descname">sample_wo_ego</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">num_samples</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">expand</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_wo_ego" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict the unconditioned ado path samples (i.e. if no robot would be in the scene).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t_horizon</strong> – prediction horizon, number of discrete time-steps.</p></li>
+<li><p><strong>num_samples</strong> – number of samples to return.</p></li>
+<li><p><strong>expand</strong> – expand ado positions outputs to full state trajectories.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+if no ado in scene, return None instead.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.sanity_check">
-<code class="sig-name descname">sanity_check</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.sanity_check" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check for the sanity of the scene and agents.
-In order to check the sanity of the environment some general properties must hold, such as the number and order
-of ghosts in the scene, which should be equivalent to the number of ados times the number of modes (since
-the same number of modes for every ado is being enforced). Also all agents in the scene are checked for their
-sanity.</p>
+<code class="sig-name descname">sanity_check</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">check_ego</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.sanity_check" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check for the sanity of the scene and agents.</p>
+<p>For the environment to be “sane” general environment properties should hold as well as all agents living
+in the environment should be “sane” as well. For example it is ensured that the number and order of <cite>ado_ids</cite>
+is equal to the list of <cite>ados</cite> itself.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -314,11 +304,9 @@ ado the states are deterministic and uni-modal. States are returned as vector in
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.step">
 <code class="sig-name descname">step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_action</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.step" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run environment step (time-step = dt). Update state and history of ados and ego. Also reset environment time
-to time_new = time + dt. The difference to predict() is two-fold: Firstly, step() is only going forward
-one time-step at a time, not in general <cite>t_horizon</cite> steps, secondly, step() changes the actual agent states
-in the environment while predict() copies all agents and changes the states of these copies (so the actual
-agent states remain unchanged).</p>
+<dd><p>Run environment step (time-step = dt).</p>
+<p>Attention: This method changes the states of all environment agents, by executing the ego action
+and sample from the conditioned ado positional distribution.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>ego_action</strong> – planned ego control input for current time step (2).</p>
@@ -331,32 +319,15 @@ agent states remain unchanged).</p>
 
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.step_reset">
-<code class="sig-name descname">step_reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_state_next</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>torch.Tensor<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">ado_states_next</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>torch.Tensor<span class="p">]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.step_reset" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">step_reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_next</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>torch.Tensor<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">ado_next</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>torch.Tensor<span class="p">]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.step_reset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run environment step (time-step = dt). Instead of predicting the behaviour of every agent in the scene, it
 is given as an input and the agents are merely updated. All the ghosts (modes of an ado) will collapse to the
 same given state, since the update is deterministic.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_state_next</strong> – ego state for next time step (5).</p></li>
-<li><p><strong>ado_states_next</strong> – ado states for next time step (num_ados, num_modes, 1, 5).</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.transcribe_graph">
-<code class="sig-name descname">transcribe_graph</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">graph</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>torch.Tensor<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">return_more</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>torch.Tensor<span class="p">, </span>Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.transcribe_graph" title="Permalink to this definition">¶</a></dt>
-<dd><p>Transcribe states stored in a graph into trajectories and controls.</p>
-<p>A connected graph contains the states and controls of every agent in the scene (ego &amp; ados) for every
-t in [0, t_horizon]. Read these states and controls to build a trajectory for the ados in the scene.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>graph</strong> – connected input graph.</p></li>
-<li><p><strong>t_horizon</strong> – time-horizon to build trajectory (number of discrete time-steps).</p></li>
-<li><p><strong>return_more</strong> – return ado-trajectory, -controls and -weights or trajectory only.</p></li>
+<li><p><strong>ego_next</strong> – ego state for next time step (5).</p></li>
+<li><p><strong>ado_next</strong> – ado states for next time step (num_ados, num_modes, 1, 5).</p></li>
 </ul>
 </dd>
 </dl>
@@ -364,67 +335,63 @@ t in [0, t_horizon]. Read these states and controls to build a trajectory for th
 
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction">
-<code class="sig-name descname">visualize_prediction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">enforce</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">vis_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">visualize_prediction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">vis_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Visualize the predictions for the scene based on the given ego trajectory.</p>
-<p>In order to be use the general <cite>visualize()</cite> function defined in the <cite>mantrap.visualization</cite> - package the ego
-and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
-visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
-plotting the predicted trajectories, there are no changes in planned trajectories. That’s why the predicted
-trajectory is repeated to the whole time horizon.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction_wo_ego">
-<code class="sig-name descname">visualize_prediction_wo_ego</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">enforce</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">vis_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction_wo_ego" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">visualize_prediction_wo_ego</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">vis_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction_wo_ego" title="Permalink to this definition">¶</a></dt>
 <dd><p>Visualize the predictions for the scene based on the given ego trajectory.</p>
-<p>In order to be use the general <cite>visualize()</cite> function defined in the <cite>mantrap.visualization</cite> - package the ego
-and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
-visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
-plotting the predicted trajectories, there are no changes in planned trajectories. That’s why the predicted
-trajectory is repeated to the whole time horizon.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.write_state_to_graph">
-<code class="sig-name descname">write_state_to_graph</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_state</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">k</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">ado_grad</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">ego_grad</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>str<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.write_state_to_graph" title="Permalink to this definition">¶</a></dt>
-<dd><p>Given some state for the ego (and the internal state of every ghost in the scene), initialize a graph
-and write these states into it. A graph is a dictionary of tensors for this current state.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_state</strong> – current state of ego robot (might deviate from internal state) (5).</p></li>
-<li><p><strong>k</strong> – time-step count for graph key description.</p></li>
-<li><p><strong>ado_grad</strong> – flag whether the ado-related tensors should originate a gradient-chain.</p></li>
-<li><p><strong>ego_grad</strong> – flag whether the ego-related tensors should originate a gradient-chain.</p></li>
-</ul>
-</dd>
-</dl>
 </dd></dl>
 
 </dd></dl>
 
 </div>
-<div class="section" id="module-mantrap.environment.base.iterative">
-<span id="iterative-environments"></span><h2>Iterative Environments<a class="headerlink" href="#module-mantrap.environment.base.iterative" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mantrap.environment.base.particle">
+<span id="particle-environments"></span><h2>Particle Environments<a class="headerlink" href="#module-mantrap.environment.base.particle" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
-<dt id="mantrap.environment.base.iterative.IterativeEnvironment">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.base.iterative.</code><code class="sig-name descname">IterativeEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_kwargs</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.iterative.IterativeEnvironment" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.environment.base.particle.ParticleEnvironment">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.base.particle.</code><code class="sig-name descname">ParticleEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_position</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">ego_history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.particle.ParticleEnvironment" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="py method">
-<dt id="mantrap.environment.base.iterative.IterativeEnvironment.ado_mode_params">
-<em class="property">static </em><code class="sig-name descname">ado_mode_params</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x0_default</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">num_modes</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.base.iterative.IterativeEnvironment.ado_mode_params" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create simulation mode parameters and weights for given modes by sampling.</p>
-<p>In order to introduce multi-modality and stochastic effects the underlying mode parameters are sampled
-from distributions, each for one mode. As default parameters truncated Gaussian are used as a distribution
-(cut so that always positive) around the default value.</p>
+<dt id="mantrap.environment.base.particle.ParticleEnvironment.create_particles">
+<em class="property">abstract </em><code class="sig-name descname">create_particles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">num_particles</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">param_dicts</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Dict<span class="p">[</span>str<span class="p">, </span>Dict<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">const_dicts</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">particle_kwargs</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>List<span class="p">[</span>List<span class="p">[</span><a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><span class="p">]</span><span class="p">]</span><span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.particle.ParticleEnvironment.create_particles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create particles from internal parameter distribution.</p>
+<p>In order to create parameters sample from the underlying parameter distributions, which are modelled
+as independent, uni-modal Gaussian distributions, individual for each ado. So build the distribution,
+sample N = num_particles values for each ado and parameter and create N copies of each ado (particle)
+storing the sampled parameter.</p>
+<p>Attention: Not the same convention over all input parameters !</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x0_default</strong> – mean for default distribution.</p></li>
-<li><p><strong>num_modes</strong> – number of modes (= number of sampled parameters).</p></li>
+<li><p><strong>num_particles</strong> – number of particles per ado.</p></li>
+<li><p><strong>param_dicts</strong> – parameter dictionaries for varying parameters between particles.
+{param_name: {ado_id: (mean, variance)}, ….}</p></li>
+<li><p><strong>const_dicts</strong> – dictionary mapping ado-wise constant parameters to parameter name.
+{ado_id: {param_name: values}, ….}</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>sampled parameters, according weights.</p>
+<dd class="field-even"><p>list of N = num_particles for every ado in the scene.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>probability (pdf) of each particle (num_ados, num_particles).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.environment.base.particle.ParticleEnvironment.simulate_particle">
+<em class="property">abstract </em><code class="sig-name descname">simulate_particle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">particle</span><span class="p">:</span> <span class="n"><a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a></span></em>, <em class="sig-param"><span class="n">means_t</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ego_state_t</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><a class="headerlink" href="#mantrap.environment.base.particle.ParticleEnvironment.simulate_particle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Forward simulate particle for one time-step (t -&gt; t + 1).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>particle</strong> – particle agent to simulate.</p></li>
+<li><p><strong>means_t</strong> – means of positional and velocity distribution at time t (num_ados, 4).</p></li>
+<li><p><strong>ego_state_t</strong> – ego/robot state at time t.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -435,9 +402,9 @@ from distributions, each for one mode. As default parameters truncated Gaussian 
 <span id="social-forces"></span><h3>Social Forces<a class="headerlink" href="#module-mantrap.environment.social_forces" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.environment.social_forces.SocialForcesEnvironment">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.social_forces.</code><code class="sig-name descname">SocialForcesEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_kwargs</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.social_forces.SocialForcesEnvironment" title="Permalink to this definition">¶</a></dt>
-<dd><p>Social Forces Simulation.
-Pedestrian Dynamics based on to “Social Force Model for Pedestrian Dynamics” (D. Helbling, P. Molnar). The idea
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.social_forces.</code><code class="sig-name descname">SocialForcesEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_position</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">ego_history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.social_forces.SocialForcesEnvironment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Social Forces Simulation.</p>
+<p>Pedestrian Dynamics based on to “Social Force Model for Pedestrian Dynamics” (D. Helbling, P. Molnar). The idea
 of Social Forces is to determine interaction forces by taking into account the following entities:</p>
 <p><em>Goal force</em>:
 Each ado has a specific goal state/position in mind, to which it moves to. The goal pulling force
@@ -454,27 +421,75 @@ each other) the interaction term is constructed.</p>
 \[V_{aB} (x) = V0_a exp(−x / \sigma_a)\]</div>
 <div class="math notranslate nohighlight">
 \[F_{interaction} = - grad_{r_{ab}} V_{aB}(||r_{ab}||)\]</div>
-<p>To create multi-modality and stochastic effects several sets of environment parameters can be assigned to the ado,
-each representing one of it’s modes.</p>
+<p>Although theoretically  a force introduces an acceleration as the ado’s control input (double not single
+integrator dynamics), accelerations are simplified to act as velocities, which is reasonable due to the fast
+reaction time of the pedestrian, which is way faster than the environment sampling rate.</p>
 <dl class="py method">
 <dt id="mantrap.environment.social_forces.SocialForcesEnvironment.add_ado">
-<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">num_modes</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">v0s</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sigmas</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weights</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><a class="headerlink" href="#mantrap.environment.social_forces.SocialForcesEnvironment.add_ado" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add (multi-modal) ado (i.e. non-robot) agent to environment.
-While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
-individually. To do so for each mode an agent is initialized using the passed initialization arguments and
-appended to the internal list of ghosts, while staying assignable to the original ado agent by id, i.e.
-ghost_id = ado_id + mode_index. Thereby the ghosts are not sorted, so they at in random order, to be able
-to dynamically change it without having a lot of computational overhead.</p>
+<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><a class="headerlink" href="#mantrap.environment.social_forces.SocialForcesEnvironment.add_ado" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add ado (i.e. non-robot) agent to environment as single integrator.</p>
+<p>While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
+individually. To do so initialize single integrator agent using its state vectors, namely position, velocity
+and its state history. The ado id, color and other parameters can either be passed using the ado_kwargs
+option or are created automatically during the agent’s initialization.</p>
+<p>After initialization check whether the given states are valid, i.e. do  not pass the internal environment
+bounds, e.g. that they are in the given 2D space the environment is defined in.</p>
+<p>Simply add a goal state to the ado definition as required by social forces model</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ado_type</strong> – agent class of creating ado (has to be subclass of Agent-class in agents/).</p></li>
 <li><p><strong>position</strong> – ado initial position (2D).</p></li>
 <li><p><strong>velocity</strong> – ado initial velocity (2D).</p></li>
-<li><p><strong>history</strong> – ado state history (if None then just current state as history).</p></li>
-<li><p><strong>num_modes</strong> – number of modes of multi-modal ado agent (&gt;=1).</p></li>
-<li><p><strong>weights</strong> – mode weight vector, default = uniform distribution.</p></li>
-<li><p><strong>arg_list</strong> – initialization arguments for each mode.</p></li>
+<li><p><strong>history</strong> – ado state history (if None then just stacked current state).</p></li>
+<li><p><strong>goal</strong> – ado goal position (2D).</p></li>
+<li><p><strong>ado_kwargs</strong> – addition kwargs for ado initialization.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.environment.social_forces.SocialForcesEnvironment.create_particles">
+<code class="sig-name descname">create_particles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">num_particles</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">v0_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sigma_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">tau</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>List<span class="p">[</span>List<span class="p">[</span><a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><span class="p">]</span><span class="p">]</span><span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.social_forces.SocialForcesEnvironment.create_particles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create particles from internal parameter distribution.</p>
+<p>In order to create parameters sample from the underlying parameter distributions, which are modelled
+as independent, uni-modal Gaussian distributions, individual for each ado. So build the distribution,
+sample N = num_particles values for each ado and parameter and create N copies of each ado (particle)
+storing the sampled parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_particles</strong> – number of particles per ado.</p></li>
+<li><p><strong>v0_dict</strong> – parameter v0 gaussian distribution (mean, variance) by ado_id, if None then gaussian
+with mean = <cite>mantrap.constants.SOCIAL_FORCES_DEFAULT_V0</cite> and variance = mean/4,
+similarly for each ado.</p></li>
+<li><p><strong>sigma_dict</strong> – parameter sigma gaussian distribution (similar to <cite>v0_dict</cite>).</p></li>
+<li><p><strong>tau</strong> – tau parameter, by default <cite>mantrap.constants.SOCIAL_FORCES_DEFAULT_TAU</cite>,
+which has to be shared over all agents.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list of N = num_particles for every ado in the scene.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>probability (pdf) of each particle (num_ados, num_particles).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.environment.social_forces.SocialForcesEnvironment.simulate_particle">
+<code class="sig-name descname">simulate_particle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">particle</span><span class="p">:</span> <span class="n"><a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a></span></em>, <em class="sig-param"><span class="n">means_t</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ego_state_t</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><a class="headerlink" href="#mantrap.environment.social_forces.SocialForcesEnvironment.simulate_particle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Forward simulate particle for one time-step (t -&gt; t + 1).</p>
+<p>Use the social forces equations writen in the class description for updating the particles. Thereby take
+into account repulsive forces from both the robot and other ados as well as a pulling force between
+the particle and its “goal” state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>particle</strong> – particle agent to simulate.</p></li>
+<li><p><strong>means_t</strong> – means of positional and velocity distribution at time t (num_ados, 4).</p></li>
+<li><p><strong>ego_state_t</strong> – ego/robot state at time t.</p></li>
 </ul>
 </dd>
 </dl>
@@ -487,102 +502,55 @@ to dynamically change it without having a lot of computational overhead.</p>
 <span id="potential-field"></span><h3>Potential Field<a class="headerlink" href="#module-mantrap.environment.simplified.potential_field" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.environment.simplified.potential_field.PotentialFieldEnvironment">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.simplified.potential_field.</code><code class="sig-name descname">PotentialFieldEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_kwargs</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.simplified.potential_field.PotentialFieldEnvironment" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.simplified.potential_field.</code><code class="sig-name descname">PotentialFieldEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_position</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">ego_history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.simplified.potential_field.PotentialFieldEnvironment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Simplified version of social forces environment class.</p>
 <p>The simplified model assumes static agents (ados) in the scene, having zero velocity (if not stated otherwise)
 and staying in this (non)-movement since no forces are applied. Hereby, the graph model is cut to the pure
 interaction between ego and ado, no inter-ado interaction and goal pulling force. Since the ados would not move
 at all without an ego agent in the scene, the interaction loss simply comes down the the distance of every position
 of the ados in time to their initial (static) position.</p>
+<p>Although theoretically  a force introduces an acceleration as the ado’s control input (double not single
+integrator dynamics), accelerations are simplified to act as velocities, which is reasonable due to the fast
+reaction time of the pedestrian, which is way faster than the environment sampling rate.</p>
 <dl class="py method">
-<dt id="mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.add_ado">
-<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">num_modes</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">v0s</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weights</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><a class="headerlink" href="#mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.add_ado" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add (multi-modal) ado (i.e. non-robot) agent to environment.
-While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
-individually. To do so for each mode an agent is initialized using the passed initialization arguments and
-appended to the internal list of ghosts, while staying assignable to the original ado agent by id, i.e.
-ghost_id = ado_id + mode_index. Thereby the ghosts are not sorted, so they at in random order, to be able
-to dynamically change it without having a lot of computational overhead.</p>
+<dt id="mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.create_particles">
+<code class="sig-name descname">create_particles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">num_particles</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">v0_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>List<span class="p">[</span>List<span class="p">[</span><a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><span class="p">]</span><span class="p">]</span><span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.create_particles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create particles from internal parameter distribution.</p>
+<p>In order to create parameters sample from the underlying parameter distributions, which are modelled
+as independent, uni-modal Gaussian distributions, individual for each ado. So build the distribution,
+sample N = num_particles values for each ado and parameter and create N copies of each ado (particle)
+storing the sampled parameter.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ado_type</strong> – agent class of creating ado (has to be subclass of Agent-class in agents/).</p></li>
-<li><p><strong>position</strong> – ado initial position (2D).</p></li>
-<li><p><strong>velocity</strong> – ado initial velocity (2D).</p></li>
-<li><p><strong>history</strong> – ado state history (if None then just current state as history).</p></li>
-<li><p><strong>num_modes</strong> – number of modes of multi-modal ado agent (&gt;=1).</p></li>
-<li><p><strong>weights</strong> – mode weight vector, default = uniform distribution.</p></li>
-<li><p><strong>arg_list</strong> – initialization arguments for each mode.</p></li>
+<li><p><strong>num_particles</strong> – number of particles per ado.</p></li>
+<li><p><strong>v0_dict</strong> – parameter v0 gaussian distribution (mean, variance) by ado_id, if None then gaussian
+with mean = <cite>mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT</cite> and variance = mean/4,
+similarly for each ado.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list of N = num_particles for every ado in the scene.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>probability (pdf) of each particle (num_ados, num_particles).</p>
 </dd>
 </dl>
 </dd></dl>
 
-</dd></dl>
-
-</div>
-<div class="section" id="module-mantrap.environment.simplified.orca">
-<span id="orca"></span><h3>ORCA<a class="headerlink" href="#module-mantrap.environment.simplified.orca" title="Permalink to this headline">¶</a></h3>
-<dl class="py class">
-<dt id="mantrap.environment.simplified.orca.ORCAEnvironment">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.simplified.orca.</code><code class="sig-name descname">ORCAEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_kwargs</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.simplified.orca.ORCAEnvironment" title="Permalink to this definition">¶</a></dt>
-<dd><p>ORCA-based environment.</p>
-<p>Implementation enviornment according to ‘Reciprocal n-body Collision Avoidance’ by Jur van den Berg,
-Stephen J. Guy, Ming Lin, and Dinesh Manocha (short: ORCA, O = optimal). In this environment the optimal velocity
-update is determined for every agent so that a) there is guaranteed no collision in the next time-steps
-(<cite>agent_safe_dt</cite>) and b) the new velocity is the closest velocity to the preferred velocity (here: constant
-velocity to goal) there is in the set of non-collision velocities. Thereby we have some main assumptions:</p>
-<ol class="arabic simple">
-<li><p>all agents behave according to the ORCA formalism</p></li>
-<li><p>all agents are single integrators i.e. do not have holonomic constraints</p></li>
-<li><p>synchronized discrete time updates</p></li>
-<li><p>perfect observability of every agents state at the current time (pref. velocities unknown)</p></li>
-</ol>
-<p>In order to find the “optimal” velocity linear constraints are derived using the ORCA formalism and solved in
-a linear program. The ego agent is then regarded as one of the (N+1) agents in the scene and the scene, just
-with a known control input. Since ORCA assumes all parameters to be shared and known to the other agents it
-can neither be probabilistic nor multi-modal.</p>
-<p>Also the update of some agent is affected by the ego, if and only if the ego agent imposes an active constraint
-on this agent, which is usually not the case for every agent. Therefore when differentiating the ado positions
-with respect to the ego’s state trajectory, usually it will no gradient (i.e. no connection in the computation
-graph), while in case of a connection having a very long network connection (i.e. comparably large
-computational effort to compute gradient).</p>
-<dl class="py class">
-<dt id="mantrap.environment.simplified.orca.ORCAEnvironment.LineConstraint">
-<em class="property">class </em><code class="sig-name descname">LineConstraint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">point</span></em>, <em class="sig-param"><span class="n">direction</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.simplified.orca.ORCAEnvironment.LineConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="py method">
-<dt id="mantrap.environment.simplified.orca.ORCAEnvironment.LineConstraint.direction">
-<em class="property">property </em><code class="sig-name descname">direction</code><a class="headerlink" href="#mantrap.environment.simplified.orca.ORCAEnvironment.LineConstraint.direction" title="Permalink to this definition">¶</a></dt>
-<dd><p>Alias for field number 1</p>
-</dd></dl>
-
 <dl class="py method">
-<dt id="mantrap.environment.simplified.orca.ORCAEnvironment.LineConstraint.point">
-<em class="property">property </em><code class="sig-name descname">point</code><a class="headerlink" href="#mantrap.environment.simplified.orca.ORCAEnvironment.LineConstraint.point" title="Permalink to this definition">¶</a></dt>
-<dd><p>Alias for field number 0</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.environment.simplified.orca.ORCAEnvironment.add_ado">
-<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><a class="headerlink" href="#mantrap.environment.simplified.orca.ORCAEnvironment.add_ado" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add (multi-modal) ado (i.e. non-robot) agent to environment.
-While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
-individually. To do so for each mode an agent is initialized using the passed initialization arguments and
-appended to the internal list of ghosts, while staying assignable to the original ado agent by id, i.e.
-ghost_id = ado_id + mode_index. Thereby the ghosts are not sorted, so they at in random order, to be able
-to dynamically change it without having a lot of computational overhead.</p>
+<dt id="mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.simulate_particle">
+<code class="sig-name descname">simulate_particle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">particle</span><span class="p">:</span> <span class="n"><a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a></span></em>, <em class="sig-param"><span class="n">means_t</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ego_state_t</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><a class="headerlink" href="#mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.simulate_particle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Forward simulate particle for one time-step (t -&gt; t + 1).</p>
+<p>As described in the class description the potential field environment merely takes into account the
+repulsive force with respect to the ego, not to other ados, and introduces it as direct control input
+for the particle.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ado_type</strong> – agent class of creating ado (has to be subclass of Agent-class in agents/).</p></li>
-<li><p><strong>position</strong> – ado initial position (2D).</p></li>
-<li><p><strong>velocity</strong> – ado initial velocity (2D).</p></li>
-<li><p><strong>history</strong> – ado state history (if None then just current state as history).</p></li>
-<li><p><strong>num_modes</strong> – number of modes of multi-modal ado agent (&gt;=1).</p></li>
-<li><p><strong>weights</strong> – mode weight vector, default = uniform distribution.</p></li>
-<li><p><strong>arg_list</strong> – initialization arguments for each mode.</p></li>
+<li><p><strong>particle</strong> – particle agent to simulate.</p></li>
+<li><p><strong>means_t</strong> – means of positional and velocity distribution at time t (num_ados, 4).</p></li>
+<li><p><strong>ego_state_t</strong> – ego/robot state at time t.</p></li>
 </ul>
 </dd>
 </dl>
@@ -595,36 +563,18 @@ to dynamically change it without having a lot of computational overhead.</p>
 <span id="kalman"></span><h3>Kalman<a class="headerlink" href="#module-mantrap.environment.simplified.kalman" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.environment.simplified.kalman.KalmanEnvironment">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.simplified.kalman.</code><code class="sig-name descname">KalmanEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_kwargs</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.simplified.kalman.KalmanEnvironment" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.simplified.kalman.</code><code class="sig-name descname">KalmanEnvironment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_position</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">ego_history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">x_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">y_axis</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 10, 10</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'unknown'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.simplified.kalman.KalmanEnvironment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Kalman (Filter) - based Environment.</p>
 <p>The Kalman environment implements the update rules, defined in the Kalman Filter, to update the agents
-states iteratively. Thereby no interactions between the agents are taken into account.</p>
-<p>Since currently no uncertainty estimates are supported yet, the Kalman update rules break down to a
-simple mean update, based on the agent’s dynamics.</p>
-<dl class="py method">
-<dt id="mantrap.environment.simplified.kalman.KalmanEnvironment.add_ado">
-<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><a class="headerlink" href="#mantrap.environment.simplified.kalman.KalmanEnvironment.add_ado" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add (multi-modal) ado (i.e. non-robot) agent to environment.
-While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
-individually. To do so for each mode an agent is initialized using the passed initialization arguments and
-appended to the internal list of ghosts, while staying assignable to the original ado agent by id, i.e.
-ghost_id = ado_id + mode_index. Thereby the ghosts are not sorted, so they at in random order, to be able
-to dynamically change it without having a lot of computational overhead.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ado_type</strong> – agent class of creating ado (has to be subclass of Agent-class in agents/).</p></li>
-<li><p><strong>position</strong> – ado initial position (2D).</p></li>
-<li><p><strong>velocity</strong> – ado initial velocity (2D).</p></li>
-<li><p><strong>history</strong> – ado state history (if None then just current state as history).</p></li>
-<li><p><strong>num_modes</strong> – number of modes of multi-modal ado agent (&gt;=1).</p></li>
-<li><p><strong>weights</strong> – mode weight vector, default = uniform distribution.</p></li>
-<li><p><strong>arg_list</strong> – initialization arguments for each mode.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
+states iteratively. Thereby no interactions between the agents are taken into account. The growing
+uncertainty in the prediction, growing with the number of predicted time-steps, is modelled as a
+variance increasing with constant rate, which in the Kalman Equations is a constant noise Q_k. Assuming
+constant state space matrices (F, B) we get:</p>
+<p>with z_k = H x_k (H = H_k = eye(N)) the observations, I = eye(n) the identity matrix and R = 0 (perfect
+perception assumption). In the notation used in <cite>mantrap.agents</cite> the state space matrix A is used instead of
+F, but they are equivalent.</p>
+<p>Since no interactions are assumed to ados control inputs (i.e. velocities) are assumed to stay constant over
+the full prediction horizon).</p>
 </dd></dl>
 
 </div>
@@ -634,7 +584,7 @@ to dynamically change it without having a lot of computational overhead.</p>
 <blockquote>
 <div><span class="target" id="module-mantrap.environment.trajectron"></span><dl class="py class">
 <dt id="mantrap.environment.trajectron.Trajectron">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.trajectron.</code><code class="sig-name descname">Trajectron</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_kwargs</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">env_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.trajectron.Trajectron" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.environment.trajectron.</code><code class="sig-name descname">Trajectron</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_type</span><span class="p">:</span> <span class="n">abc.ABCMeta</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_position</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">ego_history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.4</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">env_kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.trajectron.Trajectron" title="Permalink to this definition">¶</a></dt>
 <dd><p>Trajectron-based environment model (B. Ivanovic, T. Salzmann, M. Pavone).</p>
 <p>The Trajectron model requires to get some robot position. Therefore, in order to minimize the
 impact of the ego robot on the trajectories (since the prediction should be not conditioned on the robot)
@@ -647,23 +597,34 @@ scale than the difference the conditioning on the robot makes. Then minimizing t
 goal of minimizing interaction.</p>
 <dl class="py method">
 <dt id="mantrap.environment.trajectron.Trajectron.add_ado">
-<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">num_modes</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">weights</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><a class="headerlink" href="#mantrap.environment.trajectron.Trajectron.add_ado" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add a new ado and its mode to the scene.</p>
-<p>For the Trajectron model the multi-modality evolves at the output, not the input. Therefore instead of
-multiple ghosts of the same ado agent just the agent is added to the internal scene graph, as Pedestrian
-node. However the representation of the agents and their modes in the base class intrinsically is multimodal,
-by keeping the different modes as independent agents sharing the same history. Therefore a reference ghost
-is chosen to pass these shared properties to  the Trajectron scene.</p>
-<p>The weight vector for each mode is not constant, rather changing with every new scene and prediction. However,
-in order to compute it for the current scene a forward pass would be required. Since the environment and
-especially the mode’s weights can be assumed to not be used without a precedent prediction step, the weights
-are initialized as a not really meaningful uniform distribution for now and then updated during the
-environment’s prediction step.</p>
+<code class="sig-name descname">add_ado</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">ado_kwargs</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><a class="headerlink" href="#mantrap.environment.trajectron.Trajectron.add_ado" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add ado (i.e. non-robot) agent to environment as single integrator.</p>
+<p>While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
+individually. To do so initialize single integrator agent using its state vectors, namely position, velocity
+and its state history. The ado id, color and other parameters can either be passed using the ado_kwargs
+option or are created automatically during the agent’s initialization.</p>
+<p>After initialization check whether the given states are valid, i.e. do  not pass the internal environment
+bounds, e.g. that they are in the given 2D space the environment is defined in.</p>
+<p>Next to the internal ado representation of each ado within this class, the Trajectron model has an own
+graph, in which the ado has to be introduced as a node during initialization. Also Trajectron model is
+trained to predict accurately, iff the agent has some history &gt; 1, therefore if no history is given
+build a custom history by stacking the given (position, velocity) state over multiple time-steps. If
+zero history should be enforced, pass a non None history argument.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>position</strong> – ado initial position (2D).</p></li>
+<li><p><strong>velocity</strong> – ado initial velocity (2D).</p></li>
+<li><p><strong>history</strong> – ado state history (if None then just stacked current state).</p></li>
+<li><p><strong>ado_kwargs</strong> – addition kwargs for ado initialization.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.environment.trajectron.Trajectron.agent_id_from_node_id">
-<em class="property">static </em><code class="sig-name descname">agent_id_from_node_id</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">node_id</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#mantrap.environment.trajectron.Trajectron.agent_id_from_node_id" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.environment.trajectron.Trajectron.agent_id_from_node">
+<em class="property">static </em><code class="sig-name descname">agent_id_from_node</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">node</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#mantrap.environment.trajectron.Trajectron.agent_id_from_node" title="Permalink to this definition">¶</a></dt>
 <dd><p>In Trajectron nodes have an identifier structure as follows “node_type/node_id”. As initialized the node_id
 is identical to the internal node_id while is node type is e.g. “ROBOT” or “PEDESTRIAN”. However it is not
 assumed that the node_type has to be robot or pedestrian, since it does not change the structure.</p>
@@ -674,26 +635,6 @@ assumed that the node_type has to be robot or pedestrian, since it does not chan
 <code class="sig-name descname">detach</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.environment.trajectron.Trajectron.detach" title="Permalink to this definition">¶</a></dt>
 <dd><p>Detaching the whole graph (which is the whole neural network) might be hard. Therefore just rebuilt it
 from scratch completely, using the most up-to-date states of the agents.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.environment.trajectron.Trajectron.trajectory_from_distribution">
-<em class="property">static </em><code class="sig-name descname">trajectory_from_distribution</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">gmm</span></em>, <em class="sig-param"><span class="n">ado_state</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">num_output_modes</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">return_more</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">, </span>numpy.ndarray<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.environment.trajectron.Trajectron.trajectory_from_distribution" title="Permalink to this definition">¶</a></dt>
-<dd><p>Transform the Trajectron model GMM distribution to a trajectory.
-The output of the Trajectron model is a Gaussian Mixture Model (GMM) with mean and log_variance (among several
-other properties) for each of the 25 modes. Since <cite>num_modes</cite> &lt; 25 in a first step the most important modes
-will be selected, by using the weight vector directly. The GMM is a multi-nominal distribution with weight
-parameters pi_i, i.e. we have</p>
-<div class="math notranslate nohighlight">
-\[z_1, ..., z_n \sim Mult_g(1, \pi_1, ..., \pi_g)\]</div>
-<p>with z_i denoting the unobservable component-indicator vector, showing to which out of g clusters a drawn
-sample belongs to (<a class="reference external" href="https://books.google.de/books?id=-0mfDwAAQBAJ&amp;pg=PA18&amp;lpg=PA18&amp;dq=Log+Mixing+Proportions">https://books.google.de/books?id=-0mfDwAAQBAJ&amp;pg=PA18&amp;lpg=PA18&amp;dq=Log+Mixing+Proportions</a>).</p>
-<p>The importance vector omega is introduced in order to encounter the importance of uncertainty with respect
-to the evolution of the weight vector in time. A high uncertainty at the beginning of the trajectory is worse
-in terms of planning than at its end. The importance vector is a simple linear function going from 1 to 0.2
-uniformly over <cite>t_horizon</cite>.</p>
-<p>mus.shape: (num_ados = 1, 1, t_horizon, num_modes, 2)
-log_pis.shape: (num_ados = 1, 1, t_horizon, num_modes)</p>
 </dd></dl>
 
 </dd></dl>
@@ -712,10 +653,9 @@ log_pis.shape: (num_ados = 1, 1, t_horizon, num_modes)</p>
   <ul>
 <li><a class="reference internal" href="#">Environment</a><ul>
 <li><a class="reference internal" href="#module-mantrap.environment.base.graph_based">Graph-Based Environment (abstract)</a></li>
-<li><a class="reference internal" href="#module-mantrap.environment.base.iterative">Iterative Environments</a><ul>
+<li><a class="reference internal" href="#module-mantrap.environment.base.particle">Particle Environments</a><ul>
 <li><a class="reference internal" href="#module-mantrap.environment.social_forces">Social Forces</a></li>
 <li><a class="reference internal" href="#module-mantrap.environment.simplified.potential_field">Potential Field</a></li>
-<li><a class="reference internal" href="#module-mantrap.environment.simplified.orca">ORCA</a></li>
 <li><a class="reference internal" href="#module-mantrap.environment.simplified.kalman">Kalman</a></li>
 </ul>
 </li>
@@ -771,7 +711,7 @@ log_pis.shape: (num_ados = 1, 1, t_horizon, num_modes)</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
     </div>
   </body>
 </html>

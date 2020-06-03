@@ -47,6 +47,7 @@
             
   <a class="reference external image-reference" href="https://travis-ci.com/simon-schaefer/mantrap"><img alt="https://travis-ci.com/simon-schaefer/mantrap.svg?branch=master" src="https://travis-ci.com/simon-schaefer/mantrap.svg?branch=master" /></a>
 <a class="reference external image-reference" href="https://codecov.io/gh/simon-schaefer/mantrap"><img alt="https://codecov.io/gh/simon-schaefer/mantrap/branch/master/graph/badge.svg" src="https://codecov.io/gh/simon-schaefer/mantrap/branch/master/graph/badge.svg" /></a>
+<a class="reference external image-reference" href="http://simon-schaefer.github.io/mantrap/"><img alt="https://img.shields.io/badge/docs-mantrap-blue.svg" src="https://img.shields.io/badge/docs-mantrap-blue.svg" /></a>
 <div class="section" id="mantrap">
 <h1>mantrap<a class="headerlink" href="#mantrap" title="Permalink to this headline">¶</a></h1>
 <p>Minimal interferring Interactive Risk-aware Planning for multimodal and time-evolving obstacle behaviour</p>
@@ -75,27 +76,7 @@ of the humans behaviour, based on the Trajectron model (Ivanovic 19).</p>
 </div>
 <p>Afterwards install the NLP-solver <a class="reference external" href="https://coin-or.github.io/Ipopt/">IPOPT</a> and it’s python wrapper which is called
 <a class="reference external" href="https://pypi.org/project/ipopt/">cyipopt</a>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download</span>
-<span class="c1"># Install Ipopt NLP solver.</span>
-<span class="nb">cd</span> external/Ipopt
-chmod u+x coinbrew
-brew install bash  <span class="c1"># update bash version (&gt;= 4.0)</span>
-
-mkdir build
-./coinbrew fetch Ipopt
-./coinbrew build Ipopt --prefix<span class="o">=</span>/path/to/build --test
-./coinbrew install Ipopt
-
-<span class="c1"># Set PKG_CONFIG_PATH environment variable to IPOPT build directory</span>
-<span class="nb">export</span> <span class="nv">PKG_CONFIG_PATH</span><span class="o">=</span><span class="s2">&quot;path/to/mantrap/external/IPOPT/build/Ipopt/master&quot;</span>
-<span class="nb">export</span> <span class="nv">PKG_CONFIG_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PKG_CONFIG_PATH</span><span class="s2">:/path/to/mantrap/mantrap/external/IPOPT/build/ThirdParty/Mumps/2.0&quot;</span>
-<span class="nb">export</span> <span class="nv">PKG_CONFIG_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PKG_CONFIG_PATH</span><span class="s2">:/path/to/mantrap/mantrap/external/IPOPT/build/ThirdParty/Metis/2.0&quot;</span>
-
-<span class="c1"># Install cyipopt following https://pypi.org/project/ipopt/</span>
-<span class="c1"># Download binary files from https://pypi.org/project/ipopt/#files</span>
-<span class="c1"># Then install by running</span>
-<span class="nb">cd</span> external/cyipopt
-python setup.py install
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bash third_party/Ipopt/install.bash
 </pre></div>
 </div>
 <p>In order to ensure a working Trajectron model the branch <code class="code docutils literal notranslate"><span class="pre">online_with_torch</span></code> has to be checkout.</p>
@@ -136,10 +117,9 @@ in order to save runtime.</p>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="environment.html">Environment</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.base.graph_based">Graph-Based Environment (abstract)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.base.iterative">Iterative Environments</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="environment.html#module-mantrap.environment.base.particle">Particle Environments</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="environment.html#module-mantrap.environment.social_forces">Social Forces</a></li>
 <li class="toctree-l3"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.potential_field">Potential Field</a></li>
-<li class="toctree-l3"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.orca">ORCA</a></li>
 <li class="toctree-l3"><a class="reference internal" href="environment.html#module-mantrap.environment.simplified.kalman">Kalman</a></li>
 </ul>
 </li>
@@ -157,7 +137,6 @@ in order to save runtime.</p>
 <li class="toctree-l3"><a class="reference internal" href="solver.html#module-mantrap.solver.baselines.random_search">Random Search</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="solver.html#module-mantrap.solver.baselines.orca">Baselines - ORCA</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">Objective and Constraint Modules</a><ul>
@@ -173,6 +152,7 @@ in order to save runtime.</p>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="modules.html#interaction-driven-objectives">Interaction-Driven Objectives</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.prob_interact">Probability Interaction</a></li>
 <li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.baselines.acc_interact">Acceleration Interaction</a></li>
 <li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.baselines.pos_interact">Position Interaction</a></li>
 </ul>
@@ -265,7 +245,7 @@ in order to save runtime.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
     </div>
   </body>
 </html>

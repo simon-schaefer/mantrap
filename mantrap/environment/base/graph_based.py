@@ -310,7 +310,7 @@ class GraphBasedEnvironment(abc.ABC):
 
         While the ego is added to the environment during initialization, the ado agents have to be added afterwards,
         individually. To do so initialize single integrator agent using its state vectors, namely position, velocity
-        and its state history. The ado id, color and other parameters can either be passed using the  **ado_kwargs
+        and its state history. The ado id, color and other parameters can either be passed using the ado_kwargs
         option or are created automatically during the agent's initialization.
 
         After initialization check whether the given states are valid, i.e. do  not pass the internal environment
@@ -319,6 +319,7 @@ class GraphBasedEnvironment(abc.ABC):
         :param position: ado initial position (2D).
         :param velocity: ado initial velocity (2D).
         :param history: ado state history (if None then just current state as history).
+        :param ado_kwargs: addition kwargs for ado initialization.
         """
         ado = mantrap.agents.IntegratorDTAgent(position, velocity=velocity, history=history, dt=self.dt, **ado_kwargs)
         self._ado_ids.append(ado.id)

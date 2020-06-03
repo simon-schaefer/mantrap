@@ -30,8 +30,3 @@ Random Search
 ~~~~~~~~~~~~~~
 .. automodule:: mantrap.solver.baselines.random_search
     :members:
-
-Baselines - ORCA
-----------------
-.. automodule:: mantrap.solver.baselines.orca
-    :members:

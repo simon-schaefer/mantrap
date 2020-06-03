@@ -45,30 +45,58 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="module-mantrap.visualization.overview">
-<span id="visualisation"></span><h1>Visualisation<a class="headerlink" href="#module-mantrap.visualization.overview" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-mantrap.visualization.prediction">
+<span id="visualisation"></span><h1>Visualisation<a class="headerlink" href="#module-mantrap.visualization.prediction" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
-<dt id="mantrap.visualization.overview.visualize_overview">
-<code class="sig-prename descclassname">mantrap.visualization.overview.</code><code class="sig-name descname">visualize_overview</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ado_planned_wo</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ego_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_goal</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">obj_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>torch.Tensor<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">inf_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>torch.Tensor<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_trials</span><span class="p">:</span> <span class="n">List<span class="p">[</span>List<span class="p">[</span>torch.Tensor<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot_path_only</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">legend</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">kde</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">frame_interval</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">400</span></em>, <em class="sig-param"><span class="n">restart_delay</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">2000</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.overview.visualize_overview" title="Permalink to this definition">¶</a></dt>
-<dd><p>Visualize robot/ado trajectories extended by state or optimization data.</p>
+<dt id="mantrap.visualization.prediction.visualize_prediction">
+<code class="sig-prename descclassname">mantrap.visualization.prediction.</code><code class="sig-name descname">visualize_prediction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ego_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_planned_wo</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_goal</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">legend</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ax</span><span class="p">:</span> <span class="n">matplotlib.axes._axes.Axes</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.prediction.visualize_prediction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualize robot/ado trajectories and distributions.</p>
+<blockquote>
+<div><p>Draw trajectories in (quadratic) plot, thereby differentiate the actual trajectories from the
+baseline trajectories (without) using a different line markup. Also add little dots (<cite>plt.Circle</cite>) at the
+agents current positions.</p>
+</div></blockquote>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ado_planned_wo</strong> – ado trajectories without robot (num_ados, num_modes, t_horizon + 1, 5).</p></li>
+<li><p><strong>ado_planned_wo</strong> – ado trajectories without robot (num_ados, num_samples, t_horizon + 1, num_modes = 1,  5).</p></li>
 <li><p><strong>env</strong> – simulation environment, just used statically here (e.g. to convert ids to agents, roll out
-trajectories, etc.</p></li>
+trajectories, etc.).</p></li>
 <li><p><strong>ego_planned</strong> – planned/optimized ego trajectory (t_horizon + 1, 5).</p></li>
-<li><p><strong>ado_planned</strong> – according ado trajectory conditioned on ego_planned (num_ados, num_modes, t_horizon + 1, 5).</p></li>
+<li><p><strong>ado_planned</strong> – according ado trajectory conditioned on ego_planned (num_ados, num_samples, t_horizon + 1, 1, 5).</p></li>
 <li><p><strong>ego_goal</strong> – optimization robot goal state.</p></li>
-<li><p><strong>obj_dict</strong> – dictionary storing the objective values by objective module and optimization iteration.</p></li>
-<li><p><strong>inf_dict</strong> – dictionary storing the constraint infeasibility values by constraint module and opt. iteration.</p></li>
-<li><p><strong>ego_trials</strong> – trial ego trajectories during optimization.</p></li>
-<li><p><strong>plot_path_only</strong> – plot only path (main) plot not stats plots.</p></li>
 <li><p><strong>legend</strong> – draw legend in paths plot (might be a mess for many agents).</p></li>
-<li><p><strong>kde</strong> – plot probabilistic trajectory distributions as kde plot (instead of single modes) per timestep.</p></li>
-<li><p><strong>frame_interval</strong> – delay from one to another frame in [ms].</p></li>
-<li><p><strong>restart_delay</strong> – delay for GIF restart after it has been finished [ms].</p></li>
 <li><p><strong>file_path</strong> – storage path, if None return as HTML video object.</p></li>
+<li><p><strong>ax</strong> – optionally the plot can be drawn in an already existing axis.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-mantrap.visualization.optimization"></span><dl class="py function">
+<dt id="mantrap.visualization.optimization.visualize_optimization">
+<code class="sig-prename descclassname">mantrap.visualization.optimization.</code><code class="sig-name descname">visualize_optimization</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_planned</span><span class="p">:</span> <span class="n">List<span class="p">[</span>torch.Tensor<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">ado_planned_wo</span><span class="p">:</span> <span class="n">List<span class="p">[</span>torch.Tensor<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ego_goal</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">legend</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">frame_interval</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">400</span></em>, <em class="sig-param"><span class="n">restart_delay</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">2000</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.optimization.visualize_optimization" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualize robot/ado trajectories and distributions over full optimization (multiple time-steps).</p>
+<blockquote>
+<div><p>Draw trajectories in (quadratic) plot, thereby differentiate the actual trajectories from the
+baseline trajectories (without) using a different line markup. Also add little dots (<cite>plt.Circle</cite>) at the
+agents current positions.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ado_planned_wo</strong> – ado trajectories without robot
+(time-steps, num_ados, num_samples, t_horizon + 1, num_modes = 1,  5).</p></li>
+<li><p><strong>env</strong> – simulation environment, just used statically here (e.g. to convert ids to agents, roll out
+trajectories, etc.).</p></li>
+<li><p><strong>ego_planned</strong> – planned/optimized ego trajectory (time-step, t_horizon + 1, 5).</p></li>
+<li><p><strong>ado_planned</strong> – according ado trajectory conditioned on ego_planned
+(time-steps, num_ados, num_samples, t_horizon + 1, 1, 5).</p></li>
+<li><p><strong>ego_goal</strong> – optimization robot goal state.</p></li>
+<li><p><strong>legend</strong> – draw legend in paths plot (might be a mess for many agents).</p></li>
+<li><p><strong>file_path</strong> – storage path, if None return as HTML video object.</p></li>
+<li><p><strong>frame_interval</strong> – video frame displaying time interval [ms].</p></li>
+<li><p><strong>restart_delay</strong> – video restart delay time interval [ms].</p></li>
 </ul>
 </dd>
 </dl>
@@ -98,7 +126,7 @@ variable, then the variables chosen by the optimizer can be visualized.</p>
 </dl>
 </dd></dl>
 
-</div>
+<span class="target" id="module-mantrap.visualization.trajectories"></span></div>
 
 
           </div>
@@ -147,7 +175,7 @@ variable, then the variables chosen by the optimizer can be visualized.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
     </div>
   </body>
 </html>

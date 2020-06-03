@@ -55,7 +55,7 @@
 <span id="base-discrete-agent-abstract"></span><h2>Base Discrete Agent (abstract)<a class="headerlink" href="#module-mantrap.agents.base.discrete" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt id="mantrap.agents.base.discrete.DTAgent">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.base.discrete.</code><code class="sig-name descname">DTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">is_robot</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">identifier</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.agents.base.discrete.</code><code class="sig-name descname">DTAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">velocity</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">tensor([0.0, 0.0])</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">history</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">is_robot</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">color</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">identifier</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">agent_params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent" title="Permalink to this definition">¶</a></dt>
 <dd><p>General agent representation.</p>
 <p>An agent, whether in environment or real world, has a five-dimensional state vector and a state history, which are
 defined as follows:</p>
@@ -76,6 +76,7 @@ value directly. All other methods do not alter the internal state.</p>
 <li><p><strong>time</strong> – current time stamp, default = 0.0.</p></li>
 <li><p><strong>history</strong> – current agent’s state history (N, 5), default = no history.</p></li>
 <li><p><strong>identifier</strong> – agent’s pre-set identifier, default = none so initialized randomly during initialization.</p></li>
+<li><p><strong>agent_params</strong> – dictionary of additional parameters stored in agent object.</p></li>
 </ul>
 </dd>
 </dl>
@@ -186,26 +187,6 @@ discrete differentiation, i.e. v_i = (x_i+1 - x_i) / dt.</p>
 </dd>
 <dt class="field-even">Returns trajectory</dt>
 <dd class="field-even"><p>temporally-expanded path (N, 5).s</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.agents.base.discrete.DTAgent.go_to_point">
-<em class="property">abstract </em><code class="sig-name descname">go_to_point</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">target_point</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">speed</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.go_to_point" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine and execute the controls for going for the given state to some target point with respect
-to the internal dynamics.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>state</strong> – pos_and_vel_only state vector i.e. (px, py, vx, vy) for starting state.</p></li>
-<li><p><strong>target_point</strong> – 2D target point (px, py).</p></li>
-<li><p><strong>speed</strong> – preferable speed for state update [m/s].</p></li>
-<li><p><strong>dt</strong> – update time interval [s].</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>updated state at t = t0 + dt and used (cardinal) control input.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -352,6 +333,25 @@ the given time-step. The new state and time are then appended to the agent’s s
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt id="mantrap.agents.base.discrete.DTAgent.update_inverse">
+<code class="sig-name descname">update_inverse</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state_next</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.update_inverse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update internal state (position, velocity and history) by backward integrating the agent’s dynamics,
+i.e. by using the inverse dynamics to compute the executed action between the current and given next position
+and then execute this action again, to obtain the complete updated state as well as ensure feasibility.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state_next</strong> – next state (5).</p></li>
+<li><p><strong>dt</strong> – forward integration time step [s].</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>executed control action and new agent state</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -392,6 +392,27 @@ their derivatives do not depend on each other, i.e. <cite>du_i/du_j = 0 for all 
 Also the state at time-step n only depends on the initial state and the control
 inputs, not the states in between when the equation above is used !
 Therefore we can simplify the equation above to the following:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.agents.base.linear.LinearDTAgent.dynamics_rolling_matrices">
+<code class="sig-name descname">dynamics_rolling_matrices</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">max_steps</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.linear.LinearDTAgent.dynamics_rolling_matrices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine matrices for batched trajectory-rolling dynamics using equation shown in the
+definition of the class, stacked to two matrices An and Bn.</p>
+<div class="math notranslate nohighlight">
+\[An = [I, A, A^2, ..., A^n]\]</div>
+<div class="math notranslate nohighlight">
+\[Bn = [[B, 0, ..., 0], [AB, B, 0, ..., 0], ..., [A^{n-1} B, ..., B]]\]</div>
+<div class="math notranslate nohighlight">
+\[Tn = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 1], ..., [0, 0, 0, 0, n]]\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt</strong> – dynamics integration time-step [s].</p></li>
+<li><p><strong>max_steps</strong> – maximal number of pre-computed steps.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -503,28 +524,6 @@ native python scalar operations.</p>
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt id="mantrap.agents.integrator_single.IntegratorDTAgent.go_to_point">
-<code class="sig-name descname">go_to_point</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">target_point</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">speed</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator_single.IntegratorDTAgent.go_to_point" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine and execute the controls for going for the given state to some target point with respect to
-the internal dynamics.</p>
-<p>Due to the instant dynamics of a single integrator going from one point to another simple means instantly
-adapting the controls to go in the right direction.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>state</strong> – pos_and_vel_only state vector i.e. (px, py, vx, vy) for starting state.</p></li>
-<li><p><strong>target_point</strong> – 2D target point (px, py).</p></li>
-<li><p><strong>speed</strong> – preferable speed for state update [m/s].</p></li>
-<li><p><strong>dt</strong> – update time interval [s].</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>updated state at t = t0 + dt and used (cardinal) control input.</p>
-</dd>
-</dl>
-</dd></dl>
-
 </dd></dl>
 
 </div>
@@ -556,32 +555,6 @@ native python scalar operations.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>position x, position y, velocity x, velocity y of new state</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.agents.integrator_double.DoubleIntegratorDTAgent.go_to_point">
-<code class="sig-name descname">go_to_point</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">target_point</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">speed</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">pseudo_wheel_distance</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.05</span></em>, <em class="sig-param"><span class="n">k_speed</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator_double.DoubleIntegratorDTAgent.go_to_point" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine and execute the controls for going for the given state to some target point with respect to
-the internal dynamics.</p>
-<p>For from some point to another the double integrator uses a variant of pure pursuit control, which basically
-means, that it is not treated as a point mass but as a vehicle/car with very small width
-(<cite>pseudo_wheel_distance</cite>). Then the required acceleration and steering commands can be computed for the
-given scenario and transformed to the cartesian controls the double integrator requires.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>state</strong> – pos_and_vel_only state vector i.e. (px, py, vx, vy) for starting state.</p></li>
-<li><p><strong>target_point</strong> – 2D target point (px, py).</p></li>
-<li><p><strong>speed</strong> – preferable speed for state update [m/s].</p></li>
-<li><p><strong>dt</strong> – update time interval [s].</p></li>
-<li><p><strong>pseudo_wheel_distance</strong> – distance between imaginary wheels [m].</p></li>
-<li><p><strong>k_speed</strong> – speed control gain.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>updated state at t = t0 + dt and used (cardinal) control input.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -658,7 +631,7 @@ given scenario and transformed to the cartesian controls the double integrator r
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
     </div>
   </body>
 </html>
