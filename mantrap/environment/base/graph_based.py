@@ -154,13 +154,14 @@ class GraphBasedEnvironment(abc.ABC):
     # Prediction - Samples ####################################################
     ###########################################################################
     def sample_w_controls(self, ego_controls: torch.Tensor, num_samples: int = 1, expand: bool = False
-                          ) -> torch.Tensor:
+                          ) -> typing.Union[torch.Tensor, None]:
         """Predict the ado path samples based conditioned on robot controls.
 
         :param ego_controls: ego control input (pred_horizon, 2).
         :param num_samples: number of samples to return.
         :param expand: expand ado positions outputs to full state trajectories.
         :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+                 if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_controls(ego_controls)
         assert self.sanity_check(check_ego=True)
@@ -169,18 +170,24 @@ class GraphBasedEnvironment(abc.ABC):
         return self.sample_w_trajectory(ego_trajectory, num_samples=num_samples, expand=expand)
 
     def sample_w_trajectory(self, ego_trajectory: torch.Tensor, num_samples: int = 1, expand: bool = False
-                            ) -> torch.Tensor:
+                            ) -> typing.Union[torch.Tensor, None]:
         """Predict the ado path samples based conditioned on robot trajectory.
 
         :param ego_trajectory: ego trajectory (pred_horizon + 1, 5).
         :param num_samples: number of samples to return.
         :param expand: expand ado positions outputs to full state trajectories.
         :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+                 if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         assert self.sanity_check(check_ego=True)
         t_horizon = ego_trajectory.shape[0] - 1
 
+        # If no ado agent is in the scene, then return None.
+        if self.num_ados == 0:
+            return None
+
+        # Otherwise predict the conditioned distribution and draw samples from them.
         dist_dict = self.compute_distributions(ego_trajectory=ego_trajectory)
         samples = torch.stack([dist_dict[ado_id].sample((num_samples, )) for ado_id in self.ado_ids])
         if expand:
@@ -189,17 +196,24 @@ class GraphBasedEnvironment(abc.ABC):
         assert mantrap.utility.shaping.check_ado_samples(samples, t_horizon + 1, self.num_ados, num_samples)
         return samples
 
-    def sample_wo_ego(self, t_horizon: int, num_samples: int = 1, expand: bool = False) -> torch.Tensor:
+    def sample_wo_ego(self, t_horizon: int, num_samples: int = 1, expand: bool = False
+                      ) -> typing.Union[torch.Tensor, None]:
         """Predict the unconditioned ado path samples (i.e. if no robot would be in the scene).
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
         :param num_samples: number of samples to return.
         :param expand: expand ado positions outputs to full state trajectories.
         :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+                 if no ado in scene, return None instead.
         """
         assert t_horizon > 0
         assert self.sanity_check(check_ego=False)
 
+        # If no ado agent is in the scene, then return None.
+        if self.num_ados == 0:
+            return None
+
+        # Otherwise predict the un_conditioned distribution and draw samples from them.
         dist_dict = self.compute_distributions_wo_ego(t_horizon=t_horizon)
         samples = torch.stack([dist_dict[ado_id].sample((num_samples,)) for ado_id in self.ado_ids])
         if expand:
@@ -211,12 +225,14 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     # Prediction - Means ######################################################
     ###########################################################################
-    def predict_w_controls(self, ego_controls: torch.Tensor, expand: bool = False) -> torch.Tensor:
+    def predict_w_controls(self, ego_controls: torch.Tensor, expand: bool = False
+                           ) -> typing.Union[torch.Tensor, None]:
         """Predict the ado path distribution means based conditioned on robot controls.
 
         :param ego_controls: ego control input (pred_horizon, 2).
         :param expand: expand ado positions outputs to full state trajectories.
         :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+                 if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_controls(ego_controls)
         assert self.sanity_check(check_ego=True)
@@ -224,40 +240,56 @@ class GraphBasedEnvironment(abc.ABC):
         ego_trajectory = self.ego.unroll_trajectory(controls=ego_controls, dt=self.dt)
         return self.predict_w_trajectory(ego_trajectory, expand=expand)
 
-    def predict_w_trajectory(self, ego_trajectory: torch.Tensor, expand: bool = False) -> torch.Tensor:
+    def predict_w_trajectory(self, ego_trajectory: torch.Tensor, expand: bool = False
+                             ) -> typing.Union[torch.Tensor, None]:
         """Predict the ado path samples based conditioned on robot trajectory.
 
         :param ego_trajectory: ego trajectory (pred_horizon + 1, 5).
         :param expand: expand ado positions outputs to full state trajectories.
         :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+                 if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         assert self.sanity_check(check_ego=True)
         t_horizon = ego_trajectory.shape[0] - 1
 
+        # If no ado agent is in the scene, then return None.
+        if self.num_ados == 0:
+            return None
+
+        # Otherwise predict the un_conditioned distribution and draw samples from them.
         dist_dict = self.compute_distributions(ego_trajectory=ego_trajectory)
         means = torch.stack([dist_dict[ado_id].mean for ado_id in self.ado_ids])
         if len(means.shape) == 3:
             means = means.unsqueeze(dim=1)
         if expand:
             means = self.expand_ado_trajectories(ado_trajectories=means)
+
         assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon=t_horizon + 1, ados=self.num_ados)
         return means
 
-    def predict_wo_ego(self, t_horizon: int, expand: bool = False) -> torch.Tensor:
+    def predict_wo_ego(self, t_horizon: int, expand: bool = False
+                       ) -> typing.Union[torch.Tensor, None]:
         """Predict the unconditioned ado path distribution means (i.e. if no robot would be in the scene).
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
         :param expand: expand ado positions outputs to full state trajectories.
         :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+                 if no ado in scene, return None instead.
         """
         assert t_horizon > 0
         assert self.sanity_check(check_ego=False)
 
+        # If no ado agent is in the scene, then return None.
+        if self.num_ados == 0:
+            return None
+
+        # Otherwise predict the un_conditioned distribution and draw samples from them.
         dist_dict = self.compute_distributions_wo_ego(t_horizon=t_horizon)
         means = torch.stack([dist_dict[ado_id].mean for ado_id in self.ado_ids])
         if expand:
             means = self.expand_ado_trajectories(ado_trajectories=means)
+
         assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon=t_horizon + 1, ados=self.num_ados)
         return means
 
