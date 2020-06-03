@@ -11,25 +11,25 @@ from mantrap_evaluation.metrics import *
 def test_minimal_distance_principle():
     ego_trajectory = mantrap.utility.maths.straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
 
-    ado_trajectory_1 = torch.zeros((1, 1, 10, 2))
+    ado_trajectory_1 = torch.zeros((1, 10, 1, 2))
     distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectory_1)
     assert np.isclose(distance, 0.1, atol=1e-3)
 
     ado_trajectory_2 = mantrap.utility.maths.straight_line(torch.ones(2), torch.ones(2) * 10, steps=10)
-    ado_trajectory_2 = ado_trajectory_2.view(1, 1, -1, 2)
+    ado_trajectory_2 = ado_trajectory_2.view(1, -1, 1, 2)
     ado_trajectory_2 = torch.cat((ado_trajectory_1, ado_trajectory_2))
     distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectory_2)
     assert np.isclose(distance, 0.1, atol=1e-3)
 
     ado_trajectory_3 = mantrap.utility.maths.straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
     ado_trajectory_3[5, :] = torch.tensor([5, 0.1])
-    ado_trajectory_3 = ado_trajectory_3.view(1, 1, -1, 2)
+    ado_trajectory_3 = ado_trajectory_3.view(1, -1, 1, 2)
     distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectory_3)
     assert not np.isclose(distance, 0.0, atol=1e-3)  # tolerance, not time-equivalent at (5, 0.1) (!)
 
     ado_trajectory_3 = mantrap.utility.maths.straight_line(torch.tensor([10, 8]),  torch.tensor([-10, 8]), steps=10)
     ado_trajectory_3[-1, :] = torch.tensor([5, 0.1])
-    ado_trajectory_3 = ado_trajectory_3.view(1, 1, -1, 2)
+    ado_trajectory_3 = ado_trajectory_3.view(1, -1, 1, 2)
     distance = metric_minimal_distance(ego_trajectory=ego_trajectory, ado_trajectories=ado_trajectory_3)
     assert np.isclose(distance, 0.0, atol=1e-3)  # now time-equivalent at (5, 0.1) (!)
 
@@ -44,7 +44,7 @@ def test_minimal_distance_interpolation():
     assert not np.isclose(min_distance_dt, 0.0, atol=0.1)
 
     # However using the interpolation scheme as running in the metric, they should cross each other.
-    ado_traj = ado_traj.view(1, 1, -1, 2)
+    ado_traj = ado_traj.view(1, -1, 1, 2)
     min_distance_ct = metric_minimal_distance(ego_trajectory=ego_traj, ado_trajectories=ado_traj, num_inter_points=1000)
     assert np.isclose(min_distance_ct, 0.0, atol=1e-3)
 
@@ -86,21 +86,19 @@ def test_directness(velocity_profiles: torch.Tensor, directness_score: float):
 
 @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
                                        mantrap.environment.PotentialFieldEnvironment,
-                                       mantrap.environment.SocialForcesEnvironment,
-                                       mantrap.environment.Trajectron])
+                                       mantrap.environment.SocialForcesEnvironment])
 def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
     env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([5, 0]))
     env.add_ado(position=torch.zeros(2), velocity=torch.tensor([1, 0]))
 
     # When the ado trajectories are exactly the same as predicting them without an ego, the score should be zero.
-    ado_traj = env.predict_wo_ego(t_horizon=10)
-    metric_score = metric_ado_effort(ado_trajectories=ado_traj, env=env)
-    assert np.isclose(metric_score, 0.0)
+    ado_trajectories = env.predict_wo_ego(t_horizon=10, expand=True)
+    metric_score_wo = metric_ado_effort(ado_trajectories=ado_trajectories, env=env)
 
     # Otherwise it is very hard to predict the exact score, but we know it should be non-zero and positive.
-    ado_traj = env.predict_w_controls(ego_controls=torch.ones(5, 2))
-    metric_score = metric_ado_effort(ado_trajectories=ado_traj, env=env)
-    assert metric_score >= 0.0
+    ado_trajectories = env.predict_w_controls(ego_controls=torch.ones((5, 2)), expand=True)
+    metric_score = metric_ado_effort(ado_trajectories=ado_trajectories, env=env)
+    assert metric_score >= metric_score_wo * 0.5
 
     # For testing the effect of re-predicting the ado trajectories without an ego for the current scene state we
     # stack an altered ado trajectory tensor to another one with is exactly the same as without ego in the scene.
@@ -109,12 +107,12 @@ def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__
     # score w.r.t. only the first part and for the combined ado trajectory should be the same.
     env_test = env.copy()
 
-    ado_trajectory_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
+    ado_trajectory_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2), expand=True).detach()
     metric_score_1 = metric_ado_effort(ado_trajectories=ado_trajectory_1, env=env)
 
-    env_test.step_reset(ego_next=None, ado_next=ado_trajectory_1[:, 0, -1, :])
-    ado_trajectory_2 = env_test.predict_wo_ego(t_horizon=4).detach()
-    ado_trajectory_12 = torch.cat((ado_trajectory_1, ado_trajectory_2), dim=2)
-    ado_trajectory_12[:, :, :, -1] = torch.linspace(0, 7 * env.dt, steps=8)
+    env_test.step_reset(ego_next=None, ado_next=ado_trajectory_1[:, -1, 0, :])
+    ado_trajectory_2 = env_test.predict_wo_ego(t_horizon=4, expand=True).detach()
+    ado_trajectory_12 = torch.cat((ado_trajectory_1, ado_trajectory_2), dim=1)
+    ado_trajectory_12[0, :, 0, -1] = torch.linspace(0, 8 * env.dt, steps=9)
     metric_score_12 = metric_ado_effort(ado_trajectories=ado_trajectory_12, env=env)
     assert np.isclose(metric_score_1, metric_score_12, atol=1e-3)

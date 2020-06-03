@@ -145,7 +145,7 @@ class DTAgent(abc.ABC):
 
         action = self._inverse_dynamics(state, state_previous, dt=dt)
 
-        assert mantrap.utility.shaping.check_ego_action(x=action)
+        assert mantrap.utility.shaping.check_ego_action(action)
         return action
 
     @abc.abstractmethod

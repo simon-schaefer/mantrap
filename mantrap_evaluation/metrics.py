@@ -19,18 +19,18 @@ def metric_minimal_distance(
     ego_trajectory = ego_trajectory.detach()
     assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_only=True)
     ado_trajectories = ado_trajectories.detach()
-    horizon = ego_trajectory.shape[0]
+    t_horizon = ego_trajectory.shape[0]
     num_ados = ado_trajectories.shape[0]
-    assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon=horizon, pos_only=True, modes=1)
+    assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon=t_horizon)
 
     minimal_distance = float("Inf")
-    for t in range(1, horizon):
+    for t in range(1, t_horizon):
         ego_dense = mantrap.utility.maths.straight_line(ego_trajectory[t - 1, 0:2],
                                                         ego_trajectory[t, 0:2],
                                                         steps=num_inter_points)
         for m in range(num_ados):
-            ado_position_t0 = ado_trajectories[m, 0, t-1, 0:2]
-            ado_position_t1 = ado_trajectories[m, 0, t, 0:2]
+            ado_position_t0 = ado_trajectories[m, t-1, 0, 0:2]
+            ado_position_t1 = ado_trajectories[m, t, 0, 0:2]
             ado_dense = mantrap.utility.maths.straight_line(ado_position_t0,
                                                             ado_position_t1,
                                                             steps=num_inter_points)
@@ -79,38 +79,37 @@ def metric_ado_effort(env: mantrap.environment.base.GraphBasedEnvironment, ado_t
     :param ado_trajectories: trajectories of ados (num_ados, num_modes, t_horizon, 5).
     :param env: simulation environment (is copied within function, so not altered).
     """
-    ado_traj = ado_trajectories.detach()
-    t_horizon = ado_traj.shape[2]
-    num_ados = ado_traj.shape[0]
-    assert mantrap.utility.shaping.check_ado_trajectories(ado_traj, modes=1)  # deterministic (!)
+    ado_trajectories = ado_trajectories.detach()
+    t_horizon = ado_trajectories.shape[1]
+    num_ados = ado_trajectories.shape[0]
+    num_modes = ado_trajectories.shape[2]
+    assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories)  # deterministic (!)
 
     # Copy environment to not alter passed env object when resetting its state. Also check whether the initial
     # state in the environment and the ado trajectory tensor are equal.
     env_metric = env.copy()
-    for ghost in env_metric.ghosts:
-        m_ado, m_mode = env_metric.convert_ghost_id(ghost_id=ghost.id)
-        assert torch.all(torch.isclose(ado_traj[m_ado, m_mode, 0, :], ghost.agent.state_with_time))
+    assert env_metric.same_initial_conditions(other=env)
 
     effort_score = 0.0
     for m in range(num_ados):
         for t in range(1, t_horizon):
             # Reset environment to last ado states.
-            env_metric.step_reset(ego_state_next=None, ado_states_next=ado_traj[:, 0, t - 1, :])
+            env_metric.step_reset(ego_next=None, ado_next=ado_trajectories[:, t - 1, 0, :])
 
             # Predicting ado trajectories without interaction for current state.
-            ado_traj_wo = env_metric.predict_wo_ego(t_horizon=2).detach()
-            assert mantrap.utility.shaping.check_ado_trajectories(ado_traj_wo, ados=num_ados, t_horizon=2)
+            ado_trajectory_wo = env_metric.predict_wo_ego(t_horizon=1).detach()
+            assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectory_wo, ados=num_ados, t_horizon=2)
 
             # Determine acceleration difference between actual and without scene w.r.t. ados.
-            dt = float(ado_traj[m, :, t, -1] - ado_traj[m, :, t - 1, -1])
-            dd = mantrap.utility.maths.Derivative2(horizon=2, dt=dt, velocity=True)
-            ado_acc = torch.norm(dd.compute(ado_traj[m, :, t-1:t+1, 2:4]))
-            ado_acc_wo = torch.norm(dd.compute(ado_traj_wo[m, :, 0:2, 2:4]))
+            dd = mantrap.utility.maths.Derivative2(horizon=2, dt=env_metric.dt, velocity=True)
+            for m_mode in range(num_modes):
+                ado_acc = torch.norm(dd.compute(ado_trajectories[m, t-1:t+1, m_mode, 2:4]))
+                ado_acc_wo = torch.norm(dd.compute(ado_trajectory_wo[m, 0:2, m_mode, 2:4]))
 
-            # Accumulate L2 norm of difference in metric score.
-            effort_score += torch.norm(ado_acc - ado_acc_wo).detach()
+                # Accumulate L2 norm of difference in metric score.
+                effort_score += torch.norm(ado_acc - ado_acc_wo).detach()
 
-    return float(effort_score) / num_ados
+    return float(effort_score) / num_ados / num_modes
 
 
 def metric_directness(ego_trajectory: torch.Tensor, goal: torch.Tensor, **unused) -> float:
