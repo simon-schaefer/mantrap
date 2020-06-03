@@ -7,7 +7,7 @@ import torch
 
 import mantrap.constants
 
-from .atomics import __draw_agent_representation, __draw_trajectory_axis, __interactive_save_video
+from .atomics import draw_agent_representation, draw_trajectory_axis, interactive_save_video
 
 
 def visualize_trajectories(
@@ -38,13 +38,13 @@ def visualize_trajectories(
         # Draw trajectories in (quadratic) plot, thereby differentiate the trajectories by color. Also add
         # little dots (`plt.Circle`) at the agents current positions.
         for label, color, trajectory in zip(labels, colors,  trajectories):
-            __draw_agent_representation(trajectory[k, :].detach(), name=label, color=color, env_axes=env_axes, ax=ax)
+            draw_agent_representation(trajectory[k, :].detach(), name=label, color=color, env_axes=env_axes, ax=ax)
             ax.plot(trajectory[:k, 0].detach(), trajectory[:k, 1].detach(), "--", color=color, label=label)
 
-        __draw_trajectory_axis(env_axes, ax=ax)
+        draw_trajectory_axis(env_axes, ax=ax)
         ax.set_title(f"step {k}")
         return ax
 
     anim = matplotlib.animation.FuncAnimation(fig, update, frames=t_horizon,
                                               interval=frame_interval, repeat_delay=restart_delay)
-    return __interactive_save_video(anim, file_path=file_path)
+    return interactive_save_video(anim, file_path=file_path)

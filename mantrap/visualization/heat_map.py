@@ -8,7 +8,7 @@ import numpy as np
 
 import mantrap.constants
 
-from .atomics import __interactive_save_video
+from .atomics import interactive_save_video
 
 
 def visualize_heat_map(

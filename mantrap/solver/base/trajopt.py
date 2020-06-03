@@ -39,7 +39,7 @@ class TrajOptSolver(abc.ABC):
     :param attention_module: Filter module name (None = no filter).
     :param eval_env: environment that should be used for evaluation ("real" environment).
     :param config_name: name of solver configuration.
-    :param logging: should all the results be logged (necessary for plotting but very costly !!).
+    :param is_logging: should all the results be logged (necessary for plotting but very costly !!).
     """
     def __init__(
         self,
@@ -50,7 +50,7 @@ class TrajOptSolver(abc.ABC):
         attention_module: mantrap.attention.AttentionModule.__class__ = None,
         eval_env: mantrap.environment.base.GraphBasedEnvironment = None,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN,
-        logging: bool = False,
+        is_logging: bool = False,
         **solver_params
     ):
         # Dictionary of solver parameters.
@@ -96,7 +96,7 @@ class TrajOptSolver(abc.ABC):
         # deque is way more efficient than the list type for storing simple floating point numbers in a sequence.
         self._log = None
         self._iteration = None
-        self._is_logging = logging
+        self._is_logging = is_logging
 
         # Initialize child class.
         self.initialize(**solver_params)
@@ -573,9 +573,10 @@ class TrajOptSolver(abc.ABC):
         :param plot_path_only: just plot the robot's and ado's trajectories, no further stats.
         :param tag: logging tag to plot, per default optimization tag.
         """
+        from mantrap.visualization.atomics import output_format
         from mantrap.visualization import visualize_overview
         if not self.is_logging:
-            raise LookupError("For visualization the `logging` flag must be activate before solving !")
+            raise LookupError("For visualization the `is_logging` flag must be activate before solving !")
         assert self.log is not None
 
         # From optimization log extract the core (initial condition) which has resulted in the best objective
@@ -595,8 +596,7 @@ class TrajOptSolver(abc.ABC):
             ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],
             ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict,
             env=self.env,
-            plot_path_only=plot_path_only,
-            file_path=self._visualize_output_format("scenes"),
+            file_path=output_format(f"{self.log_name}_{self.env.name}_scenes"),
             **vis_keys
         )
 
@@ -621,6 +621,7 @@ class TrajOptSolver(abc.ABC):
                       the robot's controls than use the same action over the full time-horizon. Hence, the
                       optimization variable space has to be sampled only once per time-step.
         """
+        from mantrap.visualization.atomics import output_format
         from mantrap.visualization import visualize_heat_map
         assert propagation in ["log", "constant"]
 
@@ -705,23 +706,10 @@ class TrajOptSolver(abc.ABC):
 
         # Finally draw all the created images in plot using the `visualize_heat_map` function
         # defined in the internal visualization package.
-        path = self._visualize_output_format(name="heat_map")
+        path = output_format(name=f"{self.log_name}_{self.env.name}_heat_map")
         return visualize_heat_map(images, bounds=bounds, color_bounds=(c_min, c_max), choices=zs,
                                   resolution=resolution, title="optimization landscape",
                                   ax_labels=("z1", "z2"), file_path=path)
-
-    def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
-        """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
-        # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
-        # to None (interactive mode) or to an actual path (storing mode). """
-        from mantrap.utility.io import build_os_path, is_running_from_ipython
-        interactive = is_running_from_ipython()
-        if not interactive:
-            output_path = build_os_path(mantrap.constants.VISUALIZATION_DIRECTORY, make_dir=True, free=False)
-            output_path = os.path.join(output_path, f"{self.log_name}.{self.env.log_name}_{name}")
-        else:
-            output_path = None
-        return output_path
 
     ###########################################################################
     # Solver parameters #######################################################

@@ -1,6 +1,5 @@
 import abc
 import logging
-import os
 import typing
 
 import numpy as np
@@ -546,6 +545,7 @@ class GraphBasedEnvironment(abc.ABC):
         trajectory is repeated to the whole time horizon.
         """
         from mantrap.visualization import visualize_overview
+        from mantrap.visualization.atomics import output_format
 
         # Predict the ado behaviour conditioned on the given ego trajectory.
         ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
@@ -556,25 +556,8 @@ class GraphBasedEnvironment(abc.ABC):
             ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
             ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
 
-        output_path = self._visualize_output_format(name="prediction_wo_ego")
-        return visualize_overview(ado_planned_wo=ado_stretched_wo,
-                                  plot_path_only=True,
-                                  env=self,
-                                  file_path=output_path,
-                                  **vis_kwargs)
-
-    def _visualize_output_format(self, name: str) -> typing.Union[str, None]:
-        """The `visualize()` function enables interactive mode, i.e. returning the video as html5-video directly,
-        # instead of saving it as ".gif"-file. Therefore depending on the input flags, set the output path
-        # to None (interactive mode) or to an actual path (storing mode). """
-        from mantrap.utility.io import build_os_path, is_running_from_ipython
-        interactive = is_running_from_ipython()
-        if not interactive:
-            output_path = build_os_path(mantrap.constants.VISUALIZATION_DIRECTORY, make_dir=True, free=False)
-            output_path = os.path.join(output_path, f"{self.log_name}_{name}")
-        else:
-            output_path = None
-        return output_path
+        output_path = output_format(name=f"{self.log_name}_prediction_wo_ego")
+        return visualize_overview(ado_planned_wo=ado_samples_wo, env=self, file_path=output_path, **vis_kwargs)
 
     ###########################################################################
     # Ado properties ##########################################################
