@@ -343,11 +343,6 @@ class TrajOptSolver(abc.ABC):
         and some input list of ados that should be taken into account in this computation. Therefore all objective
         modules are called, their results are summed (module-internally weighted).
 
-        Since the objective function is the only overlap between all solver classes, for logging purposes (and
-        if the required verbosity level is met), after deriving the objective value the current optimization vector
-        is logged, after being transformed into an understandable format (ego trajectory). Also the other parameters
-        such as the objective values for every objective module are logged.
-
         :param z: optimization vector (shape depends on exact optimization formulation).
         :param ado_ids: identifiers of ados that should be taken into account during optimization.
         :param tag: name of optimization call (name of the core).
@@ -362,7 +357,6 @@ class TrajOptSolver(abc.ABC):
                           for key, mod in self.module_dict.items()}
             module_log[f"{mantrap.constants.LT_OBJECTIVE}_overall"] = objective
             self._log_append(**module_log, tag=tag)
-            self.__intermediate_log(ego_trajectory=ego_trajectory, tag=tag)
 
         return float(objective)
 
@@ -485,7 +479,8 @@ class TrajOptSolver(abc.ABC):
 
     def _log_reset(self):
         self._iteration = 0
-        self._log = collections.defaultdict(list)
+        if self.is_logging:
+            self._log = collections.defaultdict(list)
 
     def _log_append(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **kwargs):
         if self.is_logging and self.log is not None:
@@ -511,6 +506,10 @@ class TrajOptSolver(abc.ABC):
             # of tensors, stack them to a single tensor.
             for key, values in self.log.items():
                 if type(values) == list and len(values) > 0 and all(type(x) == torch.Tensor for x in values):
+
+                    if mantrap.constants.LT_ADO in key:
+                        print(key, len(values))
+
                     self._log[key] = torch.stack(values)
 
             # Save the optimization performance for every optimization step into logging file. Since the
@@ -524,7 +523,8 @@ class TrajOptSolver(abc.ABC):
             csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys if key in self.log.keys()}
             pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
 
-    def log_query(self, key: str, key_type: str, iteration: str = "", tag: str = None, as_dict: bool = False
+    def log_query(self, key: str, key_type: str, iteration: str = "", tag: str = None,
+                  as_dict: bool = False, stack: bool = False
                   ) -> typing.Union[torch.Tensor, typing.Dict[str, torch.Tensor], None]:
         """Query internal log for some value with given key (log-key-structure: {tag}/{key_type}_{key}).
 
@@ -533,7 +533,10 @@ class TrajOptSolver(abc.ABC):
          :param iteration: optimization iteration to search in, if None then no iteration (summarized value).
          :param tag: logging tag to search in.
          :param as_dict: return query result as dictionary (even if only one-sized).
+         :param stack: stack tensors if multiple results (shapes not checked !!).
          """
+        if not self.is_logging:
+            raise LookupError("For querying the `is_logging` flag must be activate before solving !")
         assert self.log is not None
         if iteration == "end":
             iteration = str(self._iteration)
@@ -551,7 +554,10 @@ class TrajOptSolver(abc.ABC):
 
         # If only one element is in the dictionary, return not the dictionary but the item itself.
         if len(results_dict.keys()) > 1 or as_dict:
-            return results_dict
+            if stack:
+                return torch.cat([results_dict[key] for key in sorted(results_dict.keys())], dim=0)
+            else:
+                return results_dict
         else:
             return results_dict.popitem()[1]
 

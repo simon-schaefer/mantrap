@@ -113,7 +113,8 @@ class TestSolvers:
                    warm_start_method: str):
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
-        solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
+        solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5,
+                              is_logging=True)
 
         assert solver.planning_horizon == 5
         assert torch.all(torch.eq(solver.goal, torch.zeros(2)))
@@ -122,8 +123,8 @@ class TestSolvers:
         ego_trajectory_opt, ado_trajectories = solver.solve(solver_horizon,
                                                             warm_start_method=warm_start_method,
                                                             max_cpu_time=0.1)
-        ado_planned = solver.log[f"{mantrap.constants.TAG_OPTIMIZATION}/ado_planned_end"]
-        ego_opt_planned = solver.log[f"{mantrap.constants.TAG_OPTIMIZATION}/ego_planned_end"]
+        ado_planned = solver.log_query(key_type=mantrap.constants.LT_ADO, key="planned", stack=True)
+        ego_opt_planned = solver.log_query(key_type=mantrap.constants.LT_EGO, key="planned", stack=True)
 
         # Test output shapes.
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
