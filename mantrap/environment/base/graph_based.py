@@ -497,67 +497,37 @@ class GraphBasedEnvironment(abc.ABC):
     # Visualization ###########################################################
     ###########################################################################
     def visualize_prediction(self, ego_trajectory: torch.Tensor, **vis_kwargs):
-        """Visualize the predictions for the scene based on the given ego trajectory.
-
-        In order to be use the general `visualize()` function defined in the `mantrap.visualization` - package the ego
-        and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
-        visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
-        plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
-        trajectory is repeated to the whole time horizon.
-        """
-        from mantrap.visualization import visualize_overview
+        """Visualize the predictions for the scene based on the given ego trajectory."""
+        from mantrap.visualization import visualize_prediction
+        from mantrap.visualization.atomics import output_format
         assert mantrap.utility.shaping.check_ego_trajectory(x=ego_trajectory)
-        t_horizon = ego_trajectory.shape[0]
+        t_horizon = ego_trajectory.shape[0] - 1
 
         # Predict the ado behaviour conditioned on the given ego trajectory.
-        ado_trajectories = self.sample_w_trajectory(ego_trajectory=ego_trajectory)
-        ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
+        num_samples = mantrap.constants.VISUALIZATION_SAMPLES
+        ado_samples = self.sample_w_trajectory(ego_trajectory=ego_trajectory, num_samples=num_samples)
+        ado_samples_wo = self.sample_wo_ego(t_horizon=t_horizon, num_samples=num_samples)
 
-        # Stretch the ego and ado trajectories as described above.
-        ego_stretched = torch.zeros((t_horizon, t_horizon, 5))
-        ado_stretched = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
-        ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
-        for t in range(t_horizon):
-            ego_stretched[t, :(t_horizon - t), :] = ego_trajectory[t:t_horizon, :]
-            ego_stretched[t, (t_horizon - t):, :] = ego_trajectory[-1, :]
-            ado_stretched[t, :, :, :(t_horizon - t), :] = ado_trajectories[:, :, t:t_horizon, :]
-            ado_stretched[t, :, :, (t_horizon - t):, :] = ado_trajectories[:, :, -1, :].unsqueeze(dim=2)
-            ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
-            ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
-
-        return visualize_overview(
-            ego_planned=ego_stretched,
-            ado_planned=ado_stretched,
-            ado_planned_wo=ado_stretched_wo,
-            plot_path_only=True,
+        return visualize_prediction(
+            ego_planned=ego_trajectory,
+            ado_planned=ado_samples,
+            ado_planned_wo=ado_samples_wo,
             env=self,
-            file_path=self._visualize_output_format(name="prediction"),
+            file_path=output_format(name=f"{self.log_name}_prediction"),
             **vis_kwargs
         )
 
     def visualize_prediction_wo_ego(self, t_horizon: int, **vis_kwargs):
-        """Visualize the predictions for the scene based on the given ego trajectory.
-
-        In order to be use the general `visualize()` function defined in the `mantrap.visualization` - package the ego
-        and ado trajectories require to be in (num_steps, t_horizon, 5) shape, a representation that allows to
-        visualize planned trajectories at multiple points in time (re-planning). However for the purpose of
-        plotting the predicted trajectories, there are no changes in planned trajectories. That's why the predicted
-        trajectory is repeated to the whole time horizon.
-        """
-        from mantrap.visualization import visualize_overview
+        """Visualize the predictions for the scene based on the given ego trajectory."""
+        from mantrap.visualization import visualize_prediction
         from mantrap.visualization.atomics import output_format
 
         # Predict the ado behaviour conditioned on the given ego trajectory.
-        ado_trajectories_wo = self.sample_wo_ego(t_horizon=t_horizon)
-
-        # Stretch the ego and ado trajectories as described above.
-        ado_stretched_wo = torch.zeros((t_horizon, self.num_ados, self.num_modes, t_horizon, 5))
-        for t in range(t_horizon):
-            ado_stretched_wo[t, :, :, :(t_horizon - t), :] = ado_trajectories_wo[:, :, t:t_horizon, :]
-            ado_stretched_wo[t, :, :, (t_horizon - t):, :] = ado_trajectories_wo[:, :, -1, :].unsqueeze(dim=2)
+        num_samples = mantrap.constants.VISUALIZATION_SAMPLES
+        ado_samples_wo = self.sample_wo_ego(t_horizon=t_horizon, num_samples=num_samples)
 
         output_path = output_format(name=f"{self.log_name}_prediction_wo_ego")
-        return visualize_overview(ado_planned_wo=ado_samples_wo, env=self, file_path=output_path, **vis_kwargs)
+        return visualize_prediction(ado_planned_wo=ado_samples_wo, env=self, file_path=output_path, **vis_kwargs)
 
     ###########################################################################
     # Ado properties ##########################################################

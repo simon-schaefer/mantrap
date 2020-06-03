@@ -4,14 +4,13 @@ import typing
 import matplotlib.animation
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import torch
 
 import mantrap.utility.shaping
 
 
 def draw_agent_representation(
-    state: torch.Tensor,
+    position: torch.Tensor,
     name: typing.Union[str, None],
     color: typing.Union[np.ndarray, str],
     env_axes: typing.Tuple[typing.Tuple[float, float], typing.Tuple[float, float]],
@@ -20,15 +19,28 @@ def draw_agent_representation(
 ):
     """Add circle for agent and agent id description. If the state (position) is outside of the scene, just
     do not plot it, return directly instead."""
-    assert mantrap.utility.shaping.check_ego_state(state, enforce_temporal=False)
-
-    if not (env_axes[0][0] < state[0] < env_axes[0][1]) or not (env_axes[1][0] < state[1] < env_axes[1][1]):
+    if not (env_axes[0][0] < position[0] < env_axes[0][1]) or not (env_axes[1][0] < position[1] < env_axes[1][1]):
         return
-    state = state.detach().numpy()
-    ado_circle = plt.Circle(state[0:2], radius=0.2, color=color, clip_on=True, alpha=alpha)
+    position = position.detach().numpy()
+    ado_circle = plt.Circle(position, radius=0.2, color=color, clip_on=True, alpha=alpha)
     ax.add_artist(ado_circle)
     if name is not None:
-        ax.text(state[0], state[1], name, fontsize=8)
+        ax.text(position[0], position[1], name, fontsize=8)
+    return ax
+
+
+def draw_samples(
+    samples: torch.Tensor,
+    name: typing.Union[str, None],
+    color: typing.Union[np.ndarray, str],
+    ax: plt.Axes,
+    alpha: float = 1.0
+):
+    """Draw trajectory samples into axes, by sample-wise iterations (samples, t_horizon, 1, dims >= 2)."""
+    num_samples = samples.shape[0]
+    for i in range(num_samples):
+        xs, ys = samples[i, :, 0, 0], samples[i, :, 0, 1]
+        ax.plot(xs, ys, "--", color=color, label=name, alpha=alpha)
     return ax
 
 
@@ -52,8 +64,6 @@ def output_format(name: str) -> typing.Union[str, None]:
         output_path = None
     return output_path
 
-    ax = __draw_trajectory_axis(env.axes, ax=ax, legend=legend)
-    return ax
 
 def interactive_save_video(anim: matplotlib.animation.FuncAnimation, file_path: str):
     """In interactive mode (when file_path is not set), return the video itself, otherwise save
@@ -63,9 +73,9 @@ def interactive_save_video(anim: matplotlib.animation.FuncAnimation, file_path: 
     return True if file_path is not None else anim.to_html5_video()
 
 
-def interactive_save_image(fig: plt.Figure, file_path: str):
+def interactive_save_image(ax: plt.Axes, file_path: str):
     """In interactive mode (when file_path is not set) return the image itself, otherwise save
     the image in the given direction as a ".png"-file. """
     if file_path is not None:
         plt.savefig(f"{file_path}.png")
-    return True
+    return ax

@@ -103,4 +103,4 @@ def visualize_heat_map(
     anim = matplotlib.animation.FuncAnimation(fig, update, frames=images.shape[0],
                                               interval=mantrap.constants.VISUALIZATION_FRAME_DELAY,
                                               repeat_delay=mantrap.constants.VISUALIZATION_RESTART_DELAY)
-    return __interactive_save_video(anim, file_path=file_path)
+    return interactive_save_video(anim, file_path=file_path)

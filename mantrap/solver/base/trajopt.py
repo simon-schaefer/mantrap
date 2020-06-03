@@ -402,7 +402,6 @@ class TrajOptSolver(abc.ABC):
         violation = float(np.sum([m.compute_violation_internal(tag=tag) for m in self.modules]))
 
         if self.is_logging:
-            self._log_append(inf_overall=violation, tag=tag)
             module_log = {f"{mantrap.constants.LT_CONSTRAINT}_{key}": mod.inf_current(tag=tag)
                           for key, mod in self.module_dict.items()}
             module_log[f"{mantrap.constants.LT_CONSTRAINT}_overall"] = violation
@@ -559,35 +558,31 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_scenes(self, plot_path_only: bool = False, tag: str = mantrap.constants.TAG_OPTIMIZATION, **vis_keys):
+    def visualize_scenes(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **vis_keys):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory).
 
-        :param plot_path_only: just plot the robot's and ado's trajectories, no further stats.
         :param tag: logging tag to plot, per default optimization tag.
         """
         from mantrap.visualization.atomics import output_format
-        from mantrap.visualization import visualize_overview
+        from mantrap.visualization import visualize_optimization
         if not self.is_logging:
             raise LookupError("For visualization the `is_logging` flag must be activate before solving !")
         assert self.log is not None
 
-        # From optimization log extract the core (initial condition) which has resulted in the best objective
-        # value in the end. Then, due to the structure demanded by the visualization function, repeat the entry
-        # N=t_horizon times to be able to visualize the whole distribution at every time.
-        obj_dict = {key: self.log[f"{tag}/{mantrap.constants.LT_OBJECTIVE}_{key}_end"]
-                    for key in self.module_names}
-        obj_dict = {key: [obj_dict[key]] * (self._iteration + 1) for key in self.module_names}
-        inf_dict = {key: self.log[f"{tag}/{mantrap.constants.LT_CONSTRAINT}_{key}_end"]
-                    for key in self.module_names}
-        inf_dict = {key: [inf_dict[key]] * (self._iteration + 1) for key in self.module_names}
+        ego_planned = self.log_query(key_type=mantrap.constants.LT_EGO, key="planned", tag=tag)
+        ego_planned = torch.stack([x[-1] for x in ego_planned.values()])  # dict keys sorted !
+        ado_planned = self.log_query(key_type=mantrap.constants.LT_ADO, key="planned", tag=tag)
+        ado_planned = [x[-1] for x in ado_planned.values()]
+        ado_planned_wo = self.log_query(key_type=mantrap.constants.LT_ADO_WO, key="planned", tag=tag)
+        ado_planned_wo = [x[-1] for x in ado_planned_wo.values()]
 
-        return visualize_overview(
-            ego_planned=self.log[f"{tag}/ego_planned_end"],
-            ado_planned=self.log[f"{tag}/ado_planned_end"],
-            ado_planned_wo=self.log[f"{tag}/ado_planned_wo_end"],
-            ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],
-            ego_goal=self.goal, obj_dict=obj_dict, inf_dict=inf_dict,
+        return visualize_optimization(
+            ego_planned=ego_planned,
+            ado_planned=ado_planned,
+            ado_planned_wo=ado_planned_wo,
+            # ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],
+            ego_goal=self.goal,
             env=self.env,
             file_path=output_format(f"{self.log_name}_{self.env.name}_scenes"),
             **vis_keys
