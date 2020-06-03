@@ -129,7 +129,7 @@ class TestSolvers:
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory_opt, t_horizon=t_horizon_exp)
         assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon_exp, ados=env.num_ados)
-        assert tuple(ado_planned.shape) == (solver_horizon, 1, 1, solver.planning_horizon + 1, 2)
+        assert tuple(ado_planned.shape) == (solver_horizon, 1, env.num_ados, solver.planning_horizon + 1, 1, 2)
         assert tuple(ego_opt_planned.shape) == (solver_horizon, solver.planning_horizon + 1, 5)
 
         # Test ado planned trajectories - depending on environment engine. Therefore only time-stamps can be tested.
@@ -204,6 +204,8 @@ class TestSearchSolvers:
     def test_improvement(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
                          env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
         np.random.seed(0)
+        torch.manual_seed(0)
+
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
         env.add_ado(position=torch.tensor([9, 9]))  # far-away
         solver = solver_class(env, goal=torch.zeros(2), t_planning=5)

@@ -82,7 +82,7 @@ class TestEnvironment:
         env.add_ado(goal=torch.zeros(2), position=torch.tensor([1, 0]), history=history)
 
         ado_trajectories = env.sample_wo_ego(t_horizon=t_horizon)
-        assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon=t_horizon + 1, ados=2)
+        assert mantrap.utility.shaping.check_ado_samples(ado_trajectories, t_horizon=t_horizon + 1, ados=2)
 
     @staticmethod
     def test_build_distributions(environment_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
@@ -166,13 +166,10 @@ class TestEnvironment:
         assert mantrap.utility.shaping.check_ado_states(ado_states, enforce_temporal=True)
 
         # The first entry of every predicted trajectory should be the current state, check that.
-        ado_trajectories = env.sample_wo_ego(t_horizon=2, num_samples=4)
-
-        # print(ado_trajectories[:, 0, 0, :])
-        # print(ado_states[0, 0:2])
-        # print(ado_trajectories[:, :, 0, 0])
-
+        ado_trajectories = env.predict_wo_ego(t_horizon=2)
         assert torch.allclose(ado_trajectories[:, 0, 0, :], ado_states[:, 0:2], atol=0.01)
+        ado_samples = env.sample_wo_ego(t_horizon=2, num_samples=1)
+        assert torch.allclose(ado_samples[:, 0, 0, 0, :], ado_states[:, 0:2], atol=0.01)
 
         # Test that the states are the same as the states of actual agents.
         assert torch.all(torch.eq(ego_state, env.ego.state_with_time))
@@ -223,8 +220,8 @@ def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
     env_2 = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, ego_position=pos_2)
 
     t_horizon = 4
-    mus = torch.zeros((2, t_horizon + 1, 2))
-    sigmas = torch.zeros((2, t_horizon + 1, 2))
+    mus = torch.zeros((2, t_horizon + 1, env_1.num_modes, 2))
+    sigmas = torch.zeros((2, t_horizon + 1, env_1.num_modes, 2))
     grads = torch.zeros((2, t_horizon, 2))
     for i, env in enumerate([env_1, env_2]):
         env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
@@ -234,14 +231,14 @@ def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
         ego_trajectory = env.ego.unroll_trajectory(ego_controls, dt=env.dt)
         dist_dict = env.compute_distributions(ego_trajectory=ego_trajectory)
 
-        mus[i, :, :] = dist_dict[env.ado_ids[0]].mean
-        sigmas[i, :, :] = dist_dict[env.ado_ids[0]].variance
-        grads[i, :, :] = torch.autograd.grad(torch.norm(mus[i, -1, :]), ego_controls)[0]
+        mus[i, :, :, :] = dist_dict[env.ado_ids[0]].mean
+        sigmas[i, :, :, :] = dist_dict[env.ado_ids[0]].variance
+        grads[i, :, :] = torch.autograd.grad(torch.norm(mus[i, -1, :, :]), ego_controls)[0]
 
     # The interaction "force" is distance based, so more distant agents should affect a smaller "force".
     # Due to a larger induced force differences between the particle parameters are larger, so that the
     # uncertainty grows larger as well. (0 ==> "close" ego; 1 ==> "far" ego)
-    assert torch.all(torch.ge(torch.norm(mus[0, :, :], dim=1), torch.norm(mus[1, :, :], dim=1)))
+    assert torch.all(torch.ge(torch.norm(mus[0, :, :, :], dim=2), torch.norm(mus[1, :, :, :], dim=2)))
     # assert torch.all(torch.norm(sigmas[0, :, :], dim=1) >= torch.norm(sigmas[1, :, :], dim=1))
 
     # Similarly the gradient should be larger, the closer the ego is since its "impact" increases.
@@ -269,10 +266,10 @@ def test_kalman_distributions():
     mean = dist_dict[env.ado_ids[0]].mean
     variance = dist_dict[env.ado_ids[0]].variance
 
-    assert torch.allclose(mean[:, 0], torch.linspace(x0, x0 + vx * t_horizon * env.dt, steps=t_horizon + 1))
-    assert torch.allclose(mean[:, 1], torch.linspace(y0, y0 + vy * t_horizon * env.dt, steps=t_horizon + 1))
+    assert torch.allclose(mean[:, 0, 0], torch.linspace(x0, x0 + vx * t_horizon * env.dt, steps=t_horizon + 1))
+    assert torch.allclose(mean[:, 0, 1], torch.linspace(y0, y0 + vy * t_horizon * env.dt, steps=t_horizon + 1))
 
-    variance_diff = variance[1:, :] - variance[:-1, :]
+    variance_diff = (variance[1:, :, :] - variance[:-1, :, :]).squeeze()
     assert torch.all(variance_diff >= 0)  # variance is strictly increasing over time
 
 

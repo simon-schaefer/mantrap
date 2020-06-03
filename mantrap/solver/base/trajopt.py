@@ -135,7 +135,7 @@ class TrajOptSolver(abc.ABC):
         :return: derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
         """
         ego_trajectory_opt = torch.zeros((time_steps + 1, 5))
-        ado_trajectories = torch.zeros((self.env.num_ados, 1, time_steps + 1, 5))
+        ado_trajectories = torch.zeros((self.env.num_ados, time_steps + 1, 1, 5))
         self._log_reset(log_horizon=time_steps)
         env_copy = self.env.copy()
         eval_env_copy = self.eval_env.copy()
@@ -174,13 +174,13 @@ class TrajOptSolver(abc.ABC):
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
             self._env.step_reset(ego_next=ego_state, ado_next=ado_states)
             ego_trajectory_opt[k + 1, :] = ego_state
-            ado_trajectories[:, 0, k + 1, :] = ado_states
+            ado_trajectories[:, k + 1, 0, :] = ado_states
 
             # If the goal state has been reached, break the optimization loop (and shorten trajectories to
             # contain only states up to now (i.e. k + 1 optimization steps instead of max_steps).
             if torch.norm(ego_state[0:2] - self.goal) < mantrap.constants.SOLVER_GOAL_END_DISTANCE:
                 ego_trajectory_opt = ego_trajectory_opt[:k + 2, :].detach()
-                ado_trajectories = ado_trajectories[:, :, :k + 2, :].detach()
+                ado_trajectories = ado_trajectories[:, :k + 2, :, :].detach()
 
                 # Log a last time in order to log the final state, after the environment has executed it
                 # its update step. However since the controls have not changed, but still the planned

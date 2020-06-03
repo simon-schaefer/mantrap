@@ -65,17 +65,27 @@ def check_ado_states(x: torch.Tensor, num_ados: int = None, enforce_temporal: bo
     return True
 
 
-def check_ado_trajectories(x: torch.Tensor, t_horizon: int = None, ados: int = None, num_samples: int = None) -> bool:
+def check_ado_trajectories(x: torch.Tensor, t_horizon: int = None, ados: int = None, num_modes: int = None) -> bool:
     assert not torch.any(torch.isnan(x))
-    assert len(x.shape) == 4  # (num_ados,num_samples,t_horizon, 2)
+    assert len(x.shape) == 4  # (num_ados, t_horizon, num_modes, 2)
 
     assert x.shape[3] in [2, 5]  # (x, y) - positions, (x, y, vx, vy, t) - full state
     if ados is not None:
         assert x.shape[0] == ados
+    if t_horizon is not None:
+        assert x.shape[1] == t_horizon
+    if num_modes is not None:
+        assert x.shape[2] == num_modes
+    return True
+
+
+def check_ado_samples(x: torch.Tensor, t_horizon: int = None, ados: int = None, num_samples: int = None) -> bool:
+    assert not torch.any(torch.isnan(x))
+    assert len(x.shape) == 5  # (num_ados,num_samples,t_horizon, num_modes, 2/5)
+
     if num_samples is not None:
         assert x.shape[1] == num_samples
-    if t_horizon is not None:
-        assert x.shape[2] == t_horizon
+    assert all([check_ado_trajectories(x[:, i, :, :, :], t_horizon, ados, num_modes=1) for i in range(x.shape[1])])
     return True
 
 

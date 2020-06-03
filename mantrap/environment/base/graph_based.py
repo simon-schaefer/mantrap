@@ -106,9 +106,9 @@ class GraphBasedEnvironment(abc.ABC):
         # deterministic) the velocity just can be computed by deriving the difference of the sample and the
         # current position of each ado (multiplied by 1/dt).
         ado_states = torch.zeros((self.num_ados, 5))
-        ado_samples = self.sample_w_controls(ego_controls=ego_action.view(1, 2))
+        ado_samples = self.sample_w_controls(ego_controls=ego_action.view(1, 2), num_samples=1)
         for m_ado, ado_id in enumerate(self.ado_ids):
-            ado_m_position = ado_samples[m_ado, 0, 1, :]
+            ado_m_position = ado_samples[m_ado, 0, 1, 0, :]
             ado_m_velocity = (ado_m_position - self.ados[m_ado].position) / self.dt
             ado_m_state = torch.cat((ado_m_position, ado_m_velocity))
 
@@ -186,7 +186,8 @@ class GraphBasedEnvironment(abc.ABC):
         samples = torch.stack([dist_dict[ado_id].sample_n(num_samples) for ado_id in self.ado_ids])
         if expand:
             samples = self.expand_ado_trajectories(ado_trajectories=samples)
-        assert mantrap.utility.shaping.check_ado_trajectories(samples, t_horizon + 1, self.num_ados, num_samples)
+
+        assert mantrap.utility.shaping.check_ado_samples(samples, t_horizon + 1, self.num_ados, num_samples)
         return samples
 
     def sample_wo_ego(self, t_horizon: int, num_samples: int = 1, expand: bool = False) -> torch.Tensor:
@@ -204,7 +205,8 @@ class GraphBasedEnvironment(abc.ABC):
         samples = torch.stack([dist_dict[ado_id].sample_n(num_samples) for ado_id in self.ado_ids])
         if expand:
             samples = self.expand_ado_trajectories(ado_trajectories=samples)
-        assert mantrap.utility.shaping.check_ado_trajectories(samples, t_horizon + 1, self.num_ados, num_samples)
+
+        assert mantrap.utility.shaping.check_ado_samples(samples, t_horizon + 1, self.num_ados, num_samples)
         return samples
 
     ###########################################################################
@@ -240,7 +242,7 @@ class GraphBasedEnvironment(abc.ABC):
             means = means.unsqueeze(dim=1)
         if expand:
             means = self.expand_ado_trajectories(ado_trajectories=means)
-        assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon + 1, self.num_ados, 1)
+        assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon=t_horizon + 1, ados=self.num_ados)
         return means
 
     def predict_wo_ego(self, t_horizon: int, expand: bool = False) -> torch.Tensor:
@@ -257,7 +259,7 @@ class GraphBasedEnvironment(abc.ABC):
         means = torch.stack([dist_dict[ado_id].mean for ado_id in self.ado_ids])
         if expand:
             means = self.expand_ado_trajectories(ado_trajectories=means)
-        assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon + 1, self.num_ados, 1)
+        assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon=t_horizon + 1, ados=self.num_ados)
         return means
 
     ###########################################################################

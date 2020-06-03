@@ -92,7 +92,7 @@ class GMM2D(torch.distributions.Distribution):
         mvn_samples = self.mus + torch.matmul(self.L, samples).squeeze(dim=-1)
         component_cat_samples = self.pis_cat_dist.sample(sample_shape)
         selector = torch.eye(self.components)[component_cat_samples].unsqueeze(dim=-1)
-        return torch.sum(mvn_samples * selector, dim=-2)
+        return torch.sum(mvn_samples * selector, dim=-2, keepdim=True)
 
     @property
     def mean(self):

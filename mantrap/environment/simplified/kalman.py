@@ -62,8 +62,8 @@ class KalmanEnvironment(GraphBasedEnvironment):
         # to massively speed up the computation.
         with torch.no_grad():
             for ado in self.ados:
-                mus = torch.zeros((t_horizon + 1, 2))
-                sigmas = torch.zeros((t_horizon + 1, 2))  # variance will be diagonal for sure (!)
+                mus = torch.zeros((t_horizon + 1, 1, 2))  # t_horizon, num_modes, 2 (=dims)
+                sigmas = torch.zeros((t_horizon + 1, 1, 2))  # variance will be diagonal for sure (!)
 
                 u_constant = ado.velocity.clone().detach()
                 x_k1 = ado.position.clone().detach()  # notation: x_k1 = "x_{k minus 1}"
@@ -76,14 +76,14 @@ class KalmanEnvironment(GraphBasedEnvironment):
                 Q = torch.eye(x_k1.numel()) * noise_additive
                 p_k1 = torch.eye(x_k1.numel()) * mantrap.constants.ENV_VAR_INITIAL
 
-                mus[0, :] = x_k1
-                sigmas[0, :] = p_k1.diagonal()
+                mus[0, 0, :] = x_k1
+                sigmas[0, 0, :] = p_k1.diagonal()
                 for t in range(t_horizon):
                     x_k = torch.matmul(F, x_k1) + torch.matmul(B, u_constant)
                     p_k = torch.matmul(torch.matmul(F, p_k1), FT) + Q
 
-                    mus[t + 1, :] = x_k
-                    sigmas[t + 1, :] = p_k.diagonal()
+                    mus[t + 1, 0, :] = x_k
+                    sigmas[t + 1, 0, :] = p_k.diagonal()
                     x_k1 = x_k
                     p_k1 = p_k
 

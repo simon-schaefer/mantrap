@@ -146,13 +146,13 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
         # them to a uni-modal gaussian distribution.
         _, ado_states = self.states()
 
-        mus = torch.zeros((t_horizon + 1, self.num_ados, 4))  # position + velocity
-        mus[0, :, :] = ado_states[:, 0:4]
-        sigmas = torch.zeros((t_horizon + 1, self.num_ados, 2))  # position only
-        sigmas[0, :, :] = torch.ones((self.num_ados, 2)) * mantrap.constants.ENV_VAR_INITIAL
+        mus = torch.zeros((self.num_ados, t_horizon + 1, 1, 4))  # ados, t_horizon, modes, 4 (= position + velocity)
+        mus[:, 0, 0, :] = ado_states[:, 0:4]
+        sigmas = torch.zeros((self.num_ados, t_horizon + 1, 1, 2))  # position only
+        sigmas[:, 0, 0, :] = torch.ones((self.num_ados, 2)) * mantrap.constants.ENV_VAR_INITIAL
         for t in range(t_horizon):
             ego_state_t = ego_trajectory[t]
-            ado_states_t = mus[t, :, :]
+            ado_states_t = mus[:, t, 0, :]
             positions_t = torch.zeros((self.num_ados, num_particles, 2))
 
             # Simulate and update the particles for each ado in the scene and the current time-step.
@@ -171,13 +171,13 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
             # Weight the position estimate of each particle with their probability occurring in the initial
             # distribution they have been sampled from.
             positions_t_pdf = positions_t * particle_pdf
-            mus[t + 1, :, 0:2] = torch.mean(positions_t_pdf, dim=1)
-            mus[t + 1, :, 2:4] = (mus[t + 1, :, 0:2] - mus[t, :, 0:2]) / self.dt
-            sigmas[t + 1, :, :] = torch.var(positions_t_pdf, dim=1)
+            mus[:, t + 1, 0, 0:2] = torch.mean(positions_t_pdf, dim=1)
+            mus[:, t + 1, 0, 2:4] = (mus[:, t + 1, 0, 0:2] - mus[:, t, 0, 0:2]) / self.dt
+            sigmas[:, t + 1, 0, :] = torch.var(positions_t_pdf, dim=1)
 
         # Transform mus and sigmas to positional gaussian distribution objects dictionary
         # (hint: same order of ado_ids and ados() have been ensured in sanity_check() !).
-        dist_dict = {ado_id: torch.distributions.Normal(loc=mus[:, m_ado, 0:2], scale=sigmas[:, m_ado, :])
+        dist_dict = {ado_id: torch.distributions.Normal(loc=mus[m_ado, :, :, 0:2], scale=sigmas[m_ado, :, :, :])
                      for m_ado, ado_id in enumerate(self.ado_ids)}
 
         return dist_dict
