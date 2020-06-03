@@ -40,6 +40,7 @@ ENV_Y_AXIS_DEFAULT = (-10, 10)
 ENV_VAR_INITIAL = 1e-6  # variance of initial distribution at t = t0.
 
 ENV_NUM_PARTICLES = 5  # number of particles for estimating positional distribution for particle based predictions.
+ENV_PARTICLE_NOISE = 1e-6  # positional noise to avoid running into troubles in case of otherwise zero-variance.
 
 KALMAN_ADDITIVE_NOISE = 0.2  # additive noise per prediction time-step (Q in Kalman equations).
 

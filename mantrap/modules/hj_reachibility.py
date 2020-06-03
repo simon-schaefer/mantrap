@@ -70,6 +70,7 @@ class HJReachabilityModule(OptimizationModule):
         assert grid_max[1] - grid_min[1] >= 2 * (y_axis[1] - y_axis[0])
         assert grid_min[2] == grid_min[3] <= v_min
         assert grid_max[2] == grid_max[3] >= v_max
+        self._grid_min, self._grid_max = grid_min, grid_max
 
         # Get value function time-intervals in order to determine which value function grid we need
         # when we want to make a statement about the full time horizon (planning horizon) of the
@@ -96,9 +97,11 @@ class HJReachabilityModule(OptimizationModule):
     # Value Function ##########################################################
     ###########################################################################
     def value_function(self, x: np.ndarray) -> np.ndarray:
+        x = np.clip(x, self._grid_min, self._grid_max)
         return self._value_function(x)
 
     def value_gradient(self, x: np.ndarray) -> np.ndarray:
+        x = np.clip(x, self._grid_min, self._grid_max)
         return np.concatenate([self._gradients[i](x) for i in range(4)])
 
     ###########################################################################

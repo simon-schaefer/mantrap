@@ -162,6 +162,10 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
                     particles[m_ado][m_particle] = self.simulate_particle(particle, ado_states_t, ego_state_t)
                     positions_t[m_ado, m_particle, :] = particles[m_ado][m_particle].position
 
+            # By adding a tiny amount of white gaussian noise we avoid troubles with zero variance
+            # (e.g. in Potential Field Environment with uni-directional interactions).
+            positions_t += torch.rand(positions_t.shape) * mantrap.constants.ENV_PARTICLE_NOISE
+
             # Estimate the overall positional distribution of every ado in the next time-step, by averaging over
             # all updated particles. Then compute the mean of the velocity distribution from that.
             # Weight the position estimate of each particle with their probability occurring in the initial

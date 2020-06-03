@@ -144,7 +144,7 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         ego_trajectory, grad_wrt = self.z_to_ego_trajectory(z, return_leaf=True)
 
         jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, tag=tag, ado_ids=ado_ids) for m in self.modules]
-        jacobian = [x for x in jacobian if x.size > 0]
+        jacobian = [x.flatten() for x in jacobian if x.size > 0]
         jacobian = np.concatenate(jacobian)
         
         return jacobian

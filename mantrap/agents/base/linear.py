@@ -78,7 +78,7 @@ class LinearDTAgent(DTAgent, abc.ABC):
         :param dt: time interval [s] between discrete trajectory states.
         :return: resulting trajectory (no uncertainty in dynamics assumption !), (N, 4).
         """
-        assert mantrap.utility.shaping.check_ego_controls(x=controls)
+        assert mantrap.utility.shaping.check_ego_controls(controls)
         assert dt > 0.0
         x_size = self.state_size
         u_size = self.control_size
@@ -210,7 +210,7 @@ class LinearDTAgent(DTAgent, abc.ABC):
         :param dt: dynamics integration time-step [s].
         :param max_steps: maximal number of pre-computed steps.
         """
-        if dt not in self._dynamics_matrices_rolling_dict.keys():
+        def _compute():
             A, B, _ = self._dynamics_matrices(dt=dt)
             A, B = A.float(), B.float()
             x_size = self.state_size
@@ -227,6 +227,10 @@ class LinearDTAgent(DTAgent, abc.ABC):
             time_indexes = torch.linspace(1, max_steps + 1, steps=max_steps + 1).long()
             Tn[time_indexes * x_size - 1] = time_indexes.float() - 1  # [0, 1, 2, ...]
 
-            self._dynamics_matrices_rolling_dict[dt] = An.float(), Bn.float(), Tn.float()
+            return An.float(), Bn.float(), Tn.float()
+
+        if dt not in self._dynamics_matrices_rolling_dict.keys() or \
+            max_steps > self._dynamics_matrices_rolling_dict[dt][2].numel() / 5 - 1:  # 5 = x_size
+            self._dynamics_matrices_rolling_dict[dt] = _compute()
 
         return self._dynamics_matrices_rolling_dict[dt]
