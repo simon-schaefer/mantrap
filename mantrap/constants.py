@@ -10,7 +10,7 @@ LT_EGO = "ego"
 LT_ADO = "ado"
 LT_ADO_WO = "ado_wo"
 
-LK_OVERALL_PERFORMANCE = "overall"  # LK = Log-Keys (module names, ...)
+LK_OVERALL = "overall"  # LK = Log-Keys (module names, ...)
 
 TAG_OPTIMIZATION = "optimization"  # logging tags
 TAG_WARM_START = "warm_start"

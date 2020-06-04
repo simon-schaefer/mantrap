@@ -355,7 +355,7 @@ class TrajOptSolver(abc.ABC):
         if self.is_logging:
             module_log = {f"{mantrap.constants.LT_OBJECTIVE}_{key}": mod.obj_current(tag=tag)
                           for key, mod in self.module_dict.items()}
-            module_log[f"{mantrap.constants.LT_OBJECTIVE}_overall"] = objective
+            module_log[f"{mantrap.constants.LT_OBJECTIVE}_{mantrap.constants.LK_OVERALL}"] = objective
             self._log_append(**module_log, tag=tag)
 
         return float(objective)
@@ -398,7 +398,7 @@ class TrajOptSolver(abc.ABC):
         if self.is_logging:
             module_log = {f"{mantrap.constants.LT_CONSTRAINT}_{key}": mod.inf_current(tag=tag)
                           for key, mod in self.module_dict.items()}
-            module_log[f"{mantrap.constants.LT_CONSTRAINT}_overall"] = violation
+            module_log[f"{mantrap.constants.LT_CONSTRAINT}_{mantrap.constants.LK_OVERALL}"] = violation
             self._log_append(**module_log, tag=tag)
 
         return constraints if not return_violation else (constraints, violation)
@@ -524,7 +524,7 @@ class TrajOptSolver(abc.ABC):
             pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
 
     def log_query(self, key: str, key_type: str, iteration: str = "", tag: str = None,
-                  as_dict: bool = False, stack: bool = False
+                  as_dict: bool = False, stack: bool = False, cat: bool = False, last: bool = False,
                   ) -> typing.Union[torch.Tensor, typing.Dict[str, torch.Tensor], None]:
         """Query internal log for some value with given key (log-key-structure: {tag}/{key_type}_{key}).
 
@@ -534,6 +534,8 @@ class TrajOptSolver(abc.ABC):
          :param tag: logging tag to search in.
          :param as_dict: return query result as dictionary (even if only one-sized).
          :param stack: stack tensors if multiple results (shapes not checked !!).
+         :param cat: concatenate tensors if multiple results (shapes not checked !!).
+         :param last: concatenate last elements of results (shapes not checked !!).
          """
         if not self.is_logging:
             raise LookupError("For querying the `is_logging` flag must be activate before solving !")
@@ -553,13 +555,20 @@ class TrajOptSolver(abc.ABC):
             results_dict[key] = values
 
         # If only one element is in the dictionary, return not the dictionary but the item itself.
-        if len(results_dict.keys()) > 1 or as_dict:
-            if stack:
-                return torch.cat([results_dict[key] for key in sorted(results_dict.keys())], dim=0)
+        num_results = len(results_dict.keys())
+        if num_results > 1 or as_dict:
+            if cat:
+                return torch.cat([results_dict[key] for key in sorted(results_dict.keys())])
+            elif stack:
+                return torch.stack([results_dict[key] for key in sorted(results_dict.keys())], dim=0)
+            elif last:
+                return torch.tensor([results_dict[key][-1] for key in sorted(results_dict.keys())])
             else:
                 return results_dict
-        else:
+        elif num_results == 1:
             return results_dict.popitem()[1]
+        else:
+            return None
 
     ###########################################################################
     # Visualization ###########################################################
@@ -741,7 +750,7 @@ class TrajOptSolver(abc.ABC):
 
     @property
     def module_names(self) -> typing.List[str]:
-        return [mantrap.constants.LK_OVERALL_PERFORMANCE] + list(self.module_dict.keys())
+        return [mantrap.constants.LK_OVERALL] + list(self.module_dict.keys())
 
     @property
     def attention_module(self) -> str:

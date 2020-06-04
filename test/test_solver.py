@@ -192,6 +192,32 @@ class TestSolvers:
         t = mantrap.utility.maths.rotation_matrix(ego_position, ego_goal)
         assert torch.allclose(encoding[0:2], torch.matmul(t, ado_position))
 
+    @staticmethod
+    def test_log_query(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
+                       env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                       attention_class: mantrap.attention.AttentionModule.__class__,
+                       warm_start_method: str):
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.zeros(2))
+        solver = solver_class(env, attention_module=attention_class, goal=torch.rand(2) * 10,
+                              modules=[mantrap.modules.GoalNormModule], is_logging=True)
+
+        # Solve simple optimization problem.
+        solver.solve(time_steps=10)
+
+        # Query logging (full).
+        key_type, key = mantrap.constants.LT_OBJECTIVE, mantrap.constants.LK_OVERALL
+        obj_log_full = solver.log_query(key_type=key_type, key=key)
+        assert obj_log_full is not None
+
+        # Query logging (last) and check compliance.
+        obj_log_last = solver.log_query(key_type=key_type, key=key, last=True)
+        assert obj_log_last is not None
+        for i in range(obj_log_last.numel()):
+            log_key = f"{key_type}_{key}_{i}"
+            key_log_full = [k for k in obj_log_full.keys() if log_key in k]
+            assert len(key_log_full) == 1
+            assert torch.isclose(obj_log_last[i], obj_log_full[key_log_full[0]][-1])
+
 
 ###########################################################################
 # Test - Search Solver ####################################################
