@@ -21,7 +21,7 @@ def visualize_trajectories(
 ):
     assert len(trajectories[0].shape) == 2
     t_horizon = trajectories[0].shape[0]
-    assert all([mantrap.utility.shaping.check_ego_trajectory(x, t_horizon) for x in trajectories])
+    assert all([mantrap.utility.shaping.check_ego_trajectory(x, t_horizon, pos_only=True) for x in trajectories])
     if colors is None:
         colors = [np.array([0, 0, 1])] * len(trajectories)  # blue = default
     assert len(labels) == len(colors) == len(trajectories)

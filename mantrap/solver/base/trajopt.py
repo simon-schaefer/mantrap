@@ -506,10 +506,6 @@ class TrajOptSolver(abc.ABC):
             # of tensors, stack them to a single tensor.
             for key, values in self.log.items():
                 if type(values) == list and len(values) > 0 and all(type(x) == torch.Tensor for x in values):
-
-                    if mantrap.constants.LT_ADO in key:
-                        print(key, len(values))
-
                     self._log[key] = torch.stack(values)
 
             # Save the optimization performance for every optimization step into logging file. Since the
