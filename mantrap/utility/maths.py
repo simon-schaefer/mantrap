@@ -131,9 +131,9 @@ class Derivative2:
 
         else:  # acceleration estimate based on velocities
             self._diff_mat = torch.zeros((horizon, horizon))
-            for k in range(1, horizon):
-                self._diff_mat[k, k - 1] = -1
-                self._diff_mat[k, k] = 1
+            for k in range(horizon - 1):
+                self._diff_mat[k, k] = -1
+                self._diff_mat[k, k + 1] = 1
             self._diff_mat *= 1 / dt
 
         # Un-squeeze difference matrix in case the state tensor is larger then two dimensional (batching).
@@ -142,9 +142,10 @@ class Derivative2:
 
     def compute(self, x: torch.Tensor) -> torch.Tensor:
         if len(x.shape) == 3:
-            return torch.matmul(self._diff_mat, torch.transpose(x, 0, 1))
+            x_compute = torch.transpose(x, 0, 1)
         else:
-            return torch.matmul(self._diff_mat, x)
+            x_compute = x
+        return torch.matmul(self._diff_mat, x_compute)
 
     def compute_single(self, x: torch.Tensor, x_prev: torch.Tensor, x_next: torch.Tensor) -> torch.Tensor:
         return (x_prev - 2 * x + x_next) / self._dt**2

@@ -55,8 +55,8 @@ def test_derivative_2_velocity():
     diff = mantrap.utility.maths.Derivative2(horizon=2, dt=1.0, velocity=True)
     x_ddt = diff.compute(x[:, 2:4])
 
-    assert torch.all(torch.isclose(x_ddt[0, :], torch.zeros(2)))
-    assert torch.all(torch.isclose(x_ddt[1, :], (x[1, 2:4] - x[0, 2:4]) / diff._dt))
+    assert torch.all(torch.isclose(x_ddt[-1, :], torch.zeros(2)))
+    assert torch.all(torch.isclose(x_ddt[0, :], (x[1, 2:4] - x[0, 2:4]) / diff._dt))
 
 
 ###########################################################################
