@@ -12,16 +12,16 @@
 
 %Although there are many different approaches for tackling different parts of the problem, such as predicting and simulating human movement, finding a collision-free trajectory or doing both in an end-to-end manner using deep reinforcement learning techniques, the problem is still far from being solved and applicable to a wide range of real-world scenarios.
 
-%todo: do not list papers !!!  a lot of different methods for planning in crowds different axes: interpretable optimisation, accurate behaviour prediction, but find general topics e.g. 
+%todo: do not list papers !!!  a lot of different methods for planning in crowds different axes: interpretable optimization, accurate behavior prediction, but find general topics e.g. 
 % 1. prediction of pedestrians (Trajectron, SF, ORCA, ...) 
 % 2. control \& decision making (interaction-aware papers for example manipulation but multiple agents,  explainability, certifiability, ...)
-% 3. types of trajectory optimisation (shooting, collocation, etc.)
+% 3. types of trajectory optimization (shooting, collocation, etc.)
 % 4. safety (safety in interaction e.g. using reachability $\rightarrow$ Mathias althoff); what is good and bad about them ? 
 % example: related work: Karen \& Boris journal paper, Eds papers for motivation
 % citations: Haruki's work (limitations), decision making for interactive scenario (Dragan)
 
 
-%todo: IPOPT => The idea of interior point optimisation methods is to create constraint barriers that increasingly push the solution from an infeasible state to the feasible region, without pushing it too much away from the feasible border (since often the optimal solution is close to the feasible border), using a loss function combining the objective and constraint “loss” by introducing Lagrangian parameters. IPOPT especially has very good performance in recovering from some infeasible state in a “smart” manner.  Therefore it is quite robust, but hard to warm-start. 
+%todo: IPOPT => The idea of interior point optimization methods is to create constraint barriers that increasingly push the solution from an infeasible state to the feasible region, without pushing it too much away from the feasible border (since often the optimal solution is close to the feasible border), using a loss function combining the objective and constraint “loss” by introducing Lagrangian parameters. IPOPT especially has very good performance in recovering from some infeasible state in a “smart” manner.  Therefore it is quite robust, but hard to warm-start. 
 
 
 %todo: ORCA (Optimal Reciprocal Collision Avoidance): ORCA computes the optimal next velocity for an agent given that all the agents have perfectly known state and follow the same policy as the ego, by solving some linear program. ORCA cannot handle multimodality and stochasticity but merely takes into account the current state only (which is assumed to be known deterministically and of course uni-modal). However it is a standard algorithm for efficient collision avoidance and hence a baseline for the algorithm. 

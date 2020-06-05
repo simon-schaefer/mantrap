@@ -14,7 +14,7 @@
 %
 %The architecture of Trajectron is shown in Fig. \ref{fig:trajectron_architecture}. First the history of each agent (node) is as well as their relations between each other (edges) are encoded, added and transformed to a discrete latent space $z$. By random sampling from $z$ the future velocity distributions are predicted iteratively. In order to approximate a multi-modal, general distribution for every time-step a \ac{GMM} is used. While unrolling the For each $0 < t < T$ in the prediction horizon a sample is drawn from the previously predicted distribution and inputted in the next \ac{LSTM} cell. Therefore, the velocity distribution of each agent in the scene for $t > 1$ is modelled as a nested \ac{GMM} distribution (the velocity distribution at $t = 0$ is a \ac{GMM}). 
 %\newline
-%In general a planning algorithm that determines a trajectory that is risk-aware of colliding with another agent based on the behaviour predictions of the Trajectron model has to deal with multi-modal and time-evolving risk efficiently. Since each distribution depends on the full state history, not on the last state only, the transitions are a \ac{POMDP} (given that not the full history is part of the state vector). For simplicity we assume the ego's dynamics to be known and deterministic. Formally speaking we want to optimize a given cost function $J(x(t), u(t))$ while being constrained by some collision risk threshold $R_{max}$: 
+%In general a planning algorithm that determines a trajectory that is risk-aware of colliding with another agent based on the behavior predictions of the Trajectron model has to deal with multi-modal and time-evolving risk efficiently. Since each distribution depends on the full state history, not on the last state only, the transitions are a \ac{POMDP} (given that not the full history is part of the state vector). For simplicity we assume the ego's dynamics to be known and deterministic. Formally speaking we want to optimize a given cost function $J(x(t), u(t))$ while being constrained by some collision risk threshold $R_{max}$: 
 %
 %\begin{equation}
 %\begin{aligned}
@@ -55,7 +55,7 @@
 %    \label{fig:rrtcc}
 %    \end{figure}
 %  
-%    \item Multi-Policy Decision-Making \cite{Galceran2017}: Based on a set of (pre-computed) policies first match the observed behaviour of each agent to some policy (Baysian changepoint detection), then sample from policy in order to obtain high-likelihood action for each agent. Afterwards forward simulate all assigned policies and execute the policy with maximum expected reward value. 
+%    \item Multi-Policy Decision-Making \cite{Galceran2017}: Based on a set of (pre-computed) policies first match the observed behavior of each agent to some policy (Baysian changepoint detection), then sample from policy in order to obtain high-likelihood action for each agent. Afterwards forward simulate all assigned policies and execute the policy with maximum expected reward value. 
 %    
 %    \begin{figure}[H]
 %    \centering

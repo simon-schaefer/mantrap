@@ -22,9 +22,9 @@
 \label{text:experiments/discussion}
 
 %todo: pros and cons
-%todo: do I see the behaviour I designed it for
+%todo: do I see the behavior I designed it for
 %todo: corner cases
-%todo: adding optimisation modules step-by-step and showcase effects
+%todo: adding optimization modules step-by-step and showcase effects
 %todo: how different are paths created with a different environment 
 
 % failing: potential forces model => 1D case => just running away
@@ -35,4 +35,4 @@
 %evaluation metrics
 	% probabilistic: likelihood of perturbed trajectory (i.e. with ego presence) over initial distribution (i.e. without ego presence)
 	% deterministic: other papers do success rate only in terms of not colliding, but that should be the baseline, so how to compare two non-colliding trajectories ? Comparison by distance of ados with and without ego using some distance metric (L1, L2, key point displacement) tend to overreact to multimodal but equal in terms of travel-time and -comfort trajectories e.g. if a pedestrians goes around an obstacle at the left sight, instead of the right side, assuming the same path length. So really expressive is not the position change but the change in acceleration of the pedestrian movement, e.g. when they have to decrease speed or even stop due to the robot’s movement. 
-% Datasets: There are several datasets for pedestrian prediction or human-robot interaction such as the DUT or ETH dataset. However using a dataset for evaluation is hardly possible, since the behaviour of every agent is affected by every action the ego takes (or even by its presence in the scene). Therefore their reactions have to be simulated using interaction models such as social forces or the Trajectron, only the initial setting can be effectively used (which I can also just make up myself). 
+% Datasets: There are several datasets for pedestrian prediction or human-robot interaction such as the DUT or ETH dataset. However using a dataset for evaluation is hardly possible, since the behavior of every agent is affected by every action the ego takes (or even by its presence in the scene). Therefore their reactions have to be simulated using interaction models such as social forces or the Trajectron, only the initial setting can be effectively used (which I can also just make up myself). 
