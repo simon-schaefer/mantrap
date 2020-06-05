@@ -57,13 +57,17 @@
 
 % Graphics.
 \usepackage{tikz}
-\usepackage{tkz-euclide}
-\usetikzlibrary{shapes,arrows}
+\usepackage{pgfplots}
 \usepackage{verbatim}
+
+\pgfplotsset{compat=1.11}
+\usepackage{tkz-euclide}
+\usepgfplotslibrary{fillbetween}
+\usetikzlibrary{shapes, arrows}
 
 % Internet addresses and interactive links
 \usepackage[hyphens]{url}
-\usepackage[colorlinks=true, linkcolor=black, urlcolor=blue]{hyperref}
+\usepackage[colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=black]{hyperref}
 
 % Problem definition. 
 \newtheorem{problem}{Problem}
@@ -87,6 +91,7 @@
 \def \u{\mathbf{u}}
 \def \xped[#1]{\mathbf{\tilde{x}^{#1}}}
 \def \uped[#1]{\mathbf{\tilde{u}^{#1}}}
+\def \xpedwo[#1]{\mathbf{\tilde{\chi}^{#1}}}
 
 % Page format _________________________________________________________
 \frenchspacing % makes the sentence spacing single spaced

@@ -6,7 +6,7 @@ Section \ref{text:approach/overview} which presents an overview over the full tr
 \newline
 The exact formulation of the optimisation problem is further explained in section \ref{text:approach/objective} and \ref{text:approach/constraint}. Beginning with the objective function the both the goal-driven and the interaction-driven parts are illustrated, together with a derivation of their gradients. Furthermore, several designs of the specific objective function are discussed. The subsequent section addresses the design of the constraints used. Likewise several constraint function designs are compared. 
 \newline
-In order to use the system in real-world applications it must comply several requirements. While some of these has been tackled by the optimisation design, e.g. feasibility of the control limitations of the robot or safety regarding robot-human interaction, the system underlies runtime limits. Similarly to \cite{Chen2017} this project aims to run at a frequency of $10 Hz$. To achieve this goal several runtime improvements have been implemented, which are described in section \ref{text:approach/runtime}.
+In order to use the system in real-world applications it must comply several requirements. While some of these has been tackled by the optimisation design, e.g. feasibility of the control limitations of the robot or safety regarding robot-human interaction, the system underlies runtime limits. To achieve this goal several runtime improvements have been implemented, which are described in section \ref{text:approach/runtime}.
 
 
 \section{Problem Formulation}
@@ -21,7 +21,7 @@ In this work we are interested in finding the optimal trajectory for a robot nav
 
 For further simplification the robot's dynamics are assumed to be deterministic.
 \newline
-In general each pedestrian's trajectory is probabilistic and multimodal. Thereby,  let $\xped[k]_t = \mathbf{\tilde{\xi}_t^k}$ be the state distribution of pedestrian $k$ at time $t$, with mean $\mathbf{\tilde{\mu}_t^k}$, variance $\mathbf{\tilde{\Sigma}_t^k}$ and mode-weights vector $\mathbf{\tilde{\pi}_t^k}$. 
+In general each pedestrian's (also referred as $ado$) trajectory is probabilistic and multimodal. Thereby,  let $\xped[k]_t = \mathbf{\tilde{\xi}_t^k}$ be the positional distribution of pedestrian $k$ at time $t$, with mean $\mathbf{\tilde{\mu}_t^k}$, variance $\mathbf{\tilde{\Sigma}_t^k}$ and mode-weights vector $\mathbf{\tilde{\pi}_t^k}$. 
 
 \begin{equation}
 \xped[k]_t \sim \mathbf{\tilde{\xi}_t^k}(\mathbf{\tilde{\mu}_t^k}, \mathbf{\tilde{\Sigma}_t^k}, \mathbf{\tilde{\pi}_t^k})	
@@ -29,11 +29,10 @@ In general each pedestrian's trajectory is probabilistic and multimodal. Thereby
 
 Similar to the robot the pedestrians are modelled as single point masses, both underlying speed bounds defined by the $L_1$ norm of their velocities. 
 \newline
-The pedestrian's trajectories are predicted using some model $\tilde{\Phi}$ which is assumed to be known. As described above in general for some pedestrian $k$ the model $\tilde{\Phi}_k$ outputs a multi-modal distribution over the next state $\xped[k]_{t+1}$ conditioned on the trajectory of the robot $\x_{0:t}$, the trajectory of every other pedestrian in the scene $\xped[j]_{0:t} (j \neq k)$ and the trajectory of the pedestrian $k$ itself, i.e. $\xped[k]_{0:t}$. Moreover the function $\tilde{\Phi}$ is generally not shared over all pedestrian, but individually for each one.
+The pedestrian's trajectories are predicted using some model $\tilde{\Phi}$ which is assumed to be known. As described above in general for some pedestrian $k$ the model $\tilde{\Phi}_k$ outputs a multi-modal distribution over the next positions $\xped[k]_{t:t+T}$ conditioned on the trajectory of the robot $\x_{0:t}$, the trajectory of every other pedestrian in the scene $\xped[j]_{0:t} (j \neq k)$ and the trajectory of the pedestrian $k$ itself, i.e. $\xped[k]_{0:t}$. Moreover the function $\tilde{\Phi}$ is generally not shared over all pedestrian, but individually for each one.
 
 \begin{equation}
-\xped[k]_{t+1} = \tilde{\Phi}_k(\x_{0:t}, \xped[i]_{0:t}) \quad \forall i \in [0, K]	
-\end{equation}
+\xped[k]_{t:t+T} = \tilde{\Phi}_k(\x_{0:t}, \xped[0]_{0:t}, \hdots, \xped[K]_{0:t})\end{equation}
 
 Furthermore both the robot and the pedestrians underly constraints for their minimal and maximal control effort. Thus, the sets of feasible control inputs $\mathcal{U}$ and $\mathcal{\tilde{U}}$ respectively, are defined using the $L_1$-norm:
 
@@ -47,7 +46,7 @@ Within project \project I want to find a robot trajectory $\x_{0:T}$ over some d
 
 \section{System Overview}
 \label{text:approach/overview}
-The goal of project \project is to develop a trajectory optimisation formulation that strikes a balance between decreasing the cost for reaching some terminal set $\mathcal{X}_f$ and the disturbance on the human behaviour, which the robot introduces by moving among them, and ensuring safety in these interactions. As shown in Figure \ref{img:information_flow} the problem can be divided into several subproblems, which also can be seen as modules of a trajectory optimisation problem and therefore can be formulated independently from each other. 
+As shown in Figure \ref{img:information_flow} the problem can be divided into several subproblems, which also can be seen as modules of a trajectory optimisation problem and therefore can be formulated independently from each other. 
 
 \begin{figure}[!ht]
 \begin{center}
@@ -92,7 +91,7 @@ The algorithm has been implemented in Python 3.7 using PyTorch \cite{pytorch}. N
 \newline 
 Furthermore the algorithm has been implemented highly modular, allowing to easily use pre-defined simulation environments, objective, constraint functions or new solvers and switch between them without much knowledge about the underlying implementation. To pave the way for further projects based on this project it has been widely documented using Sphinx\footnote{Automated code documentation: https://www.sphinx-doc.org/en/master/}, for further information please visit the \href{https://simon-schaefer.github.io/mantrap/}{project's website}.  
 \newline
-The system's integrity has been verified by roughly 1000 unit- and integration tests, secured over the code development by the continuous integration framework CircleCI\footnote{Automated testing framework: https://circleci.com} and CodeCov\footnote{Testing coverage reports: https://codecov.io}.
+The system's integrity has been verified by roughly 500 unit- and integration tests, secured over the code development by the continuous integration framework CircleCI\footnote{Automated testing framework: https://circleci.com} and CodeCov\footnote{Testing coverage reports: https://codecov.io}.
 
 \section{Objective Function Design}
 \label{text:approach/objective}
@@ -105,15 +104,24 @@ The goal objective gives an incentive for the optimiser to choose a solution tha
 J_{goal}(\x_{0:T}) = \frac{1}{N} \sum_{t = 0}^N (\x_t - \mathbf{g})^2
 \end{equation}
 
-By normalisation the cost is independent from the length of the planning horizon and thus allows to use the same weight $w_{goal}$ for different planning horizons (comp. equation \ref{eq:formulation}). In Figure \ref{img:goal_norm_vs_sum} the convergence of both formulations is compared; although the terminal cost is the same, the normalised version (\textit{goal\_norm}) converges slightly faster, presumably due to the smaller starting value. Although shown for only one scenario here, both, the ease in tuning and slightly larger convergence speed of the normalised goal objective can be observed also over a wide variety of different scenarios.  
+By normalisation the cost is independent from the length of the planning horizon and thus allows to use the same weight $w_{goal}$ for different planning horizons (comp. equation \ref{eq:formulation}). 
 
-\begin{figure}[!ht]
+\subsubsection{Horizon weighting}
+In Table \ref{table:goal_norm_vs_sum} the convergence of both formulations is compared in a simplified setup, with no pedestrian in the scene. While the terminal cost is the same (both are convex and reach the global minimum), the sum-based version converges slightly faster, presumably due to the larger absolute value of the gradient. However the difference is small, both, the ease in tuning and slightly larger convergence speed of the normalised goal objective can be observed also over a wide variety of different scenarios.  
+
+\begin{table}[!ht]
 \begin{center}
-\includegraphics[width=\imgwidth]{images/goal_norm_vs_sum.png}
-\captionof{figure}{Direct comparison of a norm-based vs a weighted-sum based goal objective function, normalised by their end value. While roughly the same final objective value is reached (not shown here), the normed goal objective converges faster, i.e. gets to its minimum with fewer iterations over all initial conditions (\textit{core0, core1, core2}). For further details please have a look into the example notebook: \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/modules/goal.ipynb}{examples/modules/goal}.}.
-\label{img:goal_norm_vs_sum}
+\begin{tabular}{c|c|c}
+ & Goal-Sum & Goal-Mean \\
+\hline
+Avg. number of solving iterations & 9.58 & 9.64 \\
+\hline
+Avg. $95 \%$ decay of objective value & 5.86 & 6.64 \\
+\end{tabular}
+\captionof{table}{Direct comparison of a norm-based vs a weighted-sum based goal objective function. While roughly the same final objective value is reached (not shown here), the normed goal objective converges faster, i.e. gets to its minimum with fewer iterations over all initial conditions (\textit{core0, core1, core2}). For further details please have a look into the example notebook: \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/modules/goal.ipynb}{examples/modules/goal}.}.
+\label{table:goal_norm_vs_sum}
 \end{center}
-\end{figure}
+\end{table}
 
 Since the goal objective $J_{goal}(\x_{0:T})$ is only a function of the robot's planned trajectory and the goal state, its jacobian can be derived without further knowledge of the pedestrian prediction model, merely using the (known) robot dynamics. As described in section \ref{text:approach/overview} the robot controls are optimised. Hence by applying the chain rule we get: 
 
@@ -141,26 +149,107 @@ Overall the goal objective and its gradient are very efficient, cheap to compute
 
 \subsection{Interaction Objective}
 \label{text:approach/objective/interactive}
+The interaction between robot and pedestrian itself is an abstract quantity and can thus hardly be used for optimisation itself. To approach this problem in the following we consider a scene with the robot facing only one pedestrian, to then generalise the developed concept to interactions with multiple pedestrians.  
+\newline
+While it is hard to find a measure for the interaction between the robot and the pedestrian in the scene, when regarding the problem in general, it can be simplified when a) focussing on one of the interacting agents and b) define the measure for the purpose of vanishing its value. Under these conditions the problem can be re-formulated as decreasing the disturbance the robot induces on the pedestrian, which is a lot simpler to quantify than the abstract concept of interaction. To do so the un-conditioned\footnote{For the sake of brevity the term "un-conditioned" means not depend on the robot's state. However, the pedestrian's trajectory prediction is of course still conditioned on its own state history as well as the states and state history of the other pedestrians in the scene, as described in section \ref{text:approach/formulation}.} pedestrian's trajectory distribution $\xpedwo[]_{0:T}$ is computed, i.e. the distribution that would occur if no robot would be in the scene, and then compared to its actual conditioned trajectory distribution $\xped[]_{0:T}$. 
 
+\begin{figure}[!ht]
+\begin{center}
+\begin{tikzpicture}
 
-%The prediction $\tilde{\Phi}^k$ of the trajectory of pedestrian $k$ over the planning horizon might be non-linear, multi-modal and probabilistic in general, for example the multi-modal predictions made by the Trajectron in Figure \ref{img:trajectron_example}. With $K$ pedestrians, a prediction of $L$ possible modes per pedestrian, each mode being assigned to some probability distribution $\tilde{\phi}^{k,l}$ 
+	\node[inner sep=0pt] (ped) at (5,0)
+    {\includegraphics[width=.05\textwidth]{images/walking.png}};    
+    \draw [dotted, ultra thick, name path=A] (ped) to[out=180, in=0] node[above] {$\xpedwo[k]$} (0, 0);
+	
+\end{tikzpicture}
+\qquad
+\begin{tikzpicture}
+
+	\node[inner sep=0pt] (ped) at (5,0)
+    {\includegraphics[width=.05\textwidth]{images/walking.png}};
+	\node[inner sep=0pt] (robot) at (1,0)
+    {\includegraphics[width=.05\textwidth]{images/robot.png}};
+    \draw [ultra thick, name path=B] (ped) to[out=180, in=10] node[below, sloped] {$\xped[k]$}(0,-2);
+	
+\end{tikzpicture}
+
+\begin{tikzpicture}
+
+	\node[inner sep=0pt] (ped) at (5,0)
+    {\includegraphics[width=.05\textwidth]{images/walking.png}};
+    
+    \draw [dotted, ultra thick, name path=A] (ped) to[out=180, in=0] node[above] {$\xpedwo[k]$} (0, 0);
+    \draw [ultra thick, name path=B] (ped) to[out=180, in=10] node[below, sloped] {$\xped[k]$}(0,-2);
+        
+	\tikzfillbetween[of=A and B]{blue, opacity=0.2};
+	\node[] (D) at (1, -0.9){$D_{int}$};
+	
+\end{tikzpicture}
+\end{center}
+\captionof{figure}{Interactive measure in case of deterministic and uni-modal pedestrian trajectory predictions, which trivially is the area enclosed by the un-conditioned (upper left) and the conditioned (upper right) trajectory.}
+\label{img:ado_w_wo_distance_trajectory}
+\end{figure}
+
+If the pedestrian's trajectory prediction would be deterministic and uni-modal this measure simply breaks down to the distance between both trajectories which is the area enclosed by both trajectories in continuous time, as shown in Figure \ref{img:ado_w_wo_distance_trajectory}, or a sum of distance per time-step in discrete time. For probabilistic and multi-modal predictions computing the distance between both distributions is more difficult, especially when demands such as computational cost and differentiability (to be used in an optimisation) have to be factored in. 
+
+\begin{figure}[!ht]
+\begin{center}
+\begin{tikzpicture}
+
+	\node[inner sep=0pt] (ped) at (5,0)
+    {\includegraphics[width=.05\textwidth]{images/walking.png}};
+	\node[inner sep=0pt] (robot) at (0,0)
+    {\includegraphics[width=.05\textwidth]{images/robot.png}};
+       
+    \draw [dotted, ultra thick, name path=A] (ped) to[out=180, in=0] (0, 2) node[above, sloped] {$\xpedwo[k]$}  to[out=180, in=0] (-4, 0);
+    
+    \draw [ultra thick, name path=B] (ped) to[out=180, in=10] (0,-2) node[below, sloped] {$\xped[k]$} to[out=180, in=0] (-4, 0);
+	
+\end{tikzpicture}
+\end{center}
+\captionof{figure}{Interactive measure in case of deterministic and uni-modal pedestrian trajectory predictions, which trivially is the area enclosed by the un-conditioned (upper left) and the conditioned (upper right) trajectory.}
+\label{img:int_acceleration_reason}
+\end{figure}
+
+The correlation between the acceleration carried out on a passenger and its comfort is widely known, e.g. for the driving use case \cite{Hoberock1976}. Therefore assuming that the same measure applies for correlation between the acceleration the pedestrian itself has to exert (e.g. to evade a dynamic obstacle) and its comfort is likely. Therefore, instead of contrasting the positional distributions ($\xpedwo[]_{0:T}$, $\xped[]_{0:T}$) it might be valuable to use the accelerational distributions ($\ddot{\xpedwo[]}_{0:T}$, $\ddot{\xped[]}_{0:T}$). Figure \ref{img:int_acceleration_reason} shows a possible scenario, in which the presence of the robot affects the pedestrian such that it the trajectory prediction is mirrored. When the robot is static and when no other pedestrian are close, both trajectories are equally safe (if the robot is static)  and "comfortable" for the pedestrian and are equal in length, so there is no reason to chose one above the other. However due to the large enclosed area, a purely position-based distance metric would be non-zero by far, while an acceleration-based distance metric would be zero since the velocities of the pedestrian only change their sign, not their absolute value.
+
+\subsubsection{Kullback-Leibler Divergence}
+A commonly used metric for expressing the distance between two distributions is the Kullback-Leibler Divergence $D_{KL}$, which determines the distance between  some distribution $q$ and another distribution $p$ as:
+
+\begin{equation}
+D_{KL} = \int_x q(x) log \frac{q(x)}{p(x)} dx	
+\end{equation}
+
+While $D_{KL}$ is a well-defined, is capable to be used in optimisation procedures and is therefore commonly used in many applications, such as generative deep learning models \cite{Goodfellow2014}\cite{Salzmann2020} (similarly the Jenson-Shannon Divergence), it is not analytically defined for some "complex" distributions such as \ac{GMM}, which is the output distribution format of Trajectron \cite{Ivanovic2018}. Methods to approximate the KL-Divergence for \ac{GMM}s have been discussed in \cite{Cui2015} and embrace Monte Carlo sampling, signature quadratic form distance \cite{Beecks2011} and several more which however are not computationally feasible for an online application, especially since its gradient has to be computed. Other methods simplify the real \ac{GMM} to a single Gaussian, by a weighted average over its parameters, which is not guaranteed to be a meaningful distribution and looses the advantages of predicting multi-modal distributions in the first place. 
+\newline
+Regarding the Trajectron \cite{Ivanovic2018} as prediction model, some intermediate distribution might be used for comparison instead of the output distribution, such as the categorical distribution in its latent space\footnote{In fact the Trajectron's latent space could not be used as a basis for the interactive objective function anyway, since it does not depend on the robot's trajectory. However it might be used to assess similarity between scenario, which will be discussed in section \ref{text:approach/runtime/warm_starting}.}. Although this approach might give rise to use widely used distance measures such as $D_{KL}$ it would impede tractability and generality of the overall framework, as it would have to be re-defined for every other prediction model. 
+
+\subsubsection{Sample-Wise Distance}
+Next to taking the full trajectory distribution into account instead the distance between the un-conditioned $\xpedwo[]_{0:T}$ and the conditioned trajectory distribution $\xped[]_{0:T}$ can be approximated by computing the expected value over sample pairs. Then the distance measure breaks down to a weighted sum over L2-norms for each discrete time-step within the time horizon and for every trajectory pair, which are efficient to compute. 
+
+\begin{equation}
+D_{int}^{sp} = \sum_{samples} \sum_T ||\xpedwo[s]_t - \xped[s]_t||
+\end{equation}
+
+Also using samples instead of the full distribution allows to efficiently compute the velocity and accelerations of the pedestrian at each predicted time-step numerically, using central difference expressions. 
+
+\subsubsection{Trajectory Projection}
+Unconditioned path projection: Another approach is to compute (and maximise) the probability of the mean conditioned trajectories (mode-wise) appearing in the unconditioned distribution. While it only takes into account the mean values (and weights) it is very efficient to compute while still taking the full conditioned distribution into account and has shown to be "optimise-able" in the training of Trajectron. Since the distributions itself are constant, while the sampled trajectories vary, the objective is also constant regarding the same scenario, which also improves its "optimise-ability".
+
+ 
+%todo: have a look how Trajectron is built and learnt, having in mind that the objective function should be transferable to other models as well; 
 
 %todo: comparison position/acceleration distance based to probabilistic objective function (in favour of distance based => takes into account acceleration and therefore "effort/comfort", but only mean ... in favour of probabilistic => takes into account full distribution, similar to model loss function to "fits" the model)
 
-%todo: Trajectron loss function has two parts, first KL-divergence between the estimated latent distribution $z$ given both the history as well as the future trajectory on the one side and the $z$ estimate conditioned on the history trajectory only on the other side. Hence both distributions are equivalent when comparing the without with the with ego distribution (only conditioned on x not the future trajectory !)
-
 % With very different I mean behavioral changes: Within my optimisation I compare the ado's trajectories conditioned on the robot's planned motion with their trajectories without taking any robot into account. So when I would use both the conditioned and un-conditioned model for these predictions, and they would be behavioral different, it would lead to some base difference (even if there is no robot affecting some ado at all) which might be larger in scale than the difference the conditioning on the robot makes. Then minimizing the difference would miss the goal of minimizing interaction. Therefore do you think it makes more sense to still condition on the robot while computing the trajectories "without robot" but condition on some robot trajectory which is far away from the whole scene (running into the bounds of normalization - and how do you do normalization, like do you clamp the inputs into some range before applying batch normalization) ?
 
-%todo: discussion about similarity measure between GMM (see Cui2015 and reminder)
- 
-%todo: general idea = compare output distribution of a scene without the presence of a robot with output distribution conditioned on robot => GMM similarity is a broad field, especially since standard measures as KL-divergence do not have an analytical solution (integral term), therefore one way would be to approximate the GMMs and compare the approximations, but either not feasible online (e.g.  Monte Carol Sampling due to gradient, interpolation methods, optimisations etc) or demolishing the advantages of having a multi-modale prediction in the first place by (weighted) averaging the GMM to a single Gaussian  ==> have a look how Trajectron is built and learnt, having in mind that the objective function should be transferable to other models as well
 
 \section{Constraint Function Design}
 \label{text:approach/constraint}
 
 \subsection{Dynamics Constraints}
 \label{text:approach/constraint/dynamics}
-The dynamics constraints subsides all constraints in problem \ref{eq:formulation} that are not directly related to safety, i.e. 
+The dynamics constraints subside all constraints in problem \ref{eq:formulation} that are not directly related to safety, i.e. 
 
 \begin{align}
 \label{eq:constraint_f}
@@ -280,6 +369,11 @@ Within project \project the algorithm has been warm-started by solving the optim
 
 Since the simplified optimisation problem in problem \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\tilde{\Phi}$ it is much easier and more efficient to solve, being a convex quadratic program. \\
 
+%todo: pre-computation warm-starting since going straight is often not a good choice
+%todo: influence of number of pedestrian in encoding on initial cost
+
+% Warm-start using pre-computation (similarity by trajectron latent space vs manual encoding) ==> discrete latent space so could be total mess (perturbation sensitivity ??) ==> see jupyter notebook evaluation and reminder
+
 \begin{figure}[!ht]
 \begin{center}
 \begin{tikzpicture}
@@ -302,12 +396,6 @@ Since the simplified optimisation problem in problem \ref{eq:formulation_warm_st
 \end{center}
 \label{img:robot_goal_encoding}
 \end{figure}
-
-%todo: pre-computation warm-starting since going straight is often not a good choice
-%todo: influence of number of pedestrian in encoding on initial cost
-
-% Warm-Starting Meeting
-% Warm-start using pre-computation (similarity by trajectron latent space vs manual encoding) ==> discrete latent space so could be total mess (perturbation sensitivity ??) ==> see jupyter notebook evaluation and reminder
 
 %Does pre-computed set contain every possible scenario ? No but just warm-start so not required, there will be a constrained optimisation afterwards anyway
 
