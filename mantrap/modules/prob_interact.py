@@ -77,7 +77,7 @@ class InteractionProbabilityModule(PureObjectiveModule):
         # We want to maximize the probability of the unconditioned trajectories in the conditioned
         # distribution, so we minimize its negative value.
         objective_min = - objective
-        objective_min = objective_min.clamp_max(100.0)
+        objective_min = objective_min.clamp_max(50.0)
         return objective_min
 
     def gradient_condition(self) -> bool:
