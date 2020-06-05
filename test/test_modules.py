@@ -33,7 +33,7 @@ def create_scene(module_class: mantrap.modules.base.OptimizationModule.__class__
                                           mantrap.modules.baselines.InteractionPositionModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule,
                                           mantrap.modules.GoalNormModule,
-                                          mantrap.modules.baselines.GoalSumModule,
+                                          mantrap.modules.baselines.GoalWeightedModule,
 
                                           mantrap.modules.ControlLimitModule,
                                           # mantrap.modules.baselines.MinDistanceModule,
@@ -73,7 +73,7 @@ class TestOptimizationModules:
                                           mantrap.modules.baselines.InteractionPositionModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule,
                                           mantrap.modules.GoalNormModule,
-                                          mantrap.modules.baselines.GoalSumModule])
+                                          mantrap.modules.baselines.GoalWeightedModule])
 @pytest.mark.parametrize("env_class", environments)
 class TestObjectives:
 
