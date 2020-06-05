@@ -130,7 +130,7 @@ class TestSolvers:
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory_opt, t_horizon=t_horizon_exp)
         assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon_exp, ados=env.num_ados)
-        assert tuple(ado_planned.shape) == (solver_horizon, 1, env.num_ados, solver.planning_horizon + 1, 1, 2)
+        assert tuple(ado_planned.shape) == (solver_horizon, env.num_ados, 10, solver.planning_horizon + 1, 1, 2)
         assert tuple(ego_opt_planned.shape) == (solver_horizon, solver.planning_horizon + 1, 5)
 
         # Test ado planned trajectories - depending on environment engine. Therefore only time-stamps can be tested.

@@ -52,11 +52,10 @@ class Trajectron(GraphBasedEnvironment):
         # For prediction un-conditioned on the ego (`sample_wo_ego()`) we need a pseudo-ego trajectory, since the
         # input dimensions for the trajectron have to stay the same.
         pseudo_ego_position = torch.tensor([self.axes[0][0], self.axes[1][0]])
-        self._pseudo_ego = mantrap.agents.DoubleIntegratorDTAgent(pseudo_ego_position, velocity=torch.zeros(2))
-
-        # Create default trajectron scene. The duration of the scene is not known a priori, however a large value
-        # allows to simulate for a long time horizon later on.
-        self._gt_scene, self._gt_env = self.create_env_and_scene()
+        self._pseudo_ego = mantrap.agents.DoubleIntegratorDTAgent(pseudo_ego_position,
+                                                                  velocity=torch.zeros(2),
+                                                                  is_robot=True,
+                                                                  identifier=mantrap.constants.ID_EGO)
 
         # Create trajectron torch model with loaded configuration.
         from model.online.online_trajectron import OnlineTrajectron
@@ -65,9 +64,13 @@ class Trajectron(GraphBasedEnvironment):
         model_registrar.load_models(iter_num=self.config["trajectron_model_iteration"])
         self.trajectron = OnlineTrajectron(model_registrar, hyperparams=self.config, device="cpu")
 
+        # Create default trajectron scene. The duration of the scene is not known a priori, however a large value
+        # allows to simulate for a long time horizon later on.
+        self._gt_scene, self._gt_env = self.create_env_and_scene()
+
         # Add robot to the scene as a first node.
         self._online_env = None
-        self._add_ego_to_graph(ego=self.ego if self.ego is not None else self._pseudo_ego)
+        self._add_agent_to_graph(agent=self.ego if self.ego is not None else self._pseudo_ego)
 
     ###########################################################################
     # Scene ###################################################################
@@ -114,37 +117,28 @@ class Trajectron(GraphBasedEnvironment):
             ])
 
         ado = super(Trajectron, self).add_ado(position, velocity=velocity, history=history, **ado_kwargs)
-
         # Add a ado to Trajectron neural network model using reference ghost.
-        self._add_ado_to_graph(ado_history=ado.history, ado_id=ado.id)
+        self._add_agent_to_graph(agent=ado)
         return ado
 
-    def _add_ado_to_graph(self, ado_history: torch.Tensor, ado_id: str):
+    def _add_agent_to_graph(self, agent: mantrap.agents.base.DTAgent):
+        """Add an internal agent to the Trajectron scene/environment representation.
+
+        :param agent: agent object to add (either ado, ego or pseudo_ego).
+        """
         from data import Node
+        is_robot = agent.is_robot
 
-        # Add a ado to online environment. Since the model predicts over the full time horizon internally and all
-        # modes share the same state history, merely one ghost has to be added to the scene, representing all other
-        # modes of the added ado agent.
-        node_data = self._create_node_data(state_history=ado_history)
-        node = Node(node_type=self._gt_env.NodeType.PEDESTRIAN, node_id=ado_id, data=node_data)
-        self._gt_scene.nodes.append(node)
-
-        # Re-Create online environment with recently appended node.
-        self._online_env = self.create_online_env(env=self._gt_env, scene=self._gt_scene)
-
-    def _add_ego_to_graph(self, ego: mantrap.agents.base.DTAgent):
-        from data import Node
-
-        # Add the ego as robot-type agent to the scene integrating its state history and passing the pre-build
-        # ego id as node id. Since the Trajectron model used is conditioned on the robot's movement, each prediction
-        # requires this ego. Therefore we have to add a robot to the scene, might it be an actual ego robot or (if
-        # no ego is in the scene) some pseudo robot very far away from the other agents in the scene.
-        node_data = self._create_node_data(state_history=ego.history)
-        node = Node(node_type=self._gt_env.NodeType.ROBOT,
-                    node_id=mantrap.constants.ID_EGO,
-                    data=node_data,
-                    is_robot=True)
-        self._gt_scene.robot = node
+        # In Trajectron each node has a certain type, which is either robot or pedestrian, an id and
+        # state data. Enforce the Trajectron id to the internal ids format, to be able to query the
+        # results later on.
+        agent_history = agent.history
+        acc_history = agent.compute_acceleration(agent_history, dt=self.dt)
+        node_data = self._create_node_data(state_history=agent_history, accelerations=acc_history)
+        node_tye = self._gt_env.NodeType.PEDESTRIAN if not is_robot else self._gt_env.NodeType.ROBOT
+        node = Node(node_type=node_tye, node_id=agent.id, data=node_data, is_robot=is_robot)
+        if is_robot:
+            self._gt_scene.robot = node
         self._gt_scene.nodes.append(node)
 
         # Re-Create online environment with recently appended node.
@@ -156,6 +150,12 @@ class Trajectron(GraphBasedEnvironment):
         is identical to the internal node_id while is node type is e.g. "ROBOT" or "PEDESTRIAN". However it is not
         assumed that the node_type has to be robot or pedestrian, since it does not change the structure. """
         return node.__str__().split("/")[1]
+
+    def agent_by_id(self, agent_id: str) -> typing.Union[mantrap.agents.base.DTAgent, None]:
+        agent = super(Trajectron, self).agent_by_id(agent_id=agent_id)
+        if agent is None:
+            return self._pseudo_ego
+        return agent
 
     ###########################################################################
     # Simulation Graph ########################################################
@@ -188,25 +188,31 @@ class Trajectron(GraphBasedEnvironment):
         assert self.num_ados > 0  # trajectron conditioned on ados and ego, so both must be in the scene (!)
         t_horizon = ego_trajectory.shape[0] - 1
 
-        # Predict over full time-horizon at once and write resulting (simulated) ado trajectories to graph. By
-        # passing the robot's trajectory the distribution is conditioned on it.
-        _, ado_states = self.states()
-        node_state_dict = {}
-        for node in self._gt_scene.nodes:
-            agent_id = self.agent_id_from_node(node.__str__())
-            if agent_id == mantrap.constants.ID_EGO:
-                # first state of trajectory is current state!
-                node_state_dict[node] = ego_trajectory[0, 0:2].detach()
-            else:
-                m_ado = self.index_ado_id(agent_id)
-                node_state_dict[node] = ado_states[m_ado, 0:2].detach()
-        dd = mantrap.utility.maths.Derivative2(horizon=t_horizon + 1, dt=self.dt, velocity=True)
-        trajectory_w_acc = torch.cat((ego_trajectory[:, 0:4], dd.compute(ego_trajectory[:, 2:4])), dim=1)
+        # Create the buffer of agent state histories to pass to environment. As Trajectron is called several
+        # times in each environment step, we do not want it to store agent updates internally, but rather
+        # pass it the full agent histories.
+        pos_dicts = []
+        for t in range(-5, 0):
+            node_state_dict = {}
+            for node in self._gt_scene.nodes:
+                if node.id == mantrap.constants.ID_EGO:
+                    node_state_dict[node] = self.agent_by_id(node.id).position.detach()
+                else:
+                    node_state_dict[node] = self.agent_by_id(node.id).history[t, 0:2].detach()
+            pos_dicts.append(node_state_dict)
+
+        # Trajectron requires the ego trajectory two consists of (pos, velocity, acceleration). So compute
+        # the accelerations using numerical differentiation. Although the pseudo-ego is used here, it is
+        # of the same agent type as the actual ego (which might not be defined).
+        accelerations = self._pseudo_ego.compute_acceleration(ego_trajectory, dt=self.dt)
+        trajectory_w_acc = torch.cat((ego_trajectory[:, 0:4], accelerations), dim=1)
 
         # Core trajectron prediction call.
-        trajectron_dist_dict, _ = self.trajectron.incremental_forward(
-            new_inputs_dict=node_state_dict,
-            prediction_horizon=t_horizon,
+        trajectron_dist_dict, _ = self.trajectron.forward(
+            init_env=self._online_env,
+            init_timestep=0,
+            pos_dicts=pos_dicts,
+            num_predicted_timesteps=t_horizon,
             num_samples=1,
             full_dist=True,
             robot_present_and_future=trajectory_w_acc
@@ -216,6 +222,7 @@ class Trajectron(GraphBasedEnvironment):
         # we define initial value matrices, expressing our perfect knowledge about the initial state
         # (perfect perception assumption).
         m = self.num_modes
+        _, ado_states = self.states()
         ado_positions = ado_states[:, 0:2].view(self.num_ados, 1, 2)
         ado_positions_stacked = torch.stack(m * [ado_positions], dim=-2).detach()
         log_sigma_initial = math.log(mantrap.constants.ENV_VAR_INITIAL) * torch.ones((1, m, 2)).detach()
@@ -267,8 +274,8 @@ class Trajectron(GraphBasedEnvironment):
         :param t_horizon: number of prediction time-steps.
         :return: dictionary over every state of every ado in the scene for t in [0, t_horizon].
         """
-        pseudo_trajectory = self._pseudo_ego.unroll_trajectory(torch.ones((t_horizon, 2)) * 0.01, dt=self.dt)
-        return self._compute_distributions(t_horizon=t_horizon, ego_trajectory=pseudo_trajectory, **kwargs)
+        pseudo_trajectory = self._pseudo_ego.unroll_trajectory(torch.zeros((t_horizon, 2)), dt=self.dt)
+        return self._compute_distributions(pseudo_trajectory, **kwargs)
 
     def detach(self):
         """Detaching the whole graph (which is the whole neural network) might be hard. Therefore just rebuilt it
@@ -280,9 +287,9 @@ class Trajectron(GraphBasedEnvironment):
         self._gt_scene.robot = None
 
         # Add all agents to the scene again.
-        self._add_ego_to_graph(ego=self.ego if self.ego is not None else self._pseudo_ego)
+        self._add_agent_to_graph(agent=self.ego if self.ego is not None else self._pseudo_ego)
         for ado in self.ados:
-            self._add_ado_to_graph(ado_history=ado.history, ado_id=ado.id)
+            self._add_agent_to_graph(agent=ado)
 
     ###########################################################################
     # GenTrajectron ###########################################################
@@ -325,9 +332,6 @@ class Trajectron(GraphBasedEnvironment):
             attention_radius=env.attention_radius,
             robot_type=env.robot_type
         )
-
-        # Pass online environment to internal trajectron model.
-        self.trajectron.set_environment(online_env, init_time_step)
         return online_env
 
     ###########################################################################
@@ -353,13 +357,10 @@ class Trajectron(GraphBasedEnvironment):
         config["incl_robot_node"] = True
         return config
 
-    def _create_node_data(self, state_history: torch.Tensor, accelerations: torch.Tensor = None) -> pd.DataFrame:
+    @staticmethod
+    def _create_node_data(state_history: torch.Tensor, accelerations: torch.Tensor) -> pd.DataFrame:
         assert mantrap.utility.shaping.check_ego_trajectory(state_history, pos_and_vel_only=True)
 
-        t_horizon = state_history.shape[0]
-        if accelerations is None:
-            dd = mantrap.utility.maths.Derivative2(horizon=t_horizon, dt=self.dt, velocity=True)
-            accelerations = dd.compute(state_history[:, 2:4])
         data_dict = {
             ("position", "x"): state_history[:, 0],
             ("position", "y"): state_history[:, 1],

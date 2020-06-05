@@ -334,6 +334,16 @@ class GraphBasedEnvironment(abc.ABC):
         assert self.sanity_check()
         return ado
 
+    def agent_by_id(self, agent_id: str) -> typing.Union[mantrap.agents.base.DTAgent, None]:
+        """Return an agent object by its id, including the ego agent.
+
+        :param agent_id: identifier of agent to return.
+        """
+        if agent_id == mantrap.constants.ID_EGO:
+            return self.ego
+        else:
+            return self.ados[self.index_ado_id(ado_id=agent_id)]
+
     ###########################################################################
     # Scene State #############################################################
     ###########################################################################
