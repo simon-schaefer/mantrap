@@ -399,7 +399,15 @@ class OptimizationModule(abc.ABC):
                 grad = torch.autograd.grad(element, grad_wrt, retain_graph=True)[0]
                 gradient[i * grad_size:(i + 1) * grad_size] = grad.flatten().detach()
 
-        return gradient.flatten().detach().numpy()
+        gradient = gradient.flatten().detach().numpy()
+
+        # When we want to find the gradient of a tensor a with respect to some tensor b, but not all elements
+        # of b affect a, although both are connected in the computation graph, the auto-grad function returns
+        # a NaN at this place of `a.grad`. One might argue whether it should be 0 or NaN however as the optimizer
+        # cannot deal with NaN gradient we use zeros here instead.
+        # https://github.com/pytorch/pytorch/issues/15131
+        gradient = np.nan_to_num(gradient, copy=False)
+        return gradient
 
     ###########################################################################
     # Constraint Bounds #######################################################
