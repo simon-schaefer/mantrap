@@ -77,6 +77,8 @@ SEARCH_MAX_CPU_TIME = 0.5  # [s] maximal sampling CPU time.
 MCTS_NUMBER_BREADTH_SAMPLES = 5  # number of samples in breadth (i.e. z-values to estimate value from).
 MCTS_NUMBER_DEPTH_SAMPLES = 5  # number of samples in depth (i.e. trajectories to estimate value).
 
+OBJECTIVE_PROB_INTERACT_MAX = 50.0  # maximal value of projection probability log cost.
+
 CONSTRAINT_MIN_L2_DISTANCE = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 CONSTRAINT_VIOLATION_PRECISION = 1e-5  # allowed precision error when determining constraint violation.
 

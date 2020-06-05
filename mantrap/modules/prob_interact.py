@@ -35,7 +35,7 @@ class InteractionProbabilityModule(PureObjectiveModule):
     so cannot be used for its optimisation.
 
     2) Unconditioned path projection: Another approach is to compute (and maximize) the probability of the
-    mean conditioned trajectories (mode-wise) appearing in the unconditioned distribution. While it only takes
+    mean un-conditioned trajectories (mode-wise) appearing in the conditioned distribution. While it only takes
     into account the mean values (and weights) it is very efficient to compute while still taking the full
     conditioned distribution into account and has shown to be "optimise-able" in the training of Trajectron.
     Since the distributions itself are constant, while the sampled trajectories vary, the objective is also
@@ -71,13 +71,16 @@ class InteractionProbabilityModule(PureObjectiveModule):
         dist_dict = self.env.compute_distributions(ego_trajectory)
         objective = torch.zeros(1)
         for ado_id in ado_ids:
-            p = self._dist_un_conditioned[ado_id].log_prob(dist_dict[ado_id].mean)
+            # p = self._dist_un_conditioned[ado_id].log_prob(dist_dict[ado_id].mean)
+            p = dist_dict[ado_id].log_prob(self._dist_un_conditioned[ado_id].mean)
             objective += torch.sum(p)
 
         # We want to maximize the probability of the unconditioned trajectories in the conditioned
-        # distribution, so we minimize its negative value.
+        # distribution, so we minimize its negative value. When the projected trajectory is very unlikely
+        # in the computed distribution, then the log likelihood grows to very large values, which would
+        # result in very un-balanced objectives. Therefore it is clamped.
         objective_min = - objective
-        objective_min = objective_min.clamp_max(50.0)
+        objective_min = objective_min.clamp_max(mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX)
         return objective_min
 
     def gradient_condition(self) -> bool:
