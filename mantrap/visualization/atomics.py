@@ -34,13 +34,14 @@ def draw_samples(
     name: typing.Union[str, None],
     color: typing.Union[np.ndarray, str],
     ax: plt.Axes,
-    alpha: float = 1.0
+    alpha: float = 1.0,
+    marker="--"
 ):
     """Draw trajectory samples into axes, by sample-wise iterations (samples, t_horizon, 1, dims >= 2)."""
     num_samples = samples.shape[0]
     for i in range(num_samples):
         xs, ys = samples[i, :, 0, 0], samples[i, :, 0, 1]
-        ax.plot(xs, ys, "--", color=color, label=name, alpha=alpha)
+        ax.plot(xs, ys, marker, color=color, label=name, alpha=alpha)
     return ax
 
 

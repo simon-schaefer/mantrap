@@ -196,6 +196,11 @@ class TrajOptSolver(abc.ABC):
                     self.__intermediate_log(ego_trajectory=ego_trajectory)
                 break
 
+        # Update the logging with the actual ego and ado trajectories (currently only samples).
+        actual_dict = {f"{mantrap.constants.LT_EGO}_actual": ego_trajectory_opt,
+                       f"{mantrap.constants.LT_ADO}_actual": ado_trajectories}
+        self._log_append(**actual_dict, tag=mantrap.constants.TAG_OPTIMIZATION)
+
         # Cleaning up solver environment and summarizing logging.
         logging.debug(f"solver {self.log_name}: logging trajectory optimization")
         self.env.detach()  # detach environment from computation graph
@@ -465,8 +470,8 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     def __intermediate_log(self, ego_trajectory: torch.Tensor, tag: str = mantrap.constants.TAG_OPTIMIZATION):
         if self.is_logging and self.log is not None:
-            ado_planned = self.env.sample_w_trajectory(ego_trajectory=ego_trajectory)
-            ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_trajectory.shape[0] - 1)
+            ado_planned = self.env.sample_w_trajectory(ego_trajectory=ego_trajectory, num_samples=10)
+            ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_trajectory.shape[0] - 1, num_samples=10)
             trajectory_log = {f"{mantrap.constants.LT_EGO}_planned": ego_trajectory,
                               f"{mantrap.constants.LT_ADO}_planned": ado_planned,
                               f"{mantrap.constants.LT_ADO_WO}_planned": ado_planned_wo}
@@ -519,8 +524,7 @@ class TrajOptSolver(abc.ABC):
             csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys if key in self.log.keys()}
             pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
 
-    def log_query(self, key: str, key_type: str, iteration: str = "", tag: str = None,
-                  as_dict: bool = False, stack: bool = False, cat: bool = False, last: bool = False,
+    def log_query(self, key: str, key_type: str, iteration: str = "", tag: str = None, apply_func: str = "cat",
                   ) -> typing.Union[torch.Tensor, typing.Dict[str, torch.Tensor], None]:
         """Query internal log for some value with given key (log-key-structure: {tag}/{key_type}_{key}).
 
@@ -528,10 +532,8 @@ class TrajOptSolver(abc.ABC):
          :param key_type: type of query (-> mantrap.constants.LK_...).
          :param iteration: optimization iteration to search in, if None then no iteration (summarized value).
          :param tag: logging tag to search in.
-         :param as_dict: return query result as dictionary (even if only one-sized).
-         :param stack: stack tensors if multiple results (shapes not checked !!).
-         :param cat: concatenate tensors if multiple results (shapes not checked !!).
-         :param last: concatenate last elements of results (shapes not checked !!).
+         :param apply_func: stack/concatenate tensors or concatenate last elements of results
+                            if multiple results (shapes not checked !!) ["stack", "cat", "last", "as_dict"].
          """
         if not self.is_logging:
             raise LookupError("For querying the `is_logging` flag must be activate before solving !")
@@ -551,20 +553,21 @@ class TrajOptSolver(abc.ABC):
             results_dict[key] = values
 
         # If only one element is in the dictionary, return not the dictionary but the item itself.
+        # Otherwise go through arguments one by one and apply them.
+        if apply_func == "as_dict":
+            return results_dict
         num_results = len(results_dict.keys())
-        if num_results > 1 or as_dict:
-            if cat:
-                return torch.cat([results_dict[key] for key in sorted(results_dict.keys())])
-            elif stack:
-                return torch.stack([results_dict[key] for key in sorted(results_dict.keys())], dim=0)
-            elif last:
-                return torch.tensor([results_dict[key][-1] for key in sorted(results_dict.keys())])
-            else:
-                return results_dict
-        elif num_results == 1:
-            return results_dict.popitem()[1]
+        if num_results == 1:
+            results = results_dict.popitem()[1]
+        elif apply_func == "cat":
+            results = torch.cat([results_dict[key] for key in sorted(results_dict.keys())])
+        elif apply_func == "stack":
+            results = torch.stack([results_dict[key] for key in sorted(results_dict.keys())], dim=0)
+        elif apply_func == "last":
+            results = torch.tensor([results_dict[key][-1] for key in sorted(results_dict.keys())])
         else:
-            return None
+            raise ValueError(f"Undefined apply function for log query {apply_func} !")
+        return results.squeeze(dim=0)
 
     ###########################################################################
     # Visualization ###########################################################
@@ -581,15 +584,14 @@ class TrajOptSolver(abc.ABC):
             raise LookupError("For visualization the `is_logging` flag must be activate before solving !")
         assert self.log is not None
 
-        ego_planned = self.log_query(key_type=mantrap.constants.LT_EGO, key="planned", tag=tag)
-        ego_planned = torch.stack([x[-1] for x in ego_planned.values()])  # dict keys sorted !
-        ado_planned = self.log_query(key_type=mantrap.constants.LT_ADO, key="planned", tag=tag)
-        ado_planned = [x[-1] for x in ado_planned.values()]
-        ado_planned_wo = self.log_query(key_type=mantrap.constants.LT_ADO_WO, key="planned", tag=tag)
-        ado_planned_wo = [x[-1] for x in ado_planned_wo.values()]
+        ego_planned = self.log_query(key_type=mantrap.constants.LT_EGO, key="planned", tag=tag, apply_func="cat")
+        ado_actual = self.log_query(key_type=mantrap.constants.LT_ADO, key="actual", tag=tag, apply_func="cat")
+        ado_planned = self.log_query(key_type=mantrap.constants.LT_ADO, key="planned", tag=tag, apply_func="cat")
+        ado_planned_wo = self.log_query(key_type=mantrap.constants.LT_ADO_WO, key="planned", tag=tag, apply_func="cat")
 
         return visualize_optimization(
             ego_planned=ego_planned,
+            ado_actual=ado_actual,
             ado_planned=ado_planned,
             ado_planned_wo=ado_planned_wo,
             # ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],

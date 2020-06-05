@@ -123,8 +123,8 @@ class TestSolvers:
         ego_trajectory_opt, ado_trajectories = solver.solve(solver_horizon,
                                                             warm_start_method=warm_start_method,
                                                             max_cpu_time=0.1)
-        ado_planned = solver.log_query(key_type=mantrap.constants.LT_ADO, key="planned", cat=True)
-        ego_opt_planned = solver.log_query(key_type=mantrap.constants.LT_EGO, key="planned", cat=True)
+        ado_planned = solver.log_query(key_type=mantrap.constants.LT_ADO, key="planned", apply_func="cat")
+        ego_opt_planned = solver.log_query(key_type=mantrap.constants.LT_EGO, key="planned", apply_func="cat")
 
         # Test output shapes.
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
@@ -206,11 +206,11 @@ class TestSolvers:
 
         # Query logging (full).
         key_type, key = mantrap.constants.LT_OBJECTIVE, mantrap.constants.LK_OVERALL
-        obj_log_full = solver.log_query(key_type=key_type, key=key)
+        obj_log_full = solver.log_query(key_type=key_type, key=key, apply_func="as_dict")
         assert obj_log_full is not None
 
         # Query logging (last) and check compliance.
-        obj_log_last = solver.log_query(key_type=key_type, key=key, last=True)
+        obj_log_last = solver.log_query(key_type=key_type, key=key, apply_func="last")
         assert obj_log_last is not None
         for i in range(obj_log_last.numel()):
             log_key = f"{key_type}_{key}_{i}"

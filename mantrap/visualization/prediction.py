@@ -12,7 +12,7 @@ def visualize_prediction(
     ego_planned: torch.Tensor = None,
     ado_planned: torch.Tensor = None,
     ado_planned_wo: torch.Tensor = None,
-    ego_goal: torch.Tensor = None,
+    ado_histories: torch.Tensor = None,
     legend: bool = False,
     file_path: str = None,
     ax: plt.Axes = None
@@ -28,7 +28,7 @@ def visualize_prediction(
                trajectories, etc.).
    :param ego_planned: planned/optimized ego trajectory (t_horizon + 1, 5).
    :param ado_planned: according ado trajectory conditioned on ego_planned (num_ados, num_samples, t_horizon + 1, 1, 5).
-   :param ego_goal: optimization robot goal state.
+   :param ado_histories: ado history trajectory used instead of internally stored on (num_ados, -1, >=2).
    :param legend: draw legend in paths plot (might be a mess for many agents).
    :param file_path: storage path, if None return as HTML video object.
    :param ax: optionally the plot can be drawn in an already existing axis.
@@ -40,8 +40,8 @@ def visualize_prediction(
         assert mantrap.utility.shaping.check_ado_samples(ado_planned, ados=env.num_ados)
     if ado_planned_wo is not None:
         assert mantrap.utility.shaping.check_ado_samples(ado_planned_wo, ados=env.num_ados)
-    if ego_goal is not None:
-        assert mantrap.utility.shaping.check_goal(ego_goal)
+    if ado_histories is not None:
+        assert mantrap.utility.shaping.check_ado_history(ado_histories, ados=env.num_ados)
 
     # Create basic plot. In order to safe computational effort the created plot is re-used over the full output
     # video, by deleting the previous frame content and overwrite it (within the `update()` function).
@@ -63,26 +63,22 @@ def visualize_prediction(
         ax.plot(ego_planned[:, 0], ego_planned[:, 1], "-", color=ego_color, label=ego_id)
         draw_agent_representation(ego_planned[0, 0:2], color=ego_color, name=ego_id, env_axes=env.axes, ax=ax)
 
-    # Plot ego goal.
-    if ego_goal is not None:
-        assert mantrap.utility.shaping.check_goal(ego_goal)
-        ax.plot(ego_goal[0], ego_goal[1], "rx", markersize=15.0, label="goal")
-
     # Plot ado trajectories (forward and backward). Additionally plot the ado "side" trajectories, i.e.
     # the unconditioned prediction samples if both samples are defined.
     if ado_trajectory_main is not None:
         for m_ado, ado in enumerate(env.ados):
             ado_trajectory = ado_trajectory_main[m_ado]
             ado_id, ado_color = ado.id, ado.color
-            ado_history = ado.history
+            ado_history = ado.history if ado_histories is None else ado_histories[m_ado, :, 0:2]
             ado_position = ado_trajectory[0, 0, 0, 0:2]
 
             draw_agent_representation(ado_position, name=ado_id, color=ado_color, env_axes=env.axes, ax=ax)
-            draw_samples(ado_trajectory, name=ado_id, color=ado_color, ax=ax)
-            ax.plot(ado_history[:-1, 0], ado_history[:-1, 1], "-.", color=ado_color, label=ado_id)
+            draw_samples(ado_trajectory, name=ado_id, color=ado_color, ax=ax, alpha=1.0, marker="-")
+            ax.plot(ado_history[:, 0], ado_history[:, 1], "-.", color=ado_color, label=ado_id, alpha=1.0)
 
             if ado_planned is not None and ado_planned_wo is not None:
-                draw_samples(ado_planned_wo[m_ado], name=f"{ado_id}_wo", color=ado_color, ax=ax, alpha=0.5)
+                label = f"{ado_id}_wo"
+                draw_samples(ado_planned_wo[m_ado], name=label, color=ado_color, ax=ax, alpha=0.8, marker=":")
 
     draw_trajectory_axis(env.axes, ax=ax, legend=legend)
     ax.set_title(f"predictions")

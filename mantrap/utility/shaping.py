@@ -61,7 +61,16 @@ def check_ado_states(x: torch.Tensor, num_ados: int = None, enforce_temporal: bo
     if enforce_temporal:
         assert x.shape[1] == 5
     else:
-        assert x.shape[1] == 4 or x.shape[1] == 5
+        assert x.shape[1] in [4, 5]
+    return True
+
+
+def check_ado_history(x: torch.Tensor, ados: int = None) -> bool:
+    assert not torch.any(torch.isnan(x))
+    assert len(x.shape) == 3  # (num_ados, t_horizon, 2/4/5)
+    assert x.shape[2] in [2, 4, 5]
+    if ados is not None:
+        assert x.shape[0] == ados
     return True
 
 
