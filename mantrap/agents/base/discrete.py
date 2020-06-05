@@ -289,6 +289,22 @@ class DTAgent(abc.ABC):
         return trajectory
 
     ###########################################################################
+    # Accelerations ###########################################################
+    ###########################################################################
+    @staticmethod
+    def compute_acceleration(trajectory: torch.Tensor, dt: float) -> torch.Tensor:
+        """Compute the accelerations (ax, ay) of the agent give some trajectory. Therefore use the
+        central difference theorem to numerically take the derivative of the velocity at every
+        time-step.
+
+        :param trajectory: agent trajectory (t_horizon, >=4 = px, py, vx, vy).
+        :param dt: time interval [s] between discrete trajectory states.
+        """
+        assert mantrap.utility.shaping.check_ego_trajectory(trajectory, pos_and_vel_only=True)
+        dd = mantrap.utility.maths.Derivative2(horizon=trajectory.shape[0], dt=dt, velocity=True)
+        return dd.compute(trajectory[:, 2:4])
+
+    ###########################################################################
     # Feasibility #############################################################
     ###########################################################################
     def check_feasibility_trajectory(self, trajectory: torch.Tensor, dt: float) -> bool:
