@@ -123,8 +123,8 @@ class TestSolvers:
         ego_trajectory_opt, ado_trajectories = solver.solve(solver_horizon,
                                                             warm_start_method=warm_start_method,
                                                             max_cpu_time=0.1)
-        ado_planned = solver.log_query(key_type=mantrap.constants.LT_ADO, key="planned", stack=True)
-        ego_opt_planned = solver.log_query(key_type=mantrap.constants.LT_EGO, key="planned", stack=True)
+        ado_planned = solver.log_query(key_type=mantrap.constants.LT_ADO, key="planned", cat=True)
+        ego_opt_planned = solver.log_query(key_type=mantrap.constants.LT_EGO, key="planned", cat=True)
 
         # Test output shapes.
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
