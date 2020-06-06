@@ -207,13 +207,6 @@ def straight_line(start: torch.Tensor, end: torch.Tensor, steps: int):
     return line
 
 
-def normal_line(start: torch.Tensor, end: torch.Tensor):
-    """Normal direction to a line defined by  start and end position. """
-    assert not torch.allclose(start, end)
-    direction = (end - start) / torch.norm(end - start)
-    return torch.tensor([direction[1], -direction[0]])
-
-
 def rotation_matrix(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Create rotation matrix from angle of vector from x -> y."""
     assert x.numel() == y.numel() == 2
