@@ -43,6 +43,14 @@ class DoubleIntegratorDTAgent(LinearDTAgent):
         """
         return -self.acceleration_max, self.acceleration_max
 
+    def control_norm(self, controls: torch.Tensor) -> torch.Tensor:
+        """Compute the agent's control norm ||u|| = L1-norm.
+
+        :param controls: controls to calculate the norm from (N, 2).
+        :returns: control norm (N, 2).
+        """
+        return torch.abs(controls).float()
+
     ###########################################################################
     # Agent Properties ########################################################
     ###########################################################################
