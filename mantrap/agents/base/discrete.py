@@ -292,6 +292,19 @@ class DTAgent(abc.ABC):
     ###########################################################################
     # Feasibility #############################################################
     ###########################################################################
+    def control_norm(self, controls: torch.Tensor) -> torch.Tensor:
+        """Compute the control norm (L1-norm) used within the project.
+
+        .. math:: ||u|| = |ux + uy|
+
+        :param controls: controls to calculate the norm from (N, 2).
+        :returns: control norm (N, 2).
+        """
+        if not self.is_robot:
+            return torch.norm(controls, dim=-1, keepdim=True).float()
+        else:
+            return torch.abs(controls).float()
+
     def check_feasibility_trajectory(self, trajectory: torch.Tensor, dt: float) -> bool:
         """Check feasibility of a given trajectory to be followed by the internal agent.
 
@@ -319,7 +332,7 @@ class DTAgent(abc.ABC):
         controls = controls.float()
 
         lower, upper = self.control_limits()
-        controls_norm = torch.norm(controls, dim=-1)
+        controls_norm = self.control_norm(controls=controls)
         lower_checked = torch.all(torch.ge(controls_norm, lower))
         upper_checked = torch.all(torch.le(controls_norm, upper))
         return bool(lower_checked and upper_checked)
@@ -334,8 +347,9 @@ class DTAgent(abc.ABC):
         controls = controls.float()
 
         lower, upper = self.control_limits()
-        controls_norm = torch.norm(controls, dim=-1, keepdim=True)
+        controls_norm = self.control_norm(controls)
         controls_norm_clamped = controls_norm.clamp(lower, upper)
+        print(controls.shape, controls_norm.shape)
         return torch.div(controls, controls_norm.clamp(min=1e-6)) * controls_norm_clamped
 
     ###########################################################################

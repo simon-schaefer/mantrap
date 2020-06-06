@@ -15,7 +15,7 @@ class ControlLimitModule(PureConstraintModule):
     For computing this constraint simply the norm of the planned control input is determined and compared to the
     maximal agent's control limit. For 0 < t < T_{planning}:
 
-    .. math:: ||u(t)||_2 < u_{max}
+    .. math:: ||u(t)|| < u_{max}
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, **unused):
         super(ControlLimitModule, self).__init__(env=env, t_horizon=t_horizon)
@@ -25,7 +25,7 @@ class ControlLimitModule(PureConstraintModule):
         """Determine constraint value core method.
 
         The max control constraints simply are computed by transforming the given trajectory to control input
-        (deterministic dynamics). Then take the L2 norm over the "cartesian" axis to get the norm of the
+        (deterministic dynamics). Then take the norm over the "cartesian" axis to get the norm of the
         control input at every time-step.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
@@ -33,7 +33,7 @@ class ControlLimitModule(PureConstraintModule):
         :param tag: name of optimization call (name of the core).
         """
         ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
-        return torch.norm(ego_controls, dim=1).flatten().float()
+        return self.env.ego.control_norm(controls=ego_controls).flatten()
 
     def compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -50,7 +50,7 @@ class ControlLimitModule(PureConstraintModule):
         When the gradient shall be computed with respect to the controls, then computing the gradient analytically
         is very straight-forward, by just applying the following formula:
 
-        .. math:: \\frac{ d ||u|| }{ du_i } = \\frac{u_i}{||u||_2}
+        .. math:: \\frac{ d ||u|| }{ du_i } = \\frac{u_i}{||u||}
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
@@ -66,15 +66,11 @@ class ControlLimitModule(PureConstraintModule):
             if not mantrap.utility.maths.tensors_close(ego_controls, grad_wrt):
                 return None
 
-            # Otherwise compute Jacobian using formula in method's description above.
             t_horizon, u_size = ego_controls.shape
-            u_norm = torch.norm(ego_controls, dim=1).flatten().detach().numpy()
-            u_norm[u_norm == 0.0] = 1e-6  # remove nan values when computing (1 / u_norm)
-            u = ego_controls.flatten().numpy()
-
-            u_norm_stretched = np.repeat(u_norm, t_horizon * u_size)
-            u_stretched = np.concatenate([u] * t_horizon)
-            jacobian = np.repeat(np.eye(t_horizon), u_size) * 1 / u_norm_stretched * u_stretched
+            jacobian = np.zeros((u_size * t_horizon, u_size * t_horizon))
+            for t in range(t_horizon):
+                jacobian[u_size * t, u_size * t] = 1
+                jacobian[u_size * t + 1, u_size * t + 1] = 1
             return jacobian.flatten()
 
     def gradient_condition(self) -> bool:
@@ -96,7 +92,7 @@ class ControlLimitModule(PureConstraintModule):
         The boundaries of this constraint depend on the exact implementation of the agent, however most agents
         are isotropic, so assuming to have equal control boundaries in both cartesian directions and also
         have its lower bound smaller or equal to zero, so that we can simplify the constraint to only have an
-        upper bound (since the lower bound zero is anyways given and a L2-norm is semi-positive).
+        upper bound (since the lower bound zero is anyways given and a norm is semi-positive).
         """
         lower, upper = self.env.ego.control_limits()
         if lower <= 0:
@@ -105,7 +101,7 @@ class ControlLimitModule(PureConstraintModule):
             return lower, upper
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
-        return self.t_horizon
+        return self.t_horizon * 2
 
     ###########################################################################
     # Constraint Properties ###################################################
