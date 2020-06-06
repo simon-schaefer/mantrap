@@ -28,6 +28,7 @@ class PotentialFieldEnvironment(ParticleEnvironment):
     def create_particles(self,
                          num_particles: int,
                          v0_dict: typing.Dict[str, typing.Tuple[float, float]] = None,
+                         **particle_kwargs
                          ) -> typing.Tuple[typing.List[typing.List[mantrap.agents.IntegratorDTAgent]], torch.Tensor]:
         """Create particles from internal parameter distribution.
 
@@ -38,14 +39,14 @@ class PotentialFieldEnvironment(ParticleEnvironment):
 
         :param num_particles: number of particles per ado.
         :param v0_dict: parameter v0 gaussian distribution (mean, variance) by ado_id, if None then gaussian
-                        with mean = `mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT` and variance = mean/4,
+                        with mean, variance = `mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT`
                         similarly for each ado.
         :return: list of N = num_particles for every ado in the scene.
         :return: probability (pdf) of each particle (num_ados, num_particles).
         """
         if v0_dict is None:
-            v0_default = mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT
-            v0_dict = {ado_id: (v0_default, v0_default / 4) for ado_id in self.ado_ids}
+            v0_default, v0_variance = mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT
+            v0_dict = {ado_id: (v0_default, v0_variance) for ado_id in self.ado_ids}
 
         return super(PotentialFieldEnvironment, self).create_particles(num_particles, param_dicts={"v0": v0_dict})
 

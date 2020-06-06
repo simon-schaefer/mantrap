@@ -48,12 +48,12 @@ ENV_PARTICLE_NOISE = 1e-6  # positional noise to avoid running into troubles in 
 KALMAN_ADDITIVE_NOISE = 0.2  # additive noise per prediction time-step (Q in Kalman equations).
 
 SOCIAL_FORCES_DEFAULT_TAU = 0.4  # [s] relaxation time (assumed to be uniform over all agents).
-SOCIAL_FORCES_DEFAULT_V0 = 4.0  # [m2s-2] repulsive field constant.
-SOCIAL_FORCES_DEFAULT_SIGMA = 0.9  # [m] repulsive field exponent constant.
+SOCIAL_FORCES_DEFAULT_V0 = 4.0, 1.0  # [m2s-2] repulsive field constant (mean, variance).
+SOCIAL_FORCES_DEFAULT_SIGMA = 0.9, 0.3  # [m] repulsive field exponent constant (mean, variance).
 SOCIAL_FORCES_MAX_GOAL_DISTANCE = 0.3  # [m] maximal distance to goal to have zero goal traction force.
 SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between agents for interaction force.
 
-POTENTIAL_FIELD_V0_DEFAULT = 4.0  # [m2s-2] repulsive field constant.
+POTENTIAL_FIELD_V0_DEFAULT = 4.0, 2.0  # [m2s-2] repulsive field constant (mean/variance).
 
 TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
 TRAJECTRON_DEFAULT_HISTORY_LENGTH = 5
