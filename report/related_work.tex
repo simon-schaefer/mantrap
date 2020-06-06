@@ -10,6 +10,11 @@
 \end{center}
 \end{figure}
 
+\begin{equation}
+\max_{\phi, \theta, \psi} \sum_{i=1}^N \mathbb{E}_{z \sim q_{\phi}(z | x_i, y_i)} [\log p_\psi (y_i | x_i, z)] - \beta D_{KL} (q_{\phi}(z | x_i, y_i) || p_{\theta}(z | x_i))
+\label{eq:trajectron_loss}
+\end{equation}
+
 %Although there are many different approaches for tackling different parts of the problem, such as predicting and simulating human movement, finding a collision-free trajectory or doing both in an end-to-end manner using deep reinforcement learning techniques, the problem is still far from being solved and applicable to a wide range of real-world scenarios.
 
 %todo: do not list papers !!!  a lot of different methods for planning in crowds different axes: interpretable optimization, accurate behavior prediction, but find general topics e.g. 

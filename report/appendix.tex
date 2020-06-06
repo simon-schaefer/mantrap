@@ -1,5 +1,17 @@
-\chapter{Appendix}
+\chapter{Appendix - Math Prerequisites}
 
+\section{GMM Log Probability Value}
+\label{appendix:gmm_log_prob}
+For a two-dimensional \ac{GMM} $g \sim GMM(\mu, \Sigma, \pi, \rho)$ with mean vector $\mu$, variance matrix $\Sigma$, mode importance vector $\pi$ and Cholesky factors of correlation $\rho$ the probability at $(x, y)$ can be computed as shown in Equation \ref{eq:gmm_log_prob}, which was derived super-imposing the \ac{PDF} for bi-variate Gaussian distributions.
+
+\begin{align}
+f_m(x, y | \mu, \sigma, \rho) &= {\frac{\sqrt{1- \rho^2}}{2 \pi \sigma_x \sigma_y} 
+\exp - \frac{1}{2 (1 - \rho^2)}} \left( \frac{( x - \mu _x)^2}{\sigma_x^2} +
+\frac {(y - \mu_y)^2}{\sigma_y^2}-{\frac {2\rho (x - \mu_x)(y - \mu_y)}
+{\sigma_x \sigma_y}} \right)	 \\
+\Rightarrow \mathbb{E}_{GMM}[x, y] &= \sum_{m=0}^M \pi_m \cdot f_m(x, y) =  \sum_{m=0}^M \exp \left( \log \pi_m + \log f_m(x, y) \right)
+\label{eq:gmm_log_prob}
+\end{align}
 
 %\chapter{Problem Definition}
 %\label{chp:problemDefinition}
