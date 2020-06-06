@@ -1,5 +1,4 @@
 import abc
-import math
 import random
 import string
 import typing
@@ -112,20 +111,6 @@ class DTAgent(abc.ABC):
 
     @abc.abstractmethod
     def _dynamics(self, state: torch.Tensor, action: torch.Tensor, dt: float) -> torch.Tensor:
-        raise NotImplementedError
-
-    @staticmethod
-    def dynamics_scalar(px: float, py: float, vx: float, vy: float, ux: float, uy: float, dt: float
-                        ) -> typing.Tuple[float, float, float, float]:
-        """Forward integrate the agent's motion given some state-action pair and an integration time-step.
-
-        In comparison to the "normal" dynamics() method this method can be used for repeated scalar and non-
-        differentiable use cases. Since the agent's fundamental state tensor operations are "only" two-dimensional
-        using tensor arithmetic rather creates an overhead, instead of saving computational effort, compared to
-        native python scalar operations.
-
-        :returns: position x, position y, velocity x, velocity y of new state
-        """
         raise NotImplementedError
 
     def inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
@@ -350,23 +335,9 @@ class DTAgent(abc.ABC):
 
         lower, upper = self.control_limits()
         controls_norm = torch.norm(controls, dim=-1, keepdim=True).detach()
-        if torch.all(torch.le(controls_norm, 1e-6)):
-            return controls
+        controls_norm = controls_norm.clamp_min(1e-6)
         controls_norm_clamped = controls_norm.clamp(lower, upper)
-        return controls.div(controls_norm) * controls_norm_clamped
-
-    def make_controls_feasible_scalar(self, control_x: float, control_y: float) -> typing.Tuple[float, float]:
-        """Make single control feasible by clipping them between its lower and upper boundaries. Return
-        the transformed feasible controls. Since this is basically clamping each direction separately,
-        the overall direction of the control input might be changed !!
-        """
-        lower, upper = self.control_limits()
-        control_norm = math.hypot(control_x, control_y)
-        control_norm_clamped = min(upper, max(lower, control_norm))
-
-        control_x = control_x / control_norm * control_norm_clamped
-        control_y = control_y / control_norm * control_norm_clamped
-        return control_x, control_y
+        return torch.div(controls, controls_norm) * controls_norm_clamped
 
     ###########################################################################
     # Reachability ############################################################

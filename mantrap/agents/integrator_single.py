@@ -26,11 +26,6 @@ class IntegratorDTAgent(LinearDTAgent):
         T = torch.tensor([0, 0, 0, 0, dt]).t()
         return A, B, T
 
-    @staticmethod
-    def dynamics_scalar(px: float, py: float, vx: float, vy: float, ux: float, uy: float, dt: float
-                        ) -> typing.Tuple[float, float, float, float]:
-        return px + ux * dt, py + uy * dt, ux, uy
-
     def _inverse_dynamics(self, state: torch.Tensor, state_previous: torch.Tensor, dt: float) -> torch.Tensor:
         """
         .. math:: action = (pos_t - pos_{t-1}) / dt
