@@ -134,7 +134,7 @@ class OptimizationModule(abc.ABC):
                  ) -> np.ndarray:
         """Determine gradient vector for passed ego trajectory. Therefore determine the objective value by
         calling the internal `compute()` method and en passant build a computation graph. Then using the pytorch
-        autograd library compute the gradient vector through the previously built computation graph.
+        auto-grad library compute the gradient vector through the previously built computation graph.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
         :param grad_wrt: vector w.r.t. which the gradient should be determined.
@@ -167,7 +167,7 @@ class OptimizationModule(abc.ABC):
             if objective is None or not self.gradient_condition():
                 gradient = np.zeros(grad_wrt.numel())
 
-            # Otherwise compute the gradient "numerically" using the PyTorch autograd package.
+            # Otherwise compute the gradient "numerically" using the PyTorch auto-grad package.
             else:
                 gradient = self.compute_gradient_auto_grad(objective, grad_wrt=grad_wrt)
 

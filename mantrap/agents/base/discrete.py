@@ -334,10 +334,9 @@ class DTAgent(abc.ABC):
         controls = controls.float()
 
         lower, upper = self.control_limits()
-        controls_norm = torch.norm(controls, dim=-1, keepdim=True).detach()
-        controls_norm = controls_norm.clamp_min(1e-6)
+        controls_norm = torch.norm(controls, dim=-1, keepdim=True)
         controls_norm_clamped = controls_norm.clamp(lower, upper)
-        return torch.div(controls, controls_norm) * controls_norm_clamped
+        return torch.div(controls, controls_norm.clamp(min=1e-6)) * controls_norm_clamped
 
     ###########################################################################
     # Reachability ############################################################

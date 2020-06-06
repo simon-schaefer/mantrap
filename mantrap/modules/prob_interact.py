@@ -68,6 +68,7 @@ class InteractionProbabilityModule(PureObjectiveModule):
 
         # Compute the conditioned distribution. Then for every ado in the ado_ids`-list determine the `
         # probability of occurring in this distribution, using the distributions core methods.
+        # Note: `log_prob()` already weights the probabilities with the mode weights (if multi-modal) !
         dist_dict = self.env.compute_distributions(ego_trajectory)
         objective = torch.zeros(1)
         for ado_id in ado_ids:
