@@ -27,8 +27,7 @@ class InteractionPositionModule(PureObjectiveModule):
                  **unused):
         super(InteractionPositionModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
         if env.num_ados > 0:
-            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
-            self._ado_positions_wo = self.distribution_to_positions(dist_dict)
+            self._ado_positions_wo = self.env.predict_wo_ego(t_horizon=self.t_horizon)  # output = distribution mean
 
     def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                        ) -> typing.Union[torch.Tensor, None]:
@@ -52,19 +51,8 @@ class InteractionPositionModule(PureObjectiveModule):
         # It is important to take all agents into account during the environment forward prediction step
         # (`compute_distributions()`) to not introduce possible behavioural changes into the forward prediction,
         # which occur due to a reduction of the agents in the scene.
-        dist_dict = self.env.compute_distributions(ego_trajectory=ego_trajectory)
-        positions = self.distribution_to_positions(dist_dict)
+        positions = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
         return torch.sum(torch.norm(positions - self._ado_positions_wo, dim=-1))
-
-    def distribution_to_positions(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
-                                  ) -> torch.Tensor:
-        """Compute ado-wise positions from positional distribution dict mean values."""
-        sample_length = self.env.num_modes * (self.t_horizon + 1)
-        positions = torch.zeros((self.env.num_ados * sample_length, 2))
-        for ado_id, distribution in dist_dict.items():
-            m_ado = self.env.index_ado_id(ado_id)
-            positions[m_ado * sample_length:(m_ado + 1) * sample_length, :] = distribution.mean.view(-1, 2)
-        return positions
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
