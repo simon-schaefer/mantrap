@@ -406,6 +406,9 @@ class OptimizationModule(abc.ABC):
         # a NaN at this place of `a.grad`. One might argue whether it should be 0 or NaN however as the optimizer
         # cannot deal with NaN gradient we use zeros here instead.
         # https://github.com/pytorch/pytorch/issues/15131
+        # Additionally torch.clamp() or the L2 norm respectively kills the gradient at the border. So when the
+        # computed control actions run into the limit, the gradient becomes NaN which otherwise should be maximal
+        # or zero (depending on the side of limit). Choose zero here.
         gradient = np.nan_to_num(gradient, copy=False)
         return gradient
 
