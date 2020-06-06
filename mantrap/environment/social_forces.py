@@ -55,7 +55,7 @@ class SocialForcesEnvironment(ParticleEnvironment):
 
         :param num_particles: number of particles per ado.
         :param v0_dict: parameter v0 gaussian distribution (mean, variance) by ado_id, if None then gaussian
-                        with mean = `mantrap.constants.SOCIAL_FORCES_DEFAULT_V0` and variance = mean/4,
+                        with mean, variance = `mantrap.constants.SOCIAL_FORCES_DEFAULT_V0`
                         similarly for each ado.
         :param sigma_dict: parameter sigma gaussian distribution (similar to `v0_dict`).
         :param tau: tau parameter, by default `mantrap.constants.SOCIAL_FORCES_DEFAULT_TAU`,
@@ -64,11 +64,11 @@ class SocialForcesEnvironment(ParticleEnvironment):
         :return: probability (pdf) of each particle (num_ados, num_particles).
         """
         if v0_dict is None:
-            v0_default = mantrap.constants.SOCIAL_FORCES_DEFAULT_V0
-            v0_dict = {ado_id: (v0_default, v0_default / 4) for ado_id in self.ado_ids}
+            v0_default, v0_variance = mantrap.constants.SOCIAL_FORCES_DEFAULT_V0
+            v0_dict = {ado_id: (v0_default, v0_variance) for ado_id in self.ado_ids}
         if sigma_dict is None:
-            sigma_default = mantrap.constants.SOCIAL_FORCES_DEFAULT_SIGMA
-            sigma_dict = {ado_id: (sigma_default, sigma_default / 4) for ado_id in self.ado_ids}
+            sigma_default, sigma_variance = mantrap.constants.SOCIAL_FORCES_DEFAULT_SIGMA
+            sigma_dict = {ado_id: (sigma_default, sigma_variance) for ado_id in self.ado_ids}
         goal_dict = {ado.id: {"goal": ado.params["goal"]} for ado in self.ados}
         return super(SocialForcesEnvironment, self).create_particles(
             num_particles, param_dicts={"v0": v0_dict, "sigma": sigma_dict}, const_dicts=goal_dict, tau=tau,
