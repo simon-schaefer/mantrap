@@ -18,7 +18,8 @@ In this work we are interested in finding the optimal trajectory for a robot nav
 \label{eq:robot_dynamics}
 \end{equation}
 
-For further simplification the robot's dynamics are assumed to be deterministic. The pedestrians (also referred as $ados$) are modeled as single integrators, due to their highly dynamic, reactive and fast changing nature.
+For further simplification the robot's dynamics are assumed to be deterministic. 
+The pedestrians (also referred as $ados$) follow single integrator dynamics. As pointed out in \cite{Ivanovic18} this is an intuitive choice "as a person’s movements are all position-changing, e.g. walking increases position along a direction, running does so faster". Other standard models for pedestrian dynamics such as Social Forces \cite{Helbling1995} however regard the pedestrian to be a double integrator, not a single integrator, and describe the forces acting on it introduced by other pedestrians, obstacles, etc. Having a reasonable fast reaction time and a large maximal acceleration in comparison to the robot both of these descriptions converge, so that the single integrator model is a good choice nonetheless.\footnote{As discussed in chapter \ref{text:experiments} the modular implementation allows us to use different pedestrian dynamics. When testing against other prediction environments non-single integrator dynamics are used, but most analysis described in this report relates to the single integrator model.} 
 
 \begin{align}
 \dxped[k]_t = \uped[k]_t
@@ -76,8 +77,6 @@ Formally, the solution to this problem can be represented as the following optim
 
 The objective function is a weighted sum of a goad-driven $J_{goal}(\cdot)$ and some interaction-driven term $J_{int}(\cdot)$, which are further explained in Section \ref{text:approach/objective}. The constraints are a combination of dynamics constraints, safety constraints as well as initial and final state restrictions, which are discussed in Section \ref{text:approach/constraint}. Note that the terminal state $\x_T$ of the planned trajectory is not constrained to be in the terminal set $\mathcal{X}_f$. As stated in chapter \ref{text:introduction} within this project the safety and undisturbed gait of pedestrians is considered to be more important than reaching the goal state time-optimally. While the goal-driven objective $J_{goal}(\cdot)$ introduces an incentive to approach the goal state, constraining the terminal state to be in the terminal set would informally speaking, remove the possibility of detouring to not interfere a pedestrians movement. 
 
-%todo: nonzero inequality \& inequality Jacobian, Hessian, number of variables, number of constraints 
-
 \subsubsection{Transcription Method} 
 Trajectory optimization is a wide field with many different methodologies. Though the area can be roughly broken down into two categories, shooting and collocation \cite{Kelly2017}.\footnote{There are several other directions of separation possible such as the direct vs indirect methods, but I will focus on shooting vs collocation here. Further information about the taxonomy of trajectory optimization can be found in \cite{Kelly2017} and \cite{Chai2020}.} Shooting optimizes for the control inputs and unrolls them using a simulation environment to compute objective and constraint. Thereby the dynamics constraint $x = f(x, u)$ is intrinsically enforced. In comparison, collocation uses all controls and (!) states as decision variables, while constraining the system dynamics, and tries to solve the \ac{NLP} by approximating some function (e.g.\ Lagrange polynomials in orthogonal collocation). Due to the linear and cheap to compute dynamics, the availability of a simulation engine tightly bound to the optimization and since the constraints acting on both the path $\x_{0:T}$ itself and the controls $\u_{0:T}$ are comparably "simple", as illustrated in Section \ref{text:approach/constraint}, shooting is used within this project. Therefore the trajectory is split up into several segments, one for each discrete discretization time step, which makes solving problem \ref{eq:formulation} easier to be solved and more robust (multiple shooting) \cite{Betts1998}.
 
@@ -85,6 +84,11 @@ Trajectory optimization is a wide field with many different methodologies. Thoug
 Since no further assumptions about the pedestrian trajectory prediction model $\tilde{\Phi}$ have been made, the optimization is non-linear and especially non-convex in general. As shown in \cite{Gould2003}\cite{Parkinson2018}\cite{Freund2004} there are a bunch of algorithms to deal with general non-linear optimization problems, such as line-search, trust-region, interior-point, generalized-reduced-gradient or sequential-quadratic-programming methods as well as combinations of these such as LOQO. However, not all of them apply to constrained problems such as Problem \ref{eq:formulation}. For constrained optimization problems \ac{SQP} and \ac{IPM} are the most popular ones, both having their advantages and drawbacks. While \ac{SQP} usually require fewer solver iterations and thus fewer function calls, they scale poorly with the number of constraints and do not guarantee that intermediate results are feasible \cite{Dehdari2013}\cite{Parkinson2018}. Although this can be an advantage in the case of computationally expensive constraints, it also leads to an infeasible solution when the algorithm is stopped for convergence. Additionally, compared to \ac{IPM} the computational time required by the solver itself is usually larger (e.g. as demonstrated in \cite{Dehdari2013}).
 \newline
 In project \project safety is induced by constraint, thus obtaining a feasible solution is crucial, also if the algorithm might be aborted before convergence due to runtime constraints. For this reason, an interior-point method has been used within the project. The interior-point method \ac{IPOPT} \cite{Wachter2006} has shown to be applicable in many robotics applications, and has shown to be valuable even in case of very tough runtime constraints such as solving the feedforward commands in high-performance automated driving at 50 Hz in \cite{Spielberge2019} or motion planning for legged robotics \cite{Winkler2018}. There it has been used in this project as well\footnote{From today's point of view it turned out, after tweaking the performance of the optimization core as best as possible, it turns out that the number of objective function calls is the bottleneck of the algorithm. Therefore comparing the capacity of the interior-point solver such as \ac{IPOPT} with \ac{SQP} solvers such as \ac{GuSTO} remains for future work.}.
+
+% The NLP solver implements the following primal-dual methods for finding a local minimum: 1) interior point trust-region line-search algorithm 2)active-set trust-region line-search algorithm
+%Both methods can solve small-, medium-, and large-scale optimization problems efficiently and robustly. These methods use exact first and second derivatives to calculate search directions. The memory requirements of both algorithms are reduced dramatically because only nonzero elements of matrices are stored. Convergence of both algorithms is achieved by using a trust-region line-search framework that guides the iterations towards the optimal solution. If a trust-region subproblem fails to provide a suitable step of improvement, a line-search is then used to fine tune the trust-region radius and ensure sufficient decrease in objective function and constraint violations.
+%The interior point technique implements a primal-dual interior point algorithm in which barrier functions are used to ensure that the algorithm remains feasible with respect to the bound constraints. Interior point methods are extremely useful when the optimization problem contains many inequality constraints and you suspect that most of these constraints will be satisfied as strict inequalities at the optimal solution.
+%https://documentation.sas.com/?docsetId=ormpug&docsetTarget=ormpug_nlpsolver_overview.htm&docsetVersion=14.3
 
 \subsubsection{Implementation Details} 
 The algorithm has been implemented in Python 3.7 using PyTorch \cite{pytorch}. Next to executing computations highly efficiently by vectorization and batching PyTorch's automatic differentiation framework allows computing gradients at low computational cost as well as modular, i.e.\ without the need to explicitly define its closed form. This is the core of prediction-based optimization, enabling to define objectives and constraints (such as $J_{int}$), which depend on a complex graph-based computation, and still being able to derive their gradient without costly and inaccurate numerical approximations. 
@@ -154,7 +158,6 @@ with $A_n, B_n$ the stacked state-space description matrices as described in Sec
 \newline
 Overall the goal objective and its gradient are very efficient, cheap to compute, having linear complexity with the length of the planning horizon $T$, and being independent of the number of pedestrians. Furthermore, it is strictly convex, which improves the optimization convergence speed. Therefore it is quite valuable for warm-starting the optimization algorithm, as further explained in Section \ref{text:approach/runtime/warm_starting}.
 
-%todo: final speed objective
 
 \subsection{Interaction Objective}
 \label{text:approach/objective/interactive}
@@ -251,7 +254,7 @@ Although quite intuitive it turns out that a sample-wise objective is hard to op
 \subsubsection{Trajectory Projection}
 Combining computational efficiency and the capability of representing a measure based on the full distribution is hard, as demonstrated in the examples above. However, by exploiting that the predicted distribution $\xped[]_t \sim \dist[]_t$ is a continuous, well-defined distribution with infinite support.\footnote{Although not all distributions have infinite support, these properties surely hold for the most commonly used ones in the area of pedestrian prediction such as Gaussians, \ac{GMM}s \cite{Salzmann2020} or non-closed form distribution such as SGAN \cite{Gupta2018}.} Then \ref{eq:objective_interaction} can be re-defined as the probability of the the un-conditioned distribution $\distwo[]_t$ with respect to the conditioned distribution $\dist[]_t$, which is equivalent to the integral over the product distribution $\int \int \distwo[]_t \cdot \dist[]_t \, dxdy$.
 \newline
-For two \ac{GMM}s the distribution product is not analytically defined though, and would involve numerically solving an \ac{ODE} \cite{Schrempf2005} or multi-scale sampling \cite{Ihler2003}. Therefore as simplification not the full un-conditioned distribution is taken into account but only its mean value $\mathbb{E}[\distwo[]_t]$, and weighted by the conditioned mode importance vector: 
+For two \ac{GMM}s the distribution product is not analytically defined though, and would involve numerically solving an \ac{ODE} \cite{Schrempf2005} or multi-scale sampling \cite{Ihler2003}. Therefore as simplification not the full un-conditioned distribution is taken into account but only its mean value $\mathbb{E}[\distwo[]_t]$, and weighted by the conditioned mode importance vector:\footnote{A derivation of the exact objective formulation for a \ac{GMM} as underlying distribution can be found in the appendix.} 
 
 \begin{equation}
 J_{int}^k = - \sum_{t=0}^T \mathbb{E}_{\xped[k] \sim \dist[k]} \log p(\, \mathbb{E}[\distwo[k]_t] \, | \, \xped[k]_t, \x_t)
@@ -261,8 +264,6 @@ J_{int}^k = - \sum_{t=0}^T \mathbb{E}_{\xped[k] \sim \dist[k]} \log p(\, \mathbb
 To deal with reasonable large values, compared to the other objective functions, and for independence of gradients (sum not product), instead of the \ac{PDF} $p = pdf(x, y)$ its logarithmic value $\log p$ probability is used. Since the product probability should be maximized while the optimization stated in Problem \ref{eq:formulation} seeks the minimum, the expectation value's negative is used.
 \newline
 Equation \ref{eq:objective_interact_prob} is efficient to compute as it can be batched over the full length of the trajectory and all modes. Also it uses the full distribution and has a unique global minimum when the means of both distribution are identical (at least for Gaussian-like distributions such as \ac{GMM}s). In fact \ref{eq:objective_interact_prob} is similar to the \ac{ELBO} loss of the Trajectron loss function (compare Equation \ref{eq:trajectron_loss}), which shows that the term is suitable for general optimization, especially with respect to the Trajectron model itself. However $J_{int}$ is generally applicable to all prediction models, that output a probabilistic distribution, independent from multi-modality.
-
-%todo: comparison position/acceleration distance-based to probabilistic objective function (in favor of distance-based => takes into account acceleration and therefore "effort/comfort", but only mean ... in favor of probabilistic => takes into account full distribution, similar to model loss function to "fits" the model) ==> heat map comparison for single case
 
 
 \section{Constraint Function Design}
@@ -317,18 +318,97 @@ Computing the jacobian for constraint \ref{eq:constraint_v_max} is straight-forw
 \end{align}
  
 
-\subsection{Reachability Constraint}
-\label{text:approach/constraint/reachability}
+\subsection{Safety Constraint}
+\label{text:approach/constraint/safety}
+As pointed out in Chapter \ref{text:introduction} one of the main advantages of an optimization-based approach for robot navigation in human crowds is the possibility to ensure safety, namely by posing safety guarantees in form of constraints to the optimization problem. Infusing safety into a dynamical and probability system is not trivial, and widely dominated by approaches using chance-constraints. 
 
-% however they follow single integrator dynamics. As pointed out in \cite{Ivanovic18} this is an intuitive choice "as a person’s movements are all position-changing, e.g. walking increases position along a direction, running does so faster". Other standard models for pedestrian dynamics such as Social Forces \cite{Helbling1995} however regard the pedestrian to be a double integrator, not a single integrator, and describe the forces acting on it introduced by other pedestrians, obstacles, etc. Having a reasonable fast reaction time and a large maximal acceleration in comparison to the robot both of these descriptions converge, so that the single integrator model is a good choice nonetheless.\footnote{As discussed in chapter \ref{text:experiments} the modular implementation allows us to use different pedestrian dynamics. When testing against other prediction environments non-single integrator dynamics are used, but most analysis described in this report relates to the single integrator model.} 
+\subsubsection{Chance Constraints}
+Sampling-based methods relying on the Bernstein approximation \cite{Calafiore2005}, on scenario planning approach \cite{Bemporad1999} or on Monte Carlo sampling \cite{Hong2011}\cite{Janson2015} as well as dynamic-programming based approaches for discrete space \cite{Yin-LamChow2013}\cite{Ono2015} \cite{Chow2015a} have been purposed. While these methods work for general distributions but usually lack are too slow for an online optimization approach, shrinking the space of distributions can improve the performance, such as in \cite{Calafiore2006}\cite{Carvalho2014}\cite{Blackmore2009}\cite{Blackmore2011}. 
+\newline
+However as stated in \cite{Lew2020} these approaches are slow for a large number of obstacles. In the context of \project the pedestrians ("obstacles") are assigned to multi-modal distributions. While the most of the previously mentioned work on sampling-free chance constraints focus on uniformly radial distributions, e.g. Gaussians, none of them takes multi-modality into account. To do so, a chance constraint could be formulated individually for each mode of a multi-modal distribution, and weighed by multiplying the mode's importance weight $\pi_m$, might be a feasible approach. For each pedestrian $k$, mode $m$, prediction time-step $t$ and probability threshold $p$ the chance-constraint would then be:
 
-% todo: constraint formulation (e.g. min-distance constraints split to be more accurate or summed to compute Jacobian faster)
-% todo: Quellen: neural network representation of value function to make it differentiable (Karen: reachability, Kyle David Julian: network representation to make sure all the corner cases are met)
-% todo: turns out being a linear constraint (see 1D graph)
-%todo: special case => current state is infeasible, then convert to cost of the high weight
+\begin{equation}
+\pi_t^{k,m} \cdot Pr(g_t^{k,m}(x)\leq 0) \geq p
+\end{equation}
 
-% Reachability Meeting
-% Is max_u min_d the same as min_d max_u, so conditioning the disturbance on the input instead of the other way around ? ==> minimax-theorem, depending on function ==> factor out grad V times f
+However, doing so entails repeatedly calling the prediction model $\distmodel[]$. Constraining the sum or product of the mode-wise chance constraints instead, by using Boole's inequality, would be very conservative. In any way using chance-constraints the evaluation of the set of resulting constraints would be at least linear with the number of pedestrians, the number of modes and the length of the planning horizon. While the constraint evaluation can be batched, programmatically each constraint has to be differentiated individually (as required by the PyTorch automatic differentiation engine \cite{pytorch}), which is the main bottleneck of the whole trajectory optimization problem. 
+
+\subsubsection{Hamilton-Jacobi Reachability} 
+Reachability analysis deals with the problem of a two-person, zero-sum differential game, specifically it tries to solve the question how to react if there is another player that interferes with the fulfillment of the robot's objective by optimizing the joint system state, assuming that the counter-player always counters the robot's action optimally, i.e. assuming the worst case disturbance $\boldsymbol{d} = \beta[\boldsymbol{u}]$ \cite{Pavone2020}. Under these conditions the optimal control strategy can be derived by maximizing: \\
+
+\begin{equation}
+V(x(t), t) = \min_{\beta[\boldsymbol{u}](\cdot)} \max_{\boldsymbol{u}(\cdot)} \left[ \int_t^0 g(\boldsymbol{x}(\tau), \boldsymbol{u}(\tau), \boldsymbol{d}(\tau)) \, d\tau + h(\boldsymbol{x}(0)) \right]
+\label{eq:j_reachability}
+\end{equation}
+
+with $(\boldsymbol{x}(\tau), \boldsymbol{u}(\tau), \boldsymbol{d}(\tau))$ describing the joint system with dynamics $f(\boldsymbol{x}, \boldsymbol{u}, \boldsymbol{d})$. While solving for the robot's optimal control strategy $\boldsymbol{u}_{opt}$ in open-loop (also \textit{forward} reachability) is computationally cheap, but leads to overly conservative and hence un-realistic estimates, since the counter-player knows the entire policy $\boldsymbol{u}_{opt}$ in advance and can re-act regardingly, \ac{HJR} (also \textit{backward} reachability) addresses the problem of maximizing Equation \ref{eq:j_reachability} in closed-loop, i.e. by allowing the robot to adapt its control policy at each time-step. As proven in \cite{Pavone2020} this is equivalent as solving the Hamilton-Jacobi-Isaacs differential equation with boundary condition: \\
+
+\begin{problem}{General \ac{HJR} problem}
+\begin{align}
+\pd{V}{t} + \max_{\boldsymbol{u}}  \min_{\boldsymbol{d}} &\left[g(\boldsymbol{x}, \boldsymbol{u}, \boldsymbol{d}) + \nabla V^T f(\boldsymbol{x}, \boldsymbol{u}, \boldsymbol{d}) \right] = 0 \\ 
+V(\boldsymbol{x}, 0) &= h(\boldsymbol{x}) \\
+\Rightarrow \boldsymbol{u}_{opt} &= \arg \max_{\boldsymbol{u}}  \min_{\boldsymbol{d}} \nabla V^T f(\boldsymbol{x}, \boldsymbol{u}, \boldsymbol{d})
+\label{eq:hjr_problem_u}
+\end{align}
+\label{eq:hjr_problem}
+\end{problem}
+
+Solving Problem \ref{eq:hjr_problem} has been examined for several scenarios and applications over the recent years, as in \cite{Dhinakaran2017}\cite{Margellos2009}\cite{Chen2017b}. In opposite to forward reachability \ac{HJR} finds the non-overly conservative avoidance maneuvers, "stemming from its equivalence to an exhaustive search over the joint system dynamics", while still being flexible with respect to the system dynamics, as depicted by \cite{Leung2020}. To solve \ref{eq:hjr_problem} the value function $V(\cdot)$, as well as its gradient, are computed for every cell of a $n$-dimensional grid that discretizes the joint state $\boldsymbol{x}(\tau)$ and for some discrete time horizon (including $\tau \rightarrow \infty$). 
+\newline
+\cite{Leung2020} presents a safety-constraint, based on the resulting value function's gradient, by defining the set of safety-preserving robot control actions as:
+
+\begin{equation}
+\mathcal{U} (\x_{rel}) = \{ \u: \min_{\boldsymbol{d}} \nabla V (\x_{rel})^T f_{rel}(\x, \boldsymbol{d}) \leq 0 \}
+\end{equation}
+
+Since the value function $V$ and its gradient $\nabla V$ are computed offline, the constraint is highly efficient to employ online. As the value function has been computed as backward reachable tube, the 
+
+\subsubsection{\ac{HJR} in single pedestrian scenario}
+In \project problem \ref{eq:hjr_problem} can be understood as a differential game between the robot and the pedestrians. At first, a game between the robot and one pedestrian only is considered, resembling a run-and-catch game, in which the pedestrian, the "disturbance", takes actions to decrease the distance between robot and pedestrian while the robot counter acts on that. Thereby, the coupled system state describes the direction-wise distance between robot and pedestrian $\x - \boldsymbol{d} = \x - \xped[]$ as well as the robot's velocity $\dx$. As previously pointed out the pedestrian is modeled as a single integrator, so that its velocity $\dxped[]$ is a control input rather than a state variable. The coupled system dynamics $f_R$ are: 
+
+\begin{equation}
+f_rel(\x, \xped[]) = 
+\begin{bmatrix} 
+\dot{x} - \dot{\tilde{x}} \\  
+\dot{y} - \dot{\tilde{y}} \\  
+\ddot{x} \\
+\ddot{y} 
+\end{bmatrix} = 
+\begin{bmatrix} 
+\dx - \dxped[] \\ 
+\u
+\end{bmatrix}
+\label{eq:hj_dynamics}
+\end{equation}
+
+By solving Equation \ref{eq:hjr_problem_u} for the given coupled system dynamics, the robot's optimal control action $\u_{opt}^{HJR}$, regarding Problem \ref{eq:hjr_problem}, is determined as by maximizing:
+
+\begin{equation}
+\arg \max_{\u} \nabla V \cdot f(\x, \xped[]) = \arg \max_{\u} (dV_3 u_x + dV_4 u_y) = 
+\begin{cases}
+u_{max} & \text{if } dV_i \geq 0 \\
+u_{min} & \text{if } dV_i < 0	
+\end{cases}
+\label{eq:hj_u_opt}
+\end{equation}
+
+Similarly the worst-case disturbance can be derived as being the disturbance extremum which is opposite to the sign of the value function's gradient. For this specific  dynamics function the min- and max-operator are exchangeable in order (minimax-theorem), so that the optimal disturbance and control can be regarded independently.
+\newline
+Figure \ref{img:hj_value_function} displays two-dimensional slices of the four-dimensional value function. Thereby the left plot shows the one-dimensional case, i.e. $y = 0$ and $v_y = 0$. In particular, it is worth to mention that the value function is mostly linear. Note that the asymmetry with respect to $x = 0$ originates from the differences in maximal and minimal speed between robot and pedestrian, respectively.  In fact the pedestrian is assumed to have a larger maximum speed compared to the robot, as further discussed in Chapter \ref{text:experiments}. Besides, the value function is symmetric in direction $x$ and $y$, as demonstrated in the right plot of Figure \ref{fig:hj_value_function}, which can easily be derived from Equations \ref{eq:hj_dynamics} and \ref{eq:hj_u_opt}.
+
+\begin{figure}[!ht]
+\begin{center}
+\includegraphics[width=\imgwidth]{images/hj_value_function.png}
+\caption{2D slices of 4D \ac{HJR} value function: Position and velocity for one-dimensional case ($y = v_y = 0$, left) and two-dimensional static case ($v_x = v_y = 0$, right)}
+\label{img:hj_value_function}
+\end{center}
+\end{figure}
+
+The value function and its gradient can be computed using the \textit{helperOC} Matlab toolbox \cite{Bansal2017}.\footnote{For more information please visit my toolbox's fork on GitHub \href{https://github.com/simon-schaefer/HJReachibility}{HJReachability Toolbox}}
+
+% Quellen: neural network representation of value function to make it differentiable (Karen: reachability, Kyle David Julian: network representation to make sure all the corner cases are met)
+% special case => current state is infeasible, then convert to cost of the high weight
+
 % Constraining value function > 0 instead of gradient since gradient always worse (pedestrian faster than robot) ? => yes
 % Coupling: Just the intersection as weakly coupled system with combining element the robot’s state ? => yes
 % How to deal with multiple control actions ? Just constraint initial control action ? => just initial control step with horizon = planning horizon or longer
@@ -389,11 +469,6 @@ Within project \project the algorithm has been warm-started by solving the optim
 \end{problem}
 
 Since the simplified optimization problem in problem \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\tilde{\Phi}$ it is much easier and more efficient to solve, being a convex quadratic program. \\
-
-%todo: pre-computation warm-starting since going straight is often not a good choice
-%todo: influence of the number of pedestrians in encoding on initial cost
-
-% Warm-start using pre-computation (similarity by trajectron latent space vs manual encoding) ==> discrete latent space so could be total mess (perturbation sensitivity ??) ==> see jupyter notebook evaluation and reminder
 
 \begin{figure}[!ht]
 \begin{center}
