@@ -42,7 +42,9 @@ class HJReachabilityModule(OptimizationModule):
     Since `sigma` is a slack variable the according weight in the objective function should be comparably large.
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int,  weight: float = 10.0,
-                 data_file: str = "2D.mat", **unused):
+                 data_file: str = mantrap.constants.CONSTRAINT_HJ_MAT_FILE,
+                 interp_method: str = mantrap.constants.CONSTRAINT_HJ_INTERPOLATION_METHOD,
+                 **unused):
         super(HJReachabilityModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight,
                                                    has_slack=True, slack_weight=weight)
 
@@ -86,8 +88,10 @@ class HJReachabilityModule(OptimizationModule):
         # Thus, we use (linear) interpolation by exploiting the regular grid structure of the value function
         # tensor, implemented in the `scipy.interpolate` library.
         grid = [np.linspace(grid_min[i], grid_max[i], num=grid_size_by_dim[i]) for i in range(4)]
-        self._value_function = scipy.interpolate.RegularGridInterpolator(grid, value_function[t_value, :, :, :, :])
-        self._gradients = [scipy.interpolate.RegularGridInterpolator(grid, gradients[i, t_value, :, :, :, :])
+        vt = value_function[t_value, :, :, :, :]
+        gt = gradients[:, t_value, :, :, :, :]
+        self._value_function = scipy.interpolate.RegularGridInterpolator(grid, vt, method=interp_method)
+        self._gradients = [scipy.interpolate.RegularGridInterpolator(grid, gt[i], method=interp_method)
                            for i in range(4)]
 
         # For analytical jacobian and debugging - store variables for auto-grad.

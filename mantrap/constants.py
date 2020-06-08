@@ -79,6 +79,8 @@ MCTS_NUMBER_DEPTH_SAMPLES = 5  # number of samples in depth (i.e. trajectories t
 
 OBJECTIVE_PROB_INTERACT_MAX = 50.0  # maximal value of projection probability log cost.
 
+CONSTRAINT_HJ_MAT_FILE = "2D.mat"  # pre-computed value-/gradient grid mat file.
+CONSTRAINT_HJ_INTERPOLATION_METHOD = "linear"  # value function interpolation method (linear, nearest).
 CONSTRAINT_MIN_L2_DISTANCE = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 CONSTRAINT_VIOLATION_PRECISION = 1e-5  # allowed precision error when determining constraint violation.
 
