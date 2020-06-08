@@ -1,0 +1,105 @@
+\subsection{Interaction Objective}
+\label{text:approach/objective/interactive}
+The interaction between robot and pedestrian itself is an abstract quantity and can thus hardly be used for optimization itself. To approach this problem in the following we consider a scene with the robot facing only one pedestrian, to then generalize the developed concept to interactions with multiple pedestrians.  
+\newline
+While it is hard to find a measure for the interaction between the robot and the pedestrian in the scene when regarding the problem in general, it can be simplified when a) focussing on one of the interacting agents and b) define the measure to vanish its value. Under these conditions, the problem can be re-formulated as decreasing the disturbance the robot induces on the pedestrian, which is a lot simpler to quantify than the abstract concept of interaction. To do so the un-conditioned\footnote{For the sake of brevity the term "un-conditioned" means not depend on the robot's state. However, the pedestrian's trajectory prediction is of course still conditioned on its state history as well as the states and state history of the other pedestrians in the scene, as described in Section \ref{text:approach/formulation}.} pedestrian's trajectory distribution $\distwo[]$ is computed, i.e. the distribution that would occur if no robot would be in the scene, and then compared to its actual conditioned trajectory distribution $\dist[]$.\footnote{When the prediction model requires the input of a robot trajectory, e.g. as an "input format" requirement of a neural network-based model, predicting the un-conditioned trajectory distribution might not be straight-forward. Using a re-trained un-conditioned model is not an option since factors causing a different distribution independent from the robot's trajectory might come into play. Thus, within the project a "pseudo"-robot is used which is located very far away from any pedestrian, hence minimizing its effect on the pedestrian's behavior.} With some general distance measure $\Delta(\cdot, \cdot)$ the interactive objective function given the robot's trajectory $\x_{0:T}$ is defined as:
+
+\begin{equation}
+J_{int}^k(\x_{0:T}) = \sum_{t=0}^T \Delta(\dist[k]_t, \distwo[k]_t)
+\label{eq:objective_interaction}
+\end{equation}
+
+\begin{figure}[!ht]
+\begin{center}
+\begin{tikzpicture}
+
+    \node[inner sep=0pt] (pedwo) at (-3,1)
+    {\includegraphics[width=.05\textwidth]{images/walking.png}};    
+    \draw [dotted, ultra thick, name path=A] (pedwo) to[out=180, in=0] node[above] {$\xpedwo[k]$} (-8, 1);
+    
+
+    \node[inner sep=0pt] (pedw) at (-3,-1)
+    {\includegraphics[width=.05\textwidth]{images/walking.png}};
+    \node[inner sep=0pt] (robot) at (-7,-1)
+    {\includegraphics[width=.05\textwidth]{images/robot.png}};
+    \draw [ultra thick, name path=B] (pedw) to[out=180, in=10] node[below, sloped] {$\xped[k]$}(-8,-3);
+    
+    \draw[thick, decorate, decoration={brace, amplitude=20pt}] (-1.5,2) -- (-1.5,-2);
+
+    \node[inner sep=0pt] (ped) at (5,0.5)
+    {\includegraphics[width=.05\textwidth]{images/walking.png}};
+    
+    \draw [dotted, ultra thick, name path=A] (ped) to[out=180, in=0] node[above] {$\xpedwo[k]$} (0, 0.5);
+    \draw [ultra thick, name path=B] (ped) to[out=180, in=10] node[below, sloped] {$\xped[k]$}(0,-1.5);
+        
+    \tikzfillbetween[of=A and B]{blue, opacity=0.2};
+    \node[] (D) at (1, -0.3){$D_{int}$};
+    
+\end{tikzpicture}
+\end{center}
+\caption{Interactive measure in case of deterministic and uni-modal pedestrian trajectory predictions, which trivially is the area enclosed by the un-conditioned (upper) and the conditioned (middle) trajectory.}
+\label{img:ado_w_wo_distance_trajectory}
+\end{figure}
+
+If the pedestrian's trajectory prediction would be deterministic and uni-modal this measure simply breaks down to the distance between both trajectories which is the area enclosed by both trajectories in continuous time, as shown in Figure \ref{img:ado_w_wo_distance_trajectory}, or a sum of distance per time-step in discrete time. For probabilistic and multi-modal predictions computing the distance between both distributions is more difficult, especially when demands such as computational cost and differentiability (to be used in an optimization) have to be factored in. 
+
+\begin{figure}[!ht]
+\begin{center}
+\begin{tikzpicture}
+
+    \node[inner sep=0pt] (ped) at (5,0)
+    {\includegraphics[width=.05\textwidth]{images/walking.png}};
+    \node[inner sep=0pt] (robot) at (0,0)
+    {\includegraphics[width=.05\textwidth]{images/robot.png}};
+       
+    \draw [dotted, ultra thick, name path=A] (ped) to[out=180, in=0] (0, 2) node[above, sloped] {$\xpedwo[k]$}  to[out=180, in=0] (-4, 0);
+    
+    \draw [ultra thick, name path=B] (ped) to[out=180, in=10] (0,-2) node[below, sloped] {$\xped[k]$} to[out=180, in=0] (-4, 0);
+    
+\end{tikzpicture}
+\end{center}
+\caption{Interactive measure in case of deterministic and uni-modal pedestrian trajectory predictions, which trivially is the area enclosed by the un-conditioned (upper left) and the conditioned (upper right) trajectory.}
+\label{img:int_acceleration_reason}
+\end{figure}
+
+The correlation between the acceleration carried out on a passenger and its comfort is widely known, e.g. for the driving use case \cite{Hoberock1976}. Therefore assuming that the same measure applies for correlation between the acceleration the pedestrian itself has to exert (e.g. to evade a dynamic obstacle) and its comfort is likely. Therefore, instead of contrasting the positional distributions it might be valuable to use the accelerational distributions. Figure \ref{img:int_acceleration_reason} shows a possible scenario, in which the presence of the robot affects the pedestrian such that the trajectory prediction is mirrored. When the robot is static and when no other pedestrian is close, both trajectories are equally safe (if the robot is static)  and "comfortable" for the pedestrian and are equal in length, so there is no reason to chose one above the other. However, due to the large enclosed area, a purely position-based distance metric would be non-zero by far, while an acceleration-based distance metric would be zero since the velocities of the pedestrian-only change their sign, not their absolute value.
+
+\subsubsection{Kullback-Leibler Divergence}
+A commonly used metric for expressing the distance between two distributions is the Kullback-Leibler Divergence $D_{KL}$, which determines the distance between  some distribution $q$ and another distribution $p$ as:
+
+\begin{equation}
+D_{KL} = \int_x q(x) log \frac{q(x)}{p(x)} dx    
+\end{equation}
+
+While $D_{KL}$ is a well-defined, is capable to be used in optimization procedures and is therefore commonly used in many applications, such as generative deep learning models \cite{Goodfellow2014}\cite{Salzmann2020} (similarly the Jenson-Shannon Divergence), it is not analytically defined for some "complex" distributions such as \ac{GMM}, which is the output distribution format of Trajectron \cite{Ivanovic2018}. Methods to approximate the KL-Divergence for \ac{GMM}s have been discussed in \cite{Cui2015} and embrace Monte Carlo sampling, signature quadratic form distance \cite{Beecks2011} and several more which however are not computationally feasible for an online application, especially since its gradient has to be computed. Other methods simplify the real \ac{GMM} to a single Gaussian, by a weighted average over its parameters, which is not guaranteed to be a meaningful distribution and loses the advantages of predicting multi-modal distributions in the first place. 
+\newline
+Regarding the Trajectron \cite{Ivanovic2018} as prediction model, some intermediate distribution might be used for comparison instead of the output distribution, such as the categorical distribution in its latent space\footnote{In fact, the Trajectron's latent space could not be used as a basis for the interactive objective function anyway, since it does not depend on the robot's trajectory. However, it might be used to assess the similarity between scenarios, which will be discussed in Section \ref{text:approach/runtime/warm_starting}.}. Although this approach might give rise to use widely used distance measures such as $D_{KL}$ it would impede tractability and generality of the overall framework, as it would have to be re-defined for every other prediction model. 
+
+\subsubsection{Sample-Wise Distance}
+Next to taking the full trajectory distribution into account instead of the distance between the un-conditioned $\distwo[]$ and the conditioned trajectory distribution $\dist[]$ can be approximated by computing the expected value over sample pairs. Then the distance measure breaks down to a weighted sum over $L_2$-norms for each discrete time-step within the time horizon and for every trajectory pair, which are efficient to compute. 
+
+\begin{equation}
+D_{int}^{sp} = \sum_{samples} \sum_T ||\xpedwo[s]_t - \xped[s]_t||_2
+\end{equation}
+
+As previously described it might be more meaningful to compare accelerational instead of positional data. Using samples instead of the full distribution allows us to efficiently compute the velocity and accelerations of the pedestrian at each predicted time-step numerically, using central difference expressions. 
+
+\begin{equation}
+D_{int}^{sa} = \sum_{samples} \sum_T ||\ddxpedwo[s]_t - \ddxped[s]_t||_2
+\end{equation}
+
+Although quite intuitive it turns out that a sample-wise objective is hard to optimize. This has two pre-dominant reasons: Firstly, it intrinsically relies on a trade-off between computational feasibility (to compute many times per second for an online optimization) and capability to capture the properties of the underlying real distributions sufficiently well. Secondly, when randomly drawn samples are used, stochasticity is introduced into the objective function, which might lead to a different objective value even when evaluated with the same input. When the distribution's means is used instead, the distribution's uncertainty is disregarded. 
+
+\subsubsection{Trajectory Projection}
+Combining computational efficiency and the capability of representing a measure based on the full distribution is hard, as demonstrated in the examples above. However, by exploiting that the predicted distribution $\xped[]_t \sim \dist[]_t$ is a continuous, well-defined distribution with infinite support.\footnote{Although not all distributions have infinite support, these properties surely hold for the most commonly used ones in the area of pedestrian prediction such as Gaussians, \ac{GMM}s \cite{Salzmann2020} or non-closed form distribution such as SGAN \cite{Gupta2018}.} Then \ref{eq:objective_interaction} can be re-defined as the probability of the the un-conditioned distribution $\distwo[]_t$ with respect to the conditioned distribution $\dist[]_t$, which is equivalent to the integral over the product distribution $\int \int \distwo[]_t \cdot \dist[]_t \, dxdy$.
+\newline
+For two \ac{GMM}s the distribution product is not analytically defined though, and would involve numerically solving an \ac{ODE} \cite{Schrempf2005} or multi-scale sampling \cite{Ihler2003}. Therefore as simplification not the full un-conditioned distribution is taken into account but only its mean value $\mathbb{E}[\distwo[]_t]$, and weighted by the conditioned mode importance vector:\footnote{A derivation of the exact objective formulation for a \ac{GMM} as underlying distribution can be found in the appendix.} 
+
+\begin{equation}
+J_{int}^k = - \sum_{t=0}^T \mathbb{E}_{\xped[k] \sim \dist[k]} \log p(\, \mathbb{E}[\distwo[k]_t] \, | \, \xped[k]_t, \x_t)
+\label{eq:objective_interact_prob}
+\end{equation}
+
+To deal with reasonable large values, compared to the other objective functions, and for independence of gradients (sum not product), instead of the \ac{PDF} $p = pdf(x, y)$ its logarithmic value $\log p$ probability is used. Since the product probability should be maximized while the optimization stated in Problem \ref{eq:formulation} seeks the minimum, the expectation value's negative is used.
+\newline
+Equation \ref{eq:objective_interact_prob} is efficient to compute as it can be batched over the full length of the trajectory and all modes. Also it uses the full distribution and has a unique global minimum when the means of both distribution are identical (at least for Gaussian-like distributions such as \ac{GMM}s). In fact \ref{eq:objective_interact_prob} is similar to the \ac{ELBO} loss of the Trajectron loss function (compare Equation \ref{eq:trajectron_loss}), which shows that the term is suitable for general optimization, especially with respect to the Trajectron model itself. However $J_{int}$ is generally applicable to all prediction models, that output a probabilistic distribution, independent from multi-modality.

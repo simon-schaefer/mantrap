@@ -1,0 +1,43 @@
+\subsection{Warm Starting}
+\label{text:approach/runtime/warm_starting}
+It is widely known that warm starting an optimization can be very beneficial for its convergence speed for several optimization algorithms, e.g. shown in \cite{Banerjee2020} for \ac{GuSTO} or for \ac{IPOPT} in \cite{Shahzad2010}, \cite{John2008} or \cite{Spielberge2019}.
+\newline
+Within project \project the algorithm has been warm-started by solving the optimization problem posed in problem \ref{eq:formulation} while ignoring all objectives and constraints that relate to pedestrians, i.e. by solving the following optimization problem: \\
+
+\begin{problem}{Simplified \project optimization problem for warm-starting}
+\begin{align}
+\min_{\u_{0:T-1}} \quad & J_{goal}(\x_{0:T}) \\
+\textrm{s.t. } \quad & \x_{t+1} = \f(\x_t, \u_t) & \forall t \in [0, T - 1] \\
+& \x \in \xset & \forall t \in [0, T]\\
+& \u_t \in \uset & \forall t \in [0, T]\\
+& \x_0 \in \xset_0
+\end{align} 
+\label{eq:formulation_warm_starting}
+\end{problem}
+
+Since the simplified optimization problem in problem \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\tilde{\Phi}$ it is much easier and more efficient to solve, being a convex quadratic program. \\
+
+\begin{figure}[!ht]
+\begin{center}
+\begin{tikzpicture}
+
+    \node (R) at (0, 0) [circle, shade, draw] {Robot};
+    \node (G) at (8, 4) [circle, shade, draw] {Goal};
+    \node (P1) at (2, 3) [circle, fill=orange, draw] {$P_1$};
+    \node (P2) at (8, 1) [circle, fill=yellow, draw] {$P_2$};
+    
+    \tkzDefPointBy[projection=onto R--G](P1)  \tkzGetPoint{P1m}
+    \tkzDefPointBy[projection=onto R--G](P2)  \tkzGetPoint{P2m}
+    
+    \draw[->, dotted, very thick] (R) to node[above] {} (G);
+    \draw (P1m) -- (P1) node[midway, sloped, above] {$\mu_{P1}$};
+    \draw (R) -- (P1m) node[midway, sloped, above] {$\eta_{P1}$};
+    \draw (P2m) -- (P2) node[midway, sloped, above] {$\mu_{P2}$};
+    \draw (R) -- (P2m) node[midway, sloped, below] {$\eta_{P1}$};
+    
+\end{tikzpicture}
+\end{center}
+\label{img:robot_goal_encoding}
+\end{figure}
+
+%Does the pre-computed set contain every possible scenario? No, but just warm-start so not required, there will be a constrained optimization afterward anyway

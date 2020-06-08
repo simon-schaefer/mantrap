@@ -1,0 +1,36 @@
+\section{Problem Formulation}
+\label{text:approach/formulation}
+In this work we are interested in finding the optimal trajectory for a robot navigating among pedestrians on the two-dimensional plane. Let $\x_t = (x_t, y_t, \dot{x}_t, \dot{y}_t) \in \mathbb{R}^4 $ be the position and velocity of the robot, also referred as $ego$, at time $t$ and $\x_{0:N}$ a trajectory over multiple states $(\x_0, \x_1, \x_2, \hdots, \x_N)$. Within this work the robot is assumed to have double integrator dynamics. With control input $\u_t = (u_{x, t}, u_{y, t}) \in \mathbb{R}^2$, we have: 
+
+\begin{equation}
+\ddx_t = \u_t
+\label{eq:robot_dynamics}
+\end{equation}
+
+For further simplification the robot's dynamics are assumed to be deterministic. 
+The pedestrians (also referred as $ados$) follow single integrator dynamics. As pointed out in \cite{Ivanovic18} this is an intuitive choice "as a person’s movements are all position-changing, e.g. walking increases position along a direction, running does so faster". Other standard models for pedestrian dynamics such as Social Forces \cite{Helbling1995} however regard the pedestrian to be a double integrator, not a single integrator, and describe the forces acting on it introduced by other pedestrians, obstacles, etc. Having a reasonable fast reaction time and a large maximal acceleration in comparison to the robot both of these descriptions converge, so that the single integrator model is a good choice nonetheless.\footnote{As discussed in chapter \ref{text:experiments} the modular implementation allows us to use different pedestrian dynamics. When testing against other prediction environments non-single integrator dynamics are used, but most analysis described in this report relates to the single integrator model.} 
+
+\begin{align}
+\dxped[k]_t = \uped[k]_t
+\label{eq:pedestrian_dynamics}
+\end{align}
+
+Each pedestrian's future trajectory is predicted as a probabilistic and multimodal using some model $\distmodel[]$ . Thereby,  let $\xped[k]_t \sim \dist[k]_t$ be the distribution of the pedestrian $k$s position at time $t$, with mean $\muped[k]_t$, variance $\sigmaped[k]_t$ and mode-weights vector $\piped[k]_t$. The prediction is based on the past states of the robot $\x_{0:t}$ and of every pedestrian in the scene $\xped[j]_{0:t}$ including pedestrian $k$. Moreover, the function $\distmodel[]$ is generally not shared overall pedestrian, but individual for each one.
+
+\begin{align}
+\xped[k]_t &\sim \distmodel[k]_t(\muped[k]_t, \sigmaped[k]_t, \piped[k]_t) \\
+\dist[k]_t &= \distmodel[k] (\x_{0:t}, \xped[0]_{0:t}, \hdots, \xped[K]_{0:t})
+\end{align}
+
+Similar to the robot the pedestrians are modeled as single point masses, both underlying speed bounds defined by the $L_2$ norm of their velocities. Furthermore both the robot and the pedestrians underly constraints for their minimal and maximal control effort. Thus, the sets of feasible control inputs $
+\uset$ and $\upedset$ respectively, are defined using the $L_1$-norm and the $L_2$-norm respectively:
+
+\begin{align}
+\uset &= \{\u | \u \in \mathbb{R}^2, ||\u||_1 \leq u_{max}\} \\
+\upedset &= \{\uped[] | \uped[] \in \mathbb{R}^2, ||\uped[]||_2 \leq \tilde{u}_{max}\} 
+\label{eq:controls_bounds}
+\end{align}
+ 
+All actions are assumed to take place in a free-space, two-dimensional environment. 
+\newline
+Within project \project I want to find a robot trajectory $\x_{0:T}$ over some discrete-time horizon $N$ that trade-offs between minimizing the travel time from its current state to some goal state in $\xset_f = \{\boldsymbol{g} | \boldsymbol{g} \in \xset \}$ on the one side and the interference with the pedestrians in the scene on the other side, concerning its dynamic as well as safety boundaries. For further simplification, a perfect knowledge about the current and all past states of surrounding agents $\xped[k]_{0:t} \forall k \in [0, K]$ is assumed.

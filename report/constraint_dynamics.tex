@@ -1,0 +1,47 @@
+\subsection{Dynamics Constraints}
+\label{text:approach/constraint/dynamics}
+The dynamics constraints subside all constraints in problem \ref{eq:formulation} that are not directly related to safety, i.e. 
+
+\begin{align}
+\label{eq:constraint_f}
+&\x_{t+1} = \f(\x_t, \u_t) \qquad& \forall t \in [0, T - 1] \\
+\label{eq:constraint_x}
+&\x_t \in \xset & \forall t \in [0, T]\\
+\label{eq:constraint_u}
+&\u_t \in \uset & \forall t \in [0, T]\\
+\label{eq:constraint_x0}
+&\x_0 \in \xset_0
+\end{align}
+
+Using the shooting trajectory optimization paradigm the decision variables are the robot's control inputs  $\u_t \in \uset$ so that the states $\x_t$ are obtained by unrolling the controls starting at some initial state $\x_0 \in \xset_0$ and iteratively using the robot's dynamics $\f(\cdot)$. \ac{IPOPT} on the other side solves a general \ac{NLP} of the form \cite{Wachter2006} \\
+
+\begin{problem}{General IPOPT problem formulation}
+\begin{align}
+\min_{x \in \mathbb{R}^n} \quad & \f(x) \\
+\textrm{s.t. } \quad & g^L \leq g(x) \leq g^U \\
+& x^L \leq x \leq x^U 
+\end{align}
+\label{eq:formulation_ipopt}
+\end{problem}
+
+As indicated in Section \ref{text:approach/formulation} the bounds of the controls $\u_t$ have a shape, as the decision variable $x$ in problem \ref{eq:formulation_ipopt}. Therefore \ref{eq:constraint_u} is implicitly posed, without further ado, just by using the robot's control input bounds as bounds of the decision variable. Also the constraints \ref{eq:constraint_f} and  \ref{eq:constraint_x0} are satisfied by the problem design, using the shooting method, leaving merely the constraint \ref{eq:constraint_x} to be explicitly defined. The state $\x$ of the robot incorporates both, its position and its velocity. While the prediction models, objectives and constraints depend only  relative measures regarding the agent's positions and therefore the positional subset of $\xset$ can be safely assumed as being unbounded ($\xset_{pos} = \mathbb{R}^2$). Due to the speed boundaries that are imposed on the robot ($||v||_1 \leq v_{max}$, comp. Section \ref{text:approach/formulation}), in order for the solution to be feasible a maximal speed constraint has to be established:
+
+\begin{equation}
+\x_t \in \xset \Rightarrow -v_{max} \leq g_{v_{max}}(\x_t) = \dot{\x}_t \leq v_{max} \quad \forall t \in [0, T]
+\label{eq:constraint_v_max}
+\end{equation}
+
+Computing the jacobian for constraint \ref{eq:constraint_v_max} is straight-forward using chain rule and exploiting the linear robot dynamics (as above when deriving the goal objective's gradient in equation \ref{eq:goal_gradient_dynamics}):  
+
+\begin{align}
+\nabla g_{v_{max}} &= \pd{g_{v_{max}}}{\u_{0:T-1}} = \pd{g_{v_{max}}}{\x_{0:T}} \cdot \pd{\x_{0:T}}{\u_{0:T-1}} \\
+\Rightarrow \pd{g_{v_{max}}}{\x_{0:T}} &= \begin{bmatrix} \pd{g_{v_{max}}^1}{\x_{0:T}} & \hdots & \pd{g_{v_{max}}^T}{\x_{0:T}}\end{bmatrix}^T  \\
+&= \begin{bmatrix} 
+0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & \hdots & 0 \\ 
+0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & \hdots & 0 \\  
+0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & \hdots & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \hdots & 0 \\ 
+\vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & \hdots & 1 \end{bmatrix} \\
+\Rightarrow \pd{\x_{0:T}}{\u_{0:T-1}} &= \begin{bmatrix} \mathbf{0}_{n \times m} \\ B_n \end{bmatrix}
+\end{align}
