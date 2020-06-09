@@ -29,6 +29,10 @@ build/
 
 # Debugging, intermediate and documentation files.
 report/main.pdf
+*.aux
+*.bbl
+*.out
+*.log
 outputs/
 third_party/reachability/
 third_party/trajectron_models/
@@ -38,3 +42,6 @@ third_party/cyipopt/
 third_party/Ipopt/build/
 third_party/Ipopt/Ipopt/
 third_party/Ipopt/ThirdParty/
+
+# HJ Reachability Toolbox files.
+third_party/HJReachibility/toolboxls/
