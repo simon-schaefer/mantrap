@@ -33,6 +33,9 @@ report/main.pdf
 *.bbl
 *.out
 *.log
+*.toc
+*.blg
+*.synctex.gz
 outputs/
 third_party/reachability/
 third_party/trajectron_models/
@@ -42,6 +45,3 @@ third_party/cyipopt/
 third_party/Ipopt/build/
 third_party/Ipopt/Ipopt/
 third_party/Ipopt/ThirdParty/
-
-# HJ Reachability Toolbox files.
-third_party/HJReachibility/toolboxls/
