@@ -77,12 +77,12 @@ class OptimizationModule(abc.ABC):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        obj_value = self.compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        objective = self.compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
         # Convert objective in standard optimization format (as float).
-        if obj_value is None:
+        if objective is None:
             obj_value = 0.0  # if objective not defined simply return 0.0
         else:
-            obj_value = float(obj_value.item())
+            obj_value = float(objective.item())
         return self._return_objective(obj_value, tag=tag)
 
     def compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
