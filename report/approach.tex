@@ -1,8 +1,12 @@
 \chapter{Multi-Modal Interaction-Aware Trajectory Optimization}
 \label{text:approach}
+
+
+
+
 In this chapter, an overview of the approach is provided. Starting in Section \ref{text:approach/formulation} the problem of socially aware motion planning is formulated formally, including the assumptions made within this project. 
 \newline
-Section \ref{text:approach/overview} which presents an overview of the full trajectory optimization pipeline. It is shown how the algorithm is built to allow to deal with general graph-like pedestrian behavior prediction models, with multi-modal, probabilistic outputs. Furthermore, the advantages of formulating socially aware motion planning as an optimization problem while utilizing a graph-based prediction model, e.g. deep learning-based models such as the Trajectron \cite{Ivanovic18}, over purely learned \cite{Chen2017} or purely optimization-based \cite{Berg2011} algorithms are illustrated. Finally, it is explained how the usage of a general-purpose, computation-graph based framework such as PyTorch \cite{pytorch} or TensorFlow \cite{tensorflow} can be harnessed for a highly modular, efficient, and versatile implementation.
+Section \ref{text:approach/overview} which presents an overview of the full trajectory optimization pipeline. It is shown how the algorithm is built to allow to deal with general graph-like pedestrian behavior prediction models, with multi-modal, probabilistic outputs. Furthermore, the advantages of formulating socially aware motion planning as an optimization problem while utilizing a graph-based prediction model, e.g. deep learning-based models such as the Trajectron \cite{Ivanovic2018}, over purely learned \cite{Chen2017} or purely optimization-based \cite{Berg2011} algorithms are illustrated. Finally, it is explained how the usage of a general-purpose, computation-graph based framework such as PyTorch \cite{pytorch} or TensorFlow \cite{tensorflow} can be harnessed for a highly modular, efficient, and versatile implementation.
 \newline
 The exact formulation of the optimization problem is further explained in Section \ref{text:approach/objective} and \ref{text:approach/constraint}. Beginning with the objective function both the goal-driven and the interaction-driven parts are illustrated, together with a derivation of their gradients. Furthermore, several designs of the specific objective function are discussed. The subsequent section addresses the design of the constraints used. Likewise, several constraint function designs are compared. 
 \newline

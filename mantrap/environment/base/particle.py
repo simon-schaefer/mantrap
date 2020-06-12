@@ -13,9 +13,6 @@ from .graph_based import GraphBasedEnvironment
 
 class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
 
-    ###########################################################################
-    # Particle simulations ####################################################
-    ###########################################################################
     @abc.abstractmethod
     def create_particles(self,
                          num_particles: int,

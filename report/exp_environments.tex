@@ -1,8 +1,50 @@
-\section{Simulation Environments}
+\section{Prediction Models}
 \label{text:experiments/environments}
+The presented trajectory optimization framework is developed to work with a general prediction model, that fulfills the conditions presented in \ref{text:approach/formulation}, in particular outputs a distribution over possible pedestrian trajectories, conditioned on the robot's planned trajectory. However to the best of the author's knowledge there does not exist another prediction model which can be conditioned on the robot's trajectory. Existing models other than Trajectron \cite{Salzmann2020} are either closed-source or closely linked to a specific robotic platform such as \cite{Casas2019}\cite{Casas2018}\cite{Britz2017}\cite{Jain2019}, as stated in \cite{Salzmann2020}, and therefore not feasible to be used for the development of a general trajectory optimization framework. While conditioning other data-driven prediction model such as Social GAN \cite{Gupta2018} is out of the scope of this work and left for future work, to present the capabilities of the developed trajectory optimization algorithm, standard pedestrian prediction models based on "physical simulations" of the pedestrians have been augmented to be used within this project.
 
-% Trajectron++: The few methods which do include such considerations are closed-source, tightly integrated with a specific robotic platform, or trained on private data [50,8,20,7].
+\subsection{Trajectron}
+The Trajectron \cite{Ivanovic2018}\cite{Salzmann2020} is a data-driven pedestrian prediction model that forecasts probability distributions over the human state trajectory over some prediction horizon, based on an underlying graph model encoding the interactions between each pedestrian node and with the robot node, as well as a generative-recurrent neural network. As it was extensively described in Chapter \ref{text:related_work} it is only mentioned here for the sake of completeness. 
 
-% particle environments: Probabilistic Programming instead of particles for baselines ==> computationally expensive (Pyro), sampled-based (Jensn2007), see notebook probabilistic programming
+\subsection{Particle-based Environment} 
+While data-driven approaches such as Trajectron \cite{Ivanovic2018} have been trained to predict a full pedestrian trajectory rather than a single state, most physical models predict in an iterative manner, i.e. they predict the state of each pedestrian at time-step $t = t_1$ based on the current states at $t = t_0$, then synchronize the full scene by forward integration, to then predict the next states at time-step $t = t_2$ based on the updated states at $t = t_1$. Also, usually they are deterministic rather than probabilistic models, but largely hinge on a set of parameters which is assigned individually to each pedestrian. However especially the Social Forces model \cite{Helbing1995}, Kalman filter based approaches \cite{Schneider2013}\cite{Rehder2015}\cite{Guo2016} as well as methods based on the \ac{ORCA} method \cite{vandenBerg2011}\cite{Luo2018a}\cite{Charlton2019} are heavily used in the field of pedestrian prediction, both as a model itself or as a baseline for other models. For making use of these models with project \project mainly two challenges have to be solved: Firstly, as previously stated, the pedestrian prediction must be probabilistic and have infinite support in order for the optimization to work properly, especially the interactive objective term described in Section \ref{text:approach/objective/interactive}. And secondly, for the optimization to not be always greedy, a prediction horizon larger than 1 must be possible. 
+\newline
+To tackle these challenges a particle-based approach is used, which iteratively builds up uni-modal Gaussian distributions for every time-step within the prediction horizon. Mean and variance of each distribution for each pedestrian and time-step are accumulated from forward simulating $N_P$ particles using the underlying deterministic prediction model $\distmodeldet[]$, conditioned on current mean state estimate of every pedestrian in the scene as well as the robot's planned trajectory. 
 
-% particle integration for gaussians => position to velocity for single integrator dynamics in general is Non-central chi-squared distribution (Non-central chi-squared distribution) however if we use the simplifying (approximate) assumptions that both the distribution of pos(t) and pos(t+1) are independent, then this simplifies to a gaussian normal distribution (https://mathworld.wolfram.com/NormalDifferenceDistribution.html) ==> same mean anyway ... furthermore we use independence of directions x and y
+\begin{algorithm}[H]
+\setstretch{\algorithmstretch}
+
+\textbf{Input}: $\x_{0:T}, \{\muped[k]_0, \sigmaped[k]_0\}_{k=0}^K$ \\
+\textbf{Parameters}: number of particles $N_P$, deterministic prediction model $\distmodeldet[]$, prediction parameter distribution $\{\Theta^k\}_{k=0}^K$ \\
+\textbf{Output}: $\{\muped[k]_t, \sigmaped[k]_t\}_{k=0}^K \; \forall t \in [1, T]$
+\setstretch{1.0}
+\begin{algorithmic}[1]
+\For{\texttt{t = 1:T}}	
+	\For{\texttt{each pedestrian $k$}}
+		\State $\{ \pparam[k]_i, \boldsymbol{pdf}^k_i \}_{i=0}^{N_P} \gets Sample(\Theta^k)$
+		\State $\{ \pstate[k]_i \}_{i=0}^{N_P} \gets Simulate(\distmodeldet[], \{ \pparam[k]_i \}_{i=0}^{N_P}, \{ \muped[k]_{t-1} \}_{k=0}^K, \x_{t-1}, \x_t)$
+		\State $\{ \pstate[k]_i \}_{i=0}^{N_P} \gets AddNoise()$
+	\EndFor
+	\State $\muped[k]_t, \sigmaped[k]_t = Accumulate(\{ \pstate[]_i, \boldsymbol{pdf}_i \}_{i=0}^{N_P})$
+\EndFor
+\Return $\{ \muped[k]_t, \sigmaped[k]_t \}_{k=0}^K$
+\end{algorithmic}
+\caption{Particle-based prediction algorithm}
+\label{alg:particle_simulation}
+\end{algorithm}
+
+As described in Algorithm \ref{alg:particle_simulation} the parameter set $\pparam[]$ of each particle is sampled from the pedestrian-wise parameter distribution. The parameter distributions are thereby assumed to be independent and identically distributed, with mean being the values used in the original deterministic algorithm and variance being a quarter of that. Given the sampled parameters, the current mean states of each pedestrian in the scene and the planned robot trajectory each particle is then forward simulated using the (deterministic) prediction algorithm $\distmodeldet[]$. Additional noise is added to the resulting particle state to account for modeling errors of $\distmodeldet[]$. The particle state over all pedestrians are then accumulated to one uni-modal, bivariate Gaussian distribution for the next time-step. The process is repeated until the end of the planning horizon $T$ is reached. Since Algorithm \ref{alg:particle_simulation} merely demands $\distmodeldet[]$ to deterministically forecast the behavior of a single pedestrian at a time over a single discrete time-step, it is applicable to a wide range of prediction models. 
+
+\paragraph{Probabilistic Programming.} A major disadvantage of Algorithm \ref{alg:particle_simulation} is that only the mean states are propagated. \ac{PP} computes the changes of distributions when applied on deterministic algorithms and therefore constitutes an alternative to a particle-based approach, even though the prediction model $\distmodeldet[]$ might be non-linear. However it turned out that \ac{PP} is quite computationally expensive, as usually relying on sample-based approaches as well \cite{Jensen2007}, and therefore not feasible for an online method.\footnote{For further information about the usage of \ac{PP} in project \project please have a look into the notebook \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/tools/probabilistic_programming.ipynb}{probabilistic-programming}.} 
+
+\paragraph{Social Forces Model.} The Social Forces model \cite{Helbing1995} is one of the most commonly used pedestrian predictions models in the field, due to its combined capabilities to accurately predict the behavior of human movement, its tractability as well as its small computational complexity. The model uses first-order mechanical principles for forecasting the human motions in accordance to several interaction forces, that describe the impacts the pedestrian is exposed to. 
+
+\begin{align}
+\vec{F} &= \underbrace{\frac{1}{\tau_{\alpha}} (v^0_{\alpha} \vec{e}_{\alpha} - \vec{v}_{\alpha})}_{F_{goal}} - \underbrace{\nabla_{\vec{r}_{\alpha \beta}} V_{\alpha \beta}[b(\vec{r}_{\alpha \beta})]}_{F_{pedestrian}} 
+\label{eq:social_forces} \\
+2b &= \sqrt{(||\vec{r}_{\alpha \beta}|| + ||\vec{r}_{\alpha \beta} - v_{\beta} \dt \vec{e}_{\beta}||)^2 - (v_{\beta} \dt)^2}
+\end{align}
+
+For every pedestrian $\alpha$ Social Forces describes an attractive force to reach an imaginary goal position with desired velocity $v^0_{\alpha} \vec{e}_{\alpha}$, with $\vec{e}_{\alpha}$ being the unit direction vector pointing from the pedestrian's current to its goal position and $v^0_{\alpha}$ the desired speed, e.g.\ the maximal speed. The second force describes the repulsive forces the pedestrians exert among each other, modeled by the gradient of some potential field $V_{\alpha \beta} = V_{\alpha \beta}^0 \exp(-b / \sigma)$ in the direction pointing from pedestrian $\alpha$ to pedestrian $\beta$. Thereby, $b$ takes into account the relative speed and directions of the regarded pedestrian pair. Although Social Forces models the pedestrian with double integrator dynamics, as previously pointed out, this assumption can be easily relaxed due to the highly dynamic nature of the pedestrian with a much larger update rate than the robot's trajectory optimization algorithm.  While the design is originally not taking into account a robot with previously known trajectories, it can be easily integrated by introducing it as an agent with known state, that is applying repulsive forces to each pedestrian, as described in Equation \ref{eq:social_forces}. Additionally, Social Forces characterizes the impact of objects and pedestrian groups, which are however ignored within this work for the sake of simplification and due to the specific problem formulation (e.g. free-plane environment).
+ 
+ \paragraph{Potential Field Model.} The Potential Field model is a simplification of the Social Forces model that was developed within project \project, mainly due to its improved tractability. While the repulsive forces each pedestrian as well as the robot exerts on a pedestrian depends on the relative state informed gradient of a potential field, which might be hard to understand, the potential forces model uses a distance only approach, to evaluate the repulsive force between two agents. If no forces are applied on a pedestrian (or remain under defined threshold), constant, un-accelerated motion is assumed.
+ 

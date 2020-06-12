@@ -48,12 +48,13 @@
 
 % Environments
 \usepackage[chapter]{algorithm} % for floating algorithm environment
-\usepackage{algpseudocode} % for pseudocode
+\usepackage[noend]{algpseudocode} % for pseudocode environment
 \usepackage{fancyvrb} % allows to indent the verbatim environment
 \usepackage{enumitem} % allows to customize lists such as itemize and enumerate
 \usepackage{ragged2e} % allows setting ragged text which is easy to configure
 \usepackage{csquotes} % advanced facilities for inline and display quotations
 \usepackage{listings} % advanced typesetting of source code
+\usepackage{setspace} % line stretching in environment
 
 % Graphics.
 \usepackage{tikz}
@@ -88,6 +89,7 @@
 \def \supervisorstanford{Prof. Marco Pavone}
 
 \def \imgwidth{0.7\textwidth}
+\def \algorithmstretch{1.2}
 
 \def \x{\boldsymbol{x}}
 \def \dx{\boldsymbol{\dot{x}}}
@@ -110,6 +112,7 @@
 \def \dist[#1]{\boldsymbol{\tilde{\psi}^{#1}}}
 \def \distwo[#1]{\boldsymbol{\tilde{\Psi}^{#1}}}
 \def \distmodel[#1]{\boldsymbol{\tilde{\Gamma}^{#1}}}
+\def \distmodeldet[#1]{\boldsymbol{\tilde{\gamma}^{#1}}}
 
 \def \d{\boldsymbol{x}_{rel}}
 \def \xrel{\boldsymbol{x}_{rel}}
@@ -122,6 +125,8 @@
 
 \def \dt{\delta t}
 \def \f{f}
+\def \pstate[#1]{\boldsymbol{\rho}^{#1}}  % particles (based prediction)
+\def \pparam[#1]{\boldsymbol{\theta}^{#1}}
 
 
 % Page format _________________________________________________________

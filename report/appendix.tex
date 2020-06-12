@@ -26,6 +26,31 @@ The expected value over all modes $m \in [0, M]$ super-imposes the \ac{PDF} for 
 \end{equation}
 
 
+%\begin{figure}[ht!]
+%\begin{center}
+%\begin{tikzpicture}[node distance=1cm, auto,]
+%
+%\node[rectangle, rounded corners, draw=black, very thick, text width=8.5em,
+%      minimum height=2em, text centered](intermediate) {Pedestrian States\\$\muped[j]_t, \sigmaped[j]_t$};
+%\node[rectangle, rounded corners, draw=black, very thick, text width=8.5em,
+%      minimum height=2em, text centered, below=0.5cm of intermediate](robot) {Robot state\\$\x_t$};
+%
+%\node[above=of intermediate] (dummy) {};
+%\node[right=of dummy] (t) {Particle simulation()}
+%   edge[<-, bend left=45] (robot.east)
+%   edge[<-, bend left=45] (intermediate.east); 
+%\node[left=of dummy] (g) {Accumulation()}
+%   edge[->, bend right=45] (intermediate.west)
+%   edge[<-, bend left=45] (t)
+%   edge[<-, bend left=50] (t)
+%   edge[<-, bend left=40] (t);
+%\end{tikzpicture}
+%\end{center}
+%\caption{...}
+%\label{fig:particle_simulation}
+%\end{figure}
+
+
 %\chapter{Problem Definition}
 %\label{chp:problemDefinition}
 %In this work, we are interested in deriving a trajectory planning algorithm based on the Trajectron behavioral prediction model \cite{Ivanovic18}. The Trajectron combines elements of variational deep generative models (\ac{VAE}), recurrent sequence models (\ac{LSTM}) and dynamic spatio-temporal graphical structures to predict the possible movements, i.e. velocity distributions, of each agent in a scene, given their state trajectories. 

@@ -103,18 +103,6 @@
   language = {en}
 }
 
-@article{Berg2011,
-  title = {Reciprocal N-{{Body}} Collision Avoidance},
-  booktitle = {Robotics Research},
-  author = {{van den Berg}, Jur and Guy, Stephen J. and Lin, Ming and Manocha, Dinesh},
-  editor = {Pradalier, C{\'e}dric and Siegwart, Roland and Hirzinger, Gerhard},
-  year = {2011},
-  pages = {3--19},
-  publisher = {{Springer Berlin Heidelberg}},
-  address = {{Berlin, Heidelberg}},
-  isbn = {978-3-642-19457-3}
-}
-
 @article{Betts1998,
   title = {Survey of {{Numerical Methods}} for {{Trajectory Optimization}}},
   author = {Betts, John T.},
@@ -186,6 +174,20 @@
   journal = {2019 International Conference on Robotics and Automation (ICRA)}
 }
 
+@article{Britz2017,
+  title = {Massive {{Exploration}} of {{Neural Machine Translation Architectures}}},
+  author = {Britz, Denny and Goldie, Anna and Luong, Minh-Thang and Le, Quoc},
+  year = {2017},
+  month = mar,
+  abstract = {Neural Machine Translation (NMT) has shown remarkable progress over the past few years with production systems now being deployed to end-users. One major drawback of current architectures is that they are expensive to train, typically requiring days to weeks of GPU time to converge. This makes exhaustive hyperparameter search, as is commonly done with other neural network architectures, prohibitively expensive. In this work, we present the first large-scale analysis of NMT architecture hyperparameters. We report empirical results and variance numbers for several hundred experimental runs, corresponding to over 250,000 GPU hours on the standard WMT English to German translation task. Our experiments lead to novel insights and practical advice for building and extending NMT architectures. As part of this contribution, we release an open-source NMT framework that enables researchers to easily experiment with novel techniques and reproduce state of the art results.},
+  archivePrefix = {arXiv},
+  eprint = {1703.03906},
+  eprinttype = {arxiv},
+  journal = {arXiv:1703.03906 [cs]},
+  keywords = {Computer Science - Computation and Language},
+  primaryClass = {cs}
+}
+
 @article{Calafiore2005,
   title = {Uncertain Convex Programs: Randomized Solutions and Confidence Levels},
   shorttitle = {Uncertain Convex Programs},
@@ -235,6 +237,35 @@
   month = sep
 }
 
+@inproceedings{Casas2018,
+  title = {{{IntentNet}}: {{Learning}} to Predict Intention from Raw Sensor Data},
+  booktitle = {Proceedings of the 2nd Conference on Robot Learning},
+  author = {Casas, Sergio and Luo, Wenjie and Urtasun, Raquel},
+  editor = {Billard, Aude and Dragan, Anca and Peters, Jan and Morimoto, Jun},
+  year = {2018},
+  month = oct,
+  volume = {87},
+  pages = {947--956},
+  publisher = {{PMLR}},
+  abstract = {In order to plan a safe maneuver, self-driving vehicles need to understand the intent of other traffic participants. We define intent as a combination of discrete high level behaviors as well as continuous trajectories describing future motion. In this paper we develop a one-stage detector and forecaster that exploits both 3D point clouds produced by a LiDAR sensor as well as dynamic maps of the environment. Our multi-task model achieves better accuracy than the respective separate modules while saving computation, which is critical to reduce reaction time in self-driving applications.},
+  pdf = {http://proceedings.mlr.press/v87/casas18a/casas18a.pdf},
+  series = {Proceedings of Machine Learning Research}
+}
+
+@article{Casas2019,
+  title = {Spatially-{{Aware Graph Neural Networks}} for {{Relational Behavior Forecasting}} from {{Sensor Data}}},
+  author = {Casas, Sergio and Gulino, Cole and Liao, Renjie and Urtasun, Raquel},
+  year = {2019},
+  month = oct,
+  abstract = {In this paper, we tackle the problem of relational behavior forecasting from sensor data. Towards this goal, we propose a novel spatially-aware graph neural network (SpAGNN) that models the interactions between agents in the scene. Specifically, we exploit a convolutional neural network to detect the actors and compute their initial states. A graph neural network then iteratively updates the actor states via a message passing process. Inspired by Gaussian belief propagation, we design the messages to be spatially-transformed parameters of the output distributions from neighboring agents. Our model is fully differentiable, thus enabling end-to-end training. Importantly, our probabilistic predictions can model uncertainty at the trajectory level. We demonstrate the effectiveness of our approach by achieving significant improvements over the state-of-the-art on two real-world self-driving datasets: ATG4D and nuScenes.},
+  archivePrefix = {arXiv},
+  eprint = {1910.08233},
+  eprinttype = {arxiv},
+  journal = {arXiv:1910.08233 [cs, eess]},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition,Computer Science - Machine Learning,Computer Science - Robotics,Electrical Engineering and Systems Science - Signal Processing},
+  primaryClass = {cs, eess}
+}
+
 @inbook{Chai2020,
   title = {Overview of {{Trajectory Optimization Techniques}}},
   booktitle = {Design of {{Trajectory Optimization Approach}} for {{Space Maneuver Vehicle Skip Entry Problems}}},
@@ -247,6 +278,22 @@
   collaborator = {Chai, Runqi and Savvaris, Al and Tsourdos, Antonios and Chai, Senchun},
   isbn = {9789811398445 9789811398452},
   language = {en}
+}
+
+@article{Charlton2019,
+  title = {Fast {{Simulation}} of {{Crowd Collision Avoidance}}},
+  author = {Charlton, John and Gonzalez, Luis Rene Montana and Maddock, Steve and Richmond, Paul},
+  year = {2019},
+  volume = {11542},
+  pages = {266--277},
+  doi = {10.1007/978-3-030-22514-8_22},
+  abstract = {Real-time large-scale crowd simulations with realistic behavior, are important for many application areas. On CPUs, the ORCA pedestrian steering model is often used for agent-based pedestrian simulations. This paper introduces a technique for running the ORCA pedestrian steering model on the GPU. Performance improvements of up to 30 times greater than a multi-core CPU model are demonstrated. This improvement is achieved through a specialized linear program solver on the GPU and spatial partitioning of information sharing. This allows over 100,000 people to be simulated in real time (60 frames per second).},
+  archivePrefix = {arXiv},
+  eprint = {1908.10107},
+  eprinttype = {arxiv},
+  journal = {arXiv:1908.10107 [cs]},
+  keywords = {Computer Science - Robotics},
+  primaryClass = {cs}
 }
 
 @article{Chen2016,
@@ -494,6 +541,20 @@
   isbn = {978-3-540-44319-3 978-3-642-55692-0}
 }
 
+@article{Guo2016,
+  title = {Pedestrian {{Tracking Based}} on {{Camshift}} with {{Kalman Prediction}} for {{Autonomous Vehicles}}},
+  author = {Guo, Lie and Li, Linhui and Zhao, Yibing and Zhao, Zongyan},
+  year = {2016},
+  month = jun,
+  volume = {13},
+  pages = {120},
+  issn = {1729-8814, 1729-8814},
+  doi = {10.5772/62758},
+  journal = {International Journal of Advanced Robotic Systems},
+  language = {en},
+  number = {3}
+}
+
 @article{Gupta2018,
   title = {Social {{GAN}}: {{Socially Acceptable Trajectories}} with {{Generative Adversarial Networks}}},
   shorttitle = {Social {{GAN}}},
@@ -648,6 +709,20 @@
   journal = {CoRR}
 }
 
+@article{Jain2019,
+  title = {Discrete {{Residual Flow}} for {{Probabilistic Pedestrian Behavior Prediction}}},
+  author = {Jain, Ajay and Casas, Sergio and Liao, Renjie and Xiong, Yuwen and Feng, Song and Segal, Sean and Urtasun, Raquel},
+  year = {2019},
+  month = oct,
+  abstract = {Self-driving vehicles plan around both static and dynamic objects, applying predictive models of behavior to estimate future locations of the objects in the environment. However, future behavior is inherently uncertain, and models of motion that produce deterministic outputs are limited to short timescales. Particularly difficult is the prediction of human behavior. In this work, we propose the discrete residual flow network (DRF-Net), a convolutional neural network for human motion prediction that captures the uncertainty inherent in long-range motion forecasting. In particular, our learned network effectively captures multimodal posteriors over future human motion by predicting and updating a discretized distribution over spatial locations. We compare our model against several strong competitors and show that our model outperforms all baselines.},
+  archivePrefix = {arXiv},
+  eprint = {1910.08041},
+  eprinttype = {arxiv},
+  journal = {arXiv:1910.08041 [cs]},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition,Computer Science - Machine Learning,Computer Science - Robotics},
+  primaryClass = {cs}
+}
+
 @article{Janson2015,
   title = {Monte {{Carlo Motion Planning}} for {{Robot Trajectory Optimization Under Uncertainty}}},
   author = {Janson, Lucas and Schmerling, Edward and Pavone, Marco},
@@ -712,6 +787,16 @@
   pages = {151--183},
   doi = {10.1007/s10589-007-9096-y},
   journal = {Computational Optimization and Applications}
+}
+
+@article{Kalman1960,
+  title = {A New Approach to Linear Filtering and Prediction Problems},
+  author = {Kalman, Rudolph Emil},
+  year = {1960},
+  volume = {82},
+  pages = {35--45},
+  journal = {Transactions of the ASME\textendash Journal of Basic Engineering},
+  number = {Series D}
 }
 
 @article{Kelly2017,
@@ -1096,6 +1181,19 @@
   isbn = {978-0-8186-3450-5}
 }
 
+@inproceedings{Rehder2015,
+  title = {Goal-{{Directed Pedestrian Prediction}}},
+  booktitle = {2015 {{IEEE International Conference}} on {{Computer Vision Workshop}} ({{ICCVW}})},
+  author = {Rehder, Eike and Kloeden, Horst},
+  year = {2015},
+  month = dec,
+  pages = {139--147},
+  publisher = {{IEEE}},
+  address = {{Santiago, Chile}},
+  doi = {10.1109/ICCVW.2015.28},
+  isbn = {978-1-4673-9711-7}
+}
+
 @phdthesis{Romanski2019,
   title = {Infusing {{Safety}} to {{Interactive Multi}}-{{Agent Scenarios}} with {{Hamilton}}-{{Jacobi Reachability}}},
   author = {Romanski, Simon},
@@ -1135,6 +1233,21 @@
   journal = {arXiv:2001.03093 [cs]},
   keywords = {Computer Science - Human-Computer Interaction,Computer Science - Machine Learning,Computer Science - Robotics},
   primaryClass = {cs}
+}
+
+@incollection{Schneider2013,
+  title = {Pedestrian {{Path Prediction}} with {{Recursive Bayesian Filters}}: {{A Comparative Study}}},
+  shorttitle = {Pedestrian {{Path Prediction}} with {{Recursive Bayesian Filters}}},
+  booktitle = {Pattern {{Recognition}}},
+  author = {Schneider, Nicolas and Gavrila, Dariu M.},
+  editor = {Hutchison, David and Kanade, Takeo and Kittler, Josef and Kleinberg, Jon M. and Mattern, Friedemann and Mitchell, John C. and Naor, Moni and Nierstrasz, Oscar and Pandu Rangan, C. and Steffen, Bernhard and Sudan, Madhu and Terzopoulos, Demetri and Tygar, Doug and Vardi, Moshe Y. and Weikum, Gerhard and Weickert, Joachim and Hein, Matthias and Schiele, Bernt},
+  year = {2013},
+  volume = {8142},
+  pages = {174--183},
+  publisher = {{Springer Berlin Heidelberg}},
+  address = {{Berlin, Heidelberg}},
+  doi = {10.1007/978-3-642-40602-7_18},
+  isbn = {978-3-642-40601-0 978-3-642-40602-7}
 }
 
 @inproceedings{Schrempf2005,
@@ -1217,6 +1330,18 @@
   eprinttype = {arxiv},
   journal = {CoRR},
   timestamp = {Thu, 13 Jun 2019 13:36:00 +0200}
+}
+
+@article{vandenBerg2011,
+  title = {Reciprocal N-{{Body}} Collision Avoidance},
+  booktitle = {Robotics Research},
+  author = {{van den Berg}, Jur and Guy, Stephen J. and Lin, Ming and Manocha, Dinesh},
+  editor = {Pradalier, C{\'e}dric and Siegwart, Roland and Hirzinger, Gerhard},
+  year = {2011},
+  pages = {3--19},
+  publisher = {{Springer Berlin Heidelberg}},
+  address = {{Berlin, Heidelberg}},
+  isbn = {978-3-642-19457-3}
 }
 
 @misc{Vanderbei2005,
