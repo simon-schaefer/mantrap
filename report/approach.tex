@@ -1,9 +1,22 @@
 \chapter{Multi-Modal Interaction-Aware Trajectory Optimization}
 \label{text:approach}
 
+To the best of the authors knowledge exploiting the gradient of a deep neural network for trajectory optimization has not been done before, likely due the tight runtime requirements of an online optimization as well as due to the lack of guarantees and insights that can be retrieved from such an approach without further ado. While several approaches have dealt with data-driven prediction models outputs before, accessing the model's internal structure enables computing gradients, that are more informed about the actual interactions happening in a multi-agent scene beyond the trajectory predictions. However computing a gradient by backward passing through the whole network is widely associated with large computational effort. While this may be true in general, in the field of trajectory optimization networks and input data are comparably small enough to allow performing these computations efficiently. 
 
+\begin{figure}[!ht]
+\begin{center}
+\begin{tikzpicture}
 
+	\pie[radius=2.2, explode={0, 0, 0.2, 0}] {14.6/data-processing , 17.7/forward-pass , 19.0/backward-pass , 40.2/loss-evaluation, 1.5/others,  7.0/evaluation} 
+	
+\end{tikzpicture}
+\end{center}
+\caption{Runtime evaluation of training the Trajectron model \cite{Salzmann2020} on pre-processed data of the ETH Hotel 2 pedestrian dataset \cite{Pellegrini2009}}
+\label{img:training_runtime}
+\end{figure}
 
+Figure \ref{img:training_runtime} gives an inside into the runtime distribution of the Trajectron model, during training. Here, merely roughly one fifth of the overall runtime is spend performing the backward pass, while most time actually is spent in evaluating the loss function. In particular, forward- and backward-pass do not differ much regarding their overall run-time. While this is only one out of many examples, it illustrates the capability of performing a backward pass online.  
+\newline\newline
 In this chapter, an overview of the approach is provided. Starting in Section \ref{text:approach/formulation} the problem of socially aware motion planning is formulated formally, including the assumptions made within this project. 
 \newline
 Section \ref{text:approach/overview} which presents an overview of the full trajectory optimization pipeline. It is shown how the algorithm is built to allow to deal with general graph-like pedestrian behavior prediction models, with multi-modal, probabilistic outputs. Furthermore, the advantages of formulating socially aware motion planning as an optimization problem while utilizing a graph-based prediction model, e.g. deep learning-based models such as the Trajectron \cite{Ivanovic2018}, over purely learned \cite{Chen2017} or purely optimization-based \cite{Berg2011} algorithms are illustrated. Finally, it is explained how the usage of a general-purpose, computation-graph based framework such as PyTorch \cite{pytorch} or TensorFlow \cite{tensorflow} can be harnessed for a highly modular, efficient, and versatile implementation.
