@@ -40,6 +40,7 @@ def create_scene(module_class: mantrap.modules.base.OptimizationModule.__class__
                                           mantrap.modules.HJReachabilityModule,
                                           mantrap.modules.SpeedLimitModule,
 
+                                          mantrap.attention.ClosestModule,
                                           mantrap.attention.EuclideanModule,
                                           mantrap.attention.ReachabilityModule,
                                           ])
@@ -363,7 +364,8 @@ def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnv
 ###########################################################################
 # Filter ##################################################################
 ###########################################################################
-@pytest.mark.parametrize("module_class", [mantrap.attention.EuclideanModule,
+@pytest.mark.parametrize("module_class", [mantrap.attention.ClosestModule,
+                                          mantrap.attention.EuclideanModule,
                                           mantrap.attention.ReachabilityModule])
 @pytest.mark.parametrize("env_class", environments)
 class TestAttention:

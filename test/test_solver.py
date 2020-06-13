@@ -16,7 +16,8 @@ environments = [mantrap.environment.KalmanEnvironment,
                 mantrap.environment.PotentialFieldEnvironment,
                 mantrap.environment.SocialForcesEnvironment,
                 mantrap.environment.Trajectron]
-attentions = [mantrap.attention.EuclideanModule,
+attentions = [mantrap.attention.ClosestModule,
+              mantrap.attention.EuclideanModule,
               mantrap.attention.ReachabilityModule]
 
 
