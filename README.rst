@@ -1,5 +1,5 @@
 .. image:: https://travis-ci.com/simon-schaefer/mantrap.svg?branch=master
-    :target: https://travis-ci.com/simon-schaefer/mantrap
+   :target: https://travis-ci.com/simon-schaefer/mantrap
 
 .. image:: https://codecov.io/gh/simon-schaefer/mantrap/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/simon-schaefer/mantrap

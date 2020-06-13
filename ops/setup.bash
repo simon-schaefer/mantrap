@@ -17,18 +17,21 @@ fi
 # shellcheck source=.venv_muresco/bin/activate
 source "${PROJECT_HOME}"/"${VIRTUAL_ENV}"/bin/activate
 
-# Install self-python-package.
-echo $'\nInstalling package ...'
+# Install package requirements.
+echo $'Installing package requirements ...'
 cd "${PROJECT_HOME}" || return
-pip3 install -r "${PROJECT_HOME}"/ops/requirements.txt
-echo mantrap > "${VIRTUAL_ENV}"/lib/python3.7/site-packages/mantrap.pth
-echo mantrap_evaluation > "${VIRTUAL_ENV}"/lib/python3.7/site-packages/mantrap_evaluation.pth
+pip3 install -r "${PROJECT_HOME}"/ops/requirements.txt --quiet
+pip3 install -r "${EXTERNAL_HOME}"/GenTrajectron/requirements.txt --quiet
 
-# Install external libraries requirements.
-pip3 install -r "${EXTERNAL_HOME}"/GenTrajectron/requirements.txt
+# Install project packages.
+echo $'Installing project packages ...'
+cp "${PROJECT_HOME}"/ops/setup.py "${PROJECT_HOME}"
+pip3 install -e . --quiet
+rm "${PROJECT_HOME}"/setup.py
 
 # Create output directory.
-mkdir "${PROJECT_HOME}"/outputs
+echo $'Building project structure ...'
+mkdir -p "${PROJECT_HOME}"/outputs
 
 cd "${PROJECT_HOME}" || return
 echo $'\nSuccessfully set up project !'
