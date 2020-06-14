@@ -25,8 +25,11 @@ class AttentionModule(abc.ABC):
     # Filter Formulation ######################################################
     ###########################################################################
     def compute(self) -> typing.List[str]:
-        filter_indices = self._compute()
-        filtered_ids = [self._env.ado_ids[m] for m in filter_indices]
+        if self._env.num_ados == 0:
+            filtered_ids = []
+        else:
+            filter_indices = self._compute()
+            filtered_ids = [self._env.ado_ids[m] for m in filter_indices]
         return self._return_filtered(filtered_ids)
 
     @abc.abstractmethod
