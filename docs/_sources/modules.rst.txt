@@ -27,9 +27,9 @@ Goal-Norm
 .. automodule:: mantrap.modules.goal_norm
     :members:
 
-Goal-Sum
-~~~~~~~~
-.. automodule:: mantrap.modules.baselines.goal_sum
+Goal-Weighted
+~~~~~~~~~~~~~
+.. automodule:: mantrap.modules.baselines.goal_weighted
     :members:
 
 Interaction-Driven Objectives
@@ -61,9 +61,4 @@ Safety-Constraints
 HJ-Reachability
 ~~~~~~~~~~~~~~~
 .. automodule:: mantrap.modules.hj_reachibility
-    :members:
-
-Minimal-Distance
-~~~~~~~~~~~~~~~~
-.. automodule:: mantrap.modules.baselines.min_distance
     :members:
