@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solver &#8212; mantrap 0.1 documentation</title>
     <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -12,7 +13,7 @@
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Objective and Constraint Modules" href="modules.html" />
@@ -40,7 +41,8 @@
         <li class="right" >
           <a href="environment.html" title="Environment"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Solver</a></li> 
       </ul>
     </div>  
 
@@ -143,17 +145,17 @@ the robot’s velocity form the scene encoding.</p>
 
 <dl class="py method">
 <dt id="mantrap.solver.base.trajopt.TrajOptSolver.log_query">
-<code class="sig-name descname">log_query</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">key</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">key_type</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">iteration</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">''</span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">as_dict</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">stack</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Union[torch.Tensor, Dict[str, torch.Tensor], None]<a class="headerlink" href="#mantrap.solver.base.trajopt.TrajOptSolver.log_query" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">log_query</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">key</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">key_type</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">iteration</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">''</span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">apply_func</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'cat'</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>Union<span class="p">[</span>torch.Tensor<span class="p">, </span>Dict<span class="p">[</span>str<span class="p">, </span>torch.Tensor<span class="p">]</span><span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.solver.base.trajopt.TrajOptSolver.log_query" title="Permalink to this definition">¶</a></dt>
 <dd><p>Query internal log for some value with given key (log-key-structure: {tag}/{key_type}_{key}).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> – query key, e.g. name of objective module.</p></li>
-<li><p><strong>key_type</strong> – type of query (-&gt; <a href="#id1"><span class="problematic" id="id2">mantrap.constants.LK_</span></a>…).</p></li>
+<li><p><strong>key_type</strong> – type of query (-&gt; <cite>mantrap.constants.LK_</cite>…).</p></li>
 <li><p><strong>iteration</strong> – optimization iteration to search in, if None then no iteration (summarized value).</p></li>
 <li><p><strong>tag</strong> – logging tag to search in.</p></li>
-<li><p><strong>as_dict</strong> – return query result as dictionary (even if only one-sized).</p></li>
-<li><p><strong>stack</strong> – stack tensors if multiple results (shapes not checked !!).</p></li>
+<li><p><strong>apply_func</strong> – stack/concatenate tensors or concatenate last elements of results
+if multiple results (shapes not checked !!) [“stack”, “cat”, “last”, “as_dict”].</p></li>
 </ul>
 </dd>
 </dl>
@@ -493,6 +495,7 @@ of module kwargs, such as weight (for objectives), etc.</p>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -557,12 +560,13 @@ of module kwargs, such as weight (for objectives), etc.</p>
         <li class="right" >
           <a href="environment.html" title="Environment"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Solver</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
     </div>
   </body>
 </html>

@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Objective and Constraint Modules &#8212; mantrap 0.1 documentation</title>
     <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -12,7 +13,7 @@
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Attention Modules" href="attention.html" />
@@ -40,7 +41,8 @@
         <li class="right" >
           <a href="solver.html" title="Solver"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Objective and Constraint Modules</a></li> 
       </ul>
     </div>  
 
@@ -108,53 +110,42 @@ connected by some computational graph (PyTorch graph) that can be used for diffe
 <p>A comment about multiprocessing: Computing the gradients in parallel would be a good match
 for multiple processing, since it is fairly independent from each other, given the shared
 memory of the computation graph.</p>
-<p><a href="#id1"><span class="problematic" id="id2">``</span></a>`
-import torch.multiprocessing as mp</p>
-<p>mp.set_start_method(‘spawn’)
-x.share_memory_()
-grad_wrt.share_memory_()
-gradient.share_memory_()</p>
-<dl class="simple">
-<dt>def compute(x_i, grad_wrt_i):</dt><dd><p>grad = torch.autograd.grad(element, grad_wrt, retain_graph=True, only_inputs=True)[0]
-return grad.flatten().detach()</p>
-</dd>
-</dl>
-<p>processes = []
-for i_process in range(8):</p>
-<blockquote>
-<div><p>p = mp.Process(target=compute, args=(x[i_process], grad_wrt, ))
-p.start()
-processes.append(p)</p>
-</div></blockquote>
-<dl class="simple">
-<dt>for p in processes:</dt><dd><p>p.join()</p>
-</dd>
-</dl>
-<p><a href="#id3"><span class="problematic" id="id4">``</span></a><a href="#id5"><span class="problematic" id="id6">`</span></a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch.multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
+
+<span class="n">mp</span><span class="o">.</span><span class="n">set_start_method</span><span class="p">(</span><span class="s1">&#39;spawn&#39;</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">share_memory_</span><span class="p">()</span>
+<span class="n">grad_wrt</span><span class="o">.</span><span class="n">share_memory_</span><span class="p">()</span>
+<span class="n">gradient</span><span class="o">.</span><span class="n">share_memory_</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">compute</span><span class="p">(</span><span class="n">x_i</span><span class="p">,</span> <span class="n">grad_wrt_i</span><span class="p">):</span>
+    <span class="n">grad</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">grad_wrt</span><span class="p">,</span> <span class="n">retain_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">only_inputs</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">grad</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+
+<span class="n">processes</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i_process</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">compute</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i_process</span><span class="p">],</span> <span class="n">grad_wrt</span><span class="p">,</span> <span class="p">))</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="n">processes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">processes</span><span class="p">:</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+</pre></div>
+</div>
 <p>Here the torch.multiprocessing library is used to compute the gradient over the whole tensor x in
 multiple parallel processes. Therefore the tensors of both x and grad_wrt are shared over all
 processes using the <cite>.share_memory()</cite> method and all processes are launched with a different
 element of the tensor x. However as shown below sharing a computation graph, i.e. tensors that
 require a gradient, being attached to this graph, over multiple processes is not supported in
 PyTorch and therefore not possible.</p>
-<p><a href="#id7"><span class="problematic" id="id8">``</span></a>`
-def reduce_tensor(tensor):</p>
-<blockquote>
-<div><p>storage = tensor.storage()</p>
-<dl>
-<dt>if tensor.requires_grad and not tensor.is_leaf:</dt><dd><dl class="simple">
-<dt>raise RuntimeError(“Cowardly refusing to serialize non-leaf tensor which requires_grad, “</dt><dd><p>“since autograd does not support crossing process boundaries.  ”
-“If you just want to transfer the data, call detach() on the tensor ”
-“before serializing (e.g., putting it on the queue).”)</p>
-</dd>
-</dl>
-<p>RuntimeError: Cowardly refusing to serialize non-leaf tensor which requires_grad, since
-autograd does not support crossing process boundaries.  If you just want to transfer the data,
-call detach() on the tensor before serializing (e.g., putting it on the queue).</p>
-</dd>
-</dl>
-</div></blockquote>
-<p><a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reduce_tensor</span><span class="p">(</span><span class="n">tensor</span><span class="p">):</span>
+    <span class="n">storage</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">storage</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">tensor</span><span class="o">.</span><span class="n">requires_grad</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tensor</span><span class="o">.</span><span class="n">is_leaf</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Cowardly refusing to serialize non-leaf tensor which requires_grad, &quot;</span>
+                           <span class="s2">&quot;since autograd does not support crossing process boundaries.  &quot;</span>
+                           <span class="s2">&quot;If you just want to transfer the data, call detach() on the tensor &quot;</span>
+                           <span class="s2">&quot;before serializing (e.g., putting it on the queue).&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>To avoid this issue, the full computation graph would have to be re-built for every single element
 of x, which would create a lot of overhead due to repeated computations (as well as being quite not
 general and unreadable due to nesting instead of batching) and therefore not accelerate the computations.</p>
@@ -283,7 +274,7 @@ evaluation of the constraint function.</p>
 <code class="sig-name descname">gradient</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.gradient" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine gradient vector for passed ego trajectory. Therefore determine the objective value by
 calling the internal <cite>compute()</cite> method and en passant build a computation graph. Then using the pytorch
-autograd library compute the gradient vector through the previously built computation graph.</p>
+auto-grad library compute the gradient vector through the previously built computation graph.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -544,19 +535,19 @@ the speeds at every time by its distance to the goal, as explained in the descri
 </dd></dl>
 
 </div>
-<div class="section" id="module-mantrap.modules.baselines.goal_sum">
-<span id="goal-sum"></span><h3>Goal-Sum<a class="headerlink" href="#module-mantrap.modules.baselines.goal_sum" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="module-mantrap.modules.baselines.goal_weighted">
+<span id="goal-weighted"></span><h3>Goal-Weighted<a class="headerlink" href="#module-mantrap.modules.baselines.goal_weighted" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
-<dt id="mantrap.modules.baselines.goal_sum.GoalSumModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.goal_sum.</code><code class="sig-name descname">GoalSumModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.goal_sum.GoalSumModule" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.modules.baselines.goal_weighted.GoalWeightedModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.goal_weighted.</code><code class="sig-name descname">GoalWeightedModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.goal_weighted.GoalWeightedModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Objective based on goal distance of every point of planned robot trajectory.</p>
 <p>This module merely serves as a baseline comparison for the <cite>GoalMeanModule</cite>, by using a weighted
 sum instead of the mean for combining the point-wise objectives. Following the idea that it is
 more important for the last point of the trajectory to be close to the goal than the first one,
 the larger the trajectory index the larger the weight of the point-wise distance.</p>
 <dl class="py method">
-<dt id="mantrap.modules.baselines.goal_sum.GoalSumModule.compute_gradient_analytically">
-<code class="sig-name descname">compute_gradient_analytically</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>numpy.ndarray<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.goal_sum.GoalSumModule.compute_gradient_analytically" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.modules.baselines.goal_weighted.GoalWeightedModule.compute_gradient_analytically">
+<code class="sig-name descname">compute_gradient_analytically</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>numpy.ndarray<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.goal_weighted.GoalWeightedModule.compute_gradient_analytically" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute objective gradient vector analytically.</p>
 <p>While the gradient vector of the objective can be computed automatically using PyTorch’s automatic
 differentiation package there might be an analytic solution, which is when known for sure more
@@ -577,8 +568,8 @@ a numpy array. Hence, not computing based on numpy arrays would just introduce a
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.baselines.goal_sum.GoalSumModule.objective_core">
-<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.goal_sum.GoalSumModule.objective_core" title="Permalink to this definition">¶</a></dt>
+<dt id="mantrap.modules.baselines.goal_weighted.GoalWeightedModule.objective_core">
+<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.goal_weighted.GoalWeightedModule.objective_core" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine objective value core method.</p>
 <p>To compute the goal-based objective simply take the L2 norm between all positions on the ego trajectory
 and the goal. To encounter the fact, that it is more important for the last position (last = position at
@@ -628,7 +619,7 @@ b) looses the advantages of predicting multi-modal distributions in the first pl
 simpler distribution) instead, e.g. the latent space, but this one does not depend on the ego trajectory
 so cannot be used for its optimisation.</p>
 <p>2) Unconditioned path projection: Another approach is to compute (and maximize) the probability of the
-mean conditioned trajectories (mode-wise) appearing in the unconditioned distribution. While it only takes
+mean un-conditioned trajectories (mode-wise) appearing in the conditioned distribution. While it only takes
 into account the mean values (and weights) it is very efficient to compute while still taking the full
 conditioned distribution into account and has shown to be “optimise-able” in the training of Trajectron.
 Since the distributions itself are constant, while the sampled trajectories vary, the objective is also
@@ -746,12 +737,6 @@ that would occur, if the ego is not there from the beginning.</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="mantrap.modules.baselines.pos_interact.InteractionPositionModule.distribution_to_positions">
-<code class="sig-name descname">distribution_to_positions</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dist_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>torch.distributions.distribution.Distribution<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.modules.baselines.pos_interact.InteractionPositionModule.distribution_to_positions" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute ado-wise positions from positional distribution dict mean values.</p>
-</dd></dl>
-
-<dl class="py method">
 <dt id="mantrap.modules.baselines.pos_interact.InteractionPositionModule.gradient_condition">
 <code class="sig-name descname">gradient_condition</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.modules.baselines.pos_interact.InteractionPositionModule.gradient_condition" title="Permalink to this definition">¶</a></dt>
 <dd><p>Condition for back-propagating through the objective/constraint in order to obtain the
@@ -795,7 +780,7 @@ difference in importance between these modes.</p>
 <p>For computing this constraint simply the norm of the planned control input is determined and compared to the
 maximal agent’s control limit. For 0 &lt; t &lt; T_{planning}:</p>
 <div class="math notranslate nohighlight">
-\[||u(t)||_2 &lt; u_{max}\]</div>
+\[||u(t)|| &lt; u_{max}\]</div>
 <dl class="py method">
 <dt id="mantrap.modules.control_limits.ControlLimitModule.compute_jacobian_analytically">
 <code class="sig-name descname">compute_jacobian_analytically</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>numpy.ndarray<span class="p">]</span><a class="headerlink" href="#mantrap.modules.control_limits.ControlLimitModule.compute_jacobian_analytically" title="Permalink to this definition">¶</a></dt>
@@ -809,7 +794,7 @@ a numpy array. Hence, not computing based on numpy arrays would just introduce a
 <p>When the gradient shall be computed with respect to the controls, then computing the gradient analytically
 is very straight-forward, by just applying the following formula:</p>
 <div class="math notranslate nohighlight">
-\[\frac{ d ||u|| }{ du_i } = \frac{u_i}{||u||_2}\]</div>
+\[\frac{ d ||u|| }{ du_i } = \frac{u_i}{||u||}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -827,7 +812,7 @@ is very straight-forward, by just applying the following formula:</p>
 <code class="sig-name descname">constraint_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.control_limits.ControlLimitModule.constraint_core" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine constraint value core method.</p>
 <p>The max control constraints simply are computed by transforming the given trajectory to control input
-(deterministic dynamics). Then take the L2 norm over the “cartesian” axis to get the norm of the
+(deterministic dynamics). Then take the norm over the “cartesian” axis to get the norm of the
 control input at every time-step.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -847,7 +832,7 @@ control input at every time-step.</p>
 <p>The boundaries of this constraint depend on the exact implementation of the agent, however most agents
 are isotropic, so assuming to have equal control boundaries in both cartesian directions and also
 have its lower bound smaller or equal to zero, so that we can simplify the constraint to only have an
-upper bound (since the lower bound zero is anyways given and a L2-norm is semi-positive).</p>
+upper bound (since the lower bound zero is anyways given and a norm is semi-positive).</p>
 </dd></dl>
 
 <dl class="py method">
@@ -869,7 +854,7 @@ itself requires a gradient, the objective/constraint value, stored from the last
 <span id="hj-reachability"></span><h3>HJ-Reachability<a class="headerlink" href="#module-mantrap.modules.hj_reachibility" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.modules.hj_reachibility.HJReachabilityModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.hj_reachibility.</code><code class="sig-name descname">HJReachabilityModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">10.0</span></em>, <em class="sig-param"><span class="n">data_file</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'2D.mat'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.hj_reachibility.</code><code class="sig-name descname">HJReachabilityModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">10.0</span></em>, <em class="sig-param"><span class="n">data_file</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'2D.mat'</span></em>, <em class="sig-param"><span class="n">interp_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'linear'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Soft constraint based on Hamilton-Jacobi Reachability.</p>
 <p>Use HJ (aka backward) reachability to constraint the ego agent to not become “unsafer” when moving, i.e.
 to chose some trajectory so that the backward reachability value function does not become larger. This is
@@ -999,77 +984,11 @@ different pedestrian controls and computes the relative state for each of them.<
 </dd></dl>
 
 </div>
-<div class="section" id="module-mantrap.modules.baselines.min_distance">
-<span id="minimal-distance"></span><h3>Minimal-Distance<a class="headerlink" href="#module-mantrap.modules.baselines.min_distance" title="Permalink to this headline">¶</a></h3>
-<dl class="py class">
-<dt id="mantrap.modules.baselines.min_distance.MinDistanceModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.min_distance.</code><code class="sig-name descname">MinDistanceModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.min_distance.MinDistanceModule" title="Permalink to this definition">¶</a></dt>
-<dd><p>Constraint for minimal distance between the robot (ego) and any other agent (ado) over all time.</p>
-<p>For computing the minimal distance between the ego and every ado the scene is forward simulated given the
-planned ego trajectory, using the <cite>compute_distributions()</cite> method. Then the minimal distance between ego
-and every ado is computed for every time-step of the trajectory. For 0 &lt; t &lt; T_{planning}:</p>
-<div class="math notranslate nohighlight">
-\[min_t || pos(t) - pos^{ado}_{0:2}(t) || &gt; D\]</div>
-<p>In comparison to the <cite>norm_distance</cite> constraint, this constraint only includes the minimal value over all
-time-steps and agents (w.r.t. the ego agent) during the planning horizon. Thus, the <cite>min_distance</cite> constraint
-is a necessary condition for the <cite>norm_distance</cite> to be satisfied. However, although the <cite>min_distance</cite>
-constraint definitely is computationally way more efficient due to the decrease of  number of constraints
-(leading to way less backward passes), it gives a lot less information about where the optimization should go.
-In fact it reduces the problem of minimal distance to the “selected” agent and time-step, while the optimized
-trajectory has no gradients pointing to a certain distance from other agents at other points in time, so that
-the number of convergence steps might be increased.</p>
-<dl class="py method">
-<dt id="mantrap.modules.baselines.min_distance.MinDistanceModule.constraint_core">
-<code class="sig-name descname">constraint_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.min_distance.MinDistanceModule.constraint_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine constraint value core method.</p>
-<p>Since predicting trajectories in the future the time-steps of the resulting time-discrete trajectories
-can assumed to be synced. However computing the inter-agent distance at the discrete time-steps only
-might not be accurate, especially in case of high velocities and large simulation time-steps <cite>dt</cite>. In
-regards of the increasing computational effort by introducing inter-step computations, i.e. constraining
-the distance between multiple steps between each time-step using interpolation (especially with regards
-on computing the Jacobian), only the distances between the ego and every other agent are compared
-at every discrete time-step, not in between time-steps.</p>
-<p>Therefore first the trajectories of all agents is predicted, then by iterating over all modes and time-steps
-in the discrete planning horizon, the constraint values are computed by calculating the L2 norm between
-the ego’s and the predicted agents positions at this specific point in time. Afterwards the minimum over
-all these values is extracted and returned.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.modules.baselines.min_distance.MinDistanceModule.constraint_limits">
-<code class="sig-name descname">constraint_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">, </span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.min_distance.MinDistanceModule.constraint_limits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Lower and upper bounds for constraint values.</p>
-<p>While there is no upper value for the distance, the lower bound is a constant minimal
-safety distance which is defined in constants.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.modules.baselines.min_distance.MinDistanceModule.gradient_condition">
-<code class="sig-name descname">gradient_condition</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.modules.baselines.min_distance.MinDistanceModule.gradient_condition" title="Permalink to this definition">¶</a></dt>
-<dd><p>Condition for back-propagating through the objective/constraint in order to obtain the
-objective’s gradient vector/jacobian (numerically). If returns True and the ego_trajectory
-itself requires a gradient, the objective/constraint value, stored from the last computation
-(<cite>_current_</cite>-variables) has to require a gradient as well.</p>
-<p>The gradient between constraint values only exists if the internal environment is differentiable
-with respect to the ego (trajectory), the computation is conditioned on-</p>
-</dd></dl>
-
-</dd></dl>
-
-</div>
 </div>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -1086,7 +1005,7 @@ with respect to the ego (trajectory), the computation is conditioned on-</p>
 </li>
 <li><a class="reference internal" href="#goal-driven-objectives">Goal-Driven Objectives</a><ul>
 <li><a class="reference internal" href="#module-mantrap.modules.goal_norm">Goal-Norm</a></li>
-<li><a class="reference internal" href="#module-mantrap.modules.baselines.goal_sum">Goal-Sum</a></li>
+<li><a class="reference internal" href="#module-mantrap.modules.baselines.goal_weighted">Goal-Weighted</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#interaction-driven-objectives">Interaction-Driven Objectives</a><ul>
@@ -1098,7 +1017,6 @@ with respect to the ego (trajectory), the computation is conditioned on-</p>
 <li><a class="reference internal" href="#module-mantrap.modules.control_limits">Control-Effort Constraints</a></li>
 <li><a class="reference internal" href="#safety-constraints">Safety-Constraints</a><ul>
 <li><a class="reference internal" href="#module-mantrap.modules.hj_reachibility">HJ-Reachability</a></li>
-<li><a class="reference internal" href="#module-mantrap.modules.baselines.min_distance">Minimal-Distance</a></li>
 </ul>
 </li>
 </ul>
@@ -1147,12 +1065,13 @@ with respect to the ego (trajectory), the computation is conditioned on-</p>
         <li class="right" >
           <a href="solver.html" title="Solver"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Objective and Constraint Modules</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
     </div>
   </body>
 </html>

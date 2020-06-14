@@ -67,8 +67,7 @@ install:
   - mv mantrap/reachability .
   - cd /home/travis/build/simon-schaefer/mantrap
 
-# command to run tests. since trajectron is private so far, all modules connected to it are not
-# yet tested, this will be changed once trajectron is being integrated publicly
+# command to run tests. 
 script:
   - coverage run -m pytest test/
 

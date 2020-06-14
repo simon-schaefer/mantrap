@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>mantrap &#8212; mantrap 0.1 documentation</title>
     <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -12,7 +13,7 @@
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Agents" href="agents.html" />
@@ -36,7 +37,8 @@
         <li class="right" >
           <a href="agents.html" title="Agents"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">mantrap</a></li> 
       </ul>
     </div>  
 
@@ -148,7 +150,7 @@ in order to save runtime.</p>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="modules.html#goal-driven-objectives">Goal-Driven Objectives</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.goal_norm">Goal-Norm</a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.baselines.goal_sum">Goal-Sum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.baselines.goal_weighted">Goal-Weighted</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="modules.html#interaction-driven-objectives">Interaction-Driven Objectives</a><ul>
@@ -160,13 +162,13 @@ in order to save runtime.</p>
 <li class="toctree-l2"><a class="reference internal" href="modules.html#module-mantrap.modules.control_limits">Control-Effort Constraints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules.html#safety-constraints">Safety-Constraints</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.hj_reachibility">HJ-Reachability</a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules.html#module-mantrap.modules.baselines.min_distance">Minimal-Distance</a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="attention.html">Attention Modules</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="attention.html#module-mantrap.attention.attention_module">Base Attention Module (abstract)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="attention.html#module-mantrap.attention.closest">Closest Distance</a></li>
 <li class="toctree-l3"><a class="reference internal" href="attention.html#module-mantrap.attention.euclidean">Euclidean Distance</a></li>
 <li class="toctree-l3"><a class="reference internal" href="attention.html#module-mantrap.attention.reachability">Forward Reachability</a></li>
 </ul>
@@ -186,6 +188,7 @@ in order to save runtime.</p>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -240,12 +243,13 @@ in order to save runtime.</p>
         <li class="right" >
           <a href="agents.html" title="Agents"
              >next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">mantrap</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
     </div>
   </body>
 </html>

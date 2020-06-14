@@ -334,26 +334,26 @@ class OptimizationModule(abc.ABC):
         for multiple processing, since it is fairly independent from each other, given the shared
         memory of the computation graph.
 
-        ```
-        import torch.multiprocessing as mp
+        .. code-block:: python
 
-        mp.set_start_method('spawn')
-        x.share_memory_()
-        grad_wrt.share_memory_()
-        gradient.share_memory_()
+            import torch.multiprocessing as mp
 
-        def compute(x_i, grad_wrt_i):
-            grad = torch.autograd.grad(element, grad_wrt, retain_graph=True, only_inputs=True)[0]
-            return grad.flatten().detach()
+            mp.set_start_method('spawn')
+            x.share_memory_()
+            grad_wrt.share_memory_()
+            gradient.share_memory_()
 
-        processes = []
-        for i_process in range(8):
-            p = mp.Process(target=compute, args=(x[i_process], grad_wrt, ))
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
-        ```
+            def compute(x_i, grad_wrt_i):
+                grad = torch.autograd.grad(element, grad_wrt, retain_graph=True, only_inputs=True)[0]
+                return grad.flatten().detach()
+
+            processes = []
+            for i_process in range(8):
+                p = mp.Process(target=compute, args=(x[i_process], grad_wrt, ))
+                p.start()
+                processes.append(p)
+            for p in processes:
+                p.join()
 
         Here the torch.multiprocessing library is used to compute the gradient over the whole tensor x in
         multiple parallel processes. Therefore the tensors of both x and grad_wrt are shared over all
@@ -362,19 +362,16 @@ class OptimizationModule(abc.ABC):
         require a gradient, being attached to this graph, over multiple processes is not supported in
         PyTorch and therefore not possible.
 
-        ```
-        def reduce_tensor(tensor):
-            storage = tensor.storage()
+        .. code-block:: python
 
-            if tensor.requires_grad and not tensor.is_leaf:
-                raise RuntimeError("Cowardly refusing to serialize non-leaf tensor which requires_grad, "
-                                   "since autograd does not support crossing process boundaries.  "
-                                   "If you just want to transfer the data, call detach() on the tensor "
-                                   "before serializing (e.g., putting it on the queue).")
-                RuntimeError: Cowardly refusing to serialize non-leaf tensor which requires_grad, since
-                autograd does not support crossing process boundaries.  If you just want to transfer the data,
-                call detach() on the tensor before serializing (e.g., putting it on the queue).
-        ```
+            def reduce_tensor(tensor):
+                storage = tensor.storage()
+
+                if tensor.requires_grad and not tensor.is_leaf:
+                    raise RuntimeError("Cowardly refusing to serialize non-leaf tensor which requires_grad, "
+                                       "since autograd does not support crossing process boundaries.  "
+                                       "If you just want to transfer the data, call detach() on the tensor "
+                                       "before serializing (e.g., putting it on the queue).")
 
         To avoid this issue, the full computation graph would have to be re-built for every single element
         of x, which would create a lot of overhead due to repeated computations (as well as being quite not

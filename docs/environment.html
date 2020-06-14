@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Environment &#8212; mantrap 0.1 documentation</title>
     <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -12,7 +13,7 @@
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Solver" href="solver.html" />
@@ -40,7 +41,8 @@
         <li class="right" >
           <a href="agents.html" title="Agents"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Environment</a></li> 
       </ul>
     </div>  
 
@@ -84,6 +86,17 @@ bounds, e.g. that they are in the given 2D space the environment is defined in.<
 <li><p><strong>history</strong> – ado state history (if None then just current state as history).</p></li>
 <li><p><strong>ado_kwargs</strong> – addition kwargs for ado initialization.</p></li>
 </ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.environment.base.graph_based.GraphBasedEnvironment.agent_by_id">
+<code class="sig-name descname">agent_by_id</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">agent_id</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span><a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><span class="p">]</span><a class="headerlink" href="#mantrap.environment.base.graph_based.GraphBasedEnvironment.agent_by_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an agent object by its id, including the ego agent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>agent_id</strong> – identifier of agent to return.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -461,7 +474,7 @@ storing the sampled parameter.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>num_particles</strong> – number of particles per ado.</p></li>
 <li><p><strong>v0_dict</strong> – parameter v0 gaussian distribution (mean, variance) by ado_id, if None then gaussian
-with mean = <cite>mantrap.constants.SOCIAL_FORCES_DEFAULT_V0</cite> and variance = mean/4,
+with mean, variance = <cite>mantrap.constants.SOCIAL_FORCES_DEFAULT_V0</cite>
 similarly for each ado.</p></li>
 <li><p><strong>sigma_dict</strong> – parameter sigma gaussian distribution (similar to <cite>v0_dict</cite>).</p></li>
 <li><p><strong>tau</strong> – tau parameter, by default <cite>mantrap.constants.SOCIAL_FORCES_DEFAULT_TAU</cite>,
@@ -514,7 +527,7 @@ integrator dynamics), accelerations are simplified to act as velocities, which i
 reaction time of the pedestrian, which is way faster than the environment sampling rate.</p>
 <dl class="py method">
 <dt id="mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.create_particles">
-<code class="sig-name descname">create_particles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">num_particles</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">v0_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>List<span class="p">[</span>List<span class="p">[</span><a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><span class="p">]</span><span class="p">]</span><span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.create_particles" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">create_particles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">num_particles</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">v0_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">particle_kwargs</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>List<span class="p">[</span>List<span class="p">[</span><a class="reference internal" href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent" title="mantrap.agents.integrator_single.IntegratorDTAgent">mantrap.agents.integrator_single.IntegratorDTAgent</a><span class="p">]</span><span class="p">]</span><span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.environment.simplified.potential_field.PotentialFieldEnvironment.create_particles" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create particles from internal parameter distribution.</p>
 <p>In order to create parameters sample from the underlying parameter distributions, which are modelled
 as independent, uni-modal Gaussian distributions, individual for each ado. So build the distribution,
@@ -525,7 +538,7 @@ storing the sampled parameter.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>num_particles</strong> – number of particles per ado.</p></li>
 <li><p><strong>v0_dict</strong> – parameter v0 gaussian distribution (mean, variance) by ado_id, if None then gaussian
-with mean = <cite>mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT</cite> and variance = mean/4,
+with mean, variance = <cite>mantrap.constants.POTENTIAL_FIELD_V0_DEFAULT</cite>
 similarly for each ado.</p></li>
 </ul>
 </dd>
@@ -623,6 +636,17 @@ zero history should be enforced, pass a non None history argument.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt id="mantrap.environment.trajectron.Trajectron.agent_by_id">
+<code class="sig-name descname">agent_by_id</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">agent_id</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span><a class="reference internal" href="agents.html#mantrap.agents.base.discrete.DTAgent" title="mantrap.agents.base.discrete.DTAgent">mantrap.agents.base.discrete.DTAgent</a><span class="p">]</span><a class="headerlink" href="#mantrap.environment.trajectron.Trajectron.agent_by_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an agent object by its id, including the ego agent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>agent_id</strong> – identifier of agent to return.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt id="mantrap.environment.trajectron.Trajectron.agent_id_from_node">
 <em class="property">static </em><code class="sig-name descname">agent_id_from_node</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">node</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#mantrap.environment.trajectron.Trajectron.agent_id_from_node" title="Permalink to this definition">¶</a></dt>
 <dd><p>In Trajectron nodes have an identifier structure as follows “node_type/node_id”. As initialized the node_id
@@ -644,6 +668,7 @@ from scratch completely, using the most up-to-date states of the agents.</p>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -706,12 +731,13 @@ from scratch completely, using the most up-to-date states of the agents.</p>
         <li class="right" >
           <a href="agents.html" title="Agents"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Environment</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
     </div>
   </body>
 </html>

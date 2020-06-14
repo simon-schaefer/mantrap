@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agents &#8212; mantrap 0.1 documentation</title>
     <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -12,7 +13,7 @@
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Environment" href="environment.html" />
@@ -40,7 +41,8 @@
         <li class="right" >
           <a href="index.html" title="mantrap"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Agents</a></li> 
       </ul>
     </div>  
 
@@ -112,9 +114,39 @@ its control boundaries.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt id="mantrap.agents.base.discrete.DTAgent.compute_acceleration">
+<em class="property">static </em><code class="sig-name descname">compute_acceleration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.compute_acceleration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the accelerations (ax, ay) of the agent give some trajectory. Therefore use the
+central difference theorem to numerically take the derivative of the velocity at every
+time-step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trajectory</strong> – agent trajectory (t_horizon, &gt;=4 = px, py, vx, vy).</p></li>
+<li><p><strong>dt</strong> – time interval [s] between discrete trajectory states.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt id="mantrap.agents.base.discrete.DTAgent.control_limits">
 <em class="property">abstract </em><code class="sig-name descname">control_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.control_limits" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns agent’s control input limitations, i.e. lower and upper bound.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.agents.base.discrete.DTAgent.control_norm">
+<em class="property">abstract </em><code class="sig-name descname">control_norm</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.control_norm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the agent’s control norm ||u||.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>controls</strong> – controls to calculate the norm from (N, 2).</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>control norm (N, 2).</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -148,21 +180,6 @@ type has different dynamics (like single-integrator or Dubins Car) this method i
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>updated state vector with time &#64; t = k + dt (5).</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.agents.base.discrete.DTAgent.dynamics_scalar">
-<em class="property">static </em><code class="sig-name descname">dynamics_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">px</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">py</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vx</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">ux</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">uy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.dynamics_scalar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Forward integrate the agent’s motion given some state-action pair and an integration time-step.</p>
-<p>In comparison to the “normal” dynamics() method this method can be used for repeated scalar and non-
-differentiable use cases. Since the agent’s fundamental state tensor operations are “only” two-dimensional
-using tensor arithmetic rather creates an overhead, instead of saving computational effort, compared to
-native python scalar operations.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>position x, position y, velocity x, velocity y of new state</p>
 </dd>
 </dl>
 </dd></dl>
@@ -219,14 +236,6 @@ type has different dynamics (like single-integrator or Dubins Car) this method i
 <p>Return the transformed feasible controls. The direction of controls is thereby not changed, since
 just the length of the control vector is adapted. If the controls are just zeros then return
 them as they are.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.agents.base.discrete.DTAgent.make_controls_feasible_scalar">
-<code class="sig-name descname">make_controls_feasible_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">control_x</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">control_y</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.make_controls_feasible_scalar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Make single control feasible by clipping them between its lower and upper boundaries. Return
-the transformed feasible controls. Since this is basically clamping each direction separately,
-the overall direction of the control input might be changed !!</p>
 </dd></dl>
 
 <dl class="py method">
@@ -510,16 +519,15 @@ is in fact infinite !</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.integrator_single.IntegratorDTAgent.dynamics_scalar">
-<em class="property">static </em><code class="sig-name descname">dynamics_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">px</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">py</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vx</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">ux</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">uy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator_single.IntegratorDTAgent.dynamics_scalar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Forward integrate the agent’s motion given some state-action pair and an integration time-step.</p>
-<p>In comparison to the “normal” dynamics() method this method can be used for repeated scalar and non-
-differentiable use cases. Since the agent’s fundamental state tensor operations are “only” two-dimensional
-using tensor arithmetic rather creates an overhead, instead of saving computational effort, compared to
-native python scalar operations.</p>
+<dt id="mantrap.agents.integrator_single.IntegratorDTAgent.control_norm">
+<code class="sig-name descname">control_norm</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.integrator_single.IntegratorDTAgent.control_norm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the agent’s control norm ||u|| = L2-norm.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>position x, position y, velocity x, velocity y of new state</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>controls</strong> – controls to calculate the norm from (N, 2).</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>control norm (N, 1).</p>
 </dd>
 </dl>
 </dd></dl>
@@ -545,16 +553,15 @@ native python scalar operations.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.agents.integrator_double.DoubleIntegratorDTAgent.dynamics_scalar">
-<em class="property">static </em><code class="sig-name descname">dynamics_scalar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">px</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">py</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vx</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">vy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">ux</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">uy</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.agents.integrator_double.DoubleIntegratorDTAgent.dynamics_scalar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Forward integrate the agent’s motion given some state-action pair and an integration time-step.</p>
-<p>In comparison to the “normal” dynamics() method this method can be used for repeated scalar and non-
-differentiable use cases. Since the agent’s fundamental state tensor operations are “only” two-dimensional
-using tensor arithmetic rather creates an overhead, instead of saving computational effort, compared to
-native python scalar operations.</p>
+<dt id="mantrap.agents.integrator_double.DoubleIntegratorDTAgent.control_norm">
+<code class="sig-name descname">control_norm</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">controls</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.integrator_double.DoubleIntegratorDTAgent.control_norm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the agent’s control norm ||u|| = L1-norm.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>position x, position y, velocity x, velocity y of new state</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>controls</strong> – controls to calculate the norm from (N, 2).</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>control norm (N, 2).</p>
 </dd>
 </dl>
 </dd></dl>
@@ -566,6 +573,7 @@ native python scalar operations.</p>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -626,12 +634,13 @@ native python scalar operations.</p>
         <li class="right" >
           <a href="index.html" title="mantrap"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Agents</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
     </div>
   </body>
 </html>

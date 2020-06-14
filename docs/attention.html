@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attention Modules &#8212; mantrap 0.1 documentation</title>
     <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -12,7 +13,7 @@
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Evaluation" href="evaluation.html" />
@@ -40,7 +41,8 @@
         <li class="right" >
           <a href="modules.html" title="Objective and Constraint Modules"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Attention Modules</a></li> 
       </ul>
     </div>  
 
@@ -71,6 +73,23 @@ and logging the filter, all based on the <cite>_compute()</cite> method which sh
 </dl>
 </dd></dl>
 
+<div class="section" id="module-mantrap.attention.closest">
+<span id="closest-distance"></span><h3>Closest Distance<a class="headerlink" href="#module-mantrap.attention.closest" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="mantrap.attention.closest.ClosestModule">
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.attention.closest.</code><code class="sig-name descname">ClosestModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.attention.closest.ClosestModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attention based for closest, limited-range pedestrian only.</p>
+<p>The closest filter selects the ado that is closest to the robot and thereby is closer than a certain
+euclidean distance. Thereby merely the positions at time t = t_current are taken into account</p>
+<div class="math notranslate nohighlight">
+\[||pos_{ego}(t) - pos_{ado}(t)||_2 &lt; R_{attention}\]</div>
+<p>R_{attention} is called attention radius and is the maximal L2-distance for an ado from the ego to be taken into
+account for planning (nevertheless it will always be taken into account for forward simulations, in order to
+prevent deviating much from the actual full-agent planning due to possible behavioral changes of the ados with
+less agents in the scene).</p>
+</dd></dl>
+
+</div>
 <div class="section" id="module-mantrap.attention.euclidean">
 <span id="euclidean-distance"></span><h3>Euclidean Distance<a class="headerlink" href="#module-mantrap.attention.euclidean" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
@@ -109,6 +128,7 @@ and would go beyond the scope of the pre-optimization designed filter.</p>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -118,6 +138,7 @@ and would go beyond the scope of the pre-optimization designed filter.</p>
   <ul>
 <li><a class="reference internal" href="#">Attention Modules</a><ul>
 <li><a class="reference internal" href="#module-mantrap.attention.attention_module">Base Attention Module (abstract)</a><ul>
+<li><a class="reference internal" href="#module-mantrap.attention.closest">Closest Distance</a></li>
 <li><a class="reference internal" href="#module-mantrap.attention.euclidean">Euclidean Distance</a></li>
 <li><a class="reference internal" href="#module-mantrap.attention.reachability">Forward Reachability</a></li>
 </ul>
@@ -168,12 +189,13 @@ and would go beyond the scope of the pre-optimization designed filter.</p>
         <li class="right" >
           <a href="modules.html" title="Objective and Constraint Modules"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mantrap 0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Attention Modules</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
     </div>
   </body>
 </html>

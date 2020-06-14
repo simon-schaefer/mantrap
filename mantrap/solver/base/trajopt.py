@@ -529,7 +529,7 @@ class TrajOptSolver(abc.ABC):
         """Query internal log for some value with given key (log-key-structure: {tag}/{key_type}_{key}).
 
          :param key: query key, e.g. name of objective module.
-         :param key_type: type of query (-> mantrap.constants.LK_...).
+         :param key_type: type of query (-> `mantrap.constants.LK_`...).
          :param iteration: optimization iteration to search in, if None then no iteration (summarized value).
          :param tag: logging tag to search in.
          :param apply_func: stack/concatenate tensors or concatenate last elements of results
