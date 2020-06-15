@@ -178,29 +178,31 @@ This problem can be solved by decomposing the joint system into sub-systems, sol
 \begin{center}
 \begin{tikzpicture}
 
-    \node[inner sep=0pt] (ped1) at (5,1)
+    \node[] (ped1) at (5,1)
     {\includegraphics[width=.03\textwidth]{images/walking.png}};
     \fill[orange, opacity=0.3] (ped1) circle (1);
-    \draw[dashed, ->] (ped1) to (4, 0);
+    \draw[velocity] (ped1) to (4, 0);
     
-    \node[inner sep=0pt] (ped2) at (-3,-1)
+    \node[] (ped2) at (-3,-1)
     {\includegraphics[width=.03\textwidth]{images/walking.png}};
     \fill[orange, opacity=0.3] (ped2) circle (1);
-    \draw[dashed, ->] (ped2) to (-1, 0);
+    \draw[velocity] (ped2) to (-1, 0);
     
-    \node[inner sep=0pt] (ped3) at (0,2)
+    \node[] (ped3) at (0,2)
     {\includegraphics[width=.03\textwidth]{images/walking.png}};
     \fill[orange, opacity=0.3] (ped3) circle (1);
-    \draw[dashed, ->] (ped3) to (-1, 1);
+    \draw[velocity] (ped3) to (-1, 1);
     
-    \node[inner sep=0pt] (ped4) at (2,-1)
+    \node[] (ped4) at (2,-1)
     {\includegraphics[width=.03\textwidth]{images/walking.png}};
     \fill[orange, opacity=0.3] (ped4) circle (1);
-    \draw[dashed, ->] (ped4) to (1, -1);
+    \draw[velocity] (ped4) to (1, -1);
     
     \node[inner sep=0pt] (robot) at (-0.5,0)
     {\includegraphics[width=.04\textwidth]{images/robot.png}};
     
+    \node[inner sep=0pt] (goal) at (10, 1)
+    {\includegraphics[width=.04\textwidth]{images/flag.png}};
     \draw [thick] (robot) to[out=0, in=180] (5,3) to[out=0, in=180] node[above, sloped] {$\Vrel \geq 0$ ??} (10, 1);  
     
 \end{tikzpicture}

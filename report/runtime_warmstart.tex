@@ -4,7 +4,7 @@ It is widely known that warm starting an optimization can be very beneficial for
 \newline
 Within project \project the algorithm has been warm-started by solving the optimization problem posed in problem \ref{eq:formulation} while ignoring all objectives and constraints that relate to pedestrians, i.e. by solving the following optimization problem: \\
 
-\begin{problem}{Simplified \project optimization problem for warm-starting}
+\begin{problem}{Simplified optimization problem for warm-starting}
 \begin{align}
 \min_{\u_{0:T-1}} \quad & J_{goal}(\x_{0:T}) \\
 \textrm{s.t. } \quad & \x_{t+1} = \f(\x_t, \u_t) & \forall t \in [0, T - 1] \\

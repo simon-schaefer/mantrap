@@ -66,6 +66,8 @@
 \usepgfplotslibrary{fillbetween}
 \usetikzlibrary{shapes, arrows}
 
+\tikzset{velocity/.style={->, densely dashed, thick, draw=black}}
+
 % Internet addresses and interactive links
 \usepackage[hyphens]{url}
 \usepackage[colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=black]{hyperref}
@@ -127,6 +129,8 @@
 \def \f{f}
 \def \pstate[#1]{\boldsymbol{\rho}^{#1}}  % particles (based prediction)
 \def \pparam[#1]{\boldsymbol{\theta}^{#1}}
+
+\def \stepssolution{N}
 
 
 % Page format _________________________________________________________

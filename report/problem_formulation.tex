@@ -1,6 +1,6 @@
 \section{Problem Formulation}
 \label{text:approach/formulation}
-In this work we are interested in finding the optimal trajectory for a robot navigating among pedestrians on the two-dimensional plane. Let $\x_t = (x_t, y_t, \dot{x}_t, \dot{y}_t) \in \mathbb{R}^4 $ be the position and velocity of the robot, also referred as $ego$, at time $t$ and $\x_{0:N}$ a trajectory over multiple states $(\x_0, \x_1, \x_2, \hdots, \x_N)$. Within this work the robot is assumed to have double integrator dynamics. With control input $\u_t = (u_{x, t}, u_{y, t}) \in \mathbb{R}^2$, we have: 
+In this work we are interested in finding the optimal trajectory for a robot navigating among pedestrians on the two-dimensional plane. Let $\x_t = (x_t, y_t) \in \mathbb{R}^2$ and $\dx_t = (\dot{x}_t, \dot{y}_t) \in \mathbb{R}^2 $ be the position and velocity of the robot, also referred as $ego$, at time $t$ and $(\x, \dx)_{0:N}$ a trajectory over multiple position-velocity-pairs $((\x, \dx)_0, (\x, \dx)_1, (\x, \dx)_2, \hdots, (\x, \dx)_N)$. Within this work the robot is assumed to have double integrator dynamics. With control input $\u_t = (u_{x, t}, u_{y, t}) \in \mathbb{R}^2$, we have: 
 
 \begin{equation}
 \ddx_t = \u_t
