@@ -5,18 +5,6 @@ import mantrap.utility.maths
 
 
 ###########################################################################
-# Straight Line Testing ###################################################
-###########################################################################
-def test_build_trajectory_from_positions():
-    path = mantrap.utility.maths.straight_line(start=torch.zeros(2), end=torch.ones(2) * 10, steps=11)
-    velocities = torch.cat(((path[1:, 0:2] - path[:-1, 0:2]) / 1.0, torch.zeros((1, 2))))
-    trajectory = torch.cat((path, velocities), dim=1)
-
-    assert torch.all(torch.eq(trajectory[:, 0:2], path))
-    assert torch.all(torch.eq(trajectory[:-1, 2:4], torch.ones(10, 2)))
-
-
-###########################################################################
 # Derivative2 Testing #####################################################
 ###########################################################################
 @pytest.mark.parametrize("horizon", [7, 10])
