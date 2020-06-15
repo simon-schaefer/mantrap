@@ -5,8 +5,9 @@ import torch
 def metric_minimal_distance(
     ego_trajectory: torch.Tensor, ado_trajectories: torch.Tensor, num_inter_points: int = 100, **unused
 ) -> float:
-    """Determine the minimal distance between the robot and any agent.
-    Therefore the function expects to get a robot trajectory and positions for every ado (ghost) at every point of time,
+    """Determine the minimal distance between the robot and any agent (minimal separation distance).
+
+    Therefore the function expects to get a robot trajectory and positions for every ado at every point of time,
     to determine the minimal distance in the continuous time. In order to transform the discrete to continuous time
     trajectories it is assumed that the robot as well as the other agents move linearly, as a single integrator, i.e.
     neglecting accelerations, from one discrete time-step to another, so that it's positions can be interpolated
@@ -25,15 +26,14 @@ def metric_minimal_distance(
 
     minimal_distance = float("Inf")
     for t in range(1, t_horizon):
-        ego_dense = mantrap.utility.maths.straight_line(ego_trajectory[t - 1, 0:2],
-                                                        ego_trajectory[t, 0:2],
-                                                        steps=num_inter_points)
+        ego_position_t0, ego_position_t1 = ego_trajectory[t - 1, 0:2], ego_trajectory[t, 0:2]
+        ego_dense = mantrap.utility.maths.straight_line(ego_position_t0, ego_position_t1, steps=num_inter_points)
+
         for m in range(num_ados):
             ado_position_t0 = ado_trajectories[m, t-1, 0, 0:2]
             ado_position_t1 = ado_trajectories[m, t, 0, 0:2]
-            ado_dense = mantrap.utility.maths.straight_line(ado_position_t0,
-                                                            ado_position_t1,
-                                                            steps=num_inter_points)
+            ado_dense = mantrap.utility.maths.straight_line(ado_position_t0, ado_position_t1, steps=num_inter_points)
+
             min_distance_current = torch.min(torch.norm(ego_dense - ado_dense, dim=1)).item()
             if min_distance_current < minimal_distance:
                 minimal_distance = min_distance_current
@@ -47,8 +47,9 @@ def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = ma
 
     For calculating the control effort of the ego agent approximate the acceleration by assuming the acceleration
     between two points in discrete time t0 and t1 as linear, i.e. a_t = (v_t - v_{t-1}) / dt. For normalization
-    then compare the determined acceleration with the maximal acceleration the agent maximally would be capable of.
-    The ego_effort score then is the ratio between the actual requested and maximally possible control effort.
+    then compare the determined acceleration with the maximal possible control effort.
+
+    .. math:: score = \\frac{\\sum at}{\\sum a_{max}}
 
     :param ego_trajectory: trajectory of ego (t_horizon, 5).
     :param max_acceleration: maximal (possible) acceleration of ego robot.
@@ -120,7 +121,7 @@ def metric_directness(ego_trajectory: torch.Tensor, goal: torch.Tensor, **unused
     Therefore the ratio of every ego velocity vector going in the goal direction is determined, and normalized by the
     number of time-steps.
 
-    .. math:: score = \\dfrac{\\sum_t \\overrightarrow{s}_t * \\overrightarrow{v}_t}{T}
+    .. math:: score = \\frac{\\sum_t \\overrightarrow{s}_t * \\overrightarrow{v}_t}{T}
 
     :param ego_trajectory: trajectory of ego (t_horizon, 5).
     :param goal: optimization goal state (may vary in size, but usually 2D position).

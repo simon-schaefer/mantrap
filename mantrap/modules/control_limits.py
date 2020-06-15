@@ -95,7 +95,7 @@ class ControlLimitModule(PureConstraintModule):
         upper bound (since the lower bound zero is anyways given and a norm is semi-positive).
         """
         lower, upper = self.env.ego.control_limits()
-        if lower <= 0:
+        if np.isclose(lower, 0.0):
             return None, upper
         else:
             return lower, upper
