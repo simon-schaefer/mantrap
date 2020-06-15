@@ -278,9 +278,31 @@ class TestIPOPTSolvers:
         else:
             assert jacobian.size <= num_constraints * z_controls.size
 
+    @staticmethod
+    def test_jacobian_structure(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
+                                env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                                attention_class: mantrap.attention.AttentionModule.__class__):
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
+        env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
+        solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
+
+        ego_controls = torch.rand((solver.planning_horizon, 2))
+        z_controls = solver.ego_controls_to_z(ego_controls)
+        jacobian = solver.jacobian(z_controls, ado_ids=env.ado_ids, tag="test")
+
+        Tp2 = 2 * solver.planning_horizon
+        num_constraints = int(jacobian.size / Tp2)
+        structure_numerically = np.unravel_index(np.nonzero(jacobian)[0], dims=(num_constraints, Tp2))
+        structure_analytically = solver.jacobian_structure(ado_ids=env.ado_ids, tag="test")
+
+        print(structure_numerically)
+        print(structure_analytically)
+
+        assert np.allclose(structure_analytically, structure_numerically)
+
 
 @pytest.mark.parametrize("env_class", environments)
-def test_ignoring_solver(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
+def test_terminal_state(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
     ego_position = torch.tensor([-3, 0])
     ego_velocity = torch.ones(2)
     env = env_class(mantrap.agents.DoubleIntegratorDTAgent,

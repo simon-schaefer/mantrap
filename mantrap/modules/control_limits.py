@@ -67,11 +67,25 @@ class ControlLimitModule(PureConstraintModule):
                 return None
 
             t_horizon, u_size = ego_controls.shape
+            assert t_horizon == self.t_horizon  # jacobian-structure
+            assert u_size == 2  # jacobian-structure
+
             jacobian = np.zeros((u_size * t_horizon, u_size * t_horizon))
             for t in range(t_horizon):
                 jacobian[u_size * t, u_size * t] = 1
                 jacobian[u_size * t + 1, u_size * t + 1] = 1
             return jacobian.flatten()
+
+    def jacobian_structure(self, ado_ids: typing.List[str], tag: str) -> typing.Union[np.ndarray, None]:
+        """Return the sparsity structure of the jacobian, i.e. the indices of non-zero elements.
+
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
+        :returns: indices of non-zero elements of jacobian.
+        """
+        t_horizon, u_size = self.t_horizon, 2
+        non_zero_indices = [(u_size * t_horizon + 1) * n for n in range(2 * t_horizon)]
+        return np.array(non_zero_indices)
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

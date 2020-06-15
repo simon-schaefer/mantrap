@@ -298,6 +298,30 @@ class OptimizationModule(abc.ABC):
 
         return jacobian
 
+    def jacobian_structure(self, ado_ids: typing.List[str], tag: str) -> typing.Union[np.ndarray, None]:
+        """Return the sparsity structure of the jacobian, i.e. the indices of non-zero elements.
+
+        When not defined otherwise the jacobian structure is determined by determining the jacobian for
+        some random input structure (and the current environment), so that the non-zero indices can be
+        determined afterwards. However this way of computing the jacobian structure highly depends on
+        efficient calculation of the jacobian matrix, and is therefore only available if the the
+        `compute_jacobian_analytically()` function is defined.
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
+        :returns: indices of non-zero elements of jacobian.
+        """
+        if self.num_constraints(ado_ids=ado_ids) == 0:
+            return None
+
+        controls = torch.rand((self.t_horizon, 2))
+        ego_trajectory = self._env.ego.unroll_trajectory(controls, dt=self._env.dt)
+        jacobian = self.compute_jacobian_analytically(ego_trajectory, grad_wrt=controls, ado_ids=ado_ids, tag=tag)
+
+        if jacobian is not None:
+            return np.nonzero(jacobian)[0]
+        else:
+            return None
+
     def compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
     ) -> typing.Union[np.ndarray, None]:

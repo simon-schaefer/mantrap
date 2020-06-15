@@ -281,6 +281,25 @@ class TestConstraints:
         jacobian_auto_grad = module.compute_gradient_auto_grad(constraints, grad_wrt=ego_controls)
         assert np.allclose(jacobian_analytical, jacobian_auto_grad, atol=0.01)
 
+    @staticmethod
+    def test_jacobian_structure(module_class: mantrap.modules.base.OptimizationModule.__class__,
+                                env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
+        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.rand(2), ego_velocity=torch.rand(2))
+        env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10)
+        env.add_ado(position=torch.rand(2) * 2, goal=torch.rand(2) * (-10))
+
+        ego_controls = torch.rand((5, 2)) * 2.0
+        ego_controls.requires_grad = True
+        ego_trajectory = env.ego.unroll_trajectory(controls=ego_controls, dt=env.dt)
+
+        # Compute full jacobian matrix to check against structure afterwards.
+        module = module_class(env=env, t_horizon=5)
+        jacobian = module.jacobian(ego_trajectory, grad_wrt=ego_controls, ado_ids=env.ado_ids, tag="test")
+        structure_numerical = np.nonzero(jacobian)[0]
+        structure_analytical = module.jacobian_structure(ado_ids=env.ado_ids, tag="test")
+
+        assert np.allclose(structure_numerical, structure_analytical)
+
 
 @pytest.mark.parametrize("env_class", environments)
 def test_control_limit_violation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):

@@ -69,6 +69,9 @@ class SpeedLimitModule(PureConstraintModule):
             # Otherwise compute Jacobian using formula in method's description above.
             t_horizon, _ = ego_controls.shape
             _, x_size = ego_trajectory.shape
+            assert t_horizon == self.t_horizon  # jacobian_structure
+            assert x_size == 5  # jacobian_structure
+
             dx_du = self._env.ego.dx_du(ego_controls, dt=self._env.dt).detach().numpy()
             dg_dx = np.zeros((2 * (t_horizon + 1), (t_horizon + 1) * x_size))
             for t in range(t_horizon + 1):

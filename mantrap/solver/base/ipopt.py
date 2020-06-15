@@ -35,7 +35,7 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         variables should be updated, since this would lead to race conditions !
 
         IPOPT-Solver poses the optimization problem as Non-Linear Program (NLP) and uses the non-linear optimization
-        library IPOPT (with Mumps backend) to solve it.
+        library IPOPT (with Mumps backend) to solve it. Documentation: https://pythonhosted.org/ipopt/reference.html
 
         :param z0: initial value of optimization variables.
         :param tag: name of optimization call (name of the core).
@@ -89,6 +89,9 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
 
         # Solve optimization problem for "optimal" ego trajectory `x_optimized`.
         z_opt, info = nlp.solve(z0_flat)
+        nlp.close()
+
+        # Return solution as torch tensor.
         z2_opt = torch.from_numpy(z_opt).view(-1, 2)
         objective_opt = self.objective(z_opt, tag=tag, ado_ids=ado_ids)
         return z2_opt, objective_opt, self.log
@@ -134,7 +137,7 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
     ###########################################################################
     def jacobian(self, z: np.ndarray, ado_ids: typing.List[str] = None, tag: str = mantrap.constants.TAG_OPTIMIZATION
                  ) -> np.ndarray:
-        """Jacobian computation function.
+        """Jacobian of constraints computation function.
 
         Compute the constraints jacobian for some value of the optimization variable `z` based on the
         jacobian implementations of the constraints modules. Concatenate all these gradients together
@@ -146,8 +149,35 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         jacobian = [m.jacobian(ego_trajectory, grad_wrt=grad_wrt, tag=tag, ado_ids=ado_ids) for m in self.modules]
         jacobian = [x.flatten() for x in jacobian if x.size > 0]
         jacobian = np.concatenate(jacobian)
-        
         return jacobian
+
+    def jacobian_structure(self, ado_ids: typing.List[str] = None, tag: str = mantrap.constants.TAG_OPTIMIZATION
+                           ) -> typing.Tuple[np.ndarray, np.ndarray]:
+        """Sparsity structure of Jacobian matrix.
+
+        The structure of the Jacobian matrix is defined by the indices of non-zero elements in the Jacobian
+        matrix. As it is defined by module, the sparsity structures of all modules are concatenated.
+        """
+        ado_ids = ado_ids if ado_ids is not None else self.env.ado_ids
+
+        # Get jacobian structures of optimization modules, and filter out the pure objective modules
+        # (=> None jacobian return value).
+        structures = [m.jacobian_structure(ado_ids=ado_ids, tag=tag) for m in self.modules]
+        num_constraints = [m.num_constraints(ado_ids=ado_ids) for m in self.modules]
+
+        # Shift structures using the length of the module-wise jacobian which is equal to the number of
+        # constraints times the length of the `grad_wrt` tensor, which is 2 * t_planning.
+        structure_full = np.array([])
+        shift = 0
+        for structure, num_cons in zip(structures, num_constraints):
+            if structure is None:
+                continue
+            structure_shifted = structure + shift  # type: np.ndarray
+            structure_full = np.concatenate((structure_full, structure_shifted))
+            shift += num_cons * 2 * self.planning_horizon
+
+        structure_full_flat = structure_full.astype(int)
+        return np.unravel_index(structure_full_flat, dims=(sum(num_constraints), 2 * self.planning_horizon))
 
     # wrong hessian should just affect rate of convergence, not convergence in general
     # (given it is semi-positive definite which is the case for the identity matrix)
@@ -191,6 +221,9 @@ class IPOPTProblem:
 
     def jacobian(self, z: np.ndarray) -> np.ndarray:
         return self.problem.jacobian(z, tag=self.tag, ado_ids=self.ado_ids)
+
+    def jacobianstructure(self) -> typing.Tuple[np.ndarray, np.ndarray]:
+        return self.problem.jacobian_structure(tag=self.tag, ado_ids=self.ado_ids)
 
     def intermediate(self, alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args):
         pass

@@ -251,6 +251,15 @@ class HJReachabilityModule(OptimizationModule):
 
         return jacobian
 
+    def jacobian_structure(self, ado_ids: typing.List[str], tag: str) -> typing.Union[np.ndarray, None]:
+        """Return the sparsity structure of the jacobian, i.e. the indices of non-zero elements.
+
+        :param ado_ids: ghost ids which should be taken into account for computation.
+        :param tag: name of optimization call (name of the core).
+        :returns: indices of non-zero elements of jacobian.
+        """
+        return np.concatenate((np.zeros(len(ado_ids)), np.ones(len(ado_ids))))
+
     ###########################################################################
     # Utility #################################################################
     ###########################################################################
