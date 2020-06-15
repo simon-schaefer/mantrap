@@ -215,10 +215,3 @@ def rotation_matrix(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     theta = torch.atan2(xy[1], xy[0])
     return torch.tensor([[torch.cos(theta), torch.sin(theta)],
                          [-torch.sin(theta), torch.cos(theta)]])
-
-
-###########################################################################
-# Logic ###################################################################
-###########################################################################
-def tensors_close(x: torch.Tensor, y: torch.Tensor, a_tol: float = 0.5) -> bool:
-    return x.shape == y.shape and torch.all(torch.isclose(x, y, atol=a_tol))

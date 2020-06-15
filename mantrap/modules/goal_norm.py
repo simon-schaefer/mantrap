@@ -87,10 +87,10 @@ class GoalNormModule(PureObjectiveModule):
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
 
         with torch.no_grad():
-            # Compute controls from trajectory, if not equal to `grad_wrt` return None.
-            ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
-            if not mantrap.utility.maths.tensors_close(ego_controls, grad_wrt):
-                return None
+            # Compute controls from trajectory, assuming that the `grad_wrt` are the controls.
+            # However not explicitly checked here, for computational reasons and as following
+            # the general formulation in this project.
+            ego_controls = self._env.ego.roll_trajectory(ego_trajectory, dt=self._env.dt)
 
             # Compute dx/du from the agent's dynamics.
             dx_du = self.env.ego.dx_du(ego_controls, dt=self.env.dt).detach().numpy()

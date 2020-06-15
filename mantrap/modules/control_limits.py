@@ -60,16 +60,7 @@ class ControlLimitModule(PureConstraintModule):
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
 
         with torch.no_grad():
-
-            # Compute controls from trajectory, if not equal to `grad_wrt` return None.
-            ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
-            if not mantrap.utility.maths.tensors_close(ego_controls, grad_wrt):
-                return None
-
-            t_horizon, u_size = ego_controls.shape
-            assert t_horizon == self.t_horizon  # jacobian-structure
-            assert u_size == 2  # jacobian-structure
-
+            t_horizon, u_size = self.t_horizon,  2
             jacobian = np.zeros((u_size * t_horizon, u_size * t_horizon))
             for t in range(t_horizon):
                 jacobian[u_size * t, u_size * t] = 1

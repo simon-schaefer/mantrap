@@ -220,17 +220,12 @@ class HJReachabilityModule(OptimizationModule):
 
         with torch.no_grad():
 
-            # Compute controls from trajectory, if not equal to `grad_wrt` return None.
-            ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
-            if not mantrap.utility.maths.tensors_close(ego_controls.detach(), grad_wrt):
-                raise NotImplementedError
-
             # By evaluating the constraints with the current input states we ensure that the internal
             # variables (relative states) are up-to-date.
             self.constraint_core(ego_trajectory=ego_trajectory, ado_ids=ado_ids, tag=tag, enable_auto_grad=False)
 
             # Otherwise compute Jacobian using formula in method's description above. The partial derivative
-            t_horizon, u_size = ego_controls.shape
+            t_horizon, u_size = self.t_horizon, 2
             jacobian = np.zeros((len(ado_ids), t_horizon * u_size))
 
             # dx_rel/du simply are zeros, except of two entries:

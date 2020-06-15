@@ -306,6 +306,7 @@ class OptimizationModule(abc.ABC):
         determined afterwards. However this way of computing the jacobian structure highly depends on
         efficient calculation of the jacobian matrix, and is therefore only available if the the
         `compute_jacobian_analytically()` function is defined.
+
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         :returns: indices of non-zero elements of jacobian.
@@ -313,7 +314,7 @@ class OptimizationModule(abc.ABC):
         if self.num_constraints(ado_ids=ado_ids) == 0:
             return None
 
-        controls = torch.rand((self.t_horizon, 2))
+        controls = torch.rand((self.t_horizon, 2))  # assumption: grad_wrt = controls (!)
         ego_trajectory = self._env.ego.unroll_trajectory(controls, dt=self._env.dt)
         jacobian = self.compute_jacobian_analytically(ego_trajectory, grad_wrt=controls, ado_ids=ado_ids, tag=tag)
 

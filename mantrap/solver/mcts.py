@@ -5,10 +5,10 @@ import numpy as np
 import mantrap.constants
 import mantrap.modules
 
-from .base import SearchIntermediate, ZControlIntermediate
+from .base import SearchIntermediate
 
 
-class MonteCarloTreeSearch(SearchIntermediate, ZControlIntermediate):
+class MonteCarloTreeSearch(SearchIntermediate):
 
     ###########################################################################
     # Optimization ############################################################

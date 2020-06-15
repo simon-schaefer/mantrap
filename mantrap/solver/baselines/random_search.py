@@ -4,10 +4,10 @@ import numpy as np
 
 import mantrap.modules
 
-from ..base import SearchIntermediate, ZControlIntermediate
+from ..base import SearchIntermediate
 
 
-class RandomSearch(ZControlIntermediate, SearchIntermediate):
+class RandomSearch(SearchIntermediate):
 
     def _optimize_inner(self, z_best: np.ndarray, obj_best: float, iteration: int, tag: str, ado_ids: typing.List[str]
                         ) -> typing.Tuple[np.ndarray, float, int, bool]:

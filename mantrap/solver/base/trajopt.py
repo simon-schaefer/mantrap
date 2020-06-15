@@ -25,7 +25,9 @@ class TrajOptSolver(abc.ABC):
     account, see below).
 
     Initialise solver class by building objective and constraint modules as defined within the specific
-    definition of the (optimisation) problem.
+    definition of the (optimisation) problem. Over all definitions it is shared that the optimization
+    variable are the control inputs of the robot, however the exact formulation, i.e. which objective
+    and constraint modules are used depends on the implementation of the child class.
 
     Internally, the solver stores two environments, the environment it uses for planning (optimization etc) and
     the environment it uses for evaluation, i.e. which is actually unknown for the solver but encodes the way
@@ -329,13 +331,14 @@ class TrajOptSolver(abc.ABC):
                 mantrap.modules.ControlLimitModule,
                 mantrap.modules.SpeedLimitModule]
 
-    @abc.abstractmethod
     def num_optimization_variables(self) -> int:
-        raise NotImplementedError
+        return 2 * self.planning_horizon
 
-    @abc.abstractmethod
     def optimization_variable_bounds(self) -> typing.Tuple[typing.List, typing.List]:
-        raise NotImplementedError
+        lower, upper = self._env.ego.control_limits()
+        lb = (np.ones(self.num_optimization_variables()) * lower).tolist()
+        ub = (np.ones(self.num_optimization_variables()) * upper).tolist()
+        return lb, ub
 
     ###########################################################################
     # Problem formulation - Objective #########################################
@@ -409,23 +412,31 @@ class TrajOptSolver(abc.ABC):
         return constraints if not return_violation else (constraints, violation)
 
     ###########################################################################
-    # Transformations #########################################################
+    # Transformations - Optimization variable z = control inputs u_t [0, T] ###
     ###########################################################################
-    @abc.abstractmethod
     def z_to_ego_trajectory(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        raise NotImplementedError
+        ego_controls = torch.from_numpy(z).view(-1, 2).float()
+        ego_controls.requires_grad = True
+        ego_trajectory = self.env.ego.unroll_trajectory(controls=ego_controls, dt=self.env.dt)
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
+        return ego_trajectory if not return_leaf else (ego_trajectory, ego_controls)
 
-    @abc.abstractmethod
-    def z_to_ego_controls(self, z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
-        raise NotImplementedError
+    @staticmethod
+    def z_to_ego_controls(z: np.ndarray, return_leaf: bool = False) -> torch.Tensor:
+        ego_controls = torch.from_numpy(z).view(-1, 2).float()
+        ego_controls.requires_grad = True
+        assert mantrap.utility.shaping.check_ego_controls(ego_controls)
+        return ego_controls if not return_leaf else (ego_controls, ego_controls)
 
-    @abc.abstractmethod
     def ego_trajectory_to_z(self, ego_trajectory: torch.Tensor) -> np.ndarray:
-        raise NotImplementedError
+        assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
+        controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
+        return controls.flatten().detach().numpy()
 
-    @abc.abstractmethod
-    def ego_controls_to_z(self, ego_controls: torch.Tensor) -> np.ndarray:
-        raise NotImplementedError
+    @staticmethod
+    def ego_controls_to_z(ego_controls: torch.Tensor) -> np.ndarray:
+        assert mantrap.utility.shaping.check_ego_controls(ego_controls)
+        return ego_controls.flatten().detach().numpy()
 
     ###########################################################################
     # Encoding ################################################################
