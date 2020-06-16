@@ -53,7 +53,7 @@ SOCIAL_FORCES_DEFAULT_SIGMA = 0.9, 0.3  # [m] repulsive field exponent constant 
 SOCIAL_FORCES_MAX_GOAL_DISTANCE = 0.3  # [m] maximal distance to goal to have zero goal traction force.
 SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between agents for interaction force.
 
-POTENTIAL_FIELD_V0_DEFAULT = 4.0, 2.0  # [m2s-2] repulsive field constant (mean/variance).
+POTENTIAL_FIELD_V0_DEFAULT = 2.0,  0.6  # [m2s-2] repulsive field constant (mean/variance).
 
 TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
 TRAJECTRON_DEFAULT_HISTORY_LENGTH = 5
@@ -67,6 +67,7 @@ SOLVER_GOAL_END_DISTANCE = 0.5  # [m] maximal distance to goal to finish optimiz
 
 WARM_START_HARD = "hard"  # warm-starting methods
 WARM_START_ENCODING = "encoding"
+WARM_START_SOFT = "soft"
 
 IPOPT_MAX_CPU_TIME_DEFAULT = 3.0  # [s] maximal IPOPT solver CPU time.
 IPOPT_OPTIMALITY_TOLERANCE = 0.01  # maximal optimality error to return solution (see documentation).

@@ -1,5 +1,6 @@
 import collections
 import os
+import re
 import typing
 
 import pandas
@@ -71,30 +72,11 @@ class OptimizationLogger:
                     else:
                         self._log[log_key] = torch.cat((self._log[log_key], x), dim=0)
 
-    def log_store(self, csv_log_keys: typing.List[str], csv_name: str):
-        """Store log for given keys `csv_log_keys` in CSV file.
-
-        :param csv_log_keys: logging keys to write in output csv file.
-        :param csv_name: name of csv file = `csv_name.logging.csv`.
-        """
-        if self.is_logging:
-            assert self.log is not None
-            # Save the optimization performance for every optimization step into logging file. Since the
-            # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
-            # first using the `map(dtype, list)` function.
-            output_path = mantrap.constants.VISUALIZATION_DIRECTORY
-            output_path = mantrap.utility.io.build_os_path(output_path, make_dir=True, free=False)
-            output_path = os.path.join(output_path, f"{csv_name}.logging.csv")
-            csv_log_k_keys = [f"{key}_{k}" for key in csv_log_keys for k in range(self._iteration + 1)]
-            csv_log_k_keys += csv_log_keys
-
-            csv_log = {key: map(float, self.log[key]) for key in csv_log_k_keys if key in self.log.keys()}
-            pandas.DataFrame.from_dict(csv_log, orient='index').to_csv(output_path)
-
     ###########################################################################
     # Reading log #############################################################
     ###########################################################################
-    def log_query(self, key: str, key_type: str, iteration: str = "", tag: str = None, apply_func: str = "cat",
+    def log_query(self, key: str = None, key_type: str = "", iteration: typing.Union[str, int] = "",
+                  tag: str = None, apply_func: str = "cat",
                   ) -> typing.Union[torch.Tensor, typing.Dict[str, torch.Tensor], None]:
         """Query internal log for some value with given key (log-key-structure: {tag}/{key_type}_{key}).
 
@@ -110,6 +92,10 @@ class OptimizationLogger:
         assert self.log is not None
         if iteration == "end":
             iteration = str(self._iteration)
+        if key is None:
+            key = "(.*?)"
+        if key_type is None:
+            key_type = "(.*?)"
 
         # Search in log for elements that satisfy the query and return as dictionary. For the sake of
         # runtime the elements are stored as torch tensors in the log, therefore stack and list them.
@@ -118,9 +104,8 @@ class OptimizationLogger:
         if tag is not None:
             query = f"{tag}/{query}"
         for key, values in self.log.items():
-            if query not in key:
-                continue
-            results_dict[key] = values
+            if re.search(query, key) is not None:
+                results_dict[key] = values
 
         # If only one element is in the dictionary, return not the dictionary but the item itself.
         # Otherwise go through arguments one by one and apply them.
@@ -138,6 +123,35 @@ class OptimizationLogger:
         else:
             raise ValueError(f"Undefined apply function for log query {apply_func} !")
         return results.squeeze(dim=0)
+
+    def log_store(self, csv_name: str = None, log_types: typing.List[str] = None
+                  ) -> typing.Union[pandas.DataFrame, None]:
+        """Store log for given keys `csv_log_keys` in CSV file.
+
+        :param log_types: logging keys to write in output csv file.
+        :param csv_name: name of csv file = `csv_name.logging.csv`.
+        """
+        if self.log is None:
+            return None
+        if log_types is None:
+            log_types = [mantrap.constants.LT_OBJECTIVE, mantrap.constants.LT_CONSTRAINT]
+
+        # Save the optimization performance for every optimization step into logging file. Since the
+        # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
+        # first using the `map(dtype, list)` function.
+        output_path = mantrap.constants.VISUALIZATION_DIRECTORY
+        output_path = mantrap.utility.io.build_os_path(output_path, make_dir=True, free=False)
+        output_path = os.path.join(output_path, f"{csv_name}.logging.csv")
+
+        csv_log = {}
+        for log_key_type in log_types:
+            csv_log.update(self.log_query(key_type=log_key_type, apply_func="as_dict"))
+        csv_log = {key: map(float, value) for key, value in csv_log.items()}
+
+        df = pandas.DataFrame.from_dict(csv_log, orient='index')
+        if csv_name is not None:
+            df.to_csv(output_path)
+        return df
 
     ###########################################################################
     # Logger properties #######################################################

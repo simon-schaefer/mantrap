@@ -183,7 +183,7 @@ class TrajOptSolver(abc.ABC):
         # Cleaning up solver environment and summarizing logging.
         logging.debug(f"solver {self.log_name}: logging trajectory optimization")
         self.env.detach()  # detach environment from computation graph
-        self.logger.log_store(self.log_keys_performance(), csv_name=f"{self.log_name}.{self.env.log_name}")
+        self.logger.log_store(csv_name=f"{self.log_name}.{self.env.log_name}")
 
         # Reset environment to initial state. Some modules are also connected to the old environment,
         # which has been forward predicted now. Reset these to the original environment copy.
@@ -256,35 +256,41 @@ class TrajOptSolver(abc.ABC):
     def warm_start(self, method: str = mantrap.constants.WARM_START_HARD) -> torch.Tensor:
         """Compute warm-start for optimization decision variables z.
 
-        - hard: solve the same optimization process but use the hard optimization modules (
-                objectives and constraints) only.
+        - hard: solve the same optimization process but use the hard optimization modules
+                (interaction-un-related modules) only.
 
         - encoding:
+
+        - soft: solve the same optimization process but use the hard optimization modules
+                as well as a safety constraint.
 
         :param method: method to use.
         :return: initial z values.
         """
         logging.debug(f"solver [warm_start]: method = {method} starting ...")
         if method == mantrap.constants.WARM_START_HARD:
-            z_warm_start = self._warm_start_hard()
+            z_warm_start = self._warm_start_optimization(modules=self.module_hard())
         elif method == mantrap.constants.WARM_START_ENCODING:
             z_warm_start = self._warm_start_encoding()
+        elif method == mantrap.constants.WARM_START_SOFT:
+            modules_soft = [*self.module_hard(), mantrap.modules.HJReachabilityModule]
+            z_warm_start = self._warm_start_optimization(modules=modules_soft)
         else:
             raise ValueError(f"Invalid warm starting-method {method} !")
         logging.debug(f"solver [warm_start]: finished ...")
         return z_warm_start
 
-    def _warm_start_hard(self) -> torch.Tensor:
-        """Warm-Starting optimization using solution for hard modules only.
+    def _warm_start_optimization(self, modules: typing.Union[typing.List[typing.Tuple], typing.List]) -> torch.Tensor:
+        """Warm-Starting by solving simplified optimization problem.
 
-        In order to warm start the optimization solve the same optimization process but use the hard
-        optimization modules (objectives and constraints) only. These hard optimization modules should
+        In order to warm start the optimization solve the same optimization process but use the a part of the
+        optimization modules (objectives and constraints) only. These optimization modules should
         be very efficient to solve, e.g. convex, not include the simulation model, etc., but still give
-        a good guess for the final actual solution, i.e. the solution including soft modules as well.
+        a good guess for the final actual solution.
 
-        For further information about hard modules please have a look into `module_hard()`.
+        :param modules: list of optimization modules that should be taken into account.
         """
-        solver_hard = self.__class__(env=self.env, goal=self.goal, modules=self.module_hard(),
+        solver_part = self.__class__(env=self.env, goal=self.goal, modules=modules,
                                      t_planning=self.planning_horizon, config_name=self.config_name,
                                      is_logging=self.logger.is_logging)
 
@@ -297,8 +303,8 @@ class TrajOptSolver(abc.ABC):
         z_init = self.ego_controls_to_z(ego_controls=ego_controls_init)
 
         # Solve the simplified optimization and return its results.
-        z_opt_hard, _ = solver_hard.optimize(z0=torch.from_numpy(z_init), tag=mantrap.constants.TAG_WARM_START)
-        self.logger.log_update(solver_hard.logger.log)
+        z_opt_hard, _ = solver_part.optimize(z0=torch.from_numpy(z_init), tag=mantrap.constants.TAG_WARM_START)
+        self.logger.log_update(solver_part.logger.log)
         return z_opt_hard
 
     def _warm_start_encoding(self) -> torch.Tensor:
@@ -483,11 +489,6 @@ class TrajOptSolver(abc.ABC):
                               f"{mantrap.constants.LT_ADO}_planned": ado_planned,
                               f"{mantrap.constants.LT_ADO_WO}_planned": ado_planned_wo}
             self.logger.log_append(**trajectory_log, tag=tag)
-
-    def log_keys_performance(self, tag: str = mantrap.constants.TAG_OPTIMIZATION) -> typing.List[str]:
-        objective_keys = [f"{tag}/{mantrap.constants.LT_OBJECTIVE}_{key}" for key in self.module_names]
-        constraint_keys = [f"{tag}/{mantrap.constants.LT_CONSTRAINT}_{key}" for key in self.module_names]
-        return objective_keys + constraint_keys
 
     ###########################################################################
     # Visualization ###########################################################

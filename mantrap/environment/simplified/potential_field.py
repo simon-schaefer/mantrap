@@ -66,11 +66,12 @@ class PotentialFieldEnvironment(ParticleEnvironment):
         :param ego_state_t: ego/robot state at time t.
         """
         controls = particle.velocity
+        v0 = max(particle.params["v0"], 1e-3)
 
         if ego_state_t is not None:
             delta = particle.position - ego_state_t[0:2]
             delta = torch.sign(delta) * torch.exp(- torch.abs(delta))
-            controls += particle.params["v0"] * delta
+            controls += v0 * delta
 
         particle.update(action=controls, dt=self.dt)
         return particle
