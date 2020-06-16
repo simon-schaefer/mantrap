@@ -18,8 +18,6 @@ it to the dictionary of scenarios in :code:`__init__.py`:
 
     def foo(
         env_type: mantrap.environment.base.GraphBasedEnvironment.__class__,
-        ego_type: mantrap.agents.base.DTAgent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
-        num_modes: int = 1
     ) -> Tuple[mantrap.environment.base.GraphBasedEnvironment, torch.Tensor, Union[Dict[str, torch.Tensor], None]]:
 
 

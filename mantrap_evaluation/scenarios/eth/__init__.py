@@ -5,26 +5,20 @@ import mantrap
 import numpy as np
 import torch
 
-import mantrap_evaluation.datasets.api
+import mantrap_evaluation.scenarios.api
 
 
-def scenario_eth(
-    env_type: mantrap.environment.base.GraphBasedEnvironment.__class__,
-    ego_type: mantrap.agents.base.DTAgent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
-    t_dataset: float = 0.0,
-    num_modes: int = 1
-) -> typing.Tuple[mantrap.environment.base.GraphBasedEnvironment,
-                  torch.Tensor,
-                  typing.Union[typing.Dict[str, torch.Tensor], None]]:
+def eth(env_type: mantrap.environment.base.GraphBasedEnvironment.__class__, t_dataset: float = 0.0,
+        ) -> typing.Tuple[mantrap.environment.base.GraphBasedEnvironment,
+                          torch.Tensor,
+                          typing.Union[typing.Dict[str, torch.Tensor], None]]:
     """ETH - Computer Vision Lab - Pedestrian movement dataset at ETH.
 
     The argument `t_dataset` determines the time of the dateset (video) in which the pedestrian has to be present,
     in order to be taken into account for the created scenario.
 
     :param env_type: type of created environment.
-    :param ego_type: type of created ego agent (robot).
     :param t_dataset: dataset starting time around which pedestrian should be used [s].
-    :param num_modes: number of output modes.
     """
     # Dataset parameters.
     eth_dt = 0.4  # [s] time-step.
@@ -84,19 +78,18 @@ def scenario_eth(
             ado_goals.append(torch.from_numpy(trajectory[-1, 0:2]))  # goal = last trajectory point
 
     # Create ego information, dependent on the input ego information.
-    ego_state = torch.zeros(4) if ego_type is not None else None
+    ego_state = torch.zeros(4)
     ego_goal = torch.zeros(2)
 
     # Create environment using api.
-    env = mantrap_evaluation.datasets.api.create_environment(
+    env = mantrap_evaluation.scenarios.api.create_environment(
         env_type=env_type,
         config_name="eth",
         ado_histories=ado_histories,
         ado_ids=ado_ids,
-        ego_type=ego_type,
+        ego_type=mantrap.agents.DoubleIntegratorDTAgent,
         ego_state=ego_state,
         ado_goals=ado_goals,
-        num_modes=num_modes,
         dt=eth_dt,  # environment time-delta
         x_axis=x_axis,
         y_axis=y_axis
