@@ -94,6 +94,7 @@ class TrajOptSolver(abc.ABC):
 
         # Initialize logging class.
         self._logger = OptimizationLogger(is_logging=is_logging)
+        self.logger.log_reset()
 
         # Initialize child class.
         self.initialize(**solver_params)
@@ -140,7 +141,7 @@ class TrajOptSolver(abc.ABC):
             logging.debug("#" * 30 + f"solver {self.log_name} @k={k}: initializing optimization")
 
             # Solve optimisation problem.
-            z_k, _, optimization_log = self.optimize(z_warm_start, tag=mantrap.constants.TAG_OPTIMIZATION, **kwargs)
+            z_k, _ = self.optimize(z_warm_start, tag=mantrap.constants.TAG_OPTIMIZATION, **kwargs)
             ego_controls_k = self.z_to_ego_controls(z_k.detach().numpy())
             assert mantrap.utility.shaping.check_ego_controls(ego_controls_k, t_horizon=self.planning_horizon)
 
@@ -149,13 +150,6 @@ class TrajOptSolver(abc.ABC):
             # zero control actions to it.
             z_warm_start = self.ego_controls_to_z(torch.cat((ego_controls_k[1:, :], torch.zeros((1, 2)))))
             z_warm_start = torch.from_numpy(z_warm_start)  # detached !
-
-            # Logging, before the environment step is done and update optimization
-            # logging values for optimization results.
-            if self.logger.is_logging:
-                ego_trajectory_k = self.env.ego.unroll_trajectory(ego_controls_k, dt=self.env.dt)
-                self.__intermediate_log(ego_trajectory=ego_trajectory_k)
-                self.logger.log_update({key: x for key, x in optimization_log.items()})
 
             # Forward simulate environment.
             ado_states, ego_state = self._eval_env.step(ego_action=ego_controls_k[0, :])
@@ -189,7 +183,7 @@ class TrajOptSolver(abc.ABC):
         # Cleaning up solver environment and summarizing logging.
         logging.debug(f"solver {self.log_name}: logging trajectory optimization")
         self.env.detach()  # detach environment from computation graph
-        self.logger.log_summarize(self.log_keys_performance(), csv_name=f"{self.log_name}.{self.env.log_name}")
+        self.logger.log_store(self.log_keys_performance(), csv_name=f"{self.log_name}.{self.env.log_name}")
 
         # Reset environment to initial state. Some modules are also connected to the old environment,
         # which has been forward predicted now. Reset these to the original environment copy.
@@ -204,8 +198,16 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Optimization ############################################################
     ###########################################################################
-    def optimize(self, z0: torch.Tensor, tag: str, **kwargs
-                 ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
+    def optimize(self, z0: torch.Tensor, tag: str, **kwargs) -> typing.Tuple[torch.Tensor, float]:
+        """Optimization core wrapper function.
+
+        Filter the agents by using the attention module, execute the optimization, log
+        the results and return the optimization results.
+
+        :param z0: initial value of optimization variable.
+        :param tag: name of optimization call (name of the core).
+        :param kwargs: additional arguments for optimization core function.
+        """
         # Filter the important ghost indices from the current scene state.
         if self._attention_module is not None:
             ado_ids = self._attention_module.compute()
@@ -214,7 +216,15 @@ class TrajOptSolver(abc.ABC):
             ado_ids = self.env.ado_ids  # all ado ids (not filtered)
 
         # Computation is done in `optimize_core()` class that is implemented in child class.
-        return self.optimize_core(z0, ado_ids=ado_ids, tag=tag, **kwargs)
+        z_opt, obj_opt, log_opt = self.optimize_core(z0, ado_ids=ado_ids, tag=tag, **kwargs)
+
+        # Logging the optimization results.
+        if self.logger.is_logging:
+            ego_trajectory_k = self.z_to_ego_trajectory(z_opt.detach().numpy(), return_leaf=False)
+            self.__intermediate_log(ego_trajectory=ego_trajectory_k, tag=tag)
+            self.logger.log_update({key: x for key, x in log_opt.items()})
+
+        return z_opt, obj_opt
 
     @abc.abstractmethod
     def optimize_core(self, z0: torch.Tensor, tag: str, ado_ids: typing.List[str], **kwargs
@@ -275,7 +285,8 @@ class TrajOptSolver(abc.ABC):
         For further information about hard modules please have a look into `module_hard()`.
         """
         solver_hard = self.__class__(env=self.env, goal=self.goal, modules=self.module_hard(),
-                                     t_planning=self.planning_horizon, config_name=self.config_name)
+                                     t_planning=self.planning_horizon, config_name=self.config_name,
+                                     is_logging=self.logger.is_logging)
 
         # As initial guess for this first optimization, without prior knowledge, going straight
         # from the current position to the goal with maximal control input is chosen.
@@ -286,7 +297,8 @@ class TrajOptSolver(abc.ABC):
         z_init = self.ego_controls_to_z(ego_controls=ego_controls_init)
 
         # Solve the simplified optimization and return its results.
-        z_opt_hard, _, _ = solver_hard.optimize(z0=torch.from_numpy(z_init), tag=mantrap.constants.TAG_WARM_START)
+        z_opt_hard, _ = solver_hard.optimize(z0=torch.from_numpy(z_init), tag=mantrap.constants.TAG_WARM_START)
+        self.logger.log_update(solver_hard.logger.log)
         return z_opt_hard
 
     def _warm_start_encoding(self) -> torch.Tensor:
@@ -461,7 +473,7 @@ class TrajOptSolver(abc.ABC):
     # Logging #################################################################
     ###########################################################################
     def __intermediate_log(self, ego_trajectory: torch.Tensor, tag: str = mantrap.constants.TAG_OPTIMIZATION):
-        if self.logger.is_logging and self.logger.log is not None:
+        if self.logger.is_logging:
             ado_planned = self.env.sample_w_trajectory(ego_trajectory=ego_trajectory, num_samples=10)
             ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_trajectory.shape[0] - 1, num_samples=10)
             trajectory_log = {f"{mantrap.constants.LT_EGO}_planned": ego_trajectory,
@@ -477,7 +489,7 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_scenes(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **vis_keys):
+    def visualize_scenes(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **vis_kwargs):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory).
 
@@ -500,7 +512,33 @@ class TrajOptSolver(abc.ABC):
             ego_goal=self.goal,
             env=self.env,
             file_path=output_format(f"{self.log_name}_{self.env.name}_scenes"),
-            **vis_keys
+            **vis_kwargs
+        )
+
+    def visualize_step(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, iteration: int = 0, **vis_kwargs):
+        """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
+        trajectories conditioned on the planned ego trajectory) for one specific iteration.
+
+        :param tag: logging tag to plot, per default optimization tag.
+        :param iteration: solver iteration to visualize, per default 0th iteration (start).
+        """
+        from mantrap.visualization import visualize_prediction
+        from mantrap.visualization.atomics import output_format
+
+        iter_string = str(iteration)
+        lt_ego, lt_ado = mantrap.constants.LT_EGO, mantrap.constants.LT_ADO
+        ego_planned = self.logger.log_query("planned", lt_ego, tag=tag, apply_func="cat", iteration=iter_string)
+        ado_planned = self.logger.log_query("planned", lt_ado, tag=tag, apply_func="cat", iteration=iter_string)
+        ado_planned_wo = self.logger.log_query("planned", lt_ado, tag=tag, apply_func="cat", iteration=iter_string)
+
+        return visualize_prediction(
+            ego_planned=ego_planned,
+            ado_planned=ado_planned,
+            ado_planned_wo=ado_planned_wo,
+            ego_goal=self.goal,
+            env=self.env,
+            file_path=output_format(name=f"{self.log_name}_{self.env.name}_scenes"),
+            **vis_kwargs
         )
 
     def visualize_heat_map(self, propagation: str = "log", resolution: float = 0.1):

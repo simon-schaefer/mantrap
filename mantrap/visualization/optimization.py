@@ -47,8 +47,6 @@ def visualize_optimization(
     assert all(mantrap.utility.shaping.check_ego_trajectory(ego_planned[k]) for k in range(time_steps))
     assert ado_planned.shape[0] == time_steps
     assert ado_planned_wo.shape[0] == time_steps
-    if ego_goal is not None:
-        assert mantrap.utility.shaping.check_goal(ego_goal)
 
     plt.close('all')
     fig, ax = plt.subplots(figsize=(8, 8), constrained_layout=True)
@@ -56,12 +54,6 @@ def visualize_optimization(
     def update(k):
         plt.axis("off")
         ax.cla()
-
-        # Plot optimization goal state as a red cross.
-        if ego_goal is not None:
-            assert mantrap.utility.shaping.check_goal(ego_goal)
-            ax.plot(ego_goal[0], ego_goal[1], "rx", markersize=15.0, label="goal")
-
         # Since the environment is in the initial state for t > t0 the ado histories are not accurate.
         # Therefore extend them with the actual trajectories the ados took during optimization.
         ado_histories = []
@@ -72,7 +64,7 @@ def visualize_optimization(
 
         # All other visualizations are re-used from the prediction plot.
         visualize_prediction(ego_planned=ego_planned[k], ado_planned=ado_planned[k], ado_planned_wo=ado_planned_wo[k],
-                             ado_histories=ado_histories, env=env, legend=legend, ax=ax)
+                             ado_histories=ado_histories, ego_goal=ego_goal, env=env, legend=legend, ax=ax)
 
         return ax
 

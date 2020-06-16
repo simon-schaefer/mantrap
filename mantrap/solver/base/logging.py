@@ -39,7 +39,8 @@ class OptimizationLogger:
 
     def log_update(self, kwarg_dict: typing.Dict[str, typing.Any]):
         """Append kwargs dictionary to internal log."""
-        self._log.update(kwarg_dict)
+        if self.is_logging:
+            self._log.update(kwarg_dict)
 
     def log_append(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **kwargs):
         """Append to internal logging queue from the function's `**kwargs`.
@@ -53,32 +54,31 @@ class OptimizationLogger:
         """
         if self.is_logging and self.log is not None:
             for key, value in kwargs.items():
+                log_key = f"{tag}/{key}_{self._iteration}"
+
+                # If value is None, we assume (and check) that all previous values have been None
+                # and append another None to this chain of None's.
                 if value is None:
-                    x = None
+                    assert not any(self._log[key])
+                    self._log[log_key].append(None)
+
+                # Otherwise convert and concatenate the value to the stored torch tensor.
                 else:
                     x = torch.tensor(value) if type(value) != torch.Tensor else value.detach()
-                self._log[f"{tag}/{key}_{self._iteration}"].append(x)
+                    x = x.unsqueeze(dim=0)  # make dim one larger for catting
+                    if log_key not in self._log.keys():
+                        self._log[log_key] = x
+                    else:
+                        self._log[log_key] = torch.cat((self._log[log_key], x), dim=0)
 
-    def log_summarize(self, csv_log_keys: typing.List[str], csv_name: str):
-        """Summarize optimisation-step dictionaries to a single tensor per logging key, e.g. collapse all objective
-        value tensors for k = 1, 2, ..., N to one tensor for the whole optimisation process.
-
-        Attention: It is assumed that the last value of each series is the optimal value for this kth optimisation,
-        e.g. the last value of the objective tensor `obj_overall` should be the smallest one. However it is hard to
-        validate for the general logging key, therefore it is up to the user to implement it correctly.
+    def log_store(self, csv_log_keys: typing.List[str], csv_name: str):
+        """Store log for given keys `csv_log_keys` in CSV file.
 
         :param csv_log_keys: logging keys to write in output csv file.
         :param csv_name: name of csv file = `csv_name.logging.csv`.
         """
         if self.is_logging:
             assert self.log is not None
-
-            # The log values have been added one by one during the optimization, so that they are lists
-            # of tensors, stack them to a single tensor.
-            for key, values in self.log.items():
-                if type(values) == list and len(values) > 0 and all(type(x) == torch.Tensor for x in values):
-                    self._log[key] = torch.stack(values)
-
             # Save the optimization performance for every optimization step into logging file. Since the
             # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
             # first using the `map(dtype, list)` function.

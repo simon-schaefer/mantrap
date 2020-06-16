@@ -41,7 +41,8 @@ def draw_samples(
     num_samples = samples.shape[0]
     for i in range(num_samples):
         xs, ys = samples[i, :, 0, 0], samples[i, :, 0, 1]
-        ax.plot(xs, ys, marker, color=color, label=name, alpha=alpha)
+        kwargs = {"label": name} if i == 0 else {}
+        ax.plot(xs, ys, marker, color=color, alpha=alpha, **kwargs)
     return ax
 
 
