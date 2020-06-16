@@ -222,8 +222,8 @@ class IPOPTProblem:
     def jacobian(self, z: np.ndarray) -> np.ndarray:
         return self.problem.jacobian(z, tag=self.tag, ado_ids=self.ado_ids)
 
-    def jacobianstructure(self) -> typing.Tuple[np.ndarray, np.ndarray]:
-        return self.problem.jacobian_structure(tag=self.tag, ado_ids=self.ado_ids)
+    # def jacobianstructure(self) -> typing.Tuple[np.ndarray, np.ndarray]:
+    #     return self.problem.jacobian_structure(tag=self.tag, ado_ids=self.ado_ids)
 
     def intermediate(self, alg_mod, iter_count, obj_value, inf_pr, inf_du, mu, d_norm, *args):
         pass
