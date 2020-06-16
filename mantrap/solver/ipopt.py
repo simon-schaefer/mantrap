@@ -1,5 +1,4 @@
 import logging
-import abc
 import typing
 
 import ipopt
@@ -9,10 +8,10 @@ import torch
 import mantrap.constants
 import mantrap.solver
 
-from .trajopt import TrajOptSolver
+from mantrap.solver.base.trajopt import TrajOptSolver
 
 
-class IPOPTIntermediate(TrajOptSolver, abc.ABC):
+class IPOPTSolver(TrajOptSolver):
 
     def optimize_core(
         self,
@@ -186,13 +185,11 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
     #    raise NotImplementedError
 
     ###########################################################################
-    # Visualization & Logging #################################################
+    # Solver properties #######################################################
     ###########################################################################
-    def log_keys_performance(self, tag: str = mantrap.constants.TAG_OPTIMIZATION) -> typing.List[str]:
-        log_keys = super(IPOPTIntermediate, self).log_keys_performance()
-        gradient_keys = [f"{tag}/{mantrap.constants.LT_GRADIENT}_{key}"
-                         for key in self.module_names]
-        return log_keys + gradient_keys
+    @property
+    def name(self) -> str:
+        return "ipopt"
 
 
 ###########################################################################
@@ -202,7 +199,7 @@ class IPOPTProblem:
 
     def __init__(
         self,
-        problem: IPOPTIntermediate,
+        problem: IPOPTSolver,
         ado_ids: typing.List[str],
         tag: str = mantrap.constants.TAG_OPTIMIZATION
     ):

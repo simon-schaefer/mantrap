@@ -37,16 +37,6 @@ class RandomSearch(SearchIntermediate):
         return z_best, obj_best, iteration + 1, False
 
     ###########################################################################
-    # Optimization formulation  ###############################################
-    ###########################################################################
-    @staticmethod
-    def module_defaults() -> typing.Union[typing.List[typing.Tuple], typing.List]:
-        return [(mantrap.modules.GoalNormModule, {"optimize_speed": False, "weight": 1.0}),
-                (mantrap.modules.InteractionProbabilityModule, {"weight": 1.0}),
-                mantrap.modules.SpeedLimitModule,
-                mantrap.modules.HJReachabilityModule]
-
-    ###########################################################################
     # Solver properties #######################################################
     ###########################################################################
     @property

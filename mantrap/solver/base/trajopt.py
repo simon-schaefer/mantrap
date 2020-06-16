@@ -311,7 +311,10 @@ class TrajOptSolver(abc.ABC):
     def module_defaults() -> typing.Union[typing.List[typing.Tuple], typing.List]:
         """List of optimization modules (objectives, constraint) and according dictionary
         of module kwargs, such as weight (for objectives), etc."""
-        raise NotImplementedError
+        return [(mantrap.modules.GoalNormModule, {"optimize_speed": False, "weight": 1.0}),
+                (mantrap.modules.InteractionProbabilityModule, {"weight": 1.0}),
+                mantrap.modules.SpeedLimitModule,
+                mantrap.modules.HJReachabilityModule]
 
     @staticmethod
     def module_hard() -> typing.Union[typing.List[typing.Tuple], typing.List]:

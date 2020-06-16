@@ -38,7 +38,7 @@ def scenario(
 ###########################################################################
 # Tests - All Solvers #####################################################
 ###########################################################################
-@pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver,
+@pytest.mark.parametrize("solver_class", [mantrap.solver.IPOPTSolver,
                                           mantrap.solver.MonteCarloTreeSearch,
                                           mantrap.solver.baselines.RandomSearch])
 @pytest.mark.parametrize("env_class", environments)
@@ -60,7 +60,7 @@ class TestSolvers:
         solver = solver_class(env, goal=torch.zeros(2), objectives=[("goal", 1.0)], constraints=[], **solver_kwargs)
 
         z0 = solver.warm_start(method=warm_start_method)
-        z_opt, _, _ = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0)
+        z_opt, _ = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0)
         ego_controls = solver.z_to_ego_controls(z=z_opt.detach().numpy())
         ego_trajectory_opt = solver.env.ego.unroll_trajectory(controls=ego_controls, dt=solver.env.dt)
 
@@ -131,8 +131,8 @@ class TestSolvers:
         t_horizon_exp = solver_horizon + 1  # t_controls = solver_horizon, t_trajectory = solver_horizon + 1
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory_opt, t_horizon=t_horizon_exp)
         assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories, t_horizon_exp, ados=env.num_ados)
-        assert tuple(ado_planned.shape) == (solver_horizon, env.num_ados, 10, solver.planning_horizon + 1, 1, 2)
-        assert tuple(ego_opt_planned.shape) == (solver_horizon, solver.planning_horizon + 1, 5)
+        assert tuple(ado_planned.shape) == (solver_horizon + 1, env.num_ados, 10, solver.planning_horizon + 1, 1, 2)
+        assert tuple(ego_opt_planned.shape) == (solver_horizon + 1, solver.planning_horizon + 1, 5)
 
         # Test ado planned trajectories - depending on environment engine. Therefore only time-stamps can be tested.
         time_steps_exp = torch.arange(start=env.time, end=env.time + env.dt * (solver_horizon + 1), step=env.dt)
@@ -207,17 +207,20 @@ class TestSolvers:
 
         # Query logging (full).
         key_type, key = mantrap.constants.LT_OBJECTIVE, mantrap.constants.LK_OVERALL
-        obj_log_full = solver.logger.log_query(key_type=key_type, key=key, apply_func="as_dict")
+        obj_log_full = solver.logger.log_query(key_type=key_type, key=key, apply_func="as_dict",
+                                               tag=mantrap.constants.TAG_OPTIMIZATION)
         assert obj_log_full is not None
+        print(obj_log_full.keys())
 
         # Query logging (last) and check compliance.
-        obj_log_last = solver.logger.log_query(key_type=key_type, key=key, apply_func="last")
+        obj_log_last = solver.logger.log_query(key_type=key_type, key=key, apply_func="last",
+                                               tag=mantrap.constants.TAG_OPTIMIZATION)
         assert obj_log_last is not None
         for i in range(obj_log_last.numel()):
             log_key = f"{key_type}_{key}_{i}"
             key_log_full = [k for k in obj_log_full.keys() if log_key in k]
             assert len(key_log_full) == 1
-            assert torch.isclose(obj_log_last[i], obj_log_full[key_log_full[0]][-1])
+            assert torch.isclose(obj_log_last[i], obj_log_full[key_log_full[-1]][-1])
 
 
 ###########################################################################
@@ -248,18 +251,16 @@ class TestSearchSolvers:
 ###########################################################################
 # Test - IPOPT Solver #####################################################
 ###########################################################################
-@pytest.mark.parametrize("solver_class", [mantrap.solver.SGradSolver])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("attention_class", attentions)
 class TestIPOPTSolvers:
 
     @staticmethod
-    def test_formulation(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
-                         env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+    def test_formulation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                          attention_class: mantrap.attention.AttentionModule.__class__):
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
-        solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
+        solver = mantrap.solver.IPOPTSolver(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
         ego_controls = torch.rand((solver.planning_horizon, 2))
         z_controls = solver.ego_controls_to_z(ego_controls)
@@ -279,12 +280,11 @@ class TestIPOPTSolvers:
             assert jacobian.size <= num_constraints * z_controls.size
 
     @staticmethod
-    def test_jacobian_structure(solver_class: mantrap.solver.base.TrajOptSolver.__class__,
-                                env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+    def test_jacobian_structure(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                                 attention_class: mantrap.attention.AttentionModule.__class__):
         env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
-        solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
+        solver = mantrap.solver.IPOPTSolver(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
         ego_controls = torch.rand((solver.planning_horizon, 2))
         z_controls = solver.ego_controls_to_z(ego_controls)
@@ -294,10 +294,6 @@ class TestIPOPTSolvers:
         num_constraints = int(jacobian.size / Tp2)
         structure_numerically = np.unravel_index(np.nonzero(jacobian)[0], dims=(num_constraints, Tp2))
         structure_analytically = solver.jacobian_structure(ado_ids=env.ado_ids, tag="test")
-
-        print(structure_numerically)
-        print(structure_analytically)
-
         assert np.allclose(structure_analytically, structure_numerically)
 
 
@@ -314,7 +310,7 @@ def test_terminal_state(env_class: mantrap.environment.base.GraphBasedEnvironmen
     modules = [(mantrap.modules.GoalNormModule, {"optimize_speed": False}),
                (mantrap.modules.ControlLimitModule, None)]
 
-    solver = mantrap.solver.SGradSolver(env, goal=torch.tensor([1, 0]), t_planning=3, modules=modules)
+    solver = mantrap.solver.IPOPTSolver(env, goal=torch.tensor([1, 0]), t_planning=3, modules=modules)
     ego_trajectory, _ = solver.solve(time_steps=20)
 
     # Check whether goal has been reached in acceptable closeness.
