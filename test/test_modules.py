@@ -122,14 +122,15 @@ class TestObjectives:
                     env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
         env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         env.add_ado(position=torch.zeros(2))
-        ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=env.dt)
-        ego_trajectory.requires_grad = True
+
+        controls = torch.ones((10, 2), requires_grad=True)
+        ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
 
         module = module_class(t_horizon=10, env=env, goal=torch.rand(2))
         objective = module.objective(ego_trajectory, ado_ids=env.ado_ids, tag="test")
-        gradient = module.gradient(ego_trajectory, grad_wrt=ego_trajectory, ado_ids=env.ado_ids, tag="test")
+        gradient = module.gradient(ego_trajectory, grad_wrt=controls, ado_ids=env.ado_ids, tag="test")
         assert type(objective) == float
-        assert gradient.size == ego_trajectory.numel()
+        assert gradient.size == controls.numel()
 
     @staticmethod
     def test_runtime(module_class: mantrap.modules.base.OptimizationModule.__class__,

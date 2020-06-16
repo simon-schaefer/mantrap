@@ -81,8 +81,8 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         nlp.addOption("hessian_approximation", mantrap.constants.IPOPT_AUTOMATIC_HESSIAN)
 
         # The larger the `print_level` value, the more print output IPOPT will provide.
-        nlp.addOption("print_level", 5 if self.is_logging else 0)
-        if self.is_logging:
+        nlp.addOption("print_level", 5 if self.logger.is_logging else 0)
+        if self.logger.is_logging:
             nlp.addOption("print_timing_statistics", "yes")
             # nlp.addOption("derivative_test", "first-order")
             # nlp.addOption("derivative_test_tol", 1e-4)
@@ -94,7 +94,7 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         # Return solution as torch tensor.
         z2_opt = torch.from_numpy(z_opt).view(-1, 2)
         objective_opt = self.objective(z_opt, tag=tag, ado_ids=ado_ids)
-        return z2_opt, objective_opt, self.log
+        return z2_opt, objective_opt, self.logger.log
 
     ###########################################################################
     # Optimization formulation - Formulation ##################################
@@ -126,10 +126,10 @@ class IPOPTIntermediate(TrajOptSolver, abc.ABC):
         gradient = [m.gradient(ego_trajectory, grad_wrt=grad_wrt, tag=tag, ado_ids=ado_ids) for m in self.modules]
         gradient = np.sum(gradient, axis=0)
 
-        self._log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
+        self.logger.log_append(grad_overall=np.linalg.norm(gradient), tag=tag)
         module_log = {f"{mantrap.constants.LT_GRADIENT}_{key}": mod.grad_current(tag=tag)
                       for key, mod in self.module_dict.items()}
-        self._log_append(**module_log, tag=tag)
+        self.logger.log_append(**module_log, tag=tag)
         return gradient
 
     ###########################################################################

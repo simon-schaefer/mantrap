@@ -1,5 +1,4 @@
 import abc
-import logging
 import time
 import typing
 
@@ -83,14 +82,14 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
                 break
 
             k += 1
-            logging.debug(f"search iteration {k} => objective {obj_iteration}/{obj_candidate}, time {run_time}s")
+            # logging.debug(f"search iteration {k} => objective {obj_iteration}/{obj_candidate}, time {run_time}s")
 
         # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
         # be the best iteration (logging within objective and constraint function).
         self.evaluate(z=z_best, tag=tag, ado_ids=ado_ids)
         ego_controls = self.z_to_ego_controls(z=z_best)
         assert mantrap.utility.shaping.check_ego_controls(ego_controls, t_horizon=self.planning_horizon)
-        return ego_controls, obj_best, self.log
+        return ego_controls, obj_best, self.logger.log
 
     @abc.abstractmethod
     def _optimize_inner(self, z_best: typing.Union[None, np.ndarray], obj_best: float, iteration: int,
