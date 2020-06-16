@@ -27,7 +27,7 @@ def create_environment(
         ado_kwargs = {
             "position": history[-1, 0:2].float(),
             "velocity": history[-1, 2:4].float(),
-            "history": history.float(),
+            "history": history.float() if history.shape[0] > 1 else None,
             "goal": ado_goals[m_ado].float() if ado_goals is not None else None,
             "identifier": ado_ids[m_ado] if ado_ids is not None else None,
         }
