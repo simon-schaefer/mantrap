@@ -1,7 +1,49 @@
+import inspect
+import sys
+import time
+import typing
+
 import mantrap
+import pandas
 import torch
 
 
+def evaluate(solver: mantrap.solver.base.TrajOptSolver, time_steps: int = 10, label: str = None, **solve_kwargs
+             ) -> typing.Tuple[pandas.DataFrame, torch.Tensor, torch.Tensor]:
+    """Evaluate the solver performance in current set configuration.
+
+    For evaluation solve an N-step trajectory optimization problem, given additional solver-kwargs, which
+    can be additionally passed. Then compute each metric value and return the results as `pd.DataFrame`.
+
+    :param solver: solver to evaluation (has to be of `TrajOptSolver` class).
+    :param time_steps: number of time-steps to solve for evaluation.
+    :param label: label of evaluation in resulting data-frame, by default the log-name of the solver.
+    :param solve_kwargs: additional kwargs for `solve()` method.s
+    """
+    label = solver.log_name if label is None else label
+
+    # Solve internal optimization problem (measure average run-time).
+    start_time = time.time()
+    ego_trajectory, ado_trajectories = solver.solve(time_steps=time_steps, **solve_kwargs)
+    solve_time = time.time() - start_time
+
+    # Build a dictionary of all metric functions listed in current file.
+    metrics = {name.replace("metric_", ""): obj for name, obj in inspect.getmembers(sys.modules[__name__])
+               if (inspect.isfunction(obj) and name.startswith("metric"))}
+
+    # Evaluate these metrics and build output data-frame.
+    eval_dict = {}
+    for name, metric_function in metrics.items():
+        eval_dict[name] = metric_function(ego_trajectory=ego_trajectory,
+                                          ado_trajectories=ado_trajectories,
+                                          env=solver.env, goal=solver.goal)
+    eval_dict["runtime[s]"] = solve_time / time_steps
+    return pandas.DataFrame(eval_dict, index=[label]), ego_trajectory, ado_trajectories
+
+
+#######################################################################################################################
+# Metric definitions ##################################################################################################
+#######################################################################################################################
 def metric_minimal_distance(
     ego_trajectory: torch.Tensor, ado_trajectories: torch.Tensor, num_inter_points: int = 100, **unused
 ) -> float:

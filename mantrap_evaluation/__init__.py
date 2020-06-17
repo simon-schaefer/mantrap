@@ -1,1 +1,2 @@
 import mantrap_evaluation.scenarios
+from mantrap_evaluation.metrics import evaluate
