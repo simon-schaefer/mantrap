@@ -116,3 +116,13 @@ def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__
     ado_trajectory_12[0, :, 0, -1] = torch.linspace(0, 8 * env.dt, steps=9)
     metric_score_12 = metric_ado_effort(ado_trajectories=ado_trajectory_12, env=env)
     assert np.isclose(metric_score_1, metric_score_12, atol=1e-3)
+
+
+def test_final_distance():
+    ego_trajectory = torch.rand((10, 5))
+    ego_trajectory[0, 0:2] = torch.tensor([0, 0])
+    ego_trajectory[-1, 0:2] = torch.tensor([5, 0])
+    goal = torch.tensor([10, 0])
+
+    score = metric_final_distance(ego_trajectory, goal=goal)
+    assert np.isclose(score, 0.5)

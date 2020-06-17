@@ -184,3 +184,23 @@ def metric_directness(ego_trajectory: torch.Tensor, goal: torch.Tensor, **unused
         t_horizon_until_goal += 1
 
     return float(score) / t_horizon_until_goal if abs(score) > 1e-3 else 0.0
+
+
+def metric_final_distance(ego_trajectory: torch.Tensor, goal: torch.Tensor, **unused) -> float:
+    """Determine the final distance between ego and its goal position.
+
+    For normalization divide the final distance by the initial distance. Scores larger than 1 mean, that
+    the robot is more distant from the goal than at the beginning.
+
+    .. math:: score = ||x_T - g||_2 / ||x_0 - g||_2
+
+    :param ego_trajectory: trajectory of ego (t_horizon, 5).
+    :param goal: optimization goal state (may vary in size, but usually 2D position).
+    """
+    ego_trajectory = ego_trajectory.detach()
+    assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
+    goal = goal.float()
+    distance_init = torch.norm(ego_trajectory[0, 0:2] - goal).item()
+    distance_init = max(distance_init, 1e-6)  # avoid 0 division error
+    distance_final = torch.norm(ego_trajectory[-1, 0:2] - goal).item()
+    return distance_final / distance_init
