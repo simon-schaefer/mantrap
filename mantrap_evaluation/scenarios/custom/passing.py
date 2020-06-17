@@ -17,8 +17,8 @@ def custom_passing(env_type: mantrap.environment.base.GraphBasedEnvironment.__cl
     """
     ego_state = torch.tensor([0, 0, 0, 0])
     ego_goal = torch.tensor([8, 0])
-    ado_histories = torch.tensor([5, 2, 0, -1, 0]).unsqueeze(dim=0)
-    ado_goals = torch.tensor([5, -4])
+    ado_histories = torch.tensor([4, 1.2, 1, -1, 0]).unsqueeze(dim=0)
+    ado_goals = torch.tensor([3, -4])
 
     return mantrap_evaluation.scenarios.api.create_environment(
         config_name="custom_passing",
