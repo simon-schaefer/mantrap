@@ -446,8 +446,6 @@ class GraphBasedEnvironment(abc.ABC):
         assert all([ado_id in distribution.keys() for ado_id in self.ado_ids])
         assert all([distribution[ado_id].mean.shape[0] == t_horizon + 1 for ado_id in self.ado_ids])
         assert all([distribution[ado_id].mean.shape[-1] == 2 for ado_id in self.ado_ids])
-        assert all([distribution[ado_id].stddev.shape[0] == t_horizon + 1 for ado_id in self.ado_ids])
-        assert all([distribution[ado_id].stddev.shape[-1] == 2 for ado_id in self.ado_ids])
         return True
 
     def detach(self):

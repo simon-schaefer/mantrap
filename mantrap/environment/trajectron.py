@@ -207,7 +207,7 @@ class Trajectron(GraphBasedEnvironment):
         accelerations = self._pseudo_ego.compute_acceleration(ego_trajectory, dt=self.dt)
         trajectory_w_acc = torch.cat((ego_trajectory[:, 0:4], accelerations), dim=1)
 
-        # Core trajectron prediction call.
+        # Core trajectron prediction call (returning velocity distribution !).
         trajectron_dist_dict, _ = self.trajectron.forward(
             init_env=self._online_env,
             init_timestep=0,
@@ -215,24 +215,16 @@ class Trajectron(GraphBasedEnvironment):
             num_predicted_timesteps=t_horizon,
             num_samples=1,
             full_dist=True,
+            vel_dist=True,
             robot_present_and_future=trajectory_w_acc
         )
-
-        # To include the initial state in the distribution (Trajectron outputs distributions from [1, T + 1],
-        # we define initial value matrices, expressing our perfect knowledge about the initial state
-        # (perfect perception assumption).
-        m = self.num_modes
-        _, ado_states = self.states()
-        ado_positions = ado_states[:, 0:2].view(self.num_ados, 1, 2)
-        ado_positions_stacked = torch.stack(m * [ado_positions], dim=-2).detach()
-        log_sigma_initial = math.log(mantrap.constants.ENV_VAR_INITIAL) * torch.ones((1, m, 2)).detach()
-        log_pis_initial = math.log(1 / m) * torch.ones((1, m)).detach()
-        corrs_initial = math.sqrt(mantrap.constants.ENV_VAR_INITIAL) * torch.ones((1, m)).detach()  # un-correlated
 
         # Build ado-wise dictionary distribution of probability distributions. The Trajectron distribution is a
         # dictionary mapping the GenTrajectron tag ("{class_id}/{id}") to a distribution object, defined in gmm2d.py
         # in its code base (GMM with n = 25 modes).
         dist_dict = {}
+        m = self.num_modes
+        _, ado_states = self.states()
         for node, dist in trajectron_dist_dict.items():
             # Re-Map the node-id to the agent tags using within this project during initialization
             # (enforced to be identical except of type-tag during initialization).
@@ -245,15 +237,8 @@ class Trajectron(GraphBasedEnvironment):
             log_sigmas = dist.log_sigmas.view(t_horizon, m, 2)
             corrs = dist.corrs.view(t_horizon, m)
             log_pis = dist.log_pis.view(t_horizon, m)
-
-            # According to the project's convention the distribution must contain the initial distribution
-            # (which is completely certain) as well.
-            mus = torch.cat((ado_positions_stacked[m_ado, :, :, :], mus), dim=0)
-            log_sigmas = torch.cat((log_sigma_initial, log_sigmas), dim=0)
-            log_pis = torch.cat((log_pis_initial, log_pis), dim=0)
-            corrs = torch.cat((corrs_initial, corrs), dim=0)
-
-            distribution = mantrap.utility.maths.GMM2D(mus=mus, log_pis=log_pis, log_sigmas=log_sigmas, corrs=corrs)
+            distribution = mantrap.utility.maths.VGMM2D(mus=mus, log_pis=log_pis, log_sigmas=log_sigmas, corrs=corrs,
+                                                        pos_0=ado_states[m_ado, 0:2], dt=self.dt)
             dist_dict[ado_id] = distribution
 
         return dist_dict

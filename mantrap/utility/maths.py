@@ -10,8 +10,10 @@ import mantrap.utility.shaping
 ###########################################################################
 # Distributions ###########################################################
 ###########################################################################
-class GMM2D(torch.distributions.Distribution):
-    """Gaussian Mixture Model using 2D Multivariate Gaussians each of as N components:
+class VGMM2D(torch.distributions.Distribution):
+    """Velocity-based Gaussian Mixture Model.
+
+    Gaussian Mixture Model using 2D Multivariate Gaussians each of as N components:
     Cholesky decompesition and affine transformation for sampling:
 
     .. math:: Z \\sim N(0, I)
@@ -32,32 +34,46 @@ class GMM2D(torch.distributions.Distribution):
 
     Re-Implementation of GMM2D model used in GenTrajectron (B. Ivanovic, M. Pavone).
 
+    :param pos_0: initial position (for integration).
+    :param dt: time-step (for integration).
     :param log_pis: Log Mixing Proportions (t_horizon, num_modes).
     :param mus: Mixture Components mean (t_horizon, num_modes, 2)
     :param log_sigmas: Log Standard Deviations (t_horizon, num_modes, 2)
     :param corrs: Cholesky factor of correlation (t_horizon, num_modes).
     """
-    def __init__(self, mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor, corrs: torch.Tensor):
-        super(GMM2D, self).__init__()
+    def __init__(self, pos_0: torch.Tensor, dt: float,
+                 mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor, corrs: torch.Tensor):
+        super(VGMM2D, self).__init__()
         t_horizon, self.components = log_pis.shape
         self.dimensions = 2
         assert mus.shape == (t_horizon, self.components, 2)
         assert log_sigmas.shape == (t_horizon, self.components, 2)
         assert corrs.shape == (t_horizon, self.components)
 
+        # Integration setup.
+        self._pos_init = pos_0
+        self._dt = dt
+
+        # Integrate mean position (only done once, only done once).
+        mus_padding = torch.zeros((1, mus.shape[1], 2))  # include zero position
+        mus_padded = torch.cat((mus_padding, mus))
+        self.mus_pos = torch.cumsum(mus_padded, dim=0) * dt + pos_0
+
+        # Distribution parameters.
         self.log_pis = log_pis - torch.logsumexp(log_pis, dim=-1, keepdim=True)  # [..., N]
         self.mus = mus
         self.log_sigmas = log_sigmas
         self.sigmas = torch.exp(self.log_sigmas)
         self.corrs = corrs
-        self.one_minus_rho2 = torch.ones(1) - torch.pow(corrs, 2)
 
+        # Pre-computations required for efficient sampling.
+        self.one_minus_rho2 = torch.ones(1) - torch.pow(corrs, 2)
         self.pis_cat_dist = torch.distributions.Categorical(logits=log_pis)
         L1 = torch.stack([self.sigmas[..., 0], torch.zeros_like(log_pis)], dim=-1)
         L2 = torch.stack([self.sigmas[..., 1] * corrs, self.sigmas[..., 1] * self.one_minus_rho2], dim=-1)
         self.L = torch.stack([L1, L2], dim=-2)
 
-    def log_prob(self, values: torch.Tensor) -> torch.Tensor:
+    def log_prob(self, positions: torch.Tensor) -> torch.Tensor:
         """Calculates the log probability of a value using the PDF for bi-variate normal distributions:
 
         .. math::
@@ -66,11 +82,13 @@ class GMM2D(torch.distributions.Distribution):
             {\\frac {(y-\\mu _{y})^{2}}{\\sigma _{y}^{2}}}-{\\frac {2\\rho (x-\\mu _{x})(y-\\mu _{y})}
             {\\sigma _{x}\\sigma _{y}}}\\right]\\right)
 
-        :param values: The log probability density function is evaluated at those values.
+        :param positions: The log probability density function is evaluated at those positions.
         :returns: log probability of these values
         """
-        dx = values - self.mus
+        velocities = (positions[1:] - positions[:-1]) / self._dt
 
+        # Determine log likelihood of samples in velocity space.s
+        dx = velocities - self.mus
         exp_nominator = ((torch.sum((dx / self.sigmas) ** 2, dim=-1)  # first and second term of exp nominator
                           - 2 * self.corrs * torch.prod(dx, dim=-1) / torch.prod(self.sigmas, dim=-1)))
 
@@ -86,21 +104,23 @@ class GMM2D(torch.distributions.Distribution):
         re-parameterized  samples if the distribution parameters are batched.
 
         :param sample_shape: Shape of the samples
-        :return: Samples from the GMM.
+        :return: Samples from the GMM in position space.
         """
         samples = torch.randn(size=sample_shape + self.mus.shape).unsqueeze(dim=-1)
         mvn_samples = self.mus + torch.matmul(self.L, samples).squeeze(dim=-1)
         component_cat_samples = self.pis_cat_dist.sample(sample_shape)
         selector = torch.eye(self.components)[component_cat_samples].unsqueeze(dim=-1)
-        return torch.sum(mvn_samples * selector, dim=-2, keepdim=True)
+        samples = torch.sum(mvn_samples * selector, dim=-2, keepdim=True)
+        return self.integrate_samples(samples)
+
+    def integrate_samples(self, x: torch.Tensor) -> torch.Tensor:
+        x_padded = torch.cat((torch.zeros((x.shape[0], 1, 1, 2)), x), dim=1)
+        x_int = torch.cumsum(x_padded, dim=1) * self._dt + self._pos_init
+        return x_int
 
     @property
     def mean(self):
-        return self.mus
-
-    @property
-    def stddev(self):
-        return self.sigmas
+        return self.mus_pos
 
 
 ###########################################################################
