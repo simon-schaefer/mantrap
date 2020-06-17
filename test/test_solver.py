@@ -28,7 +28,7 @@ def scenario(
     warm_start_method: str = mantrap.constants.WARM_START_HARD,
     **solver_kwargs
 ):
-    env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 2]))
+    env = env_class(torch.tensor([-5, 2]), ego_type=mantrap.agents.DoubleIntegratorDTAgent)
     env.add_ado(position=torch.tensor([3, 2]))
     solver = solver_class(env, goal=torch.tensor([1, 1]), attention_module=attention_class, **solver_kwargs)
     z0 = solver.warm_start(method=warm_start_method).detach().numpy()
@@ -53,7 +53,7 @@ class TestSolvers:
                          warm_start_method: str):
         dt = mantrap.constants.ENV_DT_DEFAULT
         ego_goal_distance = (mantrap.constants.PED_SPEED_MAX / 2) * dt
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-ego_goal_distance, 0]), dt=dt)
+        env = env_class(torch.tensor([-ego_goal_distance, 0]), ego_type=mantrap.agents.DoubleIntegratorDTAgent, dt=dt)
         env.add_ado(position=torch.ones(2) * 10, velocity=torch.zeros(2))
 
         solver_kwargs = {"attention_module": attention_class, "t_planning": 1}
@@ -112,7 +112,7 @@ class TestSolvers:
                    env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                    attention_class: mantrap.attention.AttentionModule.__class__,
                    warm_start_method: str):
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
+        env = env_class(torch.tensor([-8, 0]), ego_type=mantrap.agents.DoubleIntegratorDTAgent)
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5,
                               is_logging=True)
@@ -157,7 +157,7 @@ class TestSolvers:
                         env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                         attention_class: mantrap.attention.AttentionModule.__class__,
                         warm_start_method: str):
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
+        env = env_class(torch.tensor([-8, 0]), torch.ones(2), ego_type=mantrap.agents.DoubleIntegratorDTAgent)
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = solver_class(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
@@ -182,7 +182,7 @@ class TestSolvers:
         ado_2_position = torch.tensor([4, 5])
         ego_goal = torch.rand(2) * 5
 
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position, ego_velocity=ego_velocity)
+        env = env_class(ego_position, ego_velocity=ego_velocity, ego_type=mantrap.agents.DoubleIntegratorDTAgent)
         env.add_ado(position=ado_position)
         env.add_ado(position=ado_2_position)
         solver = solver_class(env, goal=ego_goal, t_planning=5,
@@ -198,7 +198,7 @@ class TestSolvers:
                        env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                        attention_class: mantrap.attention.AttentionModule.__class__,
                        warm_start_method: str):
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.zeros(2))
+        env = env_class(torch.zeros(2), ego_type=mantrap.agents.DoubleIntegratorDTAgent, )
         solver = solver_class(env, attention_module=attention_class, goal=torch.rand(2) * 10,
                               modules=[mantrap.modules.GoalNormModule], is_logging=True)
 
@@ -237,7 +237,7 @@ class TestSearchSolvers:
         np.random.seed(0)
         torch.manual_seed(0)
 
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-8, 0]))
+        env = env_class(torch.tensor([-8, 0]), ego_type=mantrap.agents.DoubleIntegratorDTAgent)
         env.add_ado(position=torch.tensor([9, 9]))  # far-away
         solver = solver_class(env, goal=torch.zeros(2), t_planning=5)
 
@@ -258,7 +258,7 @@ class TestIPOPTSolvers:
     @staticmethod
     def test_formulation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                          attention_class: mantrap.attention.AttentionModule.__class__):
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
+        env = env_class(torch.tensor([-8, 0]), torch.ones(2), ego_type=mantrap.agents.DoubleIntegratorDTAgent)
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = mantrap.solver.IPOPTSolver(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
@@ -282,7 +282,7 @@ class TestIPOPTSolvers:
     @staticmethod
     def test_jacobian_structure(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
                                 attention_class: mantrap.attention.AttentionModule.__class__):
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.tensor([-8, 0]), ego_velocity=torch.ones(2))
+        env = env_class(torch.tensor([-8, 0]), torch.ones(2), ego_type=mantrap.agents.DoubleIntegratorDTAgent)
         env.add_ado(position=torch.tensor([0, 0]), velocity=torch.tensor([-1, 0]))
         solver = mantrap.solver.IPOPTSolver(env, attention_module=attention_class, goal=torch.zeros(2), t_planning=5)
 
@@ -301,7 +301,7 @@ class TestIPOPTSolvers:
 def test_terminal_state(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
     ego_position = torch.tensor([-3, 0])
     ego_velocity = torch.ones(2)
-    env = env_class(mantrap.agents.DoubleIntegratorDTAgent,
+    env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent,
                     ego_position=ego_position,
                     ego_velocity=ego_velocity,
                     dt=0.4)

@@ -29,10 +29,10 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     def __init__(
         self,
-        ego_type: mantrap.agents.base.DTAgent.__class__ = None,
         ego_position: torch.Tensor = None,
         ego_velocity: torch.Tensor = torch.zeros(2),
         ego_history: torch.Tensor = None,
+        ego_type: mantrap.agents.base.DTAgent.__class__ = mantrap.agents.DoubleIntegratorDTAgent,
         x_axis: typing.Tuple[float, float] = mantrap.constants.ENV_X_AXIS_DEFAULT,
         y_axis: typing.Tuple[float, float] = mantrap.constants.ENV_Y_AXIS_DEFAULT,
         dt: float = mantrap.constants.ENV_DT_DEFAULT,
@@ -54,8 +54,8 @@ class GraphBasedEnvironment(abc.ABC):
         assert y_axis[0] < y_axis[1]
         assert dt > 0.0
 
-        if ego_type is not None:
-            assert ego_position is not None
+        if ego_position is not None:
+            assert ego_type is not None
             self._ego = ego_type(ego_position, velocity=ego_velocity, history=ego_history,
                                  time=time, is_robot=True, dt=dt, identifier=mantrap.constants.ID_EGO)
         else:
@@ -485,7 +485,7 @@ class GraphBasedEnvironment(abc.ABC):
                 history = self.ego.history
                 ego_kwargs = {"ego_position": position, "ego_velocity": velocity, "ego_history": history}
 
-            env_copy = env_type(ego_type, **ego_kwargs, dt=self.dt, time=self.time, **self._env_params)
+            env_copy = env_type(**ego_kwargs, ego_type=ego_type, dt=self.dt, time=self.time, **self._env_params)
 
             # Add internal ado agents to newly created environment.
             for ado in self.ados:

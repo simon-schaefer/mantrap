@@ -20,7 +20,7 @@ environments = [mantrap.environment.KalmanEnvironment,
 
 def create_scene(module_class: mantrap.modules.base.OptimizationModule.__class__,
                  env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-    env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
+    env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
     env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10)
     module = module_class(env=env, t_horizon=5, goal=torch.rand(2))  # must be general here for all modules ...
     return module, env
@@ -81,7 +81,7 @@ class TestObjectives:
     @staticmethod
     def test_gradient_analytical(module_class: mantrap.modules.base.OptimizationModule.__class__,
                                  env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.rand(2))
+        env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.rand(2))
         env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10)
         env.add_ado(position=torch.rand(2) * 8, goal=torch.rand(2) * (-10))
 
@@ -110,7 +110,7 @@ class TestObjectives:
     @staticmethod
     def test_multimodal_support(module_class: mantrap.modules.base.OptimizationModule.__class__,
                                 env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
+        env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         env.add_ado(position=torch.zeros(2), velocity=torch.tensor([-1, 0]), goal=torch.tensor([-5, 0]))
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.ones((10, 2)), dt=env.dt)
 
@@ -120,7 +120,7 @@ class TestObjectives:
     @staticmethod
     def test_output(module_class: mantrap.modules.base.OptimizationModule.__class__,
                     env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
+        env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         env.add_ado(position=torch.zeros(2))
 
         controls = torch.ones((10, 2), requires_grad=True)
@@ -170,7 +170,7 @@ class TestObjectiveInteraction:
                           env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
         """Every interaction-based objective should be larger the closer the interacting agents are, so having the
         ego agent close to some ado should affect the ado more than when the ego agent is far away. """
-        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 100.0]), y_axis=(-100, 100))
+        env = env_class(torch.tensor([-5, 100.0]), ego_type=mantrap.agents.IntegratorDTAgent, y_axis=(-100, 100))
         env.add_ado(position=torch.zeros(2))
 
         start_near, end_near = torch.tensor([-5, 0.1]), torch.tensor([5, 0.1])
@@ -188,7 +188,7 @@ class TestObjectiveInteraction:
 
 
 def test_objective_goal_distribution():
-    env = mantrap.environment.PotentialFieldEnvironment(mantrap.agents.IntegratorDTAgent, ego_position=torch.zeros(2))
+    env = mantrap.environment.PotentialFieldEnvironment(torch.zeros(2), ego_type=mantrap.agents.IntegratorDTAgent)
     goal_state = torch.tensor([4.1, 8.9])
     ego_trajectory = torch.rand((11, 4))
 
@@ -218,7 +218,7 @@ class TestConstraints:
         if module_class in mantrap.modules.baselines.__dict__.values():
             pytest.skip()  # skip baseline modules
 
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
+        env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10)
         env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10))
 
@@ -246,7 +246,7 @@ class TestConstraints:
         """In order to test the constraint violation in general test it in a scene with static and far-distant
         agent(s), with  respect to the ego, and static ego robot. In this configurations all constraints should
         be met. """
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
+        env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
         env.add_ado(position=torch.ones(2) * 9, goal=torch.ones(2) * 9)
         ego_trajectory = env.ego.unroll_trajectory(controls=torch.zeros((1, 2)), dt=env.dt)
 
@@ -257,7 +257,7 @@ class TestConstraints:
     @staticmethod
     def test_jacobian_analytical(module_class: mantrap.modules.base.OptimizationModule.__class__,
                                  env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.rand(2))
+        env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.rand(2))
         env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10)
         env.add_ado(position=torch.rand(2) * 8, goal=torch.rand(2) * (-10))
 
@@ -285,7 +285,7 @@ class TestConstraints:
     @staticmethod
     def test_jacobian_structure(module_class: mantrap.modules.base.OptimizationModule.__class__,
                                 env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, torch.rand(2), ego_velocity=torch.rand(2))
+        env = env_class(torch.rand(2), ego_type=mantrap.agents.DoubleIntegratorDTAgent, ego_velocity=torch.rand(2))
         env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10)
         env.add_ado(position=torch.rand(2) * 2, goal=torch.rand(2) * (-10))
 
@@ -305,7 +305,7 @@ class TestConstraints:
 @pytest.mark.parametrize("env_class", environments)
 def test_control_limit_violation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
     position, velocity = torch.tensor([-5, 0.1]), torch.zeros(2)
-    env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
+    env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
 
     module = mantrap.modules.ControlLimitModule(env=env, t_horizon=5)
     _, upper_bound = module.constraint_limits()
@@ -334,7 +334,7 @@ def test_control_limit_violation(env_class: mantrap.environment.base.GraphBasedE
 @pytest.mark.parametrize("env_class", environments)
 def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
     position, velocity = torch.tensor([-5, 0.1]), torch.zeros(2)
-    env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
+    env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
 
     module = mantrap.modules.SpeedLimitModule(env=env, t_horizon=5)
     lower_bound, upper_bound = module.constraint_limits()
@@ -393,7 +393,7 @@ class TestAttention:
     @staticmethod
     def test_runtime(module_class: mantrap.attention.AttentionModule.__class__,
                      env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-        env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=torch.tensor([-5, 0.1]))
+        env = env_class(torch.tensor([-5, 0.1]), ego_type=mantrap.agents.IntegratorDTAgent)
         env.add_ado(position=torch.zeros(2), goal=torch.rand(2) * 10)
         env.add_ado(position=torch.tensor([5, 1]), goal=torch.rand(2) * (-10))
 
@@ -439,7 +439,7 @@ class TestHJReachability:
         automatically using PyTorch's auto_grad framework. However the "remaining" partial derivatives
         can be computed, i.e. all except of the pre-computed one, since they are based on online
         PyTorch computations and hence have a gradient function assigned to them. """
-        env = env_class(mantrap.agents.DoubleIntegratorDTAgent, ego_position=torch.rand(2))
+        env = env_class(torch.rand(2), ego_type=mantrap.agents.DoubleIntegratorDTAgent)
         env.add_ado(position=torch.rand(2) * 5, goal=torch.rand(2) * 10)
 
         ego_controls = torch.rand((5, 2)) / 10.0
