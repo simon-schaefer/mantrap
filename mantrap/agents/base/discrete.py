@@ -78,7 +78,7 @@ class DTAgent(abc.ABC):
             assert color.size == 3
             self._color = color
         else:
-            self._color = np.array(random.choice(mantrap.constants.COLORS))
+            self._color = np.random.rand(3)  # [0, 1)
         self._params = agent_params
 
         # Random identifier.

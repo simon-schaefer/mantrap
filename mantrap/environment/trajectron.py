@@ -201,7 +201,7 @@ class Trajectron(GraphBasedEnvironment):
                     node_state_dict[node] = self.agent_by_id(node.id).history[t, 0:2].detach()
             pos_dicts.append(node_state_dict)
 
-        # Trajectron requires the ego trajectory two consists of (pos, velocity, acceleration). So compute
+        # Trajectron requires the ego trajectory to consist of (pos, velocity, acceleration). So compute
         # the accelerations using numerical differentiation. Although the pseudo-ego is used here, it is
         # of the same agent type as the actual ego (which might not be defined).
         accelerations = self._pseudo_ego.compute_acceleration(ego_trajectory, dt=self.dt)
