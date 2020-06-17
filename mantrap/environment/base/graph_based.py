@@ -558,6 +558,11 @@ class GraphBasedEnvironment(abc.ABC):
             **vis_kwargs
         )
 
+    def visualize_prediction_w_controls(self, ego_controls: torch.Tensor, **vis_kwargs):
+        """Visualize the predictions for the scene based on the given ego controls."""
+        ego_trajectory = self.ego.unroll_trajectory(ego_controls, dt=self.dt)
+        return self.visualize_prediction(ego_trajectory=ego_trajectory, **vis_kwargs)
+
     def visualize_prediction_wo_ego(self, t_horizon: int, **vis_kwargs):
         """Visualize the predictions for the scene based on the given ego trajectory."""
         from mantrap.visualization import visualize_prediction
