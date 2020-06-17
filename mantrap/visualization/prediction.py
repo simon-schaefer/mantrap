@@ -82,12 +82,12 @@ def visualize_prediction(
             ado_position = ado_trajectory[0, 0, 0, 0:2]
 
             draw_agent_representation(ado_position, name=ado_id, color=ado_color, env_axes=env.axes, ax=ax)
-            draw_samples(ado_trajectory, name=ado_id, color=ado_color, ax=ax, alpha=1.0, marker="-")
-            ax.plot(ado_history[:, 0], ado_history[:, 1], "-.", color=ado_color, label=f"{ado_id}_hist", alpha=1.0)
+            draw_samples(ado_trajectory, name=ado_id, color=ado_color, ax=ax, alpha=0.8, marker="-")
+            ax.plot(ado_history[:, 0], ado_history[:, 1], "-.", color=ado_color, label=f"{ado_id}_hist", alpha=0.8)
 
             if ado_planned is not None and ado_planned_wo is not None:
                 label = f"{ado_id}_wo"
-                draw_samples(ado_planned_wo[m_ado], name=label, color=ado_color, ax=ax, alpha=0.8, marker=":")
+                draw_samples(ado_planned_wo[m_ado], name=label, color=ado_color, ax=ax, alpha=0.6, marker=":")
 
     draw_trajectory_axis(env.axes, ax=ax, legend=legend)
     ax.set_title(f"predictions")
