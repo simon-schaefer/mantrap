@@ -8,6 +8,7 @@ import mantrap.attention
 import mantrap.modules
 
 import mantrap.solver
+import mantrap.visualization
 
 
 #######################################

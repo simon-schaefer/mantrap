@@ -56,10 +56,10 @@ def visualize_prediction(
     # Check ado trajectories and decide whether to mainly plot the without trajectories or the conditioned
     # trajectories (if they are defined).
     ado_trajectory_main = None
-    if ado_planned_wo is not None:
-        ado_trajectory_main = ado_planned_wo.detach().clone()
     if ado_planned is not None:
         ado_trajectory_main = ado_planned.detach().clone()
+    elif ado_planned_wo is not None:
+        ado_trajectory_main = ado_planned_wo.detach().clone()
 
     # Plot ego trajectory.
     if ego_planned is not None:
@@ -74,20 +74,23 @@ def visualize_prediction(
 
     # Plot ado trajectories (forward and backward). Additionally plot the ado "side" trajectories, i.e.
     # the unconditioned prediction samples if both samples are defined.
-    if ado_trajectory_main is not None:
-        for m_ado, ado in enumerate(env.ados):
+    for m_ado, ado in enumerate(env.ados):
+
+        ado_id, ado_color = ado.id, ado.color
+        ado_history = ado.history if ado_histories is None else ado_histories[m_ado, :, 0:2]
+        ax.plot(ado_history[:, 0], ado_history[:, 1], "-.", color=ado_color, label=f"{ado_id}_hist", alpha=0.8)
+
+        if ado_trajectory_main is not None:
             ado_trajectory = ado_trajectory_main[m_ado]
-            ado_id, ado_color = ado.id, ado.color
-            ado_history = ado.history if ado_histories is None else ado_histories[m_ado, :, 0:2]
             ado_position = ado_trajectory[0, 0, 0, 0:2]
-
-            draw_agent_representation(ado_position, name=ado_id, color=ado_color, env_axes=env.axes, ax=ax)
             draw_samples(ado_trajectory, name=ado_id, color=ado_color, ax=ax, alpha=0.8, marker="-")
-            ax.plot(ado_history[:, 0], ado_history[:, 1], "-.", color=ado_color, label=f"{ado_id}_hist", alpha=0.8)
+        else:
+            ado_position = ado_history[-1, 0:2]
+        draw_agent_representation(ado_position, name=ado_id, color=ado_color, env_axes=env.axes, ax=ax)
 
-            if ado_planned is not None and ado_planned_wo is not None:
-                label = f"{ado_id}_wo"
-                draw_samples(ado_planned_wo[m_ado], name=label, color=ado_color, ax=ax, alpha=0.6, marker=":")
+        if ado_planned is not None and ado_planned_wo is not None:
+            label = f"{ado_id}_wo"
+            draw_samples(ado_planned_wo[m_ado], name=label, color=ado_color, ax=ax, alpha=0.6, marker=":")
 
     draw_trajectory_axis(env.axes, ax=ax, legend=legend)
     ax.set_title(f"predictions")
