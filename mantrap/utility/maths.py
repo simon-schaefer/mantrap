@@ -87,7 +87,7 @@ class VGMM2D(torch.distributions.Distribution):
         """
         velocities = (positions[1:] - positions[:-1]) / self._dt
 
-        # Determine log likelihood of samples in velocity space.s
+        # Determine log likelihood of samples in velocity space.
         dx = velocities - self.mus
         exp_nominator = ((torch.sum((dx / self.sigmas) ** 2, dim=-1)  # first and second term of exp nominator
                           - 2 * self.corrs * torch.prod(dx, dim=-1) / torch.prod(self.sigmas, dim=-1)))
