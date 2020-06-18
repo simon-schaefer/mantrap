@@ -71,6 +71,11 @@ class IPOPTSolver(TrajOptSolver):
         nlp = ipopt.problem(n=len(z0_flat), m=len(cl), problem_obj=problem, lb=lb, ub=ub, cl=cl, cu=cu)
         nlp.addOption("max_cpu_time", max_cpu_time)
         nlp.addOption("tol", mantrap.constants.IPOPT_OPTIMALITY_TOLERANCE)  # tolerance for optimality error
+
+        # An adaptive strategy might increase IPOPT internal computational effort but will decrease the number of
+        # function evaluations which clearly is the bottleneck of the algorithm (see IPOPT documentation).
+        nlp.addOption("mu_strategy", "adaptive")
+
         if approx_jacobian:
             nlp.addOption("jacobian_approximation", mantrap.constants.IPOPT_AUTOMATIC_JACOBIAN)
         # Due to the generalized automatic differentiation through large graphs the computational bottleneck
