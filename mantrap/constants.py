@@ -69,8 +69,8 @@ WARM_START_HARD = "hard"  # warm-starting methods
 WARM_START_ENCODING = "encoding"
 WARM_START_SOFT = "soft"
 
-IPOPT_MAX_CPU_TIME_DEFAULT = 3.0  # [s] maximal IPOPT solver CPU time.
-IPOPT_OPTIMALITY_TOLERANCE = 0.01  # maximal optimality error to return solution (see documentation).
+IPOPT_MAX_CPU_TIME_DEFAULT = 2.0  # [s] maximal IPOPT solver CPU time.
+IPOPT_OPTIMALITY_TOLERANCE = 0.1  # maximal optimality error to return solution (see IPOPT documentation).
 IPOPT_AUTOMATIC_JACOBIAN = "finite-difference-values"  # method for Jacobian approximation (if flag is True).
 IPOPT_AUTOMATIC_HESSIAN = "limited-memory"  # method for Hessian approximation.
 

@@ -53,13 +53,11 @@ class IPOPTSolver(TrajOptSolver):
         # the "optimization scene", especially it might lead to zero agents (so an interactively) unconstrained
         # optimization.
         lb, ub = self.optimization_variable_bounds()
-        logging.debug(f"Optimization variable constraint has bounds lower = {lb} & upper = {ub}")
         cl, cu = list(), list()
         for name, module in self.module_dict.items():
             lower, upper = module.constraint_boundaries(ado_ids=ado_ids)
             cl += list(lower)
             cu += list(upper)
-            logging.debug(f"Constraint {name} has bounds lower = {lower} & upper = {upper}")
 
         # Formulate optimization problem as in standardized IPOPT format.
         z0_flat = z0.flatten().numpy().tolist()
@@ -71,10 +69,16 @@ class IPOPTSolver(TrajOptSolver):
         nlp = ipopt.problem(n=len(z0_flat), m=len(cl), problem_obj=problem, lb=lb, ub=ub, cl=cl, cu=cu)
         nlp.addOption("max_cpu_time", max_cpu_time)
         nlp.addOption("tol", mantrap.constants.IPOPT_OPTIMALITY_TOLERANCE)  # tolerance for optimality error
+        # nlp.addOption("acceptable_tol", mantrap.constants.IPOPT_OPTIMALITY_TOLERANCE)
 
         # An adaptive strategy might increase IPOPT internal computational effort but will decrease the number of
         # function evaluations which clearly is the bottleneck of the algorithm (see IPOPT documentation).
         nlp.addOption("mu_strategy", "adaptive")
+
+        # According to the documentation the `mehrotra-algorithm` improves performance in case of strictly
+        # convex problem formulation. Although the prediction model generally is not convex, it turned out
+        # that it can approximated as convex (with the interactive cost being the only non-convex module).
+        nlp.addOption("mehrotra_algorithm", "yes")
 
         if approx_jacobian:
             nlp.addOption("jacobian_approximation", mantrap.constants.IPOPT_AUTOMATIC_JACOBIAN)
