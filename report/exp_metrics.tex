@@ -42,7 +42,7 @@ Due to their generality beyond the approach used by Chen et alt.\, the first and
 While the trajectories $A$ and $B$ in Figure \ref{img:extra_time} might introduce the same value extra travel time$t_{extra}(A) = t_{extra}(B)$, they trade-off a constant high speed ($B$) with a goal-directed but partly low-speed ($A$) robot behavior. So, although depicting very different approaches, their assigned value  $t_{extra}$ might be equal. Therefore, within project \project the "directness" of the resulting robot trajectory is regarded separately from the control effort the robot requires to reach its goal. Additionally, as we explicitly target to minimize the impact the robot's motion has on the pedestrian's behavior, the set of evaluation metrics is expanded to entail the additional effort a pedestrian is expected to incur.  
 
 \subsection{Robot Control Effort (RCE)}
-The RCE metric is a classical objective in control theory, measuring the control energy that the robot uses to perform the resulting trajectory. For normalization, the required control energy is compared to the maximal accessible control input $u_{max}$ over the length of the solution trajectory $\stepssolution$:
+The RCE metric is a classical objective in control theory, measuring the control energy that the robot uses to perform the resulting trajectory. Although not optimized directly, the RCE is an important metric for assessing the quality and feasibility of the solution trajectory in real-world applications. For normalization, the required control energy is compared to the maximal accessible control input $u_{max}$ over the length of the solution trajectory $\stepssolution$:
 
 \begin{equation}
 RCE = \frac{\sum_{i = 0}^{\stepssolution} ||\u_i||_2}{\stepssolution \cdot u_{max}}
@@ -74,4 +74,11 @@ While most above metrics are explicitly related to the demands the derived solut
 
 \begin{equation}
 MPE = \frac{1}{\stepssolution} \frac{1}{K} \sum_{i=0}^{\stepssolution} \sum_{k=0}^K ||\ddxped[k]_i - \ddxpedwo[k]_i||_2
+\end{equation}
+
+\subsection{Terminal Goal Distance (TGD)}
+The solver has to balance multiple objectives, mainly the minimizing the distance to its goal state while minimally disturbing the surrounding pedestrian's motions. While the second part of the objective has been captured by the MPE and MSD metric, the first part is assessed by the TGD metric. TGD simply compares the initial goal distance with the final goal distance of a robot trajectory, to be independent of the absolute distance and therefore comparable over different scenarios:
+
+\begin{equation}
+TGD = \frac{||\x_T - \goal||_2}{||\x_0 - \goal||_2}
 \end{equation}
