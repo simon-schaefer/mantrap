@@ -149,7 +149,6 @@ class TestSolvers:
         # Since the constraint modules have been tested independently, for generalization, the module-internal
         # violation computation can be used for this check.
         for module in solver.modules:
-            print(module)
             violation = module.compute_violation(ego_trajectory_opt, ado_ids=env.ado_ids, tag="test")
             assert math.isclose(violation, 0.0, abs_tol=1e-3)
 
@@ -211,7 +210,6 @@ class TestSolvers:
         obj_log_full = solver.logger.log_query(key_type=key_type, key=key, apply_func="as_dict",
                                                tag=mantrap.constants.TAG_OPTIMIZATION)
         assert obj_log_full is not None
-        print(obj_log_full.keys())
 
         # Query logging (last) and check compliance.
         obj_log_last = solver.logger.log_query(key_type=key_type, key=key, apply_func="last",
@@ -297,23 +295,24 @@ class TestIPOPTSolvers:
         structure_analytically = solver.jacobian_structure(ado_ids=env.ado_ids, tag="test")
         assert np.allclose(structure_analytically, structure_numerically)
 
+    @staticmethod
+    def test_terminal_state(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                            attention_class: mantrap.attention.AttentionModule.__class__):
+        ego_position = torch.tensor([-3, 0])
+        ego_velocity = torch.ones(2)
+        env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent,
+                        ego_position=ego_position,
+                        ego_velocity=ego_velocity,
+                        attention_module=attention_class,
+                        dt=0.4)
+        env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
 
-@pytest.mark.parametrize("env_class", environments)
-def test_terminal_state(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-    ego_position = torch.tensor([-3, 0])
-    ego_velocity = torch.ones(2)
-    env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent,
-                    ego_position=ego_position,
-                    ego_velocity=ego_velocity,
-                    dt=0.4)
-    env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
+        modules = [(mantrap.modules.GoalNormModule, {"optimize_speed": False}),
+                   (mantrap.modules.ControlLimitModule, None)]
 
-    modules = [(mantrap.modules.GoalNormModule, {"optimize_speed": False}),
-               (mantrap.modules.ControlLimitModule, None)]
+        solver = mantrap.solver.IPOPTSolver(env, goal=torch.tensor([1, 0]), t_planning=3, modules=modules)
+        ego_trajectory, _ = solver.solve(time_steps=20)
 
-    solver = mantrap.solver.IPOPTSolver(env, goal=torch.tensor([1, 0]), t_planning=3, modules=modules)
-    ego_trajectory, _ = solver.solve(time_steps=20)
-
-    # Check whether goal has been reached in acceptable closeness.
-    goal_distance = torch.norm(ego_trajectory[-1,  0:2] - solver.goal)
-    assert torch.le(goal_distance, mantrap.constants.SOLVER_GOAL_END_DISTANCE * 2)
+        # Check whether goal has been reached in acceptable closeness.
+        goal_distance = torch.norm(ego_trajectory[-1, 0:2] - solver.goal)
+        assert torch.le(goal_distance, mantrap.constants.SOLVER_GOAL_END_DISTANCE * 2)

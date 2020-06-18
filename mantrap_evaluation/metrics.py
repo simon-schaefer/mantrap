@@ -1,4 +1,5 @@
 import inspect
+import logging
 import sys
 import time
 import typing
@@ -23,11 +24,14 @@ def evaluate(solver: mantrap.solver.base.TrajOptSolver, time_steps: int = 10, la
     :param solve_kwargs: additional kwargs for `solve()` method.s
     """
     label = solver.log_name if label is None else label
+    logging.info(f"Start evaluation {label} ...")
 
     # Solve internal optimization problem (measure average run-time).
     eval_df = pandas.DataFrame()
     ego_trajectories, ado_trajectories = [], []
     for k in range(num_tests):
+        logging.info(f"Evaluation {label}: [{k}/{num_tests}] ...")
+
         start_time = time.time()
         ego_trajectory_k, ado_trajectories_k = solver.solve(time_steps=time_steps, **solve_kwargs)
         solve_time = time.time() - start_time
