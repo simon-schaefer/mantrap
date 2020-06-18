@@ -57,7 +57,7 @@ class GoalNormModule(PureObjectiveModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        goal_distances = torch.sum((ego_trajectory[:, 0:2] - self._goal).pow(2), dim=1)
+        goal_distances = (ego_trajectory[:, 0:2] - self._goal).pow(2)
         cost = torch.mean(goal_distances)
 
         if self._optimize_speed:
