@@ -23,8 +23,8 @@ class SpeedLimitModule(PureConstraintModule):
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, **unused):
         super(SpeedLimitModule, self).__init__(env=env, t_horizon=t_horizon)
 
-    def constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                        ) -> typing.Union[torch.Tensor, None]:
+    def _constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                         ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         The max speed constraints simply are computed by extracting the velocities over the full ego trajectory.
@@ -33,7 +33,8 @@ class SpeedLimitModule(PureConstraintModule):
         :param ado_ids: ghost ids which should be taken into account for computation.
         :param tag: name of optimization call (name of the core).
         """
-        return ego_trajectory[:, 2:4].flatten().float()
+        velocities = ego_trajectory[:, 2:4].flatten().float()
+        return velocities
 
     def compute_jacobian_analytically(
         self, ego_trajectory: torch.Tensor, grad_wrt: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -79,6 +80,20 @@ class SpeedLimitModule(PureConstraintModule):
                     dg_dx[2 * t + k, t * x_size + 2 + k] = 1
             return np.matmul(dg_dx, dx_du).flatten()
 
+    def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:
+        """Normalize the objective/constraint value for improved optimization performance.
+
+        Compute the normalize factor as the maximally allowed velocity of the robot, that is stored as a
+        property of it in the environment representation itself. Thereby, we intrinsically assume that the speed
+        limits are identical in both direction, which we assert before.
+
+        :param x: objective/constraint value in normal value range.
+        :returns: normalized objective/constraint value in range [-1, 1].
+        """
+        v_min, v_max = self._env.ego.speed_limits
+        assert np.isclose(abs(v_min), abs(v_max))
+        return x / v_max
+
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
         objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
@@ -92,12 +107,12 @@ class SpeedLimitModule(PureConstraintModule):
     ###########################################################################
     # Constraint Bounds #######################################################
     ###########################################################################
-    def constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
+    def _constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         """Lower and upper bounds for constraint values.
 
         The speed boundaries are a property of the robot agent.
         """
-        return self._env.ego.speed_limits
+        return self.env.ego.speed_limits
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
         return 2 * (self.t_horizon + 1)  # trajectory has length t_horizon + 1 !

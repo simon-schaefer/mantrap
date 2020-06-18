@@ -103,7 +103,7 @@ class TestObjectives:
 
         # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
         # Then assert equality (or numerical equality) between both results.
-        objective = module.objective_core(ego_trajectory, ado_ids=env.ado_ids, tag="test")
+        objective = module.compute_objective(ego_trajectory, ado_ids=env.ado_ids, tag="test")
         gradient_auto_grad = module.compute_gradient_auto_grad(objective, grad_wrt=ego_controls)
         assert np.allclose(gradient_analytical, gradient_auto_grad, atol=0.01)
 
@@ -195,6 +195,7 @@ def test_objective_goal_distribution():
     module = mantrap.modules.GoalNormModule(goal=goal_state, env=env, t_horizon=10, weight=1.0)
     objective = module.objective(ego_trajectory, ado_ids=[], tag="test")
     distance = float(torch.mean(torch.sum((ego_trajectory[:, 0:2] - goal_state).pow(2), dim=1)).item())
+    distance = module.normalize(distance)
 
     assert math.isclose(objective, distance, abs_tol=0.1)
 
@@ -278,7 +279,7 @@ class TestConstraints:
 
         # Otherwise compute jacobian "numerically", i.e. using the PyTorch autograd module.
         # Then assert equality (or numerical equality) between both results.
-        constraints = module.constraint_core(ego_trajectory, ado_ids=env.ado_ids, tag="test")
+        constraints = module.compute_constraint(ego_trajectory, ado_ids=env.ado_ids, tag="test")
         jacobian_auto_grad = module.compute_gradient_auto_grad(constraints, grad_wrt=ego_controls)
         assert np.allclose(jacobian_analytical, jacobian_auto_grad, atol=0.01)
 
@@ -308,7 +309,7 @@ def test_control_limit_violation(env_class: mantrap.environment.base.GraphBasedE
     env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
 
     module = mantrap.modules.ControlLimitModule(env=env, t_horizon=5)
-    _, upper_bound = module.constraint_limits()
+    _, upper = env.ego.control_limits()
 
     # In this first scenario the ego has zero velocity over the full horizon.
     controls = torch.zeros((module.t_horizon, 2))
@@ -318,14 +319,14 @@ def test_control_limit_violation(env_class: mantrap.environment.base.GraphBasedE
 
     # In this second scenario the ego has non-zero random velocity in x-direction, but always below the maximal
     # allowed speed (random -> [0, 1]).
-    controls[:, 0] = torch.rand(module.t_horizon) * upper_bound  # single integrator, so no velocity summation !
+    controls[:, 0] = torch.rand(module.t_horizon) * upper  # single integrator, so no velocity summation !
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test2")
     assert violation == 0
 
     # In this third scenario the ego has the same random velocity in the x-direction as in the second scenario,
     # but at one time step, it is increased to a slightly larger speed than allowed.
-    controls[1, 0] = upper_bound + 1e-3
+    controls[1, 0] = upper + 1e-3
     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test3")
     assert violation > 0
@@ -337,18 +338,19 @@ def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnv
     env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
 
     module = mantrap.modules.SpeedLimitModule(env=env, t_horizon=5)
-    lower_bound, upper_bound = module.constraint_limits()
+    lower, upper = env.ego.speed_limits
 
     # In this first scenario the ego has velocities at the upper or lower bound over the full horizon.
-    ego_trajectory = torch.ones((module.t_horizon + 1, 5)) * upper_bound
-    ego_trajectory[2, :] = torch.ones(5) * lower_bound
+    ego_trajectory = torch.ones((module.t_horizon + 1, 5)) * upper
+    ego_trajectory[2, :] = torch.ones(5) * lower
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test")
     assert violation == 0
 
     # In the second scenario, one of the velocities is over the bounds.
-    ego_trajectory[2, 2] = upper_bound + 0.1
+    error = module.normalize(0.1)
+    ego_trajectory[2, 2] = upper + 0.1
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test")
-    assert np.isclose(violation, 0.1)
+    assert np.isclose(violation, error)
 
 
 # @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
@@ -366,7 +368,7 @@ def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnv
 #
 #     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
 #     module = mantrap.modules.baselines.MinDistanceModule(env=env, t_horizon=controls.shape[0])
-#     lower_bound, _ = module.constraint_limits()
+#     lower_bound, _ = module._constraint_limits()
 #     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
 #     assert violation == 0
 #
@@ -376,7 +378,7 @@ def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnv
 #     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
 #
 #     module = mantrap.modules.baselines.MinDistanceModule(env=env, t_horizon=controls.shape[0])
-#     lower_bound, _ = module.constraint_limits()
+#     lower_bound, _ = module._constraint_limits()
 #     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
 #     assert violation > 0
 
@@ -448,7 +450,7 @@ class TestHJReachability:
 
         # Initialize HJ module and compute partial derivative dx_rel/du_robot using auto-grad.
         module = mantrap.modules.HJReachabilityModule(env=env, t_horizon=5)
-        _ = module.constraint_core(ego_trajectory, ado_ids=env.ado_ids, tag="test", enable_auto_grad=True)
+        _ = module._constraint_core(ego_trajectory, ado_ids=env.ado_ids, tag="test", enable_auto_grad=True)
         dx_rel_du_auto_grad = []
         for ado_id in env.ado_ids:
             x_rel = module.x_relative[f"test/{ado_id}"]

@@ -1,5 +1,6 @@
 import typing
 
+import numpy as np
 import torch
 
 import mantrap.environment
@@ -53,8 +54,8 @@ class InteractionProbabilityModule(PureObjectiveModule):
         if env.num_ados > 0:
             self._dist_un_conditioned = env.compute_distributions_wo_ego(t_horizon)
 
-    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                       ) -> typing.Union[torch.Tensor, None]:
+    def _objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                        ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
@@ -75,14 +76,26 @@ class InteractionProbabilityModule(PureObjectiveModule):
             # p = self._dist_un_conditioned[ado_id].log_prob(dist_dict[ado_id].mean)
             p = dist_dict[ado_id].log_prob(self._dist_un_conditioned[ado_id].mean)
             objective += torch.sum(p)
+        objective = objective / len(ado_ids)  # average over ado-ids
 
         # We want to maximize the probability of the unconditioned trajectories in the conditioned
         # distribution, so we minimize its negative value. When the projected trajectory is very unlikely
         # in the computed distribution, then the log likelihood grows to very large values, which would
         # result in very un-balanced objectives. Therefore it is clamped.
         objective_min = - objective
-        objective_min = objective_min.clamp_max(mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX)
-        return objective_min
+        max_value = mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX
+        return objective_min.clamp(-max_value, max_value)
+
+    def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:
+        """Normalize the objective/constraint value for improved optimization performance.
+
+        The objective value is clamped to some maximal value which enforces the resulting objective
+        values to be in some range. And can hence serve as normalize factor.
+
+        :param x: objective/constraint value in normal value range.
+        :returns: normalized objective/constraint value in range [-1, 1].
+        """
+        return x / mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

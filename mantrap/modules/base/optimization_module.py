@@ -53,6 +53,7 @@ class OptimizationModule(abc.ABC):
         self._constraint_current = {}  # type: typing.Dict[str, np.ndarray]
         self._obj_current = {}  # type: typing.Dict[str, float]
         self._grad_current = {}  # type: typing.Dict[str, np.ndarray]
+        self._jacobian_current = {}  # type: typing.Dict[str, np.ndarray]
 
         # Slack variables - Slack variables are part of both the constraints and the objective function,
         # therefore have to stored internally to be shared between both functions. However as discussed
@@ -78,11 +79,14 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         objective = self.compute_objective(ego_trajectory, ado_ids=ado_ids, tag=tag)
+
         # Convert objective in standard optimization format (as float).
         if objective is None:
             obj_value = 0.0  # if objective not defined simply return 0.0
         else:
             obj_value = float(objective.item())
+
+        # Return objective adds the objectives weight as well as normalizes it.
         return self._return_objective(obj_value, tag=tag)
 
     def compute_objective(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -102,7 +106,7 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        obj_value = self.objective_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        obj_value = self._objective_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
         if self._has_slack:
             obj_value = torch.zeros(1) if obj_value is None else obj_value
@@ -113,8 +117,8 @@ class OptimizationModule(abc.ABC):
         return obj_value
 
     @abc.abstractmethod
-    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                       ) -> typing.Union[torch.Tensor, None]:
+    def _objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                        ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         The objective value should be returned either as PyTorch tensor or `None`. It cannot be simplified as
@@ -158,7 +162,7 @@ class OptimizationModule(abc.ABC):
             # Compute the objective value and check whether a gradient between the value and the
             # ego_trajectory input (which has been assured to require a gradient) exists, if the
             # module-conditions for that are met.
-            objective = self.objective_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
+            objective = self._objective_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
             # If objective is None return an zero gradient of the length of the `grad_wrt` tensor.
             # In general the objective might not be affected by the `ego_trajectory`, then it does not have
@@ -205,11 +209,14 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         constraints = self.compute_constraint(ego_trajectory, ado_ids=ado_ids, tag=tag)
+
         # Convert constraints in standard optimization format (as numpy arrays).
         if constraints is None:
             constraints = np.array([])
         else:
             constraints = constraints.detach().numpy()
+
+        # Return constraint normalizes the constraint after it has been computed.
         return self._return_constraint(constraints, tag=tag)
 
     def compute_constraint(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
@@ -224,18 +231,18 @@ class OptimizationModule(abc.ABC):
         :param tag: name of optimization call (name of the core).
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
-        constraints = self.constraint_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
+        constraints = self._constraint_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
         # Update slack variables (if any are defined for this module).
         if self._has_slack and constraints is not None:
             self._slack[tag] = - constraints
-            constraints = constraints + self._slack[tag]  # constraint - slack (slacked variables)
+            # constraints = constraints + self._slack[tag]  # constraint - slack (slacked variables)
 
         return constraints
 
     @abc.abstractmethod
-    def constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                        ) -> typing.Union[torch.Tensor, None]:
+    def _constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                         ) -> typing.Union[torch.Tensor, None]:
         """Determine constraint value core method.
 
         :param ego_trajectory: planned ego trajectory (t_horizon, 5).
@@ -275,7 +282,7 @@ class OptimizationModule(abc.ABC):
             # input (which has been assured to require a gradient) exists, if the module-conditions for
             # that are met.
             assert ego_trajectory.requires_grad  # otherwise constraints cannot have gradient function
-            constraints = self.constraint_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
+            constraints = self._constraint_core(ego_trajectory, ado_ids=ado_ids, tag=tag)
 
             # If constraint vector is None, directly return empty jacobian vector.
             if constraints is None:
@@ -440,8 +447,15 @@ class OptimizationModule(abc.ABC):
     def constraint_boundaries(self, ado_ids: typing.List[str]
                               ) -> typing.Tuple[typing.Union[typing.List[typing.Union[float, None]]],
                                                 typing.Union[typing.List[typing.Union[float, None]]]]:
-        # Module-individual constraint boundaries.
-        lower, upper = self.constraint_limits()
+        """Compute module constraint boundaries.
+
+        Assuming that the limits of a constraint are constant over the full time horizon, only the (scalar)
+        limits are specific to the module, while the boundaries, i.e. the stacked limits over the time-horizon
+        are generally stacked (and normalized !) for any module.
+        """
+        lower, upper = self._constraint_limits()
+        lower = self.normalize(lower) if lower is not None else None
+        upper = self.normalize(upper) if upper is not None else None
         num_constraints = self._num_constraints(ado_ids=ado_ids)  # number of internal constraints (!)
         lower_bounds = (lower * np.ones(num_constraints)).tolist() if lower is not None else [None] * num_constraints
         upper_bounds = (upper * np.ones(num_constraints)).tolist() if upper is not None else [None] * num_constraints
@@ -450,7 +464,7 @@ class OptimizationModule(abc.ABC):
         # is equal to number of constraint, i.e. that each constraint of the module is "soft".
         return lower_bounds, upper_bounds
 
-    def constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
+    def _constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         """Lower and upper bounds for constraint values."""
         raise NotImplementedError
 
@@ -480,19 +494,23 @@ class OptimizationModule(abc.ABC):
         if constraint is None:
             return self._violation(constraints=None)
         else:
-            return self._violation(constraints=constraint.detach().numpy())
+            constraint_normalized = self.normalize(constraint.detach().numpy())
+            return self._violation(constraints=constraint_normalized)
 
     def compute_violation_internal(self, tag: str) -> float:
         """Determine constraint violation, i.e. how much the internal state is inside the constraint active region.
         When the constraint is not active, then the violation is zero. The calculation is based on the last (cached)
         evaluation of the constraint function.
         """
-        return self._violation(constraints=self._constraint_current[tag])
+        return self._violation(constraints=self._constraint_current[tag])  # already normalized
 
     def _violation(self, constraints: typing.Union[np.ndarray, None]) -> float:
+        """Compute the constraint violation based on its limits and normalized constraint values."""
         if constraints is None or constraints.size == 0:
             return 0.0
 
+        # Compute violation by subtracting the constraint values from the lower and upper constraint
+        # boundaries. The "over-hanging" distance is the violation.
         assert self.env is not None
         violation = np.zeros(constraints.size)
         lower_bounds, upper_bounds = self.constraint_boundaries(ado_ids=self.env.ado_ids)
@@ -513,6 +531,15 @@ class OptimizationModule(abc.ABC):
     # Utility #################################################################
     ###########################################################################
     @abc.abstractmethod
+    def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:
+        """Normalize the objective/constraint value for improved optimization performance.
+
+        :param x: objective/constraint value in normal value range.
+        :returns: normalized objective/constraint value in range [0, 1].
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
         objective's gradient vector/jacobian (numerically). If returns True and the ego_trajectory
@@ -521,14 +548,22 @@ class OptimizationModule(abc.ABC):
         raise NotImplementedError
 
     def _return_constraint(self, constraint_value: np.ndarray, tag: str) -> np.ndarray:
+        constraint_value = self.normalize(constraint_value)
         self._constraint_current[tag] = constraint_value
         return self._constraint_current[tag]
 
+    def _return_jacobian(self, jacobian: np.ndarray, tag: str) -> np.ndarray:
+        jacobian = self.normalize(jacobian)
+        self._jacobian_current[tag] = jacobian
+        return self._jacobian_current[tag]
+
     def _return_objective(self, obj_value: float, tag: str) -> float:
+        obj_value = self.normalize(obj_value)
         self._obj_current[tag] = self.weight * obj_value
         return self._obj_current[tag]
 
     def _return_gradient(self, gradient: np.ndarray, tag: str) -> np.ndarray:
+        gradient = self.normalize(gradient)
         self._grad_current[tag] = self.weight * gradient
         return self._grad_current[tag]
 
@@ -546,6 +581,9 @@ class OptimizationModule(abc.ABC):
 
     def grad_current(self, tag: str) -> float:
         return np.linalg.norm(self._grad_current[tag])
+
+    def jacobian_current(self, tag: str) -> float:
+        return np.linalg.norm(self._jacobian_current[tag])
 
     def slack_variables(self, tag: str) -> torch.Tensor:
         return self._slack[tag]

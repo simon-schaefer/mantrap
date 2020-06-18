@@ -100,7 +100,7 @@ def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = ma
     """Determine the ego's control effort (acceleration).
 
     For calculating the control effort of the ego agent approximate the acceleration by assuming the acceleration
-    between two points in discrete time t0 and t1 as linear, i.e. a_t = (v_t - v_{t-1}) / dt. For normalization
+    between two points in discrete time t0 and t1 as linear, i.e. a_t = (v_t - v_{t-1}) / dt. For normalize
     then compare the determined acceleration with the maximal possible control effort.
 
     .. math:: score = \\frac{\\sum at}{\\sum a_{max}}
@@ -201,7 +201,7 @@ def metric_directness(ego_trajectory: torch.Tensor, goal: torch.Tensor, **unused
 def metric_final_distance(ego_trajectory: torch.Tensor, goal: torch.Tensor, **unused) -> float:
     """Determine the final distance between ego and its goal position.
 
-    For normalization divide the final distance by the initial distance. Scores larger than 1 mean, that
+    For normalize divide the final distance by the initial distance. Scores larger than 1 mean, that
     the robot is more distant from the goal than at the beginning.
 
     .. math:: score = ||x_T - g||_2 / ||x_0 - g||_2

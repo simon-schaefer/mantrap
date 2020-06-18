@@ -3,6 +3,8 @@ import typing
 import numpy as np
 import torch
 
+import mantrap.environment
+
 from ..goal_norm import GoalNormModule
 
 
@@ -14,11 +16,11 @@ class GoalWeightedModule(GoalNormModule):
     more important for the last point of the trajectory to be close to the goal than the first one,
     the larger the trajectory index the larger the weight of the point-wise distance.
     """
-    def __init__(self, goal: torch.Tensor, **unused):
-        super(GoalWeightedModule, self).__init__(goal, optimize_speed=False, **unused)
+    def __init__(self, goal: torch.Tensor, env: mantrap.environment.base.GraphBasedEnvironment, **unused):
+        super(GoalWeightedModule, self).__init__(goal, env=env, optimize_speed=False, **unused)
 
-    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                       ) -> typing.Union[torch.Tensor, None]:
+    def _objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                        ) -> typing.Union[torch.Tensor, None]:
         goal_distances = torch.sum((ego_trajectory[:, 0:2] - self._goal).pow(2), dim=1)
         weights = torch.linspace(0.2, 1.0, steps=goal_distances.numel()).detach()
         return torch.mean(goal_distances * weights)

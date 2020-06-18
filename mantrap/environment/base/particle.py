@@ -137,7 +137,7 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
 
         # Create particles using the environment-specific method.
         particles, particle_pdf = self.create_particles(num_particles=num_particles, **kwargs)
-        particle_pdf = (particle_pdf / torch.norm(particle_pdf, dim=0)).unsqueeze(dim=2).detach()  # normalization
+        particle_pdf = (particle_pdf / torch.norm(particle_pdf, dim=0)).unsqueeze(dim=2).detach()  # normalize
 
         # For each time-step predict the next distribution by simulating several particles and averaging
         # them to a uni-modal gaussian distribution.

@@ -149,6 +149,7 @@ class TestSolvers:
         # Since the constraint modules have been tested independently, for generalization, the module-internal
         # violation computation can be used for this check.
         for module in solver.modules:
+            print(module)
             violation = module.compute_violation(ego_trajectory_opt, ado_ids=env.ado_ids, tag="test")
             assert math.isclose(violation, 0.0, abs_tol=1e-3)
 

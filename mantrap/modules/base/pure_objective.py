@@ -27,13 +27,13 @@ class PureObjectiveModule(OptimizationModule, abc.ABC):
     ###########################################################################
     # Constraint ##############################################################
     ###########################################################################
-    def constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                        ) -> typing.Union[torch.Tensor, None]:
+    def _constraint_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                         ) -> typing.Union[torch.Tensor, None]:
         """Returning `None` as an constraint automatically ends constraint and jacobian computation
         and returns default values (empty numpy array). """
         return None
 
-    def constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
+    def _constraint_limits(self) -> typing.Tuple[typing.Union[float, None], typing.Union[float, None]]:
         return None, None
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:

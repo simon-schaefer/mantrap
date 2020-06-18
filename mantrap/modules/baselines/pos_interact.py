@@ -1,7 +1,7 @@
 import typing
 
+import numpy as np
 import torch
-import torch.distributions
 
 import mantrap.environment
 
@@ -19,7 +19,7 @@ class InteractionPositionModule(PureObjectiveModule):
     effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
     that would occur, if the ego is not there from the beginning.
 
-    .. math:: objective = \\sum_{T} \\sum_{ados} || pos_{t,i} - pos_{t,i}^{wo} ||_2
+    .. math:: objective = 1/T \\sum_{T} \\sum_{ados} || pos_{t,i} - pos_{t,i}^{wo} ||_2
 
     :param env: solver's environment environment for predicting the behaviour without interaction.
     """
@@ -29,8 +29,8 @@ class InteractionPositionModule(PureObjectiveModule):
         if env.num_ados > 0:
             self._ado_positions_wo = self.env.predict_wo_ego(t_horizon=self.t_horizon)  # output = distribution mean
 
-    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                       ) -> typing.Union[torch.Tensor, None]:
+    def _objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                        ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         To compute the objective value first predict the behaviour of all agents (and modes) in the scene in the
@@ -52,7 +52,28 @@ class InteractionPositionModule(PureObjectiveModule):
         # (`compute_distributions()`) to not introduce possible behavioural changes into the forward prediction,
         # which occur due to a reduction of the agents in the scene.
         positions = self.env.predict_w_trajectory(ego_trajectory=ego_trajectory)
-        return torch.sum(torch.norm(positions - self._ado_positions_wo, dim=-1))
+
+        # Average of all ados that should be taken into account.
+        cost = torch.zeros(1)
+        for ado_id in ado_ids:
+            m_ado = self.env.index_ado_id(ado_id=ado_id)
+            cost_ado = torch.norm(positions[m_ado, :, :] - self._ado_positions_wo[m_ado, :, :], dim=2)
+            cost += torch.mean(cost_ado)
+        cost = cost / len(ado_ids)  # average of pedestrians.
+
+        # Clamp maximal value (minimal is zero anyways, due to L2-norm).
+        return cost.clamp_max(mantrap.constants.OBJECTIVE_POS_INTERACT_MAX)
+
+    def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:
+        """Normalize the objective/constraint value for improved optimization performance.
+
+        The objective value is clamped to some maximal value which enforces the resulting objective
+        values to be in some range. And can hence serve as normalize factor.
+
+        :param x: objective/constraint value in normal value range.
+        :returns: normalized objective/constraint value in range [-1, 1].
+        """
+        return x / mantrap.constants.OBJECTIVE_POS_INTERACT_MAX
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

@@ -1,3 +1,4 @@
+import math
 import typing
 
 import numpy as np
@@ -33,15 +34,15 @@ class GoalNormModule(PureObjectiveModule):
     :param optimize_speed: include cost for zero velocity at goal state.
     """
     def __init__(self, goal: torch.Tensor, env: mantrap.environment.base.GraphBasedEnvironment,
-                 optimize_speed: bool = False, weight: float = 0.5, **unsued):
-        super(GoalNormModule, self).__init__(env=env, weight=weight)  # normalization-factor
+                 optimize_speed: bool = False, weight: float = 0.5, **unused):
+        super(GoalNormModule, self).__init__(env=env, weight=weight)  # normalize-factor
 
         assert mantrap.utility.shaping.check_goal(goal)
         self._goal = goal
         self._optimize_speed = optimize_speed
 
-    def objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
-                       ) -> typing.Union[torch.Tensor, None]:
+    def _objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
+                        ) -> typing.Union[torch.Tensor, None]:
         """Determine objective value core method.
 
         To compute the goal-based objective simply take the L2 norm between all positions on the ego trajectory
@@ -99,9 +100,22 @@ class GoalNormModule(PureObjectiveModule):
             T = ego_trajectory.shape[0]
             dJ_dx = 2 * (ego_trajectory[:, 0:2] - self._goal).detach().numpy()
             dJ_dx = np.concatenate((dJ_dx, np.zeros((T, 3))), axis=1)
-            dJ_dx = (dJ_dx / T)  # normalization
+            dJ_dx = (dJ_dx / T)  # normalize
 
         return np.matmul(dJ_dx.flatten(), dx_du)
+
+    def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:
+        """Normalize the objective/constraint value for improved optimization performance.
+
+        Compute normalize factor as the maximal possible ego goal distance in the given
+        environment (i.e. length of rectangular diagonal line).
+
+        :param x: objective/constraint value in normal value range.
+        :returns: normalized objective/constraint value in range [0, 1].
+        """
+        x_axis, y_axis = self._env.axes
+        normalization_factor = math.sqrt((x_axis[1] - x_axis[0])**2 + (y_axis[1] - y_axis[0])**2)
+        return x / normalization_factor
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the
