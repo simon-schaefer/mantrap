@@ -126,3 +126,16 @@ def test_final_distance():
 
     score = metric_final_distance(ego_trajectory, goal=goal)
     assert np.isclose(score, 0.5)
+
+
+def test_extra_time():
+    env = mantrap.environment.PotentialFieldEnvironment(ego_position=torch.zeros(2))
+    goal = torch.tensor([5, 0])
+    solver = mantrap.solver.IPOPTSolver(env=env, goal=goal, modules=[mantrap.modules.GoalNormModule,
+                                                                     mantrap.modules.SpeedLimitModule])
+
+    # The first tested trajectory goes directly to the goal as fast as possible.
+    ego_trajectory_1, _ = solver.solve(time_steps=5)
+    print(ego_trajectory_1)
+    score = metric_extra_time(ego_trajectory=ego_trajectory_1, env=env)
+    assert np.isclose(score, 0.0)

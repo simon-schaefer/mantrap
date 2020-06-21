@@ -220,3 +220,28 @@ def metric_final_distance(ego_trajectory: torch.Tensor, goal: torch.Tensor, **un
     distance_init = max(distance_init, 1e-6)  # avoid 0 division error
     distance_final = torch.norm(ego_trajectory[-1, 0:2] - goal).item()
     return distance_final / distance_init
+
+
+def metric_extra_time(ego_trajectory: torch.Tensor, env: mantrap.environment.base.GraphBasedEnvironment, **unused
+                      ) -> float:
+    """Determine extra time to reach goal destination compared to direct path.
+
+    Compare the derived ego trajectory travel time with the time it would need to get to the goal, which is
+    defined as the last point of the ego trajectory, directly. To compute the direct path, solve the simplified
+    optimization formulation consisting of goal objective and dynamics constraints only. The parameters
+    other than the goal position do not matter for solving this simplified formulation.
+
+    :param ego_trajectory: trajectory of ego (t_horizon, 5).
+    """
+    ego_trajectory = ego_trajectory.detach()
+    assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)
+
+    goal = ego_trajectory[-1, 0:2]
+    max_time_steps = ego_trajectory.shape[0]
+    modules_hard = [mantrap.modules.GoalNormModule, mantrap.modules.SpeedLimitModule]
+    solver_hard = mantrap.solver.IPOPTSolver(env=env, goal=goal, modules=modules_hard)
+
+    ego_trajectory_straight, _ = solver_hard.solve(time_steps=max_time_steps)
+    print(ego_trajectory_straight)
+    straight_time_steps = ego_trajectory_straight.shape[0]
+    return (max_time_steps - straight_time_steps) * env.dt
