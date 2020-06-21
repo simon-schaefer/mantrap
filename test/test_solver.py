@@ -303,14 +303,15 @@ class TestIPOPTSolvers:
         env = env_class(ego_type=mantrap.agents.DoubleIntegratorDTAgent,
                         ego_position=ego_position,
                         ego_velocity=ego_velocity,
-                        attention_module=attention_class,
                         dt=0.4)
         env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
 
         modules = [(mantrap.modules.GoalNormModule, {"optimize_speed": False}),
-                   (mantrap.modules.ControlLimitModule, None)]
+                   (mantrap.modules.SpeedLimitModule, None)]
 
-        solver = mantrap.solver.IPOPTSolver(env, goal=torch.tensor([1, 0]), t_planning=3, modules=modules)
+        solver = mantrap.solver.IPOPTSolver(env, goal=torch.tensor([1, 0]), t_planning=3,
+                                            modules=modules,
+                                            attention_module=attention_class,)
         ego_trajectory, _ = solver.solve(time_steps=20)
 
         # Check whether goal has been reached in acceptable closeness.

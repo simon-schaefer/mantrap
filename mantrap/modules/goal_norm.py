@@ -100,7 +100,7 @@ class GoalNormModule(PureObjectiveModule):
             T = ego_trajectory.shape[0]
             dJ_dx = 2 * (ego_trajectory[:, 0:2] - self._goal).detach().numpy()
             dJ_dx = np.concatenate((dJ_dx, np.zeros((T, 3))), axis=1)
-            dJ_dx = (dJ_dx / T)  # normalize
+            dJ_dx = dJ_dx / (2 * T)  # normalize (2D * t_planning)
 
         return np.matmul(dJ_dx.flatten(), dx_du)
 
