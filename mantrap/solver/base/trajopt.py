@@ -137,7 +137,7 @@ class TrajOptSolver(abc.ABC):
             logging.debug("#" * 30 + f"solver {self.log_name} @k={k}: initializing optimization")
 
             # Solve optimisation problem.
-            z_k, _ = self.optimize(z_warm_start, tag=mantrap.constants.TAG_OPTIMIZATION, **kwargs)
+            z_k = self.optimize(z_warm_start, tag=mantrap.constants.TAG_OPTIMIZATION, **kwargs)
             ego_controls_k = self.z_to_ego_controls(z_k.detach().numpy())
             assert mantrap.utility.shaping.check_ego_controls(ego_controls_k, t_horizon=self.planning_horizon)
 
@@ -194,7 +194,7 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Optimization ############################################################
     ###########################################################################
-    def optimize(self, z0: torch.Tensor, tag: str, **kwargs) -> typing.Tuple[torch.Tensor, float]:
+    def optimize(self, z0: torch.Tensor, tag: str, **kwargs) -> torch.Tensor:
         """Optimization core wrapper function.
 
         Filter the agents by using the attention module, execute the optimization, log
@@ -203,6 +203,7 @@ class TrajOptSolver(abc.ABC):
         :param z0: initial value of optimization variable.
         :param tag: name of optimization call (name of the core).
         :param kwargs: additional arguments for optimization core function.
+        :returns: z_opt (optimal values of optimization variable vector)
         """
         # Filter the important ghost indices from the current scene state.
         if self._attention_module is not None:
@@ -212,7 +213,7 @@ class TrajOptSolver(abc.ABC):
             ado_ids = self.env.ado_ids  # all ado ids (not filtered)
 
         # Computation is done in `optimize_core()` class that is implemented in child class.
-        z_opt, obj_opt, log_opt = self.optimize_core(z0, ado_ids=ado_ids, tag=tag, **kwargs)
+        z_opt, log_opt = self.optimize_core(z0, ado_ids=ado_ids, tag=tag, **kwargs)
 
         # Logging the optimization results.
         if self.logger.is_logging:
@@ -220,11 +221,11 @@ class TrajOptSolver(abc.ABC):
             self.__intermediate_log(ego_trajectory=ego_trajectory_k, tag=tag)
             self.logger.log_update({key: x for key, x in log_opt.items()})
 
-        return z_opt, obj_opt
+        return z_opt
 
     @abc.abstractmethod
     def optimize_core(self, z0: torch.Tensor, tag: str, ado_ids: typing.List[str], **kwargs
-                      ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
+                      ) -> typing.Tuple[torch.Tensor, typing.Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.
 
         Given some initial value `z0` find the optimal allocation for z with respect to the internally defined
@@ -236,7 +237,6 @@ class TrajOptSolver(abc.ABC):
         :param tag: name of optimization call (name of the core).
         :param ado_ids: identifiers of ados that should be taken into account during optimization.
         :returns: z_opt (optimal values of optimization variable vector)
-                  objective_opt (optimal objective value)
                   optimization_log (logging dictionary for this optimization = self.log)
         """
         raise NotImplementedError
@@ -294,7 +294,7 @@ class TrajOptSolver(abc.ABC):
         z_init = self.ego_controls_to_z(ego_controls=ego_controls_init)
 
         # Solve the simplified optimization and return its results.
-        z_opt_hard, _ = solver_part.optimize(z0=torch.from_numpy(z_init), tag=mantrap.constants.TAG_WARM_START)
+        z_opt_hard = solver_part.optimize(z0=torch.from_numpy(z_init), tag=mantrap.constants.TAG_WARM_START)
         self.logger.log_update(solver_part.logger.log)
         return z_opt_hard
 

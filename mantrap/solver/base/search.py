@@ -23,7 +23,7 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         tag: str = mantrap.constants.TAG_OPTIMIZATION,
         max_cpu_time: float = mantrap.constants.SEARCH_MAX_CPU_TIME,
         **solver_kwargs
-    ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
+    ) -> typing.Tuple[torch.Tensor, typing.Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.
 
         Given some initial value `z0` find the optimal allocation for z with respect to the internally defined
@@ -40,7 +40,6 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         :param ado_ids: identifiers of ados that should be taken into account during optimization.
         :param max_cpu_time: maximal cpu runtime for optimization.
         :returns: z_opt (optimal values of optimization variable vector)
-                  objective_opt (optimal objective value)
                   optimization_log (logging dictionary for this optimization = self.log)
         """
         # Start stopping conditions (runtime or number of iterations).
@@ -65,18 +64,16 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
             run_time = time.time() - sampling_start_time
             if (is_finished or run_time > max_cpu_time) and z_iteration is not None:
                 z_best = z_iteration.copy()
-                obj_best = obj_iteration
                 break
-
+            # Update search iteration count.
             k += 1
-            # logging.debug(f"search iteration {k} => objective {obj_iteration}/{obj_candidate}, time {run_time}s")
 
         # The best sample is re-evaluated for logging purposes, since the last iteration is always assumed to
         # be the best iteration (logging within objective and constraint function).
         self.evaluate(z=z_best, tag=tag, ado_ids=ado_ids)
         ego_controls = self.z_to_ego_controls(z=z_best)
         assert mantrap.utility.shaping.check_ego_controls(ego_controls, t_horizon=self.planning_horizon)
-        return ego_controls, obj_best, self.logger.log
+        return ego_controls, self.logger.log
 
     @abc.abstractmethod
     def _optimize_inner(self, z_best: typing.Union[None, np.ndarray], obj_best: float, iteration: int,

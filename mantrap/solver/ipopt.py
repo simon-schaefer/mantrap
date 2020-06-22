@@ -1,4 +1,3 @@
-import logging
 import typing
 
 import ipopt
@@ -21,7 +20,7 @@ class IPOPTSolver(TrajOptSolver):
         max_cpu_time: float = mantrap.constants.IPOPT_MAX_CPU_TIME_DEFAULT,
         approx_jacobian: bool = False,
         **solver_kwargs
-    ) -> typing.Tuple[torch.Tensor, float, typing.Dict[str, torch.Tensor]]:
+    ) -> typing.Tuple[torch.Tensor, typing.Dict[str, torch.Tensor]]:
         """Optimization function for single core to find optimal z-vector.
 
         Given some initial value `z0` find the optimal allocation for z with respect to the internally defined
@@ -97,8 +96,7 @@ class IPOPTSolver(TrajOptSolver):
 
         # Return solution as torch tensor.
         z2_opt = torch.from_numpy(z_opt).view(-1, 2)
-        objective_opt = self.objective(z_opt, tag=tag, ado_ids=ado_ids)
-        return z2_opt, objective_opt, self.logger.log
+        return z2_opt, self.logger.log
 
     ###########################################################################
     # Optimization formulation - Formulation ##################################

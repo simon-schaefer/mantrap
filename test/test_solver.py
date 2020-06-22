@@ -61,7 +61,7 @@ class TestSolvers:
         solver = solver_class(env, goal=torch.zeros(2), objectives=[("goal", 1.0)], constraints=[], **solver_kwargs)
 
         z0 = solver.warm_start(method=warm_start_method)
-        z_opt, _ = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0)
+        z_opt = solver.optimize(z0=z0, tag="core0", max_cpu_time=1.0)
         ego_controls = solver.z_to_ego_controls(z=z_opt.detach().numpy())
         ego_trajectory_opt = solver.env.ego.unroll_trajectory(controls=ego_controls, dt=solver.env.dt)
 
@@ -242,8 +242,9 @@ class TestSearchSolvers:
         solver = solver_class(env, goal=torch.zeros(2), t_planning=5)
 
         z0 = np.random.uniform(*solver.z_bounds)
-        obj_0, _ = solver.evaluate(z0, ado_ids=env.ado_ids, tag="")
-        _, obj_best, _ = solver.optimize_core(z0, ado_ids=env.ado_ids)
+        obj_0, _ = solver.evaluate(z0, ado_ids=env.ado_ids, tag="test")
+        z_best, _ = solver.optimize_core(z0, ado_ids=env.ado_ids)
+        obj_best, _ = solver.evaluate(z_best.detach().numpy(), ado_ids=env.ado_ids, tag="test")
 
         assert obj_0 >= obj_best * 0.8  # softening due to randomness
 
