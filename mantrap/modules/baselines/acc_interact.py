@@ -30,9 +30,6 @@ class InteractionAccelerationModule(PureObjectiveModule):
                  **unused):
         super(InteractionAccelerationModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
         if env.num_ados > 0:
-            self._derivative_2 = mantrap.utility.maths.Derivative2(horizon=self.t_horizon + 1,
-                                                                   dt=self.env.dt,
-                                                                   num_axes=2)
             dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
             self._ado_accelerations_wo = self.distribution_to_acceleration(dist_dict)
 
@@ -73,12 +70,16 @@ class InteractionAccelerationModule(PureObjectiveModule):
 
     def distribution_to_acceleration(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
                                      ) -> torch.Tensor:
-        """Compute ado-wise accelerations from positional distribution dict mean values."""
-        sample_length = self.env.num_modes * (self.t_horizon + 1)
+        """Compute ado-wise accelerations from velocity distribution dict mean values."""
+        sample_length = self.env.num_modes * (self.t_horizon - 1)
         accelerations = torch.zeros((self.env.num_ados, sample_length, 2))
         for ado_id, distribution in dist_dict.items():
             m_ado = self.env.index_ado_id(ado_id)
-            accelerations[m_ado, :, :] = self._derivative_2.compute(distribution.mean).view(-1, 2)
+            acc = mantrap.utility.maths.derivative_numerical(distribution.mean, dt=self.env.dt).view(-1, 2)
+
+            print(acc.shape, distribution.mean.shape)
+
+            accelerations[m_ado, :, :] = acc
         return accelerations
 
     def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:

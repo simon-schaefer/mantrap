@@ -7,44 +7,26 @@ import mantrap.utility.maths
 ###########################################################################
 # Derivative2 Testing #####################################################
 ###########################################################################
-@pytest.mark.parametrize("horizon", [7, 10])
-def test_derivative_2(horizon: int):
-    diff = mantrap.utility.maths.Derivative2(horizon=horizon, dt=1.0)
-
-    for k in range(1, horizon - 1):
-        assert torch.all(torch.eq(diff._diff_mat[k, k - 1: k + 2], torch.tensor([1, -2, 1]).float()))
-
-    # Constant velocity -> zero acceleration (first and last point are skipped (!)).
-    x = mantrap.utility.maths.straight_line(torch.zeros(2), torch.tensor([horizon - 1, 0]), horizon)
-    assert torch.all(torch.eq(diff.compute(x), torch.zeros((horizon, 2))))
-
-    t_step = int(horizon / 2)
-    x = torch.zeros((horizon, 2))
-    x[t_step, 0] = 10
-    x[t_step - 1, 0] = x[t_step + 1, 0] = 5
-    x[t_step - 2, 0] = x[t_step + 2, 0] = 2
-    a = diff.compute(x)
-
-    assert torch.all(a[: t_step - 3, 0] == 0) and torch.all(a[t_step + 4:, 0] == 0)  # impact of acceleration
-    assert torch.all(a[:, 1] == 0)  # no acceleration in y-direction
-    assert a[t_step, 0] < 0 and a[t_step + 1, 0] > 0 and a[t_step - 1, 0] > 0  # peaks
+def test_derivative_conserve_shape():
+    x = torch.rand((1, 10, 1, 2))
+    x_ddt = mantrap.utility.maths.derivative_numerical(x, dt=1.0)
+    assert x_ddt.shape == torch.Size([1, 9, 1, 2])
 
 
-def test_derivative_2_conserve_shape():
-    x = torch.zeros((1, 1, 10, 6))
-    diff = mantrap.utility.maths.Derivative2(horizon=10, dt=1.0, num_axes=4)
-    x_ddt = diff.compute(x)
-
-    assert x.shape == x_ddt.shape
+def test_integral_conserve_shape():
+    x = torch.rand((1, 10, 1, 2))
+    x_int = mantrap.utility.maths.integrate_numerical(x, dt=1.0, x0=torch.rand((1, 2)))
+    assert x_int.shape == torch.Size([1, 11, 1, 2])
 
 
-def test_derivative_2_velocity():
+def test_derivative():
+    x = torch.rand((1, 2, 1, 5))
+    x_ddt = mantrap.utility.maths.derivative_numerical(x[:, :, :, 2:4], dt=1.0)
+    assert torch.all(torch.isclose(x_ddt[:, 0, :, :], (x[:, 1, :, 2:4] - x[:, 0, :, 2:4]) / 1.0))
+
     x = torch.rand((2, 5))
-    diff = mantrap.utility.maths.Derivative2(horizon=2, dt=1.0, velocity=True)
-    x_ddt = diff.compute(x[:, 2:4])
-
-    assert torch.all(torch.isclose(x_ddt[-1, :], torch.zeros(2)))
-    assert torch.all(torch.isclose(x_ddt[0, :], (x[1, 2:4] - x[0, 2:4]) / diff._dt))
+    x_ddt = mantrap.utility.maths.derivative_numerical(x[:, 2:4], dt=1.0)
+    assert torch.all(torch.isclose(x_ddt[0, :], (x[1, 2:4] - x[0, 2:4]) / 1.0))
 
 
 ###########################################################################

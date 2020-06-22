@@ -187,8 +187,8 @@ def test_social_forces_single_ado_prediction(goal_position: torch.Tensor):
 
     trajectory_samples = env.sample_wo_ego(t_horizon=100, num_samples=100)
     trajectory = torch.mean(trajectory_samples, dim=1).squeeze()
-    assert torch.isclose(trajectory[-1][0], goal_position[0], atol=0.5)
-    assert torch.isclose(trajectory[-1][1], goal_position[1], atol=0.5)
+    assert torch.isclose(trajectory[-1][0], goal_position[0], atol=1.0)
+    assert torch.isclose(trajectory[-1][1], goal_position[1], atol=1.0)
 
 
 def test_social_forces_static_ado_pair_prediction():
@@ -220,8 +220,8 @@ def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
     env_2 = mantrap.environment.PotentialFieldEnvironment(pos_2, ego_type=mantrap.agents.IntegratorDTAgent)
 
     t_horizon = 4
-    mus = torch.zeros((2, t_horizon + 1, env_1.num_modes, 2))
-    sigmas = torch.zeros((2, t_horizon + 1, env_1.num_modes, 2))
+    mus = torch.zeros((2, t_horizon, env_1.num_modes, 2))
+    sigmas = torch.zeros((2, t_horizon, env_1.num_modes, 2))
     grads = torch.zeros((2, t_horizon, 2))
     for i, env in enumerate([env_1, env_2]):
         env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
@@ -266,8 +266,8 @@ def test_kalman_distributions():
     mean = dist_dict[env.ado_ids[0]].mean
     variance = dist_dict[env.ado_ids[0]].variance
 
-    assert torch.allclose(mean[:, 0, 0], torch.linspace(x0, x0 + vx * t_horizon * env.dt, steps=t_horizon + 1))
-    assert torch.allclose(mean[:, 0, 1], torch.linspace(y0, y0 + vy * t_horizon * env.dt, steps=t_horizon + 1))
+    assert torch.allclose(mean[:, 0, 0], torch.ones(t_horizon) * vx)
+    assert torch.allclose(mean[:, 0, 1], torch.ones(t_horizon) * vy)
 
     variance_diff = (variance[1:, :, :] - variance[:-1, :, :]).squeeze()
     assert torch.all(variance_diff >= 0)  # variance is strictly increasing over time

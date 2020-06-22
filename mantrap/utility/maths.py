@@ -34,30 +34,18 @@ class VGMM2D(torch.distributions.Distribution):
 
     Re-Implementation of GMM2D model used in GenTrajectron (B. Ivanovic, M. Pavone).
 
-    :param pos_0: initial position (for integration).
-    :param dt: time-step (for integration).
     :param log_pis: Log Mixing Proportions (t_horizon, num_modes).
     :param mus: Mixture Components mean (t_horizon, num_modes, 2)
     :param log_sigmas: Log Standard Deviations (t_horizon, num_modes, 2)
     :param corrs: Cholesky factor of correlation (t_horizon, num_modes).
     """
-    def __init__(self, pos_0: torch.Tensor, dt: float,
-                 mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor, corrs: torch.Tensor):
+    def __init__(self, mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor, corrs: torch.Tensor):
         super(VGMM2D, self).__init__()
         t_horizon, self.components = log_pis.shape
         self.dimensions = 2
         assert mus.shape == (t_horizon, self.components, 2)
         assert log_sigmas.shape == (t_horizon, self.components, 2)
         assert corrs.shape == (t_horizon, self.components)
-
-        # Integration setup.
-        self._pos_init = pos_0
-        self._dt = dt
-
-        # Integrate mean position (only done once, only done once).
-        mus_padding = torch.zeros((1, mus.shape[1], 2))  # include zero position
-        mus_padded = torch.cat((mus_padding, mus))
-        self.mus_pos = torch.cumsum(mus_padded, dim=0) * dt + pos_0
 
         # Distribution parameters.
         self.log_pis = log_pis - torch.logsumexp(log_pis, dim=-1, keepdim=True)  # [..., N]
@@ -73,7 +61,7 @@ class VGMM2D(torch.distributions.Distribution):
         L2 = torch.stack([self.sigmas[..., 1] * corrs, self.sigmas[..., 1] * self.one_minus_rho2], dim=-1)
         self.L = torch.stack([L1, L2], dim=-2)
 
-    def log_prob(self, positions: torch.Tensor) -> torch.Tensor:
+    def log_prob(self, velocities: torch.Tensor) -> torch.Tensor:
         """Calculates the log probability of a value using the PDF for bi-variate normal distributions:
 
         .. math::
@@ -85,9 +73,6 @@ class VGMM2D(torch.distributions.Distribution):
         :param positions: The log probability density function is evaluated at those positions.
         :returns: log probability of these values
         """
-        velocities = (positions[1:] - positions[:-1]) / self._dt
-
-        # Determine log likelihood of samples in velocity space.
         dx = velocities - self.mus
         exp_nominator = ((torch.sum((dx / self.sigmas) ** 2, dim=-1)  # first and second term of exp nominator
                           - 2 * self.corrs * torch.prod(dx, dim=-1) / torch.prod(self.sigmas, dim=-1)))
@@ -104,71 +89,64 @@ class VGMM2D(torch.distributions.Distribution):
         re-parameterized  samples if the distribution parameters are batched.
 
         :param sample_shape: Shape of the samples
-        :return: Samples from the GMM in position space.
+        :return: Samples from the GMM in velocity space.
         """
         samples = torch.randn(size=sample_shape + self.mus.shape).unsqueeze(dim=-1)
         mvn_samples = self.mus + torch.matmul(self.L, samples).squeeze(dim=-1)
         component_cat_samples = self.pis_cat_dist.sample(sample_shape)
         selector = torch.eye(self.components)[component_cat_samples].unsqueeze(dim=-1)
-        samples = torch.sum(mvn_samples * selector, dim=-2, keepdim=True)
-        return self.integrate_samples(samples)
-
-    def integrate_samples(self, x: torch.Tensor) -> torch.Tensor:
-        x_padded = torch.cat((torch.zeros((x.shape[0], 1, 1, 2)), x), dim=1)
-        x_int = torch.cumsum(x_padded, dim=1) * self._dt + self._pos_init
-        return x_int
+        return torch.sum(mvn_samples * selector, dim=-2, keepdim=True)
 
     @property
     def mean(self):
-        return self.mus_pos
+        return self.mus
 
 
 ###########################################################################
 # Numerical Methods #######################################################
 ###########################################################################
-class Derivative2:
-    """Determine the 2nd derivative of some series of point numerically by using the Central Difference Expression
-    (with error of order dt^2). Assuming smoothness we can extract the acceleration from the positions:
+def derivative_numerical(x: torch.Tensor, dt: float) -> torch.Tensor:
+    """Compute the derivative numerically by applying numerical differentiation.
 
-    d^2/dt^2 x_i = \\frac{ x_{i + 1} - 2 x_i + x_{i - 1}}{ dt^2 }.
+    ... math:: \\frac{d}{dt} x = \\frac{x_t - x_{t-1}}{dt}
 
-    For computational efficiency this expression, summed up over the full horizon (e.g. the full time-horizon
-    [1, T - 1]), can be regarded as single matrix operation b = Ax with A = diag([1, -2, 1]).
+    :param x: tensor to differentiate numerically (num_ados, num_samples, T, num_modes, 2).
+    :param dt: differentiation time-step.
+    :returns: differentiated tensor x (num_ados, num_samples, T - 1, num_modes, 2).
     """
+    if len(x.shape) == 2:
+        return (x[1:, :] - x[:-1, :]) / dt
+    else:
+        return (x[..., 1:, :, :] - x[..., :-1, :, :]) / dt
 
-    def __init__(self, horizon: int, dt: float, num_axes: int = 2, velocity: bool = False):
-        assert num_axes >= 2, "minimal number of axes of differentiable matrix is 2"
-        self._num_axes = num_axes
-        self._dt = dt
 
-        if not velocity:  # acceleration estimate based on positions
-            self._diff_mat = torch.zeros((horizon, horizon))
-            for k in range(1, horizon - 1):
-                self._diff_mat[k, k - 1] = 1
-                self._diff_mat[k, k] = -2
-                self._diff_mat[k, k + 1] = 1
-            self._diff_mat *= 1 / dt ** 2
+def integrate_numerical(x: torch.Tensor, dt: float, x0: torch.Tensor) -> torch.Tensor:
+    """Compute the integral of a vector numerically by applying Euler forward integration.
 
-        else:  # acceleration estimate based on velocities
-            self._diff_mat = torch.zeros((horizon, horizon))
-            for k in range(horizon - 1):
-                self._diff_mat[k, k] = -1
-                self._diff_mat[k, k + 1] = 1
-            self._diff_mat *= 1 / dt
+    ... math:: \\int x dt = x0 + \\sum_t x_t * dt
 
-        # Un-squeeze difference matrix in case the state tensor is larger then two dimensional (batching).
-        for _ in range(num_axes - 2):
-            self._diff_mat = self._diff_mat.unsqueeze(0)
+    :param x: vector to differentiate numerically (num_ados, num_samples, T - 1, num_modes, 2).
+    :param dt: differentiation time-step.
+    :param x0: initial condition (num_ados, 2).
+    :returns: differentiated vector x (num_ados, num_samples, T, num_modes, 2).
+    """
+    x_shape = x.shape
+    x_size = len(x_shape)
+    assert x0.shape[0] == x_shape[0]
 
-    def compute(self, x: torch.Tensor) -> torch.Tensor:
-        if len(x.shape) == 3:
-            x_compute = torch.transpose(x, 0, 1)
-        else:
-            x_compute = x
-        return torch.matmul(self._diff_mat, x_compute)
+    if len(x0.shape) == 2:
+        x0 = x0.view(-1, *tuple([1] * (x_size - 3)), 1, 2)
+    if x_size == 4:
+        padding = torch.zeros((x_shape[0], 1, x_shape[-2], 2))
+    elif x_size == 5:
+        padding = torch.zeros((x_shape[0], x_shape[1], 1, x_shape[-2], 2))
+    else:
+        raise NotImplementedError(f"Integral not implemented for x_size = {x_size} !")
+    axis = x_size - 3  # 4 -> 1, 5 -> 2
 
-    def compute_single(self, x: torch.Tensor, x_prev: torch.Tensor, x_next: torch.Tensor) -> torch.Tensor:
-        return (x_prev - 2 * x + x_next) / self._dt**2
+    x_padded = torch.cat((padding, x), dim=axis)
+    x_int = torch.cumsum(x_padded, dim=axis) * dt + x0
+    return x_int
 
 
 ###########################################################################

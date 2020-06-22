@@ -286,8 +286,8 @@ class DTAgent(abc.ABC):
         :param dt: time interval [s] between discrete trajectory states.
         """
         assert mantrap.utility.shaping.check_ego_trajectory(trajectory, pos_and_vel_only=True)
-        dd = mantrap.utility.maths.Derivative2(horizon=trajectory.shape[0], dt=dt, velocity=True)
-        return dd.compute(trajectory[:, 2:4])
+        accelerations = mantrap.utility.maths.derivative_numerical(trajectory[:, 2:4], dt=dt)
+        return torch.cat((accelerations, torch.zeros((1, 2))), dim=0)  # pad ending with zeros
 
     ###########################################################################
     # Feasibility #############################################################

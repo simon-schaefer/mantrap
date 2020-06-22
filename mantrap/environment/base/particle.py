@@ -102,7 +102,7 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
         """Build a connected graph based on the ego's trajectory.
 
         The graph should span over the time-horizon of the length of the ego's trajectory and contain the
-        positional distribution of every ado in the scene as well as the ego's states itself. When
+        velocity distribution of every ado in the scene as well as the ego's states itself. When
         possible the graph should be differentiable, such that finding some gradient between the outputted ado
         states and the inputted ego trajectory is determinable.
 
@@ -112,8 +112,8 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
         of some ego agent, so that instead of a trajectory simply a list of None can be passed, in order to build
         a graph without an ego in the scene.
 
-        The positional distribution thereby is computed by averaging over a bunch of simulated particles, merged
-        to a single uni-modal gaussian for simplicity. Since the models only predict the positional distribution in
+        The velocity distribution thereby is computed by averaging over a bunch of simulated particles, merged
+        to a single uni-modal gaussian for simplicity. Since the models only predict the velocity distribution in
         order to form the full state the velocity has to be computed from that. Since the ados underlie single
         integrator dynamics the velocity just is the difference of position times 1/dt. For two uni-modal
         Gaussian distributions (current, next) this results to a non-central chi-squared distribution in general,
@@ -129,7 +129,7 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
         (https://stats.stackexchange.com/questions/186463/distribution-of-difference-between-two-normal-distributions).
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
-        :return: ado_id-keyed positional distribution dictionary for times [0, t_horizon].
+        :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         if not all([x is None for x in ego_trajectory]):
             assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
@@ -143,45 +143,46 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
         # them to a uni-modal gaussian distribution.
         _, ado_states = self.states()
 
-        mus = torch.zeros((self.num_ados, t_horizon + 1, 1, 4))  # ados, t_horizon, modes, 4 (= position + velocity)
+        mus = torch.zeros((self.num_ados, t_horizon, 1, 4))  # ados, t_horizon, modes, 4 (= position + velocity)
         mus[:, 0, 0, :] = ado_states[:, 0:4]
-        sigmas = torch.zeros((self.num_ados, t_horizon + 1, 1, 2))  # position only
+        sigmas = torch.zeros((self.num_ados, t_horizon, 1, 2))  # velocity only
         sigmas[:, 0, 0, :] = torch.ones((self.num_ados, 2)) * mantrap.constants.ENV_VAR_INITIAL
-        for t in range(t_horizon):
+        for t in range(t_horizon - 1):
             ego_state_t = ego_trajectory[t]
             ado_states_t = mus[:, t, 0, :]
-            positions_t = torch.zeros((self.num_ados, num_particles, 2))
+            velocities_t = torch.zeros((self.num_ados, num_particles, 2))
 
             # Simulate and update the particles for each ado in the scene and the current time-step.
             for m_ado in range(self.num_ados):
                 particles_ado = particles[m_ado]
                 for m_particle, particle in enumerate(particles_ado):
                     particles[m_ado][m_particle] = self.simulate_particle(particle, ado_states_t, ego_state_t)
-                    positions_t[m_ado, m_particle, :] = particles[m_ado][m_particle].position
+                    velocities_t[m_ado, m_particle, :] = particles[m_ado][m_particle].velocity
 
             # By adding a tiny amount of white gaussian noise we avoid troubles with zero variance
             # (e.g. in Potential Field Environment with uni-directional interactions).
-            positions_t += torch.rand(positions_t.shape) * mantrap.constants.ENV_PARTICLE_NOISE
+            velocities_t += torch.rand(velocities_t.shape) * mantrap.constants.ENV_PARTICLE_NOISE
 
-            # Estimate the overall positional distribution of every ado in the next time-step, by averaging over
+            # Estimate the overall velocity distribution of every ado in the next time-step, by averaging over
             # all updated particles. Then compute the mean of the velocity distribution from that.
             # Weight the position estimate of each particle with their probability occurring in the initial
             # distribution they have been sampled from.
-            positions_t_pdf = positions_t * particle_pdf
-            mus[:, t + 1, 0, 0:2] = torch.mean(positions_t_pdf, dim=1)
-            mus[:, t + 1, 0, 2:4] = (mus[:, t + 1, 0, 0:2] - mus[:, t, 0, 0:2]) / self.dt
-            sigmas[:, t + 1, 0, :] = torch.var(positions_t_pdf, dim=1)
+            velocities_t_pdf = velocities_t * particle_pdf
 
-        # Transform mus and sigmas to positional gaussian distribution objects dictionary
+            mus[:, t + 1, 0, 2:4] = torch.mean(velocities_t_pdf, dim=1)
+            mus[:, t + 1, 0, 0:2] = mus[:, t, 0, 0:2] + mus[:, t, 0, 2:4] * self.dt  # single integrator (!)
+            sigmas[:, t + 1, 0, :] = torch.var(velocities_t_pdf, dim=1)
+
+        # Transform mus and sigmas to velocity gaussian distribution objects dictionary
         # (hint: same order of ado_ids and ados() have been ensured in sanity_check() !).
-        dist_dict = {ado_id: torch.distributions.Normal(loc=mus[m_ado, :, :, 0:2], scale=sigmas[m_ado, :, :, :])
+        dist_dict = {ado_id: torch.distributions.Normal(loc=mus[m_ado, :, :, 2:4], scale=sigmas[m_ado, :, :, :])
                      for m_ado, ado_id in enumerate(self.ado_ids)}
 
         return dist_dict
 
     def _compute_distributions_wo_ego(self, t_horizon: int, **kwargs
                                       ) -> typing.Dict[str, torch.distributions.Distribution]:
-        """Build a dictionary of positional distributions for every ado as it would be without the presence
+        """Build a dictionary of velocity distributions for every ado as it would be without the presence
         of a robot in the scene.
 
         To simplify the implementation (make it more compact) to compute the distributions without the presence
@@ -189,7 +190,7 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
 
         :param t_horizon: number of prediction time-steps.
         :kwargs: additional graph building arguments.
-        :return: ado_id-keyed positional distribution dictionary for times [0, t_horizon].
+        :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         return self._compute_distributions(ego_trajectory=[None] * (t_horizon + 1), **kwargs)
 

@@ -42,7 +42,7 @@ class KalmanEnvironment(GraphBasedEnvironment):
         """Build a connected graph based on the ego's trajectory.
 
         The graph should span over the time-horizon of the length of the ego's trajectory and contain the
-        positional distribution of every ado in the scene as well as the ego's states itself. When
+        velocity distribution of every ado in the scene as well as the ego's states itself. When
         possible the graph should be differentiable, such that finding some gradient between the outputted ado
         states and the inputted ego trajectory is determinable.
 
@@ -52,7 +52,7 @@ class KalmanEnvironment(GraphBasedEnvironment):
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
         :param noise_additive: additive noise per prediction time-step (Q = diag(noise_additive)).
-        :return: ado_id-keyed positional distribution dictionary for times [0, t_horizon].
+        :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         t_horizon = len(ego_trajectory) - 1  # works for tensor and list !
         dist_dict = {}
@@ -62,28 +62,28 @@ class KalmanEnvironment(GraphBasedEnvironment):
         # to massively speed up the computation.
         with torch.no_grad():
             for ado in self.ados:
-                mus = torch.zeros((t_horizon + 1, 1, 2))  # t_horizon, num_modes, 2 (=dims)
-                sigmas = torch.zeros((t_horizon + 1, 1, 2))  # variance will be diagonal for sure (!)
+                mus = torch.zeros((t_horizon, 1, 2))  # t_horizon, num_modes, 2 (=dims)
+                sigmas = torch.zeros((t_horizon, 1, 2))  # variance will be diagonal for sure (!)
 
                 u_constant = ado.velocity.clone().detach()
-                x_k1 = ado.position.clone().detach()  # notation: x_k1 = "x_{k minus 1}"
+                x_k1 = ado.state.clone().detach()  # notation: x_k1 = "x_{k minus 1}"
 
                 # Using the assumptions above (H = eye(), R = 0) the Kalman equations can be vastly simplified,
                 # by insertion we get K = eye() and x_k = x_k_k1 for all k.
                 F, B, _ = ado.dynamics_matrices(dt=self.dt, x=ado.state)
-                F, B = F[0:2, 0:2], B[0:2, :]   # positions only
+                F, B = F[0:4, 0:4], B[0:4, :]   # positions and velocities only
                 FT = torch.transpose(F, 0, 1)
                 Q = torch.eye(x_k1.numel()) * noise_additive
                 p_k1 = torch.eye(x_k1.numel()) * mantrap.constants.ENV_VAR_INITIAL
 
-                mus[0, 0, :] = x_k1
-                sigmas[0, 0, :] = p_k1.diagonal()
-                for t in range(t_horizon):
+                mus[0, 0, :] = x_k1[2:4]
+                sigmas[0, 0, :] = p_k1.diagonal()[2:4]
+                for t in range(t_horizon - 1):
                     x_k = torch.matmul(F, x_k1) + torch.matmul(B, u_constant)
                     p_k = torch.matmul(torch.matmul(F, p_k1), FT) + Q
 
-                    mus[t + 1, 0, :] = x_k
-                    sigmas[t + 1, 0, :] = p_k.diagonal()
+                    mus[t + 1, 0, :] = x_k[2:4]
+                    sigmas[t + 1, 0, :] = p_k.diagonal()[2:4]
                     x_k1 = x_k
                     p_k1 = p_k
 
@@ -93,7 +93,7 @@ class KalmanEnvironment(GraphBasedEnvironment):
 
     def _compute_distributions_wo_ego(self, t_horizon: int, **kwargs
                                       ) -> typing.Dict[str, torch.distributions.Distribution]:
-        """Build a dictionary of positional distributions for every ado as it would be without the presence
+        """Build a dictionary of velocity distributions for every ado as it would be without the presence
         of a robot in the scene.
 
         Since no interactions between agents are assumed the conditioned and unconditioned distributions
@@ -101,7 +101,7 @@ class KalmanEnvironment(GraphBasedEnvironment):
 
         :param t_horizon: number of prediction time-steps.
         :kwargs: additional graph building arguments.
-        :return: ado_id-keyed positional distribution dictionary for times [0, t_horizon].
+        :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         return self._compute_distributions(ego_trajectory=[None] * (t_horizon + 1), **kwargs)
 

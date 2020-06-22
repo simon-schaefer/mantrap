@@ -1,5 +1,4 @@
 import json
-import math
 import os
 import sys
 import typing
@@ -134,6 +133,7 @@ class Trajectron(GraphBasedEnvironment):
         # results later on.
         agent_history = agent.history
         acc_history = agent.compute_acceleration(agent_history, dt=self.dt)
+
         node_data = self._create_node_data(state_history=agent_history, accelerations=acc_history)
         node_tye = self._gt_env.NodeType.PEDESTRIAN if not is_robot else self._gt_env.NodeType.ROBOT
         node = Node(node_type=node_tye, node_id=agent.id, data=node_data, is_robot=is_robot)
@@ -165,11 +165,11 @@ class Trajectron(GraphBasedEnvironment):
         """Build a connected graph based on the ego's trajectory.
 
         The graph should span over the time-horizon of the length of the ego's trajectory and contain the
-        positional distribution of every ado in the scene as well as the ego's states itself. When
+        velocity distribution of every ado in the scene as well as the ego's states itself. When
         possible the graph should be differentiable, such that finding some gradient between the outputted ado
         states and the inputted ego trajectory is determinable.
 
-        The Trajectron directly predicts the full positional distribution for each ado, as a GMM (Gaussian
+        The Trajectron directly predicts the full velocity distribution for each ado, as a GMM (Gaussian
         Mixture Model) with 25 modes. The GMM is a multi-nominal distribution with weight parameters pi_i,
         i.e. we have
 
@@ -182,7 +182,7 @@ class Trajectron(GraphBasedEnvironment):
         log_pis.shape: (num_ados = 1, 1, t_horizon, num_modes)
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
-        :return: ado_id-keyed positional distribution dictionary for times [0, t_horizon].
+        :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         assert self.num_ados > 0  # trajectron conditioned on ados and ego, so both must be in the scene (!)
@@ -237,8 +237,7 @@ class Trajectron(GraphBasedEnvironment):
             log_sigmas = dist.log_sigmas.view(t_horizon, m, 2)
             corrs = dist.corrs.view(t_horizon, m)
             log_pis = dist.log_pis.view(t_horizon, m)
-            distribution = mantrap.utility.maths.VGMM2D(mus=mus, log_pis=log_pis, log_sigmas=log_sigmas, corrs=corrs,
-                                                        pos_0=ado_states[m_ado, 0:2], dt=self.dt)
+            distribution = mantrap.utility.maths.VGMM2D(mus=mus, log_pis=log_pis, log_sigmas=log_sigmas, corrs=corrs)
             dist_dict[ado_id] = distribution
 
         return dist_dict

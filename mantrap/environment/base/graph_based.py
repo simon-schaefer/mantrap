@@ -83,7 +83,7 @@ class GraphBasedEnvironment(abc.ABC):
         """Run environment step (time-step = dt).
 
         Attention: This method changes the states of all environment agents, by executing the ego action
-        and sample from the conditioned ado positional distribution.
+        and sample from the conditioned ado velocity distribution.
 
         :param ego_action: planned ego control input for current time step (2).
         :returns: ado_states (num_ados, num_modes, 1, 5), ego_next_state (5) in next time step.
@@ -153,30 +153,28 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     # Prediction - Samples ####################################################
     ###########################################################################
-    def sample_w_controls(self, ego_controls: torch.Tensor, num_samples: int = 1, expand: bool = False
+    def sample_w_controls(self, ego_controls: torch.Tensor, num_samples: int = 1
                           ) -> typing.Union[torch.Tensor, None]:
         """Predict the ado path samples based conditioned on robot controls.
 
-        :param ego_controls: ego control input (pred_horizon, 2).
+        :param ego_controls: ego control input (prediction_horizon, 2).
         :param num_samples: number of samples to return.
-        :param expand: expand ado positions outputs to full state trajectories.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
                  if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_controls(ego_controls)
         assert self.sanity_check(check_ego=True)
 
         ego_trajectory = self.ego.unroll_trajectory(controls=ego_controls, dt=self.dt)
-        return self.sample_w_trajectory(ego_trajectory, num_samples=num_samples, expand=expand)
+        return self.sample_w_trajectory(ego_trajectory, num_samples=num_samples)
 
-    def sample_w_trajectory(self, ego_trajectory: torch.Tensor, num_samples: int = 1, expand: bool = False
+    def sample_w_trajectory(self, ego_trajectory: torch.Tensor, num_samples: int = 1
                             ) -> typing.Union[torch.Tensor, None]:
         """Predict the ado path samples based conditioned on robot trajectory.
 
-        :param ego_trajectory: ego trajectory (pred_horizon + 1, 5).
+        :param ego_trajectory: ego trajectory (prediction_horizon + 1, 5).
         :param num_samples: number of samples to return.
-        :param expand: expand ado positions outputs to full state trajectories.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
                  if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
@@ -190,20 +188,19 @@ class GraphBasedEnvironment(abc.ABC):
         # Otherwise predict the conditioned distribution and draw samples from them.
         dist_dict = self.compute_distributions(ego_trajectory=ego_trajectory)
         samples = torch.stack([dist_dict[ado_id].sample((num_samples, )) for ado_id in self.ado_ids])
-        if expand:
-            samples = self.expand_ado_trajectories(ado_trajectories=samples)
+        assert mantrap.utility.shaping.check_ado_samples(samples, t_horizon, self.num_ados, num_samples)
 
-        assert mantrap.utility.shaping.check_ado_samples(samples, t_horizon + 1, self.num_ados, num_samples)
-        return samples
+        # Integrate velocity samples to positions (trajectory).
+        _, ado_states = self.states()
+        samples_pos = mantrap.utility.maths.integrate_numerical(samples, dt=self.dt, x0=ado_states[:, 0:2])
+        return samples_pos
 
-    def sample_wo_ego(self, t_horizon: int, num_samples: int = 1, expand: bool = False
-                      ) -> typing.Union[torch.Tensor, None]:
+    def sample_wo_ego(self, t_horizon: int, num_samples: int = 1) -> typing.Union[torch.Tensor, None]:
         """Predict the unconditioned ado path samples (i.e. if no robot would be in the scene).
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
         :param num_samples: number of samples to return.
-        :param expand: expand ado positions outputs to full state trajectories.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
                  if no ado in scene, return None instead.
         """
         assert t_horizon > 0
@@ -216,37 +213,34 @@ class GraphBasedEnvironment(abc.ABC):
         # Otherwise predict the un_conditioned distribution and draw samples from them.
         dist_dict = self.compute_distributions_wo_ego(t_horizon=t_horizon)
         samples = torch.stack([dist_dict[ado_id].sample((num_samples,)) for ado_id in self.ado_ids])
-        if expand:
-            samples = self.expand_ado_trajectories(ado_trajectories=samples)
+        assert mantrap.utility.shaping.check_ado_samples(samples, t_horizon, self.num_ados, num_samples)
 
-        assert mantrap.utility.shaping.check_ado_samples(samples, t_horizon + 1, self.num_ados, num_samples)
-        return samples
+        # Integrate velocity samples to positions (trajectory).
+        _, ado_states = self.states()
+        samples_pos = mantrap.utility.maths.integrate_numerical(samples, dt=self.dt, x0=ado_states[:, 0:2])
+        return samples_pos
 
     ###########################################################################
     # Prediction - Means ######################################################
     ###########################################################################
-    def predict_w_controls(self, ego_controls: torch.Tensor, expand: bool = False
-                           ) -> typing.Union[torch.Tensor, None]:
+    def predict_w_controls(self, ego_controls: torch.Tensor) -> typing.Union[torch.Tensor, None]:
         """Predict the ado path distribution means based conditioned on robot controls.
 
-        :param ego_controls: ego control input (pred_horizon, 2).
-        :param expand: expand ado positions outputs to full state trajectories.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        :param ego_controls: ego control input (prediction_horizon, 2).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
                  if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_controls(ego_controls)
         assert self.sanity_check(check_ego=True)
 
         ego_trajectory = self.ego.unroll_trajectory(controls=ego_controls, dt=self.dt)
-        return self.predict_w_trajectory(ego_trajectory, expand=expand)
+        return self.predict_w_trajectory(ego_trajectory)
 
-    def predict_w_trajectory(self, ego_trajectory: torch.Tensor, expand: bool = False
-                             ) -> typing.Union[torch.Tensor, None]:
+    def predict_w_trajectory(self, ego_trajectory: torch.Tensor) -> typing.Union[torch.Tensor, None]:
         """Predict the ado path samples based conditioned on robot trajectory.
 
-        :param ego_trajectory: ego trajectory (pred_horizon + 1, 5).
-        :param expand: expand ado positions outputs to full state trajectories.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        :param ego_trajectory: ego trajectory (prediction_horizon + 1, 5).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
                  if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
@@ -260,21 +254,18 @@ class GraphBasedEnvironment(abc.ABC):
         # Otherwise predict the un_conditioned distribution and draw samples from them.
         dist_dict = self.compute_distributions(ego_trajectory=ego_trajectory)
         means = torch.stack([dist_dict[ado_id].mean for ado_id in self.ado_ids])
-        if len(means.shape) == 3:
-            means = means.unsqueeze(dim=1)
-        if expand:
-            means = self.expand_ado_trajectories(ado_trajectories=means)
 
-        assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon=t_horizon + 1, ados=self.num_ados)
-        return means
+        # Integrate velocity means to positions (trajectory).
+        _, ado_states = self.states()
+        means_pos = mantrap.utility.maths.integrate_numerical(means, dt=self.dt, x0=ado_states[:, 0:2])
+        assert mantrap.utility.shaping.check_ado_trajectories(means_pos, t_horizon=t_horizon + 1, ados=self.num_ados)
+        return means_pos
 
-    def predict_wo_ego(self, t_horizon: int, expand: bool = False
-                       ) -> typing.Union[torch.Tensor, None]:
+    def predict_wo_ego(self, t_horizon: int) -> typing.Union[torch.Tensor, None]:
         """Predict the unconditioned ado path distribution means (i.e. if no robot would be in the scene).
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
-        :param expand: expand ado positions outputs to full state trajectories.
-        :return: predicted ado paths (num_ados, num_samples, pred_horizon+1, 2/5).
+        :return: predicted ado paths (num_ados, num_samples, t_horizon+1, 2).
                  if no ado in scene, return None instead.
         """
         assert t_horizon > 0
@@ -287,11 +278,12 @@ class GraphBasedEnvironment(abc.ABC):
         # Otherwise predict the un_conditioned distribution and draw samples from them.
         dist_dict = self.compute_distributions_wo_ego(t_horizon=t_horizon)
         means = torch.stack([dist_dict[ado_id].mean for ado_id in self.ado_ids])
-        if expand:
-            means = self.expand_ado_trajectories(ado_trajectories=means)
 
-        assert mantrap.utility.shaping.check_ado_trajectories(means, t_horizon=t_horizon + 1, ados=self.num_ados)
-        return means
+        # Integrate velocity means to positions (trajectory).
+        _, ado_states = self.states()
+        means_pos = mantrap.utility.maths.integrate_numerical(means, dt=self.dt, x0=ado_states[:, 0:2])
+        assert mantrap.utility.shaping.check_ado_trajectories(means_pos, t_horizon=t_horizon + 1, ados=self.num_ados)
+        return means_pos
 
     ###########################################################################
     # Scene ###################################################################
@@ -379,7 +371,7 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     def compute_distributions(self, ego_trajectory: torch.Tensor, **kwargs
                               ) -> typing.Dict[str, torch.distributions.Distribution]:
-        """Build a dictionary of positional distributions for every ado as it would be with the presence
+        """Build a dictionary of velocity distributions for every ado as it would be with the presence
         of a robot in the scene.
 
         Build the graph conditioned on some `ego_trajectory`, which is assumed to be fix while the ados in the scene
@@ -403,23 +395,23 @@ class GraphBasedEnvironment(abc.ABC):
         """Build a connected graph based on the ego's trajectory.
 
         The graph should span over the time-horizon of the length of the ego's trajectory and contain the
-        positional distribution of every ado in the scene as well as the ego's states itself. When
+        velocity distribution of every ado in the scene as well as the ego's states itself. When
         possible the graph should be differentiable, such that finding some gradient between the outputted ado
         states and the inputted ego trajectory is determinable.
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
-        :return: ado_id-keyed positional distribution dictionary for times [0, t_horizon].
+        :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         raise NotImplementedError
 
     def compute_distributions_wo_ego(self, t_horizon: int, **kwargs
                                      ) -> typing.Dict[str, torch.distributions.Distribution]:
-        """Build a dictionary of positional distributions for every ado as it would be without the presence
+        """Build a dictionary of velocity distributions for every ado as it would be without the presence
         of a robot in the scene.
 
         :param t_horizon: number of prediction time-steps.
         :kwargs: additional graph building arguments.
-        :return: ado_id-keyed positional distribution dictionary for times [0, t_horizon].
+        :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         assert t_horizon > 0
         dist_dict = self._compute_distributions_wo_ego(t_horizon, **kwargs)
@@ -432,7 +424,7 @@ class GraphBasedEnvironment(abc.ABC):
         """Build a connected graph over `t_horizon` time-steps for ados only (exclude robot).
 
         The graph should span over the time-horizon of the inputted number of time-steps and contain the
-        positional distribution of every ado in the scene, stored in an `ado_id` key-ed dictionary. When
+        velocity distribution of every ado in the scene, stored in an `ado_id` key-ed dictionary. When
         possible the graph should be differentiable, such that finding some gradient between the outputted ado
         states and the inputted ego trajectory is determinable.
 
@@ -444,7 +436,7 @@ class GraphBasedEnvironment(abc.ABC):
     def check_distribution(self, distribution: typing.Dict[str, torch.distributions.Distribution], t_horizon: int):
         """Check the distribution dictionary for correctness."""
         assert all([ado_id in distribution.keys() for ado_id in self.ado_ids])
-        assert all([distribution[ado_id].mean.shape[0] == t_horizon + 1 for ado_id in self.ado_ids])
+        assert all([distribution[ado_id].mean.shape[0] == t_horizon for ado_id in self.ado_ids])
         assert all([distribution[ado_id].mean.shape[-1] == 2 for ado_id in self.ado_ids])
         return True
 
@@ -537,7 +529,8 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_prediction(self, ego_trajectory: torch.Tensor, **vis_kwargs):
+    def visualize_prediction(self, ego_trajectory: torch.Tensor,
+                             num_samples: int = mantrap.constants.VISUALIZATION_SAMPLES, **vis_kwargs):
         """Visualize the predictions for the scene based on the given ego trajectory."""
         from mantrap.visualization import visualize_prediction
         from mantrap.visualization.atomics import output_format
@@ -545,7 +538,6 @@ class GraphBasedEnvironment(abc.ABC):
         t_horizon = ego_trajectory.shape[0] - 1
 
         # Predict the ado behaviour conditioned on the given ego trajectory.
-        num_samples = mantrap.constants.VISUALIZATION_SAMPLES
         ado_samples = self.sample_w_trajectory(ego_trajectory=ego_trajectory, num_samples=num_samples)
         ado_samples_wo = self.sample_wo_ego(t_horizon=t_horizon, num_samples=num_samples)
 
@@ -558,18 +550,19 @@ class GraphBasedEnvironment(abc.ABC):
             **vis_kwargs
         )
 
-    def visualize_prediction_w_controls(self, ego_controls: torch.Tensor, **vis_kwargs):
+    def visualize_prediction_w_controls(self, ego_controls: torch.Tensor,
+                                        num_samples: int = mantrap.constants.VISUALIZATION_SAMPLES, **vis_kwargs):
         """Visualize the predictions for the scene based on the given ego controls."""
         ego_trajectory = self.ego.unroll_trajectory(ego_controls, dt=self.dt)
-        return self.visualize_prediction(ego_trajectory=ego_trajectory, **vis_kwargs)
+        return self.visualize_prediction(ego_trajectory=ego_trajectory, num_samples=num_samples, **vis_kwargs)
 
-    def visualize_prediction_wo_ego(self, t_horizon: int, **vis_kwargs):
+    def visualize_prediction_wo_ego(self, t_horizon: int,
+                                    num_samples: int = mantrap.constants.VISUALIZATION_SAMPLES, **vis_kwargs):
         """Visualize the predictions for the scene based on the given ego trajectory."""
         from mantrap.visualization import visualize_prediction
         from mantrap.visualization.atomics import output_format
 
         # Predict the ado behaviour conditioned on the given ego trajectory.
-        num_samples = mantrap.constants.VISUALIZATION_SAMPLES
         ado_samples_wo = self.sample_wo_ego(t_horizon=t_horizon, num_samples=num_samples)
 
         output_path = output_format(name=f"{self.log_name}_prediction_wo_ego")

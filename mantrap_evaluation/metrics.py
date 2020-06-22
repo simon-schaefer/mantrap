@@ -120,8 +120,8 @@ def metric_ego_effort(ego_trajectory: torch.Tensor, max_acceleration: float = ma
     max_effort = 0.0
     for t in range(1, ego_trajectory.shape[0]):
         dt = float(ego_trajectory[t, -1] - ego_trajectory[t - 1, -1])
-        dd = mantrap.utility.maths.Derivative2(dt=dt, horizon=2, velocity=True)
-        ego_effort += torch.norm(dd.compute(ego_trajectory[t-1:t+1, 2:4])).item()
+        acc = mantrap.utility.maths.derivative_numerical(ego_trajectory[t-1:t+1, 2:4], dt=dt)
+        ego_effort += torch.norm(acc).item()
         max_effort += max_acceleration
 
     return float(ego_effort / max_effort)
@@ -160,10 +160,12 @@ def metric_ado_effort(env: mantrap.environment.base.GraphBasedEnvironment, ado_t
             assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectory_wo, ados=num_ados, t_horizon=2)
 
             # Determine acceleration difference between actual and without scene w.r.t. ados.
-            dd = mantrap.utility.maths.Derivative2(horizon=2, dt=env_metric.dt, velocity=True)
+            dt = env_metric.dt
             for m_mode in range(num_modes):
-                ado_acc = torch.norm(dd.compute(ado_trajectories[m, t-1:t+1, m_mode, 2:4]))
-                ado_acc_wo = torch.norm(dd.compute(ado_trajectory_wo[m, 0:2, m_mode, 2:4]))
+                ado_acc = mantrap.utility.maths.derivative_numerical(ado_trajectories[m, t-1:t+1, m_mode, 2:4], dt=dt)
+                ado_acc = torch.norm(ado_acc)
+                ado_acc_wo = mantrap.utility.maths.derivative_numerical(ado_trajectory_wo[m, 0:2, m_mode, 2:4], dt=dt)
+                ado_acc_wo = torch.norm(ado_acc_wo)
 
                 # Accumulate L2 norm of difference in metric score.
                 effort_score += torch.norm(ado_acc - ado_acc_wo).detach()
