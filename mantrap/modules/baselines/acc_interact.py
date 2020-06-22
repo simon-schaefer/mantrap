@@ -76,9 +76,6 @@ class InteractionAccelerationModule(PureObjectiveModule):
         for ado_id, distribution in dist_dict.items():
             m_ado = self.env.index_ado_id(ado_id)
             acc = mantrap.utility.maths.derivative_numerical(distribution.mean, dt=self.env.dt).view(-1, 2)
-
-            print(acc.shape, distribution.mean.shape)
-
             accelerations[m_ado, :, :] = acc
         return accelerations
 
