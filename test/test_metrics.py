@@ -7,6 +7,8 @@ import mantrap.utility.maths
 
 from mantrap_evaluation.metrics import *
 
+torch.manual_seed(0)
+
 
 def test_minimal_distance_principle():
     ego_trajectory = mantrap.utility.maths.straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)

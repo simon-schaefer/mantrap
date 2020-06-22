@@ -54,6 +54,7 @@ SOCIAL_FORCES_MAX_GOAL_DISTANCE = 0.3  # [m] maximal distance to goal to have ze
 SOCIAL_FORCES_MAX_INTERACTION_DISTANCE = 2.0  # [m] maximal distance between agents for interaction force.
 
 POTENTIAL_FIELD_V0_DEFAULT = 2.0, 1.0  # [m2s-2] repulsive field constant (mean/variance).
+POTENTIAL_FIELD_MAX_THETA = 30.0  # [deg] maximal attention angle to be influenced by robot
 
 TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
 TRAJECTRON_DEFAULT_HISTORY_LENGTH = 5

@@ -1,8 +1,11 @@
 import collections
+import logging
 import os
 import re
+import sys
 import typing
 
+import numpy as np
 import pandas
 import torch
 
@@ -22,12 +25,33 @@ class OptimizationLogger:
         self._log = None
         self._iteration = None
         self._is_logging = is_logging
+        if is_logging:
+            self.set_logging_preferences(is_logging=is_logging)
 
     def increment(self):
         """Increment internal iteration by 1 (`logger.iteration` is a property and therefore writing-protected,
         therefore `increment()` has to be used, so that the iteration can only be increased by 1 at a time.
         """
         self._iteration += 1
+
+    @staticmethod
+    def set_logging_preferences(is_logging: bool):
+        log_level = logging.DEBUG if is_logging else logging.WARNING
+        log_format = "[%(levelname)-6s > %(filename)-10s:%(lineno)4d (%(asctime)-8s:%(msecs)03d)] %(message)-s"
+        formatter = logging.Formatter(log_format, datefmt="%H:%M:%S")
+
+        logger = logging.getLogger()
+        logger.setLevel(log_level)
+        console = logger.handlers[0]
+        console.setFormatter(formatter)
+        console.setLevel(log_level)
+
+        logging.getLogger("matplotlib").setLevel(logging.ERROR)
+        logging.getLogger("numpy").setLevel(logging.WARNING)
+        torch.set_printoptions(precision=4)
+        np.set_printoptions(precision=4)
+        np.set_printoptions(threshold=sys.maxsize)  # don't collapse arrays while printing
+        np.seterr(divide='ignore', invalid='ignore')
 
     ###########################################################################
     # Writing log #############################################################

@@ -12,6 +12,7 @@ import mantrap.modules
 import mantrap.solver
 import mantrap.utility.shaping
 
+torch.manual_seed(0)
 environments = [mantrap.environment.KalmanEnvironment,
                 mantrap.environment.PotentialFieldEnvironment,
                 mantrap.environment.SocialForcesEnvironment,
