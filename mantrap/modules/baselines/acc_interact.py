@@ -11,9 +11,9 @@ from ..base import PureObjectiveModule
 
 
 class InteractionAccelerationModule(PureObjectiveModule):
-    """Loss based on accelerational interaction between robot and ados.
+    """Loss based on difference of accelerations due to interaction between robot and ados.
 
-    As a proxy for interaction based on the acceleration of every ado is computed in a (fictional) scene without an
+    As a proxy for interaction based on the mean acceleration of every ado is computed in a (fictional) scene without an
     ego (robot) and compared to the actual occurring accelerations in the scene. As for autonomous driving the
     acceleration can be expressed "moving comfort", since a change in acceleration, especially a sudden change like
     strong de-acceleration, decreases the comfort of the agent.
@@ -29,9 +29,10 @@ class InteractionAccelerationModule(PureObjectiveModule):
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, weight: float = 1.0,
                  **unused):
         super(InteractionAccelerationModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
+        self._max_value = mantrap.constants.OBJECTIVE_ACC_INTERACT_MAX
         if env.num_ados > 0:
             dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
-            self._ado_accelerations_wo = self.distribution_to_acceleration(dist_dict)
+            self._ado_accelerations_wo = self.summarize_distribution(dist_dict)
 
     def _objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                         ) -> typing.Union[torch.Tensor, None]:
@@ -55,7 +56,7 @@ class InteractionAccelerationModule(PureObjectiveModule):
         # (`compute_distributions()`) to not introduce possible behavioural changes into the forward prediction,
         # which occur due to a reduction of the agents in the scene.
         dist_dict = self.env.compute_distributions(ego_trajectory=ego_trajectory)
-        acceleration = self.distribution_to_acceleration(dist_dict)
+        acceleration = self.summarize_distribution(dist_dict)
 
         # Average of all ados that should be taken into account.
         cost = torch.zeros(1)
@@ -66,17 +67,17 @@ class InteractionAccelerationModule(PureObjectiveModule):
         cost = cost / len(ado_ids)  # average of pedestrians.
 
         # Clamp maximal value (minimal is zero anyways, due to L2-norm).
-        return cost.clamp_max(mantrap.constants.OBJECTIVE_ACC_INTERACT_MAX)
+        return cost.clamp_max(self._max_value)
 
-    def distribution_to_acceleration(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
-                                     ) -> torch.Tensor:
+    def summarize_distribution(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
+                               ) -> torch.Tensor:
         """Compute ado-wise accelerations from velocity distribution dict mean values."""
         sample_length = self.env.num_modes * (self.t_horizon - 1)
         accelerations = torch.zeros((self.env.num_ados, sample_length, 2))
         for ado_id, distribution in dist_dict.items():
             m_ado = self.env.index_ado_id(ado_id)
-            acc = mantrap.utility.maths.derivative_numerical(distribution.mean, dt=self.env.dt).view(-1, 2)
-            accelerations[m_ado, :, :] = acc
+            acc = mantrap.utility.maths.derivative_numerical(distribution.mean, dt=self.env.dt)
+            accelerations[m_ado, :, :] = acc.view(-1, 2)
         return accelerations
 
     def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:
@@ -88,7 +89,7 @@ class InteractionAccelerationModule(PureObjectiveModule):
         :param x: objective/constraint value in normal value range.
         :returns: normalized objective/constraint value in range [-1, 1].
         """
-        return x / mantrap.constants.OBJECTIVE_ACC_INTERACT_MAX
+        return x / self._max_value
 
     def gradient_condition(self) -> bool:
         """Condition for back-propagating through the objective/constraint in order to obtain the

@@ -32,12 +32,12 @@ def create_scene(module_class: mantrap.modules.base.OptimizationModule.__class__
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
                                           mantrap.modules.baselines.InteractionPositionModule,
+                                          mantrap.modules.baselines.InteractionVelocitiesModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule,
                                           mantrap.modules.GoalNormModule,
                                           mantrap.modules.baselines.GoalWeightedModule,
 
                                           mantrap.modules.ControlLimitModule,
-                                          # mantrap.modules.baselines.MinDistanceModule,
                                           mantrap.modules.HJReachabilityModule,
                                           mantrap.modules.SpeedLimitModule,
 
@@ -73,6 +73,7 @@ class TestOptimizationModules:
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
                                           mantrap.modules.baselines.InteractionPositionModule,
+                                          mantrap.modules.baselines.InteractionVelocitiesModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule,
                                           mantrap.modules.GoalNormModule,
                                           mantrap.modules.baselines.GoalWeightedModule])
@@ -162,6 +163,7 @@ class TestObjectives:
 
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
                                           mantrap.modules.baselines.InteractionPositionModule,
+                                          mantrap.modules.baselines.InteractionVelocitiesModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule])
 @pytest.mark.parametrize("env_class", environments)
 class TestObjectiveInteraction:
@@ -352,36 +354,6 @@ def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnv
     ego_trajectory[2, 2] = upper + 0.1
     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=[], tag="test")
     assert np.isclose(violation, error)
-
-
-# @pytest.mark.parametrize("env_class", [mantrap.environment.KalmanEnvironment,
-#                                        mantrap.environment.PotentialFieldEnvironment,
-#                                        mantrap.environment.SocialForcesEnvironment,
-#                                        mantrap.environment.Trajectron])
-# def test_min_distance_constraint_violation(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__):
-#     position, velocity = torch.ones(2) * 9, torch.zeros(2)
-#     env = env_class(mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
-#     ado_kwargs = {"goal": torch.tensor([9, -9])}
-#     env.add_ado(position=torch.ones(2) * (-9), velocity=torch.tensor([1, 0]), **ado_kwargs)
-#
-#     controls = torch.stack((torch.ones(10) * (-1), torch.zeros(10))).view(10, 2)
-#     ego_trajectory = env.ego.unroll_trajectory(controls=controls, dt=env.dt)
-#
-#     # In this first scenario the ado and ego are moving parallel in maximal distance to each other.
-#     module = mantrap.modules.baselines.MinDistanceModule(env=env, t_horizon=controls.shape[0])
-#     lower_bound, _ = module._constraint_limits()
-#     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
-#     assert violation == 0
-#
-#     # In the second scenario add another ado agent that is starting and moving very close to the ego robot.
-#     ado_start_pos = env.ego.position - (lower_bound * 0.5) * torch.ones(2)
-#     ado_kwargs = {"goal": ado_start_pos}
-#     env.add_ado(position=ado_start_pos, velocity=torch.zeros(2), **ado_kwargs)
-#
-#     module = mantrap.modules.baselines.MinDistanceModule(env=env, t_horizon=controls.shape[0])
-#     lower_bound, _ = module._constraint_limits()
-#     violation = module.compute_violation(ego_trajectory=ego_trajectory, ado_ids=env.ado_ids, tag="test")
-#     assert violation > 0
 
 
 ###########################################################################

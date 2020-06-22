@@ -81,7 +81,8 @@ MCTS_NUMBER_DEPTH_SAMPLES = 5  # number of samples in depth (i.e. trajectories t
 
 OBJECTIVE_PROB_INTERACT_MAX = 50.0  # maximal value of projection probability log cost.
 OBJECTIVE_POS_INTERACT_MAX = 10.0  # maximal value of positional-distance cost.
-OBJECTIVE_ACC_INTERACT_MAX = 1.0  # maximal value of accelerational-distance cost.
+OBJECTIVE_VEL_INTERACT_MAX = 10.0  # maximal value of velocity-distance cost.
+OBJECTIVE_ACC_INTERACT_MAX = 1.0  # maximal value of acceleration-distance cost.
 
 CONSTRAINT_HJ_MAT_FILE = "2D.mat"  # pre-computed value-/gradient grid mat file.
 CONSTRAINT_HJ_INTERPOLATION_METHOD = "linear"  # value function interpolation method (linear, nearest).
