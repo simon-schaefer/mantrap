@@ -1,3 +1,5 @@
+import logging
+import math
 import typing
 
 import torch
@@ -65,15 +67,24 @@ class PotentialFieldEnvironment(ParticleEnvironment):
         :param means_t: means of positional and velocity distribution at time t (num_ados, 4).
         :param ego_state_t: ego/robot state at time t.
         """
-        controls = particle.velocity
+        ego_impact = torch.zeros(2)
         v0 = max(particle.params["v0"], 1e-3)
+        theta_attention = mantrap.constants.POTENTIAL_FIELD_MAX_THETA / 180.0 * math.pi
 
         if ego_state_t is not None:
-            delta = particle.position - ego_state_t[0:2]
-            delta = torch.sign(delta) * torch.exp(- torch.abs(delta))
-            controls += v0 * delta
+            velocity = particle.velocity
+            delta = ego_state_t[0:2] - particle.position
 
+            # Only consider the effects of the robot, if inside attention angle.
+            theta_self = torch.atan2(velocity[1], velocity[0])  # particle orientation
+            theta_robot = torch.atan2(delta[1], delta[0])  # angle to robot
+            theta_delta = theta_self - theta_robot
+            if torch.abs(theta_delta) < theta_attention:
+                ego_impact = - v0 * torch.sign(delta) * torch.exp(- torch.abs(delta))
+
+        controls = particle.velocity + ego_impact
         particle.update(action=controls, dt=self.dt)
+        logging.debug(f"particle {particle.id} impact = {ego_impact}")
         return particle
 
     ###########################################################################

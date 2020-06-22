@@ -42,6 +42,7 @@ class TrajOptSolver(abc.ABC):
     :param eval_env: environment that should be used for evaluation ("real" environment).
     :param config_name: name of solver configuration.
     :param is_logging: should all the results be logged (necessary for plotting but very costly !!).
+    :param is_debug: logging debug mode (for printing).
     """
     def __init__(
         self,
@@ -53,6 +54,7 @@ class TrajOptSolver(abc.ABC):
         eval_env: mantrap.environment.base.GraphBasedEnvironment = None,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN,
         is_logging: bool = False,
+        is_debug: bool = False,
         **solver_params
     ):
         # Dictionary of solver parameters.
@@ -93,7 +95,7 @@ class TrajOptSolver(abc.ABC):
             self._attention_module = attention_module(env=self.env, t_horizon=self.planning_horizon)
 
         # Initialize logging class.
-        self._logger = OptimizationLogger(is_logging=is_logging)
+        self._logger = OptimizationLogger(is_logging=is_logging, is_debug=is_debug)
         self.logger.log_reset()
 
         # Initialize child class.

@@ -415,8 +415,12 @@ class OptimizationModule(abc.ABC):
         """
         grad_size = int(grad_wrt.numel())
         x_size = int(x.numel())
-        assert x.requires_grad
         assert grad_wrt.requires_grad
+
+        # If x has no gradient, we assume that this is not a bug, but there is actually no impact
+        # of `grad_wrt` to the tensor x. Then the gradient is simply zero.
+        if not x.requires_grad:
+            return np.zeros(grad_size)
 
         # Compute gradient batched, i.e. per element of x over the full `grad_wrt` tensor. However further
         # batching unfortunately is not possible using the autograd framework.

@@ -14,7 +14,7 @@ import mantrap.constants
 
 class OptimizationLogger:
 
-    def __init__(self, is_logging: bool = False):
+    def __init__(self, is_logging: bool = False, is_debug: bool = False):
         """Logging variables. Using default-dict(deque) whenever a new entry is created, it does not have to be checked
         whether the related key is already existing, since if it is not existing, it is created with a queue as
         starting value, to which the new entry is appended. With an appending complexity O(1) instead of O(N) the
@@ -25,8 +25,7 @@ class OptimizationLogger:
         self._log = None
         self._iteration = None
         self._is_logging = is_logging
-        if is_logging:
-            self.set_logging_preferences(is_logging=is_logging)
+        self.set_logging_preferences(is_logging=is_debug)
 
     def increment(self):
         """Increment internal iteration by 1 (`logger.iteration` is a property and therefore writing-protected,
