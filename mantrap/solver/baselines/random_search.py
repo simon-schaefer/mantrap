@@ -13,8 +13,6 @@ class RandomSearch(SearchIntermediate):
                         ) -> typing.Tuple[np.ndarray, float, int, bool]:
         """Inner optimization/search function.
 
-        ATTENTION: See self-containment comment in `optimize_core()` method description.
-
         In random search in every step we basically use sample a new assignment of z within its bounds and
         compare it to the best assignment so far. If it is feasible and has a smaller objective value,
         update the best assignment and objective. Random search should exploit the full allowed runtime,

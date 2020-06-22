@@ -232,11 +232,6 @@ class TrajOptSolver(abc.ABC):
         values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
         the optimization but only the ones with ids defined in `ado_ids`.
 
-        ATTENTION: Since several `optimize_core()` calls are spawned in parallel, one for every process, but
-        originating from the same solver class, the method should be self-contained. Hence, no internal
-        variables should be updated, since this would lead to race conditions ! If class variables have
-        to be altered and used within this function, then assign them to the process tag !
-
         :param z0: initial value of optimization variables.
         :param tag: name of optimization call (name of the core).
         :param ado_ids: identifiers of ados that should be taken into account during optimization.

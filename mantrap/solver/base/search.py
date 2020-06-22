@@ -31,10 +31,6 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
         the optimization but only the ones with ids defined in `ado_ids`.
 
-        ATTENTION: Since several `optimize_core()` calls are spawned in parallel, one for every process, but
-        originating from the same solver class, the method should be self-contained. Hence, no internal
-        variables should be updated, since this would lead to race conditions !
-
         In general searching algorithms (at least the ones implemented within this project) have a similar
         "frame", which is some termination constraint, here the computation runtime, and some inner optimization
         loop which repeats until the algorithm has either terminated or is done.
@@ -87,8 +83,6 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
                         tag: str, ado_ids: typing.List[str]
                         ) -> typing.Tuple[np.ndarray, float, int, bool]:
         """Inner optimization/search function.
-
-        ATTENTION: See self-containment comment in `optimize_core()` method description.
 
         :param z_best: best assignment of optimization vector so far.
         :param obj_best: according objective function value.

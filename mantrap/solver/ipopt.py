@@ -29,10 +29,6 @@ class IPOPTSolver(TrajOptSolver):
         values `z0`. To simplify optimization not all agents in the scene have to be taken into account during
         the optimization but only the ones with ids defined in `ado_ids`.
 
-        ATTENTION: Since several `optimize_core()` calls are spawned in parallel, one for every process, but
-        originating from the same solver class, the method should be self-contained. Hence, no internal
-        variables should be updated, since this would lead to race conditions !
-
         IPOPT-Solver poses the optimization problem as Non-Linear Program (NLP) and uses the non-linear optimization
         library IPOPT (with Mumps backend) to solve it. Documentation: https://pythonhosted.org/ipopt/reference.html
 

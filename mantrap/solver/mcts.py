@@ -19,8 +19,6 @@ class MonteCarloTreeSearch(SearchIntermediate):
                         ) -> typing.Tuple[np.ndarray, float, int, bool]:
         """Inner optimization/search function.
 
-        ATTENTION: See self-containment comment in `optimize_core()` method description.
-
         MCTS (Monte-Carlo-Tree-Search) iteratively optimizes thr trajectory by sampling-based estimating the
         actual cost-to-go assigned to some choice of optimization variable value. Therefore until the end
         of the trajectory, several possible next z-values (i.e. z-values for z_{i+1} in the ith optimization
