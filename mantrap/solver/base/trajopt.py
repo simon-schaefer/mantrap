@@ -98,15 +98,9 @@ class TrajOptSolver(abc.ABC):
         self._logger = OptimizationLogger(is_logging=is_logging, is_debug=is_debug)
         self.logger.log_reset()
 
-        # Initialize child class.
-        self.initialize(**solver_params)
-
         # Sanity checks.
         assert self.num_optimization_variables() > 0
-
-    def initialize(self, **solver_params):
-        """Method can be overwritten when further initialization is required."""
-        pass
+        self.env.sanity_check(check_ego=True)
 
     ###########################################################################
     # Solving #################################################################

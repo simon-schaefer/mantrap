@@ -14,15 +14,6 @@ from .trajopt import TrajOptSolver
 class SearchIntermediate(TrajOptSolver, abc.ABC):
 
     ###########################################################################
-    # Initialization ##########################################################
-    ###########################################################################
-    def initialize(self, **solver_params):
-        super(SearchIntermediate, self).initialize(**solver_params)
-        # Find variable bounds for random sampling during search.
-        lb, ub = self.optimization_variable_bounds()
-        self._z_bounds = np.asarray(lb), np.asarray(ub)
-
-    ###########################################################################
     # Optimization ############################################################
     ###########################################################################
     def optimize_core(
@@ -120,4 +111,6 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
     ###########################################################################
     @property
     def z_bounds(self) -> typing.Tuple[np.ndarray, np.ndarray]:
-        return self._z_bounds
+        # Find variable bounds for random sampling during search.
+        lb, ub = self.optimization_variable_bounds()
+        return np.asarray(lb), np.asarray(ub)
