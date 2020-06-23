@@ -9,7 +9,7 @@ import mantrap.environment
 from .acc_interact import InteractionAccelerationModule
 
 
-class InteractionVelocitiesModule(InteractionAccelerationModule):
+class InteractionVelocityModule(InteractionAccelerationModule):
     """Loss based on difference of velocities due to interaction between robot and ados.
 
     As a proxy for interaction based on the mean velocity of every ado is computed in a (fictional) scene without an
@@ -26,7 +26,7 @@ class InteractionVelocitiesModule(InteractionAccelerationModule):
     """
     def __init__(self, env: mantrap.environment.base.GraphBasedEnvironment, t_horizon: int, weight: float = 1.0,
                  **unused):
-        super(InteractionVelocitiesModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
+        super(InteractionVelocityModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
         self._max_value = mantrap.constants.OBJECTIVE_VEL_INTERACT_MAX
 
     def summarize_distribution(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]

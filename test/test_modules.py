@@ -32,7 +32,7 @@ def create_scene(module_class: mantrap.modules.base.OptimizationModule.__class__
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
                                           mantrap.modules.baselines.InteractionPositionModule,
-                                          mantrap.modules.baselines.InteractionVelocitiesModule,
+                                          mantrap.modules.baselines.InteractionVelocityModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule,
                                           mantrap.modules.GoalNormModule,
                                           mantrap.modules.baselines.GoalWeightedModule,
@@ -73,7 +73,7 @@ class TestOptimizationModules:
 ###########################################################################
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
                                           mantrap.modules.baselines.InteractionPositionModule,
-                                          mantrap.modules.baselines.InteractionVelocitiesModule,
+                                          mantrap.modules.baselines.InteractionVelocityModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule,
                                           mantrap.modules.GoalNormModule,
                                           mantrap.modules.baselines.GoalWeightedModule])
@@ -163,7 +163,7 @@ class TestObjectives:
 
 @pytest.mark.parametrize("module_class", [mantrap.modules.InteractionProbabilityModule,
                                           mantrap.modules.baselines.InteractionPositionModule,
-                                          mantrap.modules.baselines.InteractionVelocitiesModule,
+                                          mantrap.modules.baselines.InteractionVelocityModule,
                                           mantrap.modules.baselines.InteractionAccelerationModule])
 @pytest.mark.parametrize("env_class", environments)
 class TestObjectiveInteraction:
