@@ -319,3 +319,25 @@ class TestIPOPTSolvers:
         # Check whether goal has been reached in acceptable closeness.
         goal_distance = torch.norm(ego_trajectory[-1, 0:2] - solver.goal)
         assert torch.le(goal_distance, mantrap.constants.SOLVER_GOAL_END_DISTANCE * 2)
+
+
+###########################################################################
+# Test - RRT Solver #######################################################
+###########################################################################
+@pytest.mark.parametrize("env_class", environments)
+@pytest.mark.parametrize("attention_class", attentions)
+class TestRRTSolver:
+
+    @staticmethod
+    def test_basic_path(env_class: mantrap.environment.base.GraphBasedEnvironment.__class__,
+                        attention_class: mantrap.attention.AttentionModule.__class__):
+        env = env_class(ego_position=torch.zeros(2))
+        env.add_ado(position=torch.tensor([5, 0]), velocity=torch.tensor([0, 0]))
+        goal = torch.tensor([8.0, 0.0])
+        solver = mantrap.solver.baselines.RRTStarSolver(env, attention_module=attention_class, goal=goal,
+                                                        t_planning=100)
+
+        z_opt = solver.optimize(z0=torch.tensor([]), tag="test")
+        ego_trajectory = solver.z_to_ego_trajectory(z_opt.detach().numpy())
+        assert torch.allclose(ego_trajectory[0, 0:2], env.ego.position)
+        assert torch.gt(torch.norm(ego_trajectory[0, 0:2] - goal), torch.norm(ego_trajectory[-1, 0:2] - goal))

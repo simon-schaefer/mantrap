@@ -75,9 +75,14 @@ IPOPT_OPTIMALITY_TOLERANCE = 0.1  # maximal optimality error to return solution 
 IPOPT_AUTOMATIC_JACOBIAN = "finite-difference-values"  # method for Jacobian approximation (if flag is True).
 IPOPT_AUTOMATIC_HESSIAN = "limited-memory"  # method for Hessian approximation.
 
-SEARCH_MAX_CPU_TIME = 0.5  # [s] maximal sampling CPU time.
+SEARCH_MAX_CPU_TIME = 0.5  # [s] maximal CPU time of search algorithm.
 MCTS_NUMBER_BREADTH_SAMPLES = 5  # number of samples in breadth (i.e. z-values to estimate value from).
 MCTS_NUMBER_DEPTH_SAMPLES = 5  # number of samples in depth (i.e. trajectories to estimate value).
+
+RRT_ITERATIONS = 600  # number of sampling iterations (in fact always iteration is looping condition).
+RRT_PED_RADIUS = 1.0  # [m] minimal safety distance around pedestrian in RRT-path-planning.
+RRT_REWIRE_RADIUS = 10.0  # [m] radius of re-wiring nodes after new node has been added.
+RRT_GOAL_SAMPLING_PROBABILITY = 20.0  # probability of sampling and rewiring goal node.
 
 OBJECTIVE_PROB_INTERACT_MAX = 50.0  # maximal value of projection probability log cost.
 OBJECTIVE_POS_INTERACT_MAX = 10.0  # maximal value of positional-distance cost.

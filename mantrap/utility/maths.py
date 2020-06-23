@@ -70,7 +70,7 @@ class VGMM2D(torch.distributions.Distribution):
             {\\frac {(y-\\mu _{y})^{2}}{\\sigma _{y}^{2}}}-{\\frac {2\\rho (x-\\mu _{x})(y-\\mu _{y})}
             {\\sigma _{x}\\sigma _{y}}}\\right]\\right)
 
-        :param positions: The log probability density function is evaluated at those positions.
+        :param velocities: The log probability density function is evaluated at those velocities.
         :returns: log probability of these values
         """
         dx = velocities - self.mus
@@ -110,9 +110,9 @@ def derivative_numerical(x: torch.Tensor, dt: float) -> torch.Tensor:
 
     ... math:: \\frac{d}{dt} x = \\frac{x_t - x_{t-1}}{dt}
 
-    :param x: tensor to differentiate numerically (num_ados, num_samples, T, num_modes, 2).
+    :param x: tensor to differentiate numerically (num_ados, num_samples, T, num_modes, 2) or (T, 2).
     :param dt: differentiation time-step.
-    :returns: differentiated tensor x (num_ados, num_samples, T - 1, num_modes, 2).
+    :returns: differentiated tensor x (num_ados, num_samples, T - 1, num_modes, 2) or (T-1, 2).
     """
     if len(x.shape) == 2:
         return (x[1:, :] - x[:-1, :]) / dt
@@ -125,24 +125,30 @@ def integrate_numerical(x: torch.Tensor, dt: float, x0: torch.Tensor) -> torch.T
 
     ... math:: \\int x dt = x0 + \\sum_t x_t * dt
 
-    :param x: vector to differentiate numerically (num_ados, num_samples, T - 1, num_modes, 2).
+    :param x: vector to differentiate numerically (num_ados, num_samples, T - 1, num_modes, 2) or (T-1, 2).
     :param dt: differentiation time-step.
     :param x0: initial condition (num_ados, 2).
-    :returns: differentiated vector x (num_ados, num_samples, T, num_modes, 2).
+    :returns: differentiated vector x (num_ados, num_samples, T, num_modes, 2) or (T, 2).
     """
     x_shape = x.shape
     x_size = len(x_shape)
-    assert x0.shape[0] == x_shape[0]
 
-    if len(x0.shape) == 2:
-        x0 = x0.view(-1, *tuple([1] * (x_size - 3)), 1, 2)
-    if x_size == 4:
-        padding = torch.zeros((x_shape[0], 1, x_shape[-2], 2))
-    elif x_size == 5:
-        padding = torch.zeros((x_shape[0], x_shape[1], 1, x_shape[-2], 2))
+
+    if x_size == 2:
+        padding = torch.zeros((1, 2))
+        axis = 0
+
     else:
-        raise NotImplementedError(f"Integral not implemented for x_size = {x_size} !")
-    axis = x_size - 3  # 4 -> 1, 5 -> 2
+        assert x0.shape[0] == x_shape[0]
+        if len(x0.shape) == 2:
+            x0 = x0.view(-1, *tuple([1] * (x_size - 3)), 1, 2)
+        if x_size == 4:
+            padding = torch.zeros((x_shape[0], 1, x_shape[-2], 2))
+        elif x_size == 5:
+            padding = torch.zeros((x_shape[0], x_shape[1], 1, x_shape[-2], 2))
+        else:
+            raise NotImplementedError(f"Integral not implemented for x_size = {x_size} !")
+        axis = x_size - 3  # 4 -> 1, 5 -> 2
 
     x_padded = torch.cat((padding, x), dim=axis)
     x_int = torch.cumsum(x_padded, dim=axis) * dt + x0

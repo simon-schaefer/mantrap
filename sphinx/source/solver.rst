@@ -30,3 +30,9 @@ Random Search
 ~~~~~~~~~~~~~~
 .. automodule:: mantrap.solver.baselines.random_search
     :members:
+
+RRT* - Baseline
+---------------
+.. automodule:: mantrap.solver.baselines.rrt_star
+    :members:
+
