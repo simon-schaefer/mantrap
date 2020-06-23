@@ -1,4 +1,5 @@
 import abc
+import logging
 import typing
 
 import numpy as np
@@ -354,8 +355,7 @@ class OptimizationModule(abc.ABC):
     ###########################################################################
     # Autograd Differentiation ################################################
     ###########################################################################
-    @staticmethod
-    def compute_gradient_auto_grad(x: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
+    def compute_gradient_auto_grad(self, x: torch.Tensor, grad_wrt: torch.Tensor) -> np.ndarray:
         """Compute derivative of x with respect to grad_wrt.
 
         Compute the gradient/jacobian/etc. of some vector x with respect to some tensor `grad_wrt`
@@ -420,6 +420,7 @@ class OptimizationModule(abc.ABC):
         # If x has no gradient, we assume that this is not a bug, but there is actually no impact
         # of `grad_wrt` to the tensor x. Then the gradient is simply zero.
         if not x.requires_grad:
+            logging.debug(f"module {self.name} => un-rooted gradient detected !")
             return np.zeros(grad_size)
 
         # Compute gradient batched, i.e. per element of x over the full `grad_wrt` tensor. However further

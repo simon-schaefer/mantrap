@@ -244,6 +244,5 @@ def metric_extra_time(ego_trajectory: torch.Tensor, env: mantrap.environment.bas
     solver_hard = mantrap.solver.IPOPTSolver(env=env, goal=goal, modules=modules_hard)
 
     ego_trajectory_straight, _ = solver_hard.solve(time_steps=max_time_steps)
-    print(ego_trajectory_straight)
     straight_time_steps = ego_trajectory_straight.shape[0]
     return (max_time_steps - straight_time_steps) * env.dt
