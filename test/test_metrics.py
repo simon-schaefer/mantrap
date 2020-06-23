@@ -17,8 +17,16 @@ def expand_ado_trajectories(env: mantrap.environment.base.GraphBasedEnvironment,
     trajectories_full = torch.zeros((num_ados, num_samples, t_horizon, 5))
     for m_ado, ado in enumerate(env.ados):
         for m_sample in range(num_samples):
-            trajectories_full[m_ado, m_sample, :, :] = \
-                ado.expand_trajectory(ado_trajectories[m_ado, m_sample, :, 0:2], dt=env.dt)
+            ado_path = ado_trajectories[m_ado, m_sample, :, 0:2]
+            t_start = float(env.ados[m_ado].state_with_time[-1])
+            t_horizon = ado_path.shape[0]
+            trajectory = torch.zeros((t_horizon, 5))
+
+            trajectory[:, 0:2] = ado_path
+            trajectory[:-1, 2:4] = (trajectory[1:, 0:2] - trajectory[0:-1, 0:2]) / env.dt
+            trajectory[:, 4] = torch.linspace(t_start, t_start + (t_horizon - 1) * env.dt, steps=t_horizon)
+
+            trajectories_full[m_ado, m_sample, :, :] = trajectory
     return trajectories_full
 
 

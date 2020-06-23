@@ -212,9 +212,7 @@ def test_social_forces_static_ado_pair_prediction():
 @pytest.mark.parametrize(
     "pos_1, pos_2",
     [
-        (torch.tensor([1, 1]), torch.tensor([2, 2])),
-        (torch.tensor([2, 0]), torch.tensor([4, 0])),
-        (torch.tensor([0, 2]), torch.tensor([0, 4])),
+        (torch.tensor([0, 2]), torch.tensor([0, 6])),
     ],
 )
 def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
@@ -226,7 +224,7 @@ def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
     sigmas = torch.zeros((2, t_horizon, env_1.num_modes, 2))
     grads = torch.zeros((2, t_horizon, 2))
     for i, env in enumerate([env_1, env_2]):
-        env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2))
+        env.add_ado(position=torch.zeros(2), velocity=torch.tensor([0, 1]))
 
         ego_controls = torch.zeros((4, 2))
         ego_controls.requires_grad = True
@@ -240,11 +238,7 @@ def test_potential_field_forces(pos_1: torch.Tensor, pos_2: torch.Tensor):
     # The interaction "force" is distance based, so more distant agents should affect a smaller "force".
     # Due to a larger induced force differences between the particle parameters are larger, so that the
     # uncertainty grows larger as well. (0 ==> "close" ego; 1 ==> "far" ego)
-    assert torch.all(torch.ge(torch.norm(mus[0, :, :, :], dim=2), torch.norm(mus[1, :, :, :], dim=2)))
-    # assert torch.all(torch.norm(sigmas[0, :, :], dim=1) >= torch.norm(sigmas[1, :, :], dim=1))
-
-    # Similarly the gradient should be larger, the closer the ego is since its "impact" increases.
-    # assert torch.all(torch.ge(torch.norm(grads[0, :, :], dim=1), torch.norm(grads[1, :, :], dim=1)))
+    assert torch.sum(sigmas[0, :, :]) >= torch.sum(sigmas[1, :, :])
 
     # When the delta position is uni-directional, so e.g. just in x-position, the force as well as the gradient
     # should point only in this direction.
