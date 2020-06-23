@@ -252,8 +252,11 @@ class DTAgent(abc.ABC):
         return controls
 
     def expand_trajectory(self, path: torch.Tensor, dt: float) -> torch.Tensor:
-        """Derive (position, orientation, velocity)-trajectory information from position data only, using naive
-        discrete differentiation, i.e. v_i = (x_i+1 - x_i) / dt.
+        """Derive (position, orientation, velocity)-trajectory information from position data only, using
+        numerical differentiation, i.e. v_i = (x_i+1 - x_i) / dt.
+
+        Since the path is not constrained to be dynamically infeasible, stretch it so that the maximal
+        velocity is the maximally allowed velocity for the dynamics.
 
         :param path: sequence of states (position, velocity) without temporal dimension (N, 4).
         :param dt: time interval which is assumed to be constant over full path sequence [s].
@@ -261,14 +264,29 @@ class DTAgent(abc.ABC):
         """
         assert mantrap.utility.shaping.check_ego_path(path)
         assert dt > 0.0
+        _, v_max = self.speed_limits()
 
-        t_horizon = path.shape[0]
-        t_start = float(self.state_with_time[-1])
+        # Determine velocities using numerical differentiation of the path.
+        velocities = mantrap.utility.maths.derivative_numerical(path, dt=dt).detach().numpy()
+
+        # Stretch the velocities, to never exceed the velocity limits (L2-norm). Therefore repeat the
+        # maximal average allowed speed in a velocities direction as often as required to equal the path
+        # (infeasible) velocity.
+        velocities_stretched = [np.zeros(2, dtype=np.float32)]
+        for velocity in velocities:
+            velocity_norm = np.linalg.norm(velocity)
+            direction = velocity / velocity_norm
+            amount = int(np.ceil(velocity_norm / v_max))
+            velocities_stretched += [velocity_norm / amount * direction] * amount
+        velocities_stretched = torch.tensor(velocities_stretched)
+
+        # Create trajectory by integrating the stretched velocities.
+        t_horizon = velocities_stretched.shape[0] + 1
         trajectory = torch.zeros((t_horizon, 5))
-
-        trajectory[:, 0:2] = path
-        trajectory[:-1, 2:4] = (trajectory[1:, 0:2] - trajectory[0:-1, 0:2]) / dt
-        trajectory[:, 4] = torch.linspace(t_start, t_start + (t_horizon - 1) * dt, steps=t_horizon)
+        t_start = float(self.state_with_time[-1])
+        trajectory[:, 0:2] = mantrap.utility.maths.integrate_numerical(velocities_stretched, dt=dt, x0=self.position)
+        trajectory[:, 2:4] = torch.cat((torch.tensor(velocities_stretched), torch.zeros((1, 2))))
+        trajectory[:, -1] = torch.linspace(t_start, t_start + (t_horizon - 1) * dt, steps=t_horizon)
 
         assert mantrap.utility.shaping.check_ego_trajectory(trajectory, t_horizon=t_horizon)
         return trajectory
@@ -482,7 +500,6 @@ class DTAgent(abc.ABC):
     ###########################################################################
     # Agent properties ########################################################
     ###########################################################################
-    @property
     def speed_limits(self) -> typing.Tuple[float, float]:
         v_max = mantrap.constants.PED_SPEED_MAX if not self.is_robot else mantrap.constants.ROBOT_SPEED_MAX
         return -v_max, v_max

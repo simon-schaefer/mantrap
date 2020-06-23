@@ -90,7 +90,7 @@ class SpeedLimitModule(PureConstraintModule):
         :param x: objective/constraint value in normal value range.
         :returns: normalized objective/constraint value in range [-1, 1].
         """
-        v_min, v_max = self._env.ego.speed_limits
+        v_min, v_max = self._env.ego.speed_limits()
         assert np.isclose(abs(v_min), abs(v_max))
         return x / v_max
 
@@ -112,7 +112,7 @@ class SpeedLimitModule(PureConstraintModule):
 
         The speed boundaries are a property of the robot agent.
         """
-        return self.env.ego.speed_limits
+        return self.env.ego.speed_limits()
 
     def _num_constraints(self, ado_ids: typing.List[str]) -> int:
         return 2 * (self.t_horizon + 1)  # trajectory has length t_horizon + 1 !

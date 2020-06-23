@@ -42,7 +42,7 @@ class IntegratorDTAgent(LinearDTAgent):
         """
         .. math:: [- v_{max}, v_{max}]
         """
-        return self.speed_limits
+        return self.speed_limits()
 
     def control_norm(self, controls: torch.Tensor) -> torch.Tensor:
         """Compute the agent's control norm ||u|| = L2-norm.

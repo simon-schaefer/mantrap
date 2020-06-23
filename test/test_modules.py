@@ -341,7 +341,7 @@ def test_speed_limit_violation(env_class: mantrap.environment.base.GraphBasedEnv
     env = env_class(ego_type=mantrap.agents.IntegratorDTAgent, ego_position=position, ego_velocity=velocity)
 
     module = mantrap.modules.SpeedLimitModule(env=env, t_horizon=5)
-    lower, upper = env.ego.speed_limits
+    lower, upper = env.ego.speed_limits()
 
     # In this first scenario the ego has velocities at the upper or lower bound over the full horizon.
     ego_trajectory = torch.ones((module.t_horizon + 1, 5)) * upper
