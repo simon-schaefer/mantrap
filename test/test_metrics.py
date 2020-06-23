@@ -10,6 +10,18 @@ from mantrap_evaluation.metrics import *
 torch.manual_seed(0)
 
 
+def expand_ado_trajectories(env: mantrap.environment.base.GraphBasedEnvironment, ado_trajectories: torch.Tensor
+                            ) -> torch.Tensor:
+    assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories)
+    num_ados, num_samples, t_horizon, _ = ado_trajectories.shape
+    trajectories_full = torch.zeros((num_ados, num_samples, t_horizon, 5))
+    for m_ado, ado in enumerate(env.ados):
+        for m_sample in range(num_samples):
+            trajectories_full[m_ado, m_sample, :, :] = \
+                ado.expand_trajectory(ado_trajectories[m_ado, m_sample, :, 0:2], dt=env.dt)
+    return trajectories_full
+
+
 def test_minimal_distance_principle():
     ego_trajectory = mantrap.utility.maths.straight_line(torch.tensor([-5, 0.1]), torch.tensor([5, 0.1]), steps=10)
 
@@ -95,12 +107,12 @@ def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__
 
     # When the ado trajectories are exactly the same as predicting them without an ego, the score should be zero.
     ado_trajectories = env.predict_wo_ego(t_horizon=10)
-    ado_trajectories = env.expand_ado_trajectories(ado_trajectories=ado_trajectories)
+    ado_trajectories = expand_ado_trajectories(env=env, ado_trajectories=ado_trajectories)
     metric_score_wo = metric_ado_effort(ado_trajectories=ado_trajectories, env=env)
 
     # Otherwise it is very hard to predict the exact score, but we know it should be non-zero and positive.
     ado_trajectories = env.predict_w_controls(ego_controls=torch.ones((5, 2)))
-    ado_trajectories = env.expand_ado_trajectories(ado_trajectories=ado_trajectories)
+    ado_trajectories = expand_ado_trajectories(env=env, ado_trajectories=ado_trajectories)
     metric_score = metric_ado_effort(ado_trajectories=ado_trajectories, env=env)
     assert metric_score >= metric_score_wo * 0.5
 
@@ -112,12 +124,12 @@ def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__
     env_test = env.copy()
 
     ado_trajectory_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
-    ado_trajectory_1 = env.expand_ado_trajectories(ado_trajectory_1)
+    ado_trajectory_1 = expand_ado_trajectories(env=env, ado_trajectories=ado_trajectory_1)
     metric_score_1 = metric_ado_effort(ado_trajectories=ado_trajectory_1, env=env)
 
     env_test.step_reset(ego_next=None, ado_next=ado_trajectory_1[:, -1, 0, :])
     ado_trajectory_2 = env_test.predict_wo_ego(t_horizon=4).detach()
-    ado_trajectory_2 = env_test.expand_ado_trajectories(ado_trajectory_2)
+    ado_trajectory_2 = expand_ado_trajectories(env=env_test, ado_trajectories=ado_trajectory_2)
     ado_trajectory_12 = torch.cat((ado_trajectory_1, ado_trajectory_2), dim=1)
     ado_trajectory_12[0, :, 0, -1] = torch.linspace(0, 8 * env.dt, steps=9)
     metric_score_12 = metric_ado_effort(ado_trajectories=ado_trajectory_12, env=env)

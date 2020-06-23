@@ -356,16 +356,6 @@ class GraphBasedEnvironment(abc.ABC):
         assert mantrap.utility.shaping.check_ado_states(ado_states, enforce_temporal=True, num_ados=self.num_ados)
         return ego_state, ado_states
 
-    def expand_ado_trajectories(self, ado_trajectories: torch.Tensor) -> torch.Tensor:
-        assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectories)
-        num_ados, num_samples, t_horizon, _ = ado_trajectories.shape
-        trajectories_full = torch.zeros((num_ados, num_samples, t_horizon, 5))
-        for m_ado, ado in enumerate(self.ados):
-            for m_sample in range(num_samples):
-                trajectories_full[m_ado, m_sample, :, :] = \
-                    ado.expand_trajectory(ado_trajectories[m_ado, m_sample, :, 0:2], dt=self.dt)
-        return trajectories_full
-
     ###########################################################################
     # Simulation graph ########################################################
     ###########################################################################
