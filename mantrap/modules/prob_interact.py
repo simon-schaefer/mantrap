@@ -79,22 +79,29 @@ class InteractionProbabilityModule(PureObjectiveModule):
         objective = objective / len(ado_ids)  # average over ado-ids
 
         # We want to maximize the probability of the unconditioned trajectories in the conditioned
-        # distribution, so we minimize its negative value. When the projected trajectory is very unlikely
-        # in the computed distribution, then the log likelihood grows to very large values, which would
-        # result in very un-balanced objectives. Therefore it is clamped.
-        objective_min = - objective
-        max_value = mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX
-        return objective_min.clamp(-max_value, max_value)
+        # distribution, so we minimize its negative value.
+        objective = - objective
+        #max_value = mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX
+        #objective = objective.clamp(-max_value, max_value)
+        return objective
 
     def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:
         """Normalize the objective/constraint value for improved optimization performance.
 
+        When the projected trajectory is very unlikely in the computed distribution, then the log likelihood
+        grows to very large values, which would result in very un-balanced objectives. Therefore it is clamped.
         The objective value is clamped to some maximal value which enforces the resulting objective
-        values to be in some range. And can hence serve as normalize factor.
+        values to be in some range. And can hence serve as normalize factor. However it turned out that
+        (linear) transformation are not sufficient to deal with the partly very small probability values
+        that occur here, therefore we log the values.
+
+        To perform it this "correction" on both the objective and gradient, the normalization function
+        is used, not the objective core function itself (which is a little bit suboptimal but the only way).
 
         :param x: objective/constraint value in normal value range.
         :returns: normalized objective/constraint value in range [-1, 1].
         """
+        x = - np.sign(x) * np.log(np.abs(x + 1e-30))
         return x / mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX
 
     def gradient_condition(self) -> bool:

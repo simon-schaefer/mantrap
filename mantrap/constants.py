@@ -84,9 +84,9 @@ RRT_PED_RADIUS = 1.0  # [m] minimal safety distance around pedestrian in RRT-pat
 RRT_REWIRE_RADIUS = 10.0  # [m] radius of re-wiring nodes after new node has been added.
 RRT_GOAL_SAMPLING_PROBABILITY = 20.0  # probability of sampling and rewiring goal node.
 
-OBJECTIVE_PROB_INTERACT_MAX = 50.0  # maximal value of projection probability log cost.
-OBJECTIVE_POS_INTERACT_MAX = 10.0  # maximal value of positional-distance cost.
-OBJECTIVE_VEL_INTERACT_MAX = 10.0  # maximal value of velocity-distance cost.
+OBJECTIVE_PROB_INTERACT_MAX = 30.0  # maximal value of projection probability log cost.
+OBJECTIVE_POS_INTERACT_MAX = 3.0  # maximal value of positional-distance cost.
+OBJECTIVE_VEL_INTERACT_MAX = 1.0  # maximal value of velocity-distance cost.
 OBJECTIVE_ACC_INTERACT_MAX = 1.0  # maximal value of acceleration-distance cost.
 
 CONSTRAINT_HJ_MAT_FILE = "2D.mat"  # pre-computed value-/gradient grid mat file.
