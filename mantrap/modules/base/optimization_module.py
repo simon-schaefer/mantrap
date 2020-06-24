@@ -563,7 +563,7 @@ class OptimizationModule(abc.ABC):
         return self._jacobian_current[tag]
 
     def _return_objective(self, obj_value: float, tag: str) -> float:
-        obj_value = self.normalize(obj_value)
+        obj_value = float(self.normalize(obj_value))
         self._obj_current[tag] = self.weight * obj_value
         return self._obj_current[tag]
 
