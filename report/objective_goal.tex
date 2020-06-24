@@ -10,7 +10,7 @@ J_{goal}(\x_{0:T}) = \frac{1}{T} \sum_{t = 0}^T (\x_t - \goal)^2
 By normalization, the cost is independent of the length of the planning horizon $T$ and thus allows us to use the same weight $w_{goal}$ for different planning horizons.
 
 \subsubsection{Horizon weighting}
-Intuitively, as discussed in Chapter \ref{text:introduction} for socially aware navigation, socially aware objectives should be higher weighted than traditional control effort or travel time objectives. This is especially true at the beginning of the planning horizon. For this reason, a horizon-dependent weighting $$\lambda_t$ is introduced into the stage cost of the goal objective, which is small at the beginning of the horizon and large at its end:
+Intuitively, as discussed in Chapter \ref{text:introduction} for socially aware navigation, socially aware objectives should be higher weighted than traditional control effort or travel time objectives. This is especially true at the beginning of the planning horizon. For this reason, a horizon-dependent weighting $\lambda_t$ is introduced into the stage cost of the goal objective, which is small at the beginning of the horizon and large at its end:
 
 \begin{equation}
 J_{goal}(\x_{0:T}) = \frac{1}{T} \sum_{t = 0}^T \lambda_t (\x_t - \goal)^2
@@ -40,7 +40,7 @@ Since the goal objective $J_{goal}(\x_{0:T})$ is only a function of the robot's 
 \nabla J_{goal} = \pd{J_{goal}}{\u_{0:T-1}} = \pd{J_{goal}}{\x_{0:T}} \cdot \pd{\x_{0:T}}{\u_{0:T-1}}
 \end{equation}
 
-As demonstrated, the goal-objectives gradient can be derived by multiplying the gradient of the objective with respect to the robot's trajectory with the gradient of the robot's trajectory with respect to its control inputs. Since the goal-objective directly depends on the trajectory, deriving the first term is straightforward to derive. The second term $\delta \x_{0:T} / \delta \u_{0:T-1}$ is not trivial because of the iterative structure of rolling out state trajectories based on dynamics, and as the robot's dynamics $\f(\cdot)$ can be arbitrary. However, as described in Section \ref{text:approach/formulation}, double integrator dynamics are assumed for the robot so that the whole trajectory $\x_{0:T}$ can be expressed as a function of the initial state $\x_0$ and the control inputs \u_{0:T-1}$ only, as shown in Equation \ref{eq:dynamics_stacked}. Then the term $\delta \x_{0:T} / \delta \u_{0:T-1}$ simplifies to a constant term:
+As demonstrated, the goal-objectives gradient can be derived by multiplying the gradient of the objective with respect to the robot's trajectory with the gradient of the robot's trajectory with respect to its control inputs. Since the goal-objective directly depends on the trajectory, deriving the first term is straightforward to derive. The second term $\delta \x_{0:T} / \delta \u_{0:T-1}$ is not trivial because of the iterative structure of rolling out state trajectories based on dynamics, and as the robot's dynamics $\f(\cdot)$ can be arbitrary. However, as described in Section \ref{text:approach/formulation}, double integrator dynamics are assumed for the robot so that the whole trajectory $\x_{0:T}$ can be expressed as a function of the initial state $\x_0$ and the control inputs $\u_{0:T-1}$ only, as shown in Equation \ref{eq:dynamics_stacked}. Then the term $\delta \x_{0:T} / \delta \u_{0:T-1}$ simplifies to a constant term:
 
 \begin{align}
 \pd{J_{goal}}{\x_{0:T}} &= \pd{}{\x_{0:T}} \frac{1}{N} \sum_{t = 0}^N (\x_t - \goal)^2 \\
