@@ -1,6 +1,6 @@
 \subsection{Efficient Trajectory Unrolling}
 \label{text:approach/runtime/unrolling}
-One of the most promising directions for decreasing the runtime of a trajectory optimization algorithm is to decrease the runtime of the objective and constraints evaluation as well as their gradients. As shown in sections \ref{text:approach/objective} and \ref{text:approach/constraint} the majority of these optimization modules depends on the robot's trajectory $X_R$, rather than on its control inputs $U_R$. However since control inputs are optimized, as described in Section \ref{text:approach/overview}, a computationally efficient transformation from controls and initial state to the trajectory is key for making the trajectory optimization real-time feasible.
+One of the most promising directions for decreasing the runtime of a trajectory optimization algorithm is to decrease the runtime of the objective and constraints evaluation as well as their gradients. As shown in sections \ref{text:approach/objective} and \ref{text:approach/constraint}, the majority of these optimization modules depend on the robot's trajectory $\x_{0:T}$, rather than on its control inputs $\u_{0:T}$. However, since control inputs are optimized, as described in Section \ref{text:approach/overview}, a computationally efficient transformation from controls and initial state to the trajectory is key for making the trajectory optimization real-time feasible.
 \newline
 Fortunately, we assumed that the robot follows double integrator dynamics, which are linear and markovian. Hence, they can be expressed as the following: 
 
@@ -16,16 +16,16 @@ $$A = \begin{bmatrix} 1 & 0 & \dt & 0 \\ 0 & 1 & 0 & \dt \\ 0 & 0 & 1 & 0 \\ 0 
 $$B = \begin{bmatrix} 0 & 0 & \dt & 0 \\ 0 & 0 & 0 & \dt \end{bmatrix}$$
 \end{minipage}
 
-Due to the linear (not linearized !) dynamics $\dt = \Delta t$ can be safely used. In order to fully "unroll" a trajectory the linear dynamic equation \ref{eq:dynamics} would be to be applied iteratively for the length of the trajectory. Since the dynamics themselves are linear (not just a first-order approximation) this computation can be further batched and on this way, speeded up. In fact the full trajectory can be derived merely based on the initial state $\x_0$ and the control input matrix $\u_{0:T}$, as shown in the following:
+Due to the linear (not linearized !) dynamics $\dt = \Delta t$ can be safely used. To fully "unroll" a trajectory, the linear dynamic equation \ref{eq:dynamics} would be applied iteratively for the length of the trajectory. Since the dynamics themselves are linear (not just a first-order approximation), this computation can be further batched and, in this way, speed up. In fact, the full trajectory can be derived merely based on the initial state $\x_0$ and the control input matrix $\u_{0:T}$, as shown in the following:
 
 \begin{align}
 \x_1 &= A \x_0 + B \ u_0 \\
-\x_2 &= A \x_0 + B \ u_1 = A^2 \x_0 + A B \ u_0 + B \ u_1\\ 
+\x_2 &= A \x_0 + B \ u_1 = A^2 \x_0 + A B \ u_0 + B \ u_1\\
 \hdots &= \hdots \\
 \begin{bmatrix} \x_1 \\ \x_2 \\ \vdots \\ \x_n \end{bmatrix} &= \underbrace{\begin{bmatrix} A \\ A^2 \\ \vdots \\ A^n \end{bmatrix}}_{\substack{A_n}} \x_0 + \underbrace{\begin{bmatrix} B & 0 & \hdots & \hdots & 0 \\ AB & B & 0 & \hdots & 0 \\ \hdots & \hdots & \hdots & \hdots & \hdots \\ A^{n-1} B & A^{n-2} B & \hdots & \hdots & B \end{bmatrix}}_{\substack{B_n}} \begin{bmatrix} \u_0 \\ \u_1 \\ \vdots \\ \u_{n-1} \end{bmatrix}
 \end{align}
 
-In summary, we get the following (also linear) expression for computing the full robot trajectory at once. As demonstrated in \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/timing.ipynb}{examples/tools/timing} using the fully batched formulation speeds up the trajectory "unrolling" by about a factor of 30.  
+In summary, we get the following (also linear) expression for computing the full robot trajectory at once. As demonstrated in \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/timing.ipynb}{examples/tools/timing} using the fully batched formulation speeds up the trajectory "unrolling" by about a factor of 30.
 
 \begin{equation}
 \x_{1:n} = A_n \x_0 + B_n \u_{0:T-1}

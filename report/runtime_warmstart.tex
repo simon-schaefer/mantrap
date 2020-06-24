@@ -2,7 +2,7 @@
 \label{text:approach/runtime/warm_starting}
 It is widely known that warm starting an optimization can be very beneficial for its convergence speed for several optimization algorithms, e.g. shown in \cite{Banerjee2020} for \ac{GuSTO} or for \ac{IPOPT} in \cite{Shahzad2010}, \cite{John2008} or \cite{Spielberge2019}.
 \newline
-Within project \project the algorithm has been warm-started by solving the optimization problem posed in problem \ref{eq:formulation} while ignoring all objectives and constraints that relate to pedestrians, i.e. by solving the following optimization problem: \\
+Within project \project, the algorithm has been warm-started by solving the optimization problem posed in problem \ref{eq:formulation} while ignoring all objectives and constraints that relate to pedestrians, i.e., by solving the following optimization problem: \\
 
 \begin{problem}{Simplified optimization problem for warm-starting}
 \begin{align}
@@ -11,11 +11,11 @@ Within project \project the algorithm has been warm-started by solving the optim
 & \x \in \xset & \forall t \in [0, T]\\
 & \u_t \in \uset & \forall t \in [0, T]\\
 & \x_0 \in \xset_0
-\end{align} 
+\end{align}
 \label{eq:formulation_warm_starting}
 \end{problem}
 
-Since the simplified optimization problem in problem \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\tilde{\Phi}$ it is much easier and more efficient to solve, being a convex quadratic program. \\
+Since the simplified optimization problem in problem \ref{eq:formulation_warm_starting} does not depend on the pedestrian dynamics model $\tilde{\Phi}$, it is easier and more efficient to solve, being a convex quadratic program. \\
 
 \begin{figure}[!ht]
 \begin{center}

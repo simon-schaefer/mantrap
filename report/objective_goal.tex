@@ -1,6 +1,6 @@
 \subsection{Goal Objective}
 \label{text:approach/objective/goal}
-The goal objective gives an incentive for the optimizer to choose a solution that targets the goal state. It simply consists of the squared L2-norm between each robot trajectory point and the goal state $\goal$, normalized over the full planning horizon $N$:
+The goal objective gives an incentive for the optimizer to choose a solution that targets the goal state. It simply consists of the squared L2-norm between each robot trajectory point and the goal state $\goal$, normalized over the full planning horizon $T$:
 
 \begin{equation}
 J_{goal}(\x_{0:T}) = \frac{1}{T} \sum_{t = 0}^T (\x_t - \goal)^2
@@ -10,14 +10,14 @@ J_{goal}(\x_{0:T}) = \frac{1}{T} \sum_{t = 0}^T (\x_t - \goal)^2
 By normalization, the cost is independent of the length of the planning horizon $T$ and thus allows us to use the same weight $w_{goal}$ for different planning horizons.
 
 \subsubsection{Horizon weighting}
-Intuitively, as discussed in Chapter \ref{text:introduction} for socially aware navigation socially-aware objectives should be higher weighted than traditional control effort or travel time objectives. This is especially true at the beginning of the planning horizon. For this reason the a horizon dependent weighting $\lambda_t$ is introduced into the stage cost of the goal objective, which is small at the beginning of the horizon and large at its end: 
+Intuitively, as discussed in Chapter \ref{text:introduction} for socially aware navigation, socially aware objectives should be higher weighted than traditional control effort or travel time objectives. This is especially true at the beginning of the planning horizon. For this reason, a horizon-dependent weighting $$\lambda_t$ is introduced into the stage cost of the goal objective, which is small at the beginning of the horizon and large at its end:
 
 \begin{equation}
 J_{goal}(\x_{0:T}) = \frac{1}{T} \sum_{t = 0}^T \lambda_t (\x_t - \goal)^2
 \label{eq:goal_weighted}
 \end{equation}
 
-As shown later on this modification empowers a fast convergence to evasive movements of the robot, when necessary to avoid un-safe situations, while properties of $J_{goal}(\cdot)$ such as most importantly convexity remain unchanged. In Table \ref{table:goal_horizon_weighting} the convergence speed of both the "un-weighted" and the "weighted" objective formulation are compared over 100 runs in a simplified setup, with no pedestrian in the scene and random assignments of the robot's initial and goat state. Weighting the cost terms non-uniformly over the horizon enables finding "trade-offs" of a locally higher cost for a faster global convergence such as gaining speed in a non-goal-direction at the beginning of the horizon but leads to a smaller cost at the end of it. 
+As shown later on, this modification empowers a fast convergence to the robot's evasive movements, when necessary, to avoid unsafe situations. At the same time, properties of $J_{goal}(\cdot)$, such as, most importantly, convexity, remain unchanged. In Table \ref{table:goal_horizon_weighting}, the convergence speed of both the "unweighted" and the "weighted" objective formulation are compared over 100 runs in a simplified setup, with no pedestrian in the scene and random assignments of the robot's initial and goat state. Weighting the cost terms non-uniformly over the horizon enables finding "trade-offs" of a locally higher cost for faster global convergence, such as gaining speed in a non-goal-direction at the beginning of the horizon but leads to a smaller cost at the end of it.
 
 \begin{table}[!ht]
 \begin{center}
@@ -34,13 +34,13 @@ Avg. $95 \%$ decay of objective value & 5.86 & 6.64 \\
 \end{table}
 
 \subsubsection{Gradient}
-Since the goal objective $J_{goal}(\x_{0:T})$ is only a function of the robot's planned trajectory and the goal state, its jacobian can be derived without further knowledge of the pedestrian prediction model, merely using the (known) robot dynamics. As described in Section \ref{text:approach/overview} the robot controls are optimized. Hence by applying the chain rule we get: 
+Since the goal objective $J_{goal}(\x_{0:T})$ is only a function of the robot's planned trajectory and the goal state, its Jacobian can be derived without further knowledge of the pedestrian prediction model, merely using the (known) robot dynamics. As described in Section \ref{text:approach/overview}, the robot controls are optimized. Hence by applying the chain rule, we get:
 
 \begin{equation}
 \nabla J_{goal} = \pd{J_{goal}}{\u_{0:T-1}} = \pd{J_{goal}}{\x_{0:T}} \cdot \pd{\x_{0:T}}{\u_{0:T-1}}
 \end{equation}
 
-As demonstrated, the goal-objectives gradient can be derived by multiplying the objectives gradient with respect to the robot's trajectory with the gradient of the robot's trajectory with respect to its control inputs. Since the goal-objective directly depends on the trajectory, deriving the first term is straight-forward to derive. The second term $\delta \x_{0:T} / \delta \u_{0:T-1}$ is not trivial in general, because of the iterative structure of rolling out state trajectories based on dynamics and as the robot's dynamics $\f(\cdot)$ can be arbitrary, however as described in Section \ref{text:approach/formulation} double integrator dynamics are assumed for the robot, so that the whole trajectory $\x_{0:T}$ can be expressed as function of the initial state $\x_0$ and the control inputs $\u_{0:T-1}$ only, as shown in equation \ref{eq:dynamics_stacked}. Then the term $\delta \x_{0:T} / \delta \u_{0:T-1}$ simplifies to a constant term:
+As demonstrated, the goal-objectives gradient can be derived by multiplying the gradient of the objective with respect to the robot's trajectory with the gradient of the robot's trajectory with respect to its control inputs. Since the goal-objective directly depends on the trajectory, deriving the first term is straightforward to derive. The second term $\delta \x_{0:T} / \delta \u_{0:T-1}$ is not trivial because of the iterative structure of rolling out state trajectories based on dynamics, and as the robot's dynamics $\f(\cdot)$ can be arbitrary. However, as described in Section \ref{text:approach/formulation}, double integrator dynamics are assumed for the robot so that the whole trajectory $\x_{0:T}$ can be expressed as a function of the initial state $\x_0$ and the control inputs \u_{0:T-1}$ only, as shown in Equation \ref{eq:dynamics_stacked}. Then the term $\delta \x_{0:T} / \delta \u_{0:T-1}$ simplifies to a constant term:
 
 \begin{align}
 \pd{J_{goal}}{\x_{0:T}} &= \pd{}{\x_{0:T}} \frac{1}{N} \sum_{t = 0}^N (\x_t - \goal)^2 \\
@@ -52,6 +52,6 @@ As demonstrated, the goal-objectives gradient can be derived by multiplying the 
 \label{eq:goal_gradient_dynamics}
 \end{align}
 
-with $A_n, B_n$ the stacked state-space description matrices as described in Section \ref{text:approach/runtime/unrolling}. 
+with $A_n, B_n$, the stacked state-space description matrices as described in Section \ref{text:approach/runtime/unrolling}.
 \newline
-Overall the goal objective and its gradient are very efficient, cheap to compute, having linear complexity with the length of the planning horizon $T$, and being independent of the number of pedestrians. Furthermore, it is strictly convex, which improves the optimization convergence speed. Therefore it is quite valuable for warm-starting the optimization algorithm, as further explained in Section \ref{text:approach/runtime/warm_starting}.
+Overall, the goal objective and its gradient are very efficient, cheap to compute, having linear complexity with the length of the planning horizon $T$, and independent of the number of pedestrians. Furthermore, it is strictly convex, which improves the optimization convergence speed. Therefore, it is quite valuable for warm-starting the optimization algorithm, as further explained in Section \ref{text:approach/runtime/warm_starting}.
