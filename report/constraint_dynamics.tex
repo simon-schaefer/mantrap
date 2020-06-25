@@ -1,6 +1,6 @@
 \subsection{Dynamics Constraints}
 \label{text:approach/constraint/dynamics}
-The dynamics constraints subside all constraints in problem \ref{eq:formulation} that are not directly related to safety, i.e. 
+The dynamics constraints subside all constraints in problem \ref{problem:general} that are not directly related to safety, i.e. 
 
 \begin{align}
 \label{eq:constraint_f}
@@ -21,10 +21,10 @@ Using the shooting trajectory optimization paradigm, the decision variables are 
 \textrm{s.t. } \quad & g^L \leq g(x) \leq g^U \\
 & x^L \leq x \leq x^U 
 \end{align}
-\label{eq:formulation_ipopt}
+\label{problem:general_ipopt}
 \end{problem}
 
-As indicated in Section \ref{text:approach/formulation}, the bounds of the controls $\u_t$ have a shape, as the decision variable $\x$ in problem \ref{eq:formulation_ipopt}. Therefore \ref{eq:constraint_u} is implicitly posed, without further ado, just by using the robot's control input bounds as bounds of the decision variable. Also, the constraints \ref{eq:constraint_f} and  \ref{eq:constraint_x0} are satisfied by the problem design, using the shooting method, leaving merely the constraint \ref{eq:constraint_x} to be explicitly defined. The state $\x$ of the robot incorporates both its position and its velocity. While the prediction models, objectives, and constraints only depend on relative measures regarding the agent's positions, the positional subset of $\xset$ can be safely assumed to be unbounded ($\xset_{pos} = \mathbb{R}^2$). Due to the speed boundaries imposed on the robot ($||v||_1 \leq v_{max}$, comp. Section \ref{text:approach/formulation}), in order for the solution to be feasible, a maximal speed constraint must be established:
+As indicated in Section \ref{text:approach/formulation}, the bounds of the controls $\u_t$ have a shape, as the decision variable $\x$ in problem \ref{problem:general_ipopt}. Therefore \ref{eq:constraint_u} is implicitly posed, without further ado, just by using the robot's control input bounds as bounds of the decision variable. Also, the constraints \ref{eq:constraint_f} and  \ref{eq:constraint_x0} are satisfied by the problem design, using the shooting method, leaving merely the constraint \ref{eq:constraint_x} to be explicitly defined. The state $\x$ of the robot incorporates both its position and its velocity. While the prediction models, objectives, and constraints only depend on relative measures regarding the agent's positions, the positional subset of $\xset$ can be safely assumed to be unbounded ($\xset_{pos} = \mathbb{R}^2$). Due to the speed boundaries imposed on the robot ($||v||_1 \leq v_{max}$, comp. Section \ref{text:approach/formulation}), in order for the solution to be feasible, a maximal speed constraint must be established:
 
 \begin{equation}
 \x_t \in \xset \Rightarrow -v_{max} \leq g_{v_{max}}(\x_t) = \dot{\x}_t \leq v_{max} \quad \forall t \in [0, T]

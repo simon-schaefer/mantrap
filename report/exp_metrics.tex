@@ -63,7 +63,7 @@ MSD = \min_{\substack{\forall k \in K, \\ \forall i \in \stepssolution_{interp}}
 \end{equation}
 
 \subsection{Extra Travel Time (ETT)}
-The ETT indicates the additional travel time the robot requires to reach its goal, compared to going straight from initial to target state. The time-optimal solution $\stepssolution_{direct} \cdot \dt$ is evaluated by solving a similar simplified optimization problem as Problem \ref{eq:formulation_warm_starting}, i.e.\ just taking into account the robot's dynamics constraints as well as a goal-driven objective function. Compared to Equation \ref{eq:t_extra} ETT by using a simplified trajectory optimization to retrieve the optimal time solution, instead of assuming some preferred velocity $v_{pref}$, the robot's dynamics are taken into account. On this way the metric is not distorted by delays are non-interaction based effects, such as an initial acceleration period.  
+The ETT indicates the additional travel time the robot requires to reach its goal, compared to going straight from initial to target state. The time-optimal solution $\stepssolution_{direct} \cdot \dt$ is evaluated by solving a similar simplified optimization problem as Problem \ref{problem:general_warm_starting}, i.e.\ just taking into account the robot's dynamics constraints as well as a goal-driven objective function. Compared to Equation \ref{eq:t_extra} ETT by using a simplified trajectory optimization to retrieve the optimal time solution, instead of assuming some preferred velocity $v_{pref}$, the robot's dynamics are taken into account. On this way the metric is not distorted by delays are non-interaction based effects, such as an initial acceleration period.  
 
 \begin{equation}
 ETT = (\stepssolution - \stepssolution_{direct})\dt
@@ -82,3 +82,9 @@ The solver has to balance multiple objectives, mainly the minimizing the distanc
 \begin{equation}
 TGD = \frac{||\x_T - \goal||_2}{||\x_0 - \goal||_2}
 \end{equation}
+
+\subsection{Mean Solving Iterations (MSI)}
+The MSI is a metric for comparing the effectiveness of two formulations of an optimization problem, which are being solved using the same solver and the same initial scenario. Basically, MSI is the mean number of solving iterations over multiple experiments.
+
+\subsection{Mean 95 \% Objective Decay (M95OD)}
+Similarly to the MSI metric, the M95OD evaluates the convergence speed of an optimization problem, for the same solver and initial scenario. While MSI determines the average number of iterations to solve an optimization up to the (locally) optimal solution, M95OD is the mean of solver iterations until the objective value has decreased by 95 \% of the range between initial and terminal value.

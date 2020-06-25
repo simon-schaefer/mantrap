@@ -89,25 +89,6 @@ Besides, the value function is symmetric in direction $x$ and $y$, as demonstrat
 \paragraph{Value Function approximation}
 Due to the curse of dimensionality, the value function cannot be determined with a resolution smaller than $0.5 m$ or $0.5 m/s$ using a feasible amount of pre-computation as well as size of the buffered value function grid and its gradients on the RAM online \cite{Pavone2020}. There have been several methods for approximating the value function in post-computation, such as \cite{Zhong2013} comparing the approximate performance of several regression classes such as Nearest Neighbor or Locally Weighted Projection Regression (LMDP) or \cite{Kuper2018} about verifiable safety-critical deep networks. It turns out that using Nearest Neighbor already lowers the control cost and improves stabilization capability of the value function based MPC control system for diverse (simple) experimental setups such as an inverted pendulum, which holds even for time horizons $> 1.5s$. These results motivated comparing several interpolation methods for approximating the value function locally.
 
-\begin{figure}[!ht]
-\begin{center}
-\includegraphics[width=0.45\textwidth]{images/hj_bar_linear.png}
-\includegraphics[width=0.45\textwidth]{images/hj_bar_nearest.png}
-\caption{Logarithmic value function approximation error using linear (left) and nearest neighbor (right) interpolation methods based on various pre-computed grid sizes (small < interior < medium)}
-\label{img:hj_approx_bar}
-\end{center}
-\end{figure}
-
-\begin{figure}[!ht]
-\begin{center}
-\includegraphics[width=\imgwidth]{images/hj_hist_linear.png}
-\caption{Absolute error distribution over joint system state axes using linear interpolation based on various pre-computed grid sizes (small < interior < medium)}
-\label{img:hj_approx_hist}
-\end{center}
-\end{figure}
-
-Figure \ref{img:hj_approx_bar} shows the logarithmic approximation error for several pre-computed grid sizes and using linear (as in \cite{Leung2020})) and Nearest Neighbor interpolation methods. LWPR (not shown here) has been tested as well but turned out to be infeasible for a large number of grid points.\footnote{For more information about the implementation of the LWPR value function approximation see \href{https://github.com/simon-schaefer/HJReachibility}{HJ-Reachability Toolbox} on GitHub.} For computing the error metric, the value function has been computed on a dense grid exactly, and point-wise compared with the grid interpolated approximations. While linear interpolation widely outperforms Nearest Neighbor, as expected, the absolute error is tiny. As displayed in Figure \ref{img:hj_approx_hist}, the interpolation error is not uniform over all joint state axes, but larger for positional axes (which likely is due to the larger amount of non-linearity in position compared to velocity directions, compare Figure \ref{img:hj_value_function}). Therefore, the number of grid points have not been equally distributed over the axes, but biased to the positional axes (interior), while keeping the overall size of the grid constant.
-
 \paragraph{\ac{HJR} safety constraint}
 \cite{Leung2020} presents a safety-constraint, based on the resulting value function's gradient, by defining the set of safety-preserving robot control actions as:
 

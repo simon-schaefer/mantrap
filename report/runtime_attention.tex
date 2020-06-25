@@ -1,2 +1,13 @@
 \subsection{Attention}
 \label{text:approach/runtime/filtering}
+For a trajectory optimization to be feasible for online applications, it must be efficient to solve. As empirically shown by experiments in Section \ref{text:experiments/results}, the computational bottleneck of solving Problem \ref{problem:general} is evaluating and, particularly, differentiating the components, which depend on the interaction between robot and pedestrians. By design, the computational cost of the safety constraint has already been reduced. However, the interactive cost a presented in Section \ref{text:approach/objective/interactive} cannot be further run-time optimized, or occluded, being one of the core parts of underlying algorithm. Therefore there are essentially two ways to increase overall runtime efficiency of the trajectory optimization: Firstly, reducing the number of solver iterations for convergence, and secondly lowering the runtime cost of the evaluating the optimization components itself. 
+\newline
+While the number of solver iterations has already largely been reduced by warm-starting the optimization, the attention focusses on merely taking into account important factors into the evaluation, with improves runtime without having a large impact on the resulting behavior of the algorithm. Specifically, the attention filter decides which pedestrian are taken into account for a specific (interactive objective) function evaluation. 
+\newline
+Using the distance between the robot as each pedestrian is a natural choice for filtering out the agents to consider for the trajectory optimization; the larger the distance is, the smaller the impact of the robot probably is. In fact, the Trajectron model uses a similar distance-based metric for building and evaluating edges in their graph network \cite{Salzmann2020}. 
+
+\begin{equation}
+\attention(\x, \xped[k]) = \left( ||\x - \xped[k]||_2 > D_{Attention} \right)
+\end{equation}
+
+Although euclidean distance-based filtering is a quite naive way of distributing attention to pedestrians in the scene, it shows to be quite effective in reducing the runtime of the interactive objective and gradient evaluations, and therefore of the whole algorithm. A comparison to more sophisticated approaches such as using (forward) reachability to conservatively estimate the pedestrians that eventually could impinge on the robot trajectory, or focussing on only a specific pedestrian instead of a set of pedestrians, as used by game-theoretic crowd navigation works (as presented in Chapter \ref{text:related/crowd_navigation}, e.g.\, \cite{Bouzat2014}\cite{Nikolaidis2017}), is given in Section \ref{text:experiments/results}.

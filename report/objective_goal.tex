@@ -17,21 +17,7 @@ J_{goal}(\x_{0:T}) = \frac{1}{T} \sum_{t = 0}^T \lambda_t (\x_t - \goal)^2
 \label{eq:goal_weighted}
 \end{equation}
 
-As shown later on, this modification empowers a fast convergence to the robot's evasive movements, when necessary, to avoid unsafe situations. At the same time, properties of $J_{goal}(\cdot)$, such as, most importantly, convexity, remain unchanged. In Table \ref{table:goal_horizon_weighting}, the convergence speed of both the "unweighted" and the "weighted" objective formulation are compared over 100 runs in a simplified setup, with no pedestrian in the scene and random assignments of the robot's initial and goat state. Weighting the cost terms non-uniformly over the horizon enables finding "trade-offs" of a locally higher cost for faster global convergence, such as gaining speed in a non-goal-direction at the beginning of the horizon but leads to a smaller cost at the end of it.
-
-\begin{table}[!ht]
-\begin{center}
-\begin{tabular}{c|c|c}
- & Weighted & Un-Weighted \\
-\hline
-Avg. number of solving iterations & 9.58 & 9.64 \\
-\hline
-Avg. $95 \%$ decay of objective value & 5.86 & 6.64 \\
-\end{tabular}
-\caption{Comparison of key performance parameter of the optimization using either the "un-weighted" (Equation \ref{eq:goal_unweighted}) or the "weighted" (Equation  \ref{eq:goal_weighted}) goal objective formulation over 100 runs in a simplified environment setup. For further details please have a look into the example notebook: \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/module_goal.ipynb}{examples/module\_goal}.}
-\label{table:goal_horizon_weighting}
-\end{center}
-\end{table}
+As shown later on, this modification empowers a fast convergence to the robot's evasive movements, when necessary, to avoid unsafe situations. At the same time, properties of $J_{goal}(\cdot)$, such as, most importantly, convexity, remain unchanged. 
 
 \subsubsection{Gradient}
 Since the goal objective $J_{goal}(\x_{0:T})$ is only a function of the robot's planned trajectory and the goal state, its Jacobian can be derived without further knowledge of the pedestrian prediction model, merely using the (known) robot dynamics. As described in Section \ref{text:approach/overview}, the robot controls are optimized. Hence by applying the chain rule, we get:
