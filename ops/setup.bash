@@ -21,6 +21,7 @@ source "${PROJECT_HOME}"/"${VIRTUAL_ENV}"/bin/activate
 echo $'Installing package requirements ...'
 cd "${PROJECT_HOME}" || return
 pip3 install -r "${PROJECT_HOME}"/ops/requirements.txt --quiet
+pip3 install -r "${EXTERNAL_HOME}"/sgan/requirements.txt --quiet
 pip3 install -r "${EXTERNAL_HOME}"/GenTrajectron/requirements.txt --quiet
 
 # Install project packages.
