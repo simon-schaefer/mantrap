@@ -30,7 +30,6 @@ def custom_avoid(env_type: mantrap.environment.base.GraphBasedEnvironment.__clas
         config_name="custom_avoid",
         env_type=env_type,
         ado_histories=ado_histories,
-        ego_type=mantrap.agents.DoubleIntegratorDTAgent,
         ego_state=ego_state,
         ado_goals=ado_goals,
         **env_kwargs

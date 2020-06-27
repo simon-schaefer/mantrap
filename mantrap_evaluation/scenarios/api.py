@@ -8,7 +8,6 @@ def create_environment(
     env_type: mantrap.environment.base.GraphBasedEnvironment.__class__,
     config_name: str,
     ado_histories: typing.List[torch.Tensor],
-    ego_type: mantrap.agents.base.DTAgent.__class__ = None,
     ego_state: torch.Tensor = None,
     ado_ids: typing.List[str] = None,
     ado_goals: typing.List[torch.Tensor] = None,
@@ -21,8 +20,7 @@ def create_environment(
     assert ego_state is None or mantrap.utility.shaping.check_ego_state(ego_state, enforce_temporal=False)
     assert ado_goals is None or all([mantrap.utility.shaping.check_goal(goal) for goal in ado_goals])
 
-    ego_kwargs = {"ego_position": ego_state[0:2], "ego_velocity": ego_state[2:4]} if ego_type is not None else None
-    env = env_type(ego_type=ego_type, **ego_kwargs, config_name=config_name, **env_kwargs)
+    env = env_type(ego_position=ego_state[0:2], ego_velocity=ego_state[2:4], config_name=config_name, **env_kwargs)
     for m_ado, history in enumerate(ado_histories):
         ado_kwargs = {
             "position": history[-1, 0:2].float(),

@@ -24,7 +24,6 @@ def custom_passing(env_type: mantrap.environment.base.GraphBasedEnvironment.__cl
         config_name="custom_passing",
         env_type=env_type,
         ado_histories=[ado_histories],
-        ego_type=mantrap.agents.DoubleIntegratorDTAgent,
         ego_state=ego_state,
         ado_goals=[ado_goals],
         **env_kwargs
