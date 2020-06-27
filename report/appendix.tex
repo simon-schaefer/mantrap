@@ -25,51 +25,6 @@ The expected value over all modes $m \in [0, M]$ super-imposes the \ac{PDF} for 
 
 
 \chapter{Appendix - Detailed Planning Approach Comparison}
-%\begin{itemize}
-%    \item Chance-Constrained Model Predictive Control \cite{Lew2019}, \cite{Ono2015CCMPC}, \cite{Ono2012}, \cite{Blackmore2012}, \cite{chow2015DTRC}, \cite{ono2008}: CCMPC minimizes the cost function $J(x(t), u(t))$ with respect to a point-wise risk allocation constraint. Therefore the solution is guaranteed to be first-order and locally optimal (comp. \cite{bonalli2019}) and to fulfill the risk constraint, instead of deriving some trade-off between risk and cost (when the risk would be part of the cost function). However the constrained risk distribution is neither convex nor linear, therefore it cannot be used directly in a constraint (efficiently), but has to be reformulated as following (re-approximate in every step, SQP). To reformulate these constraints the distribution has to be remodelled in "analytically" expressible distributions: 
-%    
-%    \begin{itemize}
-%        \item Mean-variance analysis ("ellipsoidal" overlapping) \cite{herzog2006}, \cite{hewing2018}, \cite{Lew2019} (when $y ~ N(\mu, \Sigma)$ and $\chi = $ quantile of chi-squared distribution): 
-%        
-%        $$Pr(||x - y||_2 \geq r) \geq \rho_{max}$$ $$||x-\mu||_2 + \lambda_{max}(\sigma) * \chi(\rho_{max}) \geq r$$
-%        
-%        \item Cone Constraint (\cite{calafiore2006}, \cite{Lew2019})
-%    \end{itemize}
-%    
-%    Following \cite{ono2008} the risk allocation and the control sequence with tightened constrained can be divided in two steps (iterative risk allocation), in order to be less conservative in estimating the real risk and more computationally efficient.
-%    
-%    \item Belief Space Planning using Sequential Action Control \cite{ansari2017}, \cite{nishimura2019}: Given some nominal trajectory (e.g. just going straight from start to goal position) find the optimal perturbation for optimizing control objective (J = Tracking + Control + RBF for risk, entropy risk, risk-awareness of ego is controlled by $\sigma$-factor in risk-related control objective) by forward simulation and backward derivation of Hamiltonian.
-%    
-%    \item Chance-Constrained Rapidly-Exploring Random Trees \cite{Luders2011}, \cite{Luders2010}, \cite{Luders2013}, \cite{Aoude2013}: Under the assumption of linear Gaussian systems RRT can be used for chance-constrained trajectory optimization in continuous space by propagating both the mean and the variance of a state. CC-RRTstar guarantees asymptotic optimality, while a particle based approach can be used for non-linear system dynamics. As shown in \cite{Aoude2013} this approach can be used for dynamic and uncertain obstacles such as pedestrians. While not being applicable to "proper" real-time learned sampling distributions can be used to speed up convergence \cite{Ichter2017}.
-%
-%    \item Multi-Policy Decision-Making \cite{Galceran2017}: Based on a set of (pre-computed) policies first match the observed behavior of each agent to some policy (Baysian changepoint detection), then sample from policy in order to obtain high-likelihood action for each agent. Afterwards forward simulate all assigned policies and execute the policy with maximum expected reward value. 
-%
-%    \item Chance-Constrained Dynamic Programming \cite{Ono2015DP}, \cite{chow2015}
-%    
-%    \item \ac{POMDP} solver (e.g. POMDP-lite \cite{Chen2016} or DESPOT-alpha \cite{Garg2019}): In general the state transitions in the Trajectron model are \ac{POMDP}s. When discretizing states (continuou => particle filter) and actions a policy can be determined that maximizes some human-engineered utility function, given random state transitions as defined by the Trajectron model. Although computationally very expensive, especially it scales badly with increasing space resolution, the solution in theory should be (globally) optimal. Similarly online belief state planning methods such as Monte Carlo tree search (e.g. POMCP \cite{silver2010}), Lookahead with approximate value function, etc. might be used (maybe based on some offline-computed utility function). However the problem's structure is not used that could safe computational expenses. 
-%    
-%    \item Deep Reinforcement Learning \cite{Chen2017}, \cite{Everett2018}: Socially aware reinforcement learning approach mapping directly from ego's and other agent's joint state to a trajectory: 
-%    
-%    \begin{align*}
-%        s &= \begin{bmatrix} s_{ego} & s_{o} \end{bmatrix} \\
-%        s_{ego} &= \begin{bmatrix} d_g& v_{pref} & v_x & v_y & \psi & r  \end{bmatrix} \\
-%        s_o &= \begin{bmatrix} \title{p}_x & \title{p}_y & \title{v}_x & \title{v}_y & \tilde{r} & \tilde{d}_a & \title{\phi} & \tilde{b}_{on} \end{bmatrix}
-%    \end{align*}
-%    
-%    while the reward function is a sum of human-engineered encoded social norms (e.g. right-hand rule). 
-% 
-%    \item Safe-Interval Planning \cite{Phillips2011}: Efficient AStar graph search for dynamic obstacles using time-intervals instead of single time-steps for planning, in order to avoid the increase in the dimensionality of the planning problem with increasing time horizon (safe intervals = time-intervals without collision). SIPP provides the same optimality and completeness guarantees as planning with time as an additional dimension (time-steps). For every grid cell the sequence of safe and collision intervals is defined based on a risk-threshold (i.e. point-wise risk allocation). 
-%    
-%    \item Inverse Reinforcement Learning \cite{Tschiatschek2019}: In order to shrink the search space for finding a trajectory inverse reinforcement learning can be used based on the offline computation of "good" trajectories (e.g. human demonstration, brute-force, DESPOT, etc.) for some scenarios. Thereby the reward function can be built, which basically can be used as a single, static cost-map which can be used by "standard" path planning algorithms such as Dijkstra to find an optimal trajectory. As shown in \cite{Tschiatschek2019} IRL can be used to both match the teacher’s demonstrated behavior but also takes its constraints, such as physical constraints of the ego dynamics or point-wise risk constraints. However a lot of optimal trajectories still are required for training. Compared to mapping from the observations to the policy directly using IRL is more tractable, since the resulting cost map might be interpretable. 
-%    
-%    \item Adaptive Dimensionality \cite{Vemula2016}
-%    
-%    \item Signal Temporal Logic \cite{Sadigh2016}
-%    
-%    \item Optimal Reciprocal Collision Avoidance \cite{Ma2018} \cite{Berg2011} \cite{Hennes2012} \cite{Luo2018}: Local collision avoidance algorithm modeling the pedestrians as velocity obstacles with deterministic (just one or a set of) velocity. To determine the velocity of every agent in the scene for every pair of agents a set $VO_{A|B}^\tau$ (the velocity obstacle for $A$ induced by $B$ for time window $\tau$) is constructed. Using LP the minimal velocity adaption for every agent is determined so that no pair of velocities is in some velocity obstacle set, assuming that all agents follow the same strategy (!). In \cite{Luo2018} ORCA is adapted to model pedestrian movement by e.g. introducing a notion of patience and to deal with non-holonomic dynamics (P-ORCA). Using Hyp-DESPOT in every time-step the belief of the pedestrians intentions is updated (actions = [ACCELERATE, DE- CELERATE, or MAINTAIN] and some human-engineered reward function trading collision and speed of the agent), which is used for a path update (Hybrid Astar) and velocity updates (P-ORCA).  
-%
-%\end{itemize}
-
 There are several categories from which the properties of planning approaches can be evaluated: 
 
 \begin{itemize}

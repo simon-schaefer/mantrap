@@ -77,7 +77,7 @@ MPE = \frac{1}{\stepssolution} \frac{1}{K} \sum_{i=0}^{\stepssolution} \sum_{k=0
 \end{equation}
 
 \paragraph{\ac{TGD}}
-The solver has to balance multiple objectives, mainly the minimizing the distance to its goal state while minimally disturbing the surrounding pedestrian's motions. While the second part of the objective has been captured by the MPE and MSD metric, the first part is assessed by the \ac{TGD} metric. \ac{TGD} simply compares the initial goal distance with the final goal distance of a robot trajectory, to be independent of the absolute distance and therefore comparable over different scenarios:
+The solver has to balance multiple objectives, mainly minimizing the distance to its goal state while minimally disturbing the surrounding pedestrian's motions. While the second part of the objective has been captured by the MPE and MSD metric, the first part is assessed by the \ac{TGD} metric. \ac{TGD} simply compares the initial goal distance with the final goal distance of a robot trajectory, to be independent of the absolute distance and therefore comparable over different scenarios:
 
 \begin{equation}
 TGD = \frac{||\x_T - \goal||_2}{||\x_0 - \goal||_2}
