@@ -41,6 +41,8 @@ class OptimizationLogger:
 
         logger = logging.getLogger()
         logger.setLevel(log_level)
+        if len(logger.handlers) == 0:
+            logger.addHandler(logging.StreamHandler())
         console = logger.handlers[0]
         console.setFormatter(formatter)
         console.setLevel(log_level)

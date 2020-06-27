@@ -84,6 +84,11 @@ RRT_PED_RADIUS = 1.0  # [m] minimal safety distance around pedestrian in RRT-pat
 RRT_REWIRE_RADIUS = 10.0  # [m] radius of re-wiring nodes after new node has been added.
 RRT_GOAL_SAMPLING_PROBABILITY = 20.0  # probability of sampling and rewiring goal node.
 
+ORCA_AGENT_RADIUS = 0.5  # ado collision-avoidance safety radius [m].
+ORCA_MAX_GOAL_DISTANCE = 0.5  # [m] maximal distance to goal to have zero preferred velocity.
+ORCA_SAFE_TIME = 0.8  # [s] time interval of guaranteed no collisions. The larger it is, the tighter the
+# constraints, but more deviating paths.
+
 OBJECTIVE_PROB_INTERACT_MAX = 30.0  # maximal value of projection probability log cost.
 OBJECTIVE_POS_INTERACT_MAX = 3.0  # maximal value of positional-distance cost.
 OBJECTIVE_VEL_INTERACT_MAX = 1.0  # maximal value of velocity-distance cost.
