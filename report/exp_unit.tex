@@ -1,11 +1,7 @@
-\section{Experimental Results}
-\label{text:experiments/results}
+\section{Unit Experiments}
+\label{text:experiments/unit}
 
-\subsection{Experimental Setup}
-- walking speed \cite{Bohannon1997}
-
-\subsection{Unit Experiments}
-\subsubsection{Horizon Weighting for Goal Objective Function}
+\subsection{Horizon Weighting for Goal Objective Function}
 In Table \ref{table:goal_horizon_weighting}, the convergence speed of both the "unweighted" \ref{eq:goal_unweighted} and the "weighted" \ref{eq:goal_weighted} objective formulation are compared over 100 runs in a simplified setup, with no pedestrian in the scene and random assignments of the robot's initial and goat state. Weighting the cost terms non-uniformly over the horizon enables finding "trade-offs" of a locally higher cost for faster global convergence, such as gaining speed in a non-goal-direction at the beginning of the horizon but leads to a smaller cost at the end of it.
 
 \begin{table}[!ht]
@@ -22,7 +18,7 @@ Un-Weighted & 9.64 & 6.64 \\
 \end{center}
 \end{table}
 
-\subsubsection{Alternatives to. Interactive Objective Function}
+\subsection{Alternatives to. Interactive Objective Function}
 Next to the interactive objective function $J_{int}(\cdot)$, described in Section \ref{text:approach/objective/interactive}, there are several other ways to formulate it. Instead of taking the full trajectory distribution into account for computing the distance measure between the unconditioned $\distwo[]$ and the conditioned trajectory distribution $\dist[]$, it can be approximated by computing the expected value over sample pairs. Consequently, the distance measure breaks down to a weighted sum over $L_2$-norms for each discrete time-step within the time horizon and for every trajectory pair, which are efficient to compute.
 
 \begin{equation}
@@ -73,7 +69,7 @@ The experiments show the effect of the interactive objective function: It trades
 \end{center}
 \end{figure}
 
-\subsubsection{HJR Value Function Approximation}
+\subsection{HJR Value Function Approximation}
 The necessity as well as the feasibility of approximating the \ac{HJR} value function has been motivated in Section \ref{text:approach/constraint/safety}. In the following several approximation methods are compared and evaluated.
 \newline 
 Figure \ref{img:hj_approx_bar} shows the logarithmic approximation error for several pre-computed grid sizes and using linear (as in \cite{Leung2020})) and Nearest Neighbor interpolation methods. LWPR (not shown here) has been tested as well but turned out to be infeasible for a large number of grid points.\footnote{For more information about the implementation of the LWPR value function approximation see \href{https://github.com/simon-schaefer/HJReachibility}{HJ-Reachability Toolbox} on GitHub.} For computing the error metric, the value function has been computed on a dense grid exactly, and point-wise compared with the grid interpolated approximations. While linear interpolation widely outperforms Nearest Neighbor, as expected, the absolute error is tiny. As displayed in Figure \ref{img:hj_approx_hist}, the interpolation error is not uniform over all joint state axes, but larger for positional axes (which likely is due to the larger amount of non-linearity in position compared to velocity directions, compare Figure \ref{img:hj_value_function}). Therefore, the number of grid points have not been equally distributed over the axes, but biased to the positional axes (interior), while keeping the overall size of the grid constant.
@@ -95,30 +91,57 @@ Figure \ref{img:hj_approx_bar} shows the logarithmic approximation error for sev
 \end{center}
 \end{figure}
 
-\subsubsection{Warm-Starting Methods}
+\subsection{Warm-Starting Methods}
+The warm-starting method used in the underlying work simplifies the full trajectory optimization problem to a convex and efficiently computable sub-problem. This process has been described in Section \ref{text:approach/runtime/warm_starting}. This simplified formulation merely takes into account the goal objective as well as physical constraint imposed by the robot, while neglecting any interaction between robot and pedestrian in the scene. It this way, not only pedestrian-target objectives are ignored, but also constraints enforcing a safe interaction. Despite of being efficiently to solve, it might return a solution estimate which is far from the actual solution. As an example in the case of a densely crowded area, it might return a solution trajectory passing very close to other pedestrians, which surely is violating the safety constraints of the full formulation. Consequently, the runtime would not be reduced much, if at all. 
+\newline
+As previously pointed out, there is no simple way of warm-starting interior-point-based methods using preceding solutions. This difficulty motivates finding other warm-starting approaches specifically designed for crowd-navigation. In the following several other concepts for warm-starting the underlying optimization problem are introduced and baselined against the used method. The used method, which is solving a simplified, robot-focussed optimization problem, is thereby referred to as \ac{GFW}.
+
+\paragraph{\ac{SCW}} 
+SCW follows a similar idea as \ac{GFW}, which is using a simplified formulation of the full optimization problem (Problem \ref{problem:general}) as a wart-start. \ac{GFW}s formulation is thereby extended by the safety constraint $g_{HJR}(\cdot)$ to guarantee that the warm-starting solution is feasible with respect to the system's safety constraint. $g_{HJR}(\cdot)$ is by design independent from pedestrian predictions as well as, for the assumed agent dynamics, widely linear. As a result, \ac{SCW} not only accounts for interactions and feasibility of the warm-started solution trajectory in the full problem, but also is comparably efficient to solve.  
+
+\paragraph{\ac{PCBW}}
+Merkt et alt. \cite{Merkt2018} use nearby pre-computed trajectories to warm-start an optimization problem for controlling a 38-DoF NASA Valkyrie robot in a pick-and-place scenario. Therefore, they encrypt the given initial conditions with problem-specific descriptors, expensively compute solutions for settings distributed over the full state-space, and clusters the pre-computed scenarios using $k$-Means-Clustering. Then, online, the initial conditions are encrypted and efficiently assigned to the closest pre-computed solution with $k$-Nearest-Neighbor classification. 
+\newline
+For the socially-aware trajectory optimization problem in \project there are several possibilities of how to encrypt the initial conditions. Finding a descriptive but efficient encryption is particularly hard due to the varying number of pedestrians in the scene. To avoid this issue, the internal encoding of a prediction model, such as the latent space $z$ of the Trajectron model \cite{Ivanovic2018}, could be utilized. It's small and constant size makes it very appealing. In contrary, using a prediction model (latent) encoding would firstly, demand the prediction model to have such an encoding (which is only true (C)\ac{VAE}-based models in the field of  pedestrian prediction). Secondly, even if the model does have such an internal encoding, there is no guarantee for it to be meaningful for the task of encrypting a given scene. As not all possible scenes can be pre-solved, it is crucial for the encryption to exhibit a spatial correlation between "close" scenarios, so that matching a non-pre-computed scenario to its closest (spatial) neighbors is feasible. However, the latent space of a prediction model is not guaranteed to have this property. 
+
+\begin{figure}[!ht]
+\begin{center}
+\includegraphics[width=\imgwidth]{images/enc_latent_reg.png}
+\caption{Latent space encoding for randomly perturbed scenarios. A multi-pedestrian scenario has been perturbed by randomly shifting the initial positions of randomly picked pedestrian in the scene by the amount displayed on the x-axis, resulting in the logarithmic $L2$-distance mapped on the y-axis. For more information please visit the warm-starting testing notebook \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/warm_start.ipynb}{warm\_start}.}
+\label{img:pcbw_encoding_latent}
+\end{center}
+\end{figure}
+
+Figure \ref{img:pcbw_encoding_latent} illustrates the spatial distribution of the latent space of the Trajectron model. The underlying assumption of a spatial correlation between similar scenarios clearly does not hold. For this reason a manually-design encoding is used within this work. As previously discussed, designing an encoding for all pedestrian states, the robot and goal state is intrinsically governed by the trade-off between a large search space and representative capabilities of the encoding. An encryption of the complete environment state does not only increase query time, but also demands for an exponentially larger amount of pre-computed scenarios. As some works in crowd-navigation merely take into account the closest or most endangered single pedestrian, a similar idea is considered for encoding, too. Specifically, the scene descriptors are the local coordinates of the closest pedestrian, with respect to the robot, between it and its goal position. Using a local coordinate frame pointing from the robot's to the goal position saves encoding the goal position as well, by implicitly encoding it. Figure \ref{img:pcbw_encoding_manual} pictures an exemplary scene encoding. Similarly to \cite{Merkt2018}, the pre-computed solution trajectories are matched to the queried scene using $k$-Nearest-Neighbor classification. 
+
 \begin{figure}[!ht]
 \begin{center}
 \begin{tikzpicture}
 
-    \node (R) at (0, 0) [circle, shade, draw] {Robot};
-    \node (G) at (8, 4) [circle, shade, draw] {Goal};
-    \node (P1) at (2, 3) [circle, fill=orange, draw] {$P_1$};
-    \node (P2) at (8, 1) [circle, fill=yellow, draw] {$P_2$};
-    
-    \tkzDefPointBy[projection=onto R--G](P1)  \tkzGetPoint{P1m}
-    \tkzDefPointBy[projection=onto R--G](P2)  \tkzGetPoint{P2m}
-    
-    \draw[->, dotted, very thick] (R) to node[above] {} (G);
-    \draw (P1m) -- (P1) node[midway, sloped, above] {$\mu_{P1}$};
-    \draw (R) -- (P1m) node[midway, sloped, above] {$\eta_{P1}$};
-    \draw (P2m) -- (P2) node[midway, sloped, above] {$\mu_{P2}$};
-    \draw (R) -- (P2m) node[midway, sloped, below] {$\eta_{P1}$};
+    \node (R) at (0, 0)
+    {\includegraphics[width=.04\textwidth]{images/robot.png}};
+    \node (G) at (8, 4)
+    {\includegraphics[width=.04\textwidth]{images/flag.png}};
+    \node (P1) at (-4, 1)
+    {\includegraphics[width=.04\textwidth]{images/walking.png}};
+    \node (P2) at (6, 1)
+    {\includegraphics[width=.04\textwidth]{images/walking.png}};
+    \node (P3) at (2, 4)
+    {\includegraphics[width=.04\textwidth]{images/walking.png}};
+
+    \draw[->, very thick] (R) to node[midway, sloped, above] {$\eta$} (1, 0.5);
+    \draw[->, very thick] (R) to node[midway, sloped, above] {$\mu$} (-0.5, 1);
+    \draw[->, dotted] (R) to node[midway, sloped, above] {$(\eta_{P1}, \mu_{P1})$} (P1);
+    \draw[->, dotted] (R) to node[midway, sloped, above] {$(\eta_{P2}, \mu_{P2})$} (P2);
+   	\draw[->, dotted] (R) to node[midway, sloped, above] {$(\eta_{P3}, \mu_{P3})$} (P3);
+   	\draw[->, dotted] (R) to node[midway, sloped, above] {$(\eta_G, 0.0)$} (G);
     
 \end{tikzpicture}
 \end{center}
-\label{img:robot_goal_encoding}
+\caption{Manual encoding of robot-pedestrian scenario, with local coordinate frame $(\eta, \mu)$ originating in the robots position and pointing in the goal direction.}
+\label{img:pcbw_encoding_manual}
 \end{figure}
 
-%Does the pre-computed set contain every possible scenario? No, but just warm-start so not required, there will be a constrained optimization afterward anyway
+There are several strategies for pre-computation in terms of which prediction model is being used. While simplified models do not lack in prediction accuracy, they allow to solve more scenarios and thus better matching the online scenario. Hence, in evaluation \ac{PCBW}-P marks a pre-computation-based approach using the simplified Potential Field model, while \ac{PCBW}-T uses the Trajectron model. 
 
-\subsection{Integration Experiments}
+\paragraph{Evaluation} ...
