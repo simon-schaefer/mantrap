@@ -69,6 +69,11 @@ SOLVER_GOAL_END_DISTANCE = 0.5  # [m] maximal distance to goal to finish optimiz
 WARM_START_HARD = "hard"  # warm-starting methods
 WARM_START_ENCODING = "encoding"
 WARM_START_SOFT = "soft"
+WARM_START_POTENTIAL = "potential"
+
+WARM_START_PRE_COMPUTATION_NUM = 100  # number of randomly pre-computed scenarios.
+WARM_START_PRE_COMPUTATION_HORIZON = 10  # pre-computed time-horizon.
+WARM_START_PRE_COMPUTATION_FILE = ("encoding.pt", "solution.pt")
 
 IPOPT_MAX_CPU_TIME_DEFAULT = 2.0  # [s] maximal IPOPT solver CPU time.
 IPOPT_OPTIMALITY_TOLERANCE = 0.1  # maximal optimality error to return solution (see IPOPT documentation).

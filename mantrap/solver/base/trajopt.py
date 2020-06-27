@@ -1,5 +1,6 @@
 import abc
 import logging
+import os
 import typing
 
 import numpy as np
@@ -115,8 +116,8 @@ class TrajOptSolver(abc.ABC):
 
         :param time_steps: how many time-steps shall be solved (not planning horizon !).
         :param warm_start_method: warm-starting method (see .warm_start()).
-        :return: derived ego trajectory [horizon + 1, 5].
-        :return: derived actual ado trajectories [num_ados, 1, horizon + 1, 5].
+        :return: derived ego trajectory [T, 5] (T <= horizon + 1 in case goal is reached earlier).
+        :return: derived actual ado trajectories [T, horizon + 1, 5] (T <= horizon + 1, see above).
         """
         ego_trajectory_opt = torch.zeros((time_steps + 1, 5))
         ado_trajectories = torch.zeros((self.env.num_ados, time_steps + 1, 1, 5))
@@ -247,31 +248,32 @@ class TrajOptSolver(abc.ABC):
     def warm_start(self, method: str = mantrap.constants.WARM_START_HARD) -> torch.Tensor:
         """Compute warm-start for optimization decision variables z.
 
-        - hard: solve the same optimization process but use the hard optimization modules
-                (interaction-un-related modules) only.
-
-        - encoding:
-
-        - soft: solve the same optimization process but use the hard optimization modules
-                as well as a safety constraint.
+        - hard: solve the same optimization process but use the hard optimization modules only.
+        - encoding: ...
+        - soft: solve the same optimization process but use the hard and safety optimization modules.
+        - potential: warm-start using full formulation of `PotentialFieldEnvironment`.
 
         :param method: method to use.
         :return: initial z values.
         """
         logging.debug(f"solver [warm_start]: method = {method} starting ...")
         if method == mantrap.constants.WARM_START_HARD:
-            z_warm_start = self._warm_start_optimization(modules=self.module_hard())
+            z_warm_start = self._warm_start_optimization(env=self.env, modules=self.module_hard())
         elif method == mantrap.constants.WARM_START_ENCODING:
             z_warm_start = self._warm_start_encoding()
         elif method == mantrap.constants.WARM_START_SOFT:
             modules_soft = [*self.module_hard(), mantrap.modules.HJReachabilityModule]
-            z_warm_start = self._warm_start_optimization(modules=modules_soft)
+            z_warm_start = self._warm_start_optimization(env=self.env, modules=modules_soft)
+        elif method == mantrap.constants.WARM_START_POTENTIAL:
+            env_warm_start = self.env.copy(env_type=mantrap.environment.PotentialFieldEnvironment)
+            z_warm_start = self._warm_start_optimization(env=env_warm_start, modules=self.modules)
         else:
             raise ValueError(f"Invalid warm starting-method {method} !")
         logging.debug(f"solver [warm_start]: finished ...")
         return z_warm_start
 
-    def _warm_start_optimization(self, modules: typing.Union[typing.List[typing.Tuple], typing.List]) -> torch.Tensor:
+    def _warm_start_optimization(self, env: mantrap.environment.base.GraphBasedEnvironment,
+                                 modules: typing.Union[typing.List[typing.Tuple], typing.List]) -> torch.Tensor:
         """Warm-Starting by solving simplified optimization problem.
 
         In order to warm start the optimization solve the same optimization process but use the a part of the
@@ -281,7 +283,7 @@ class TrajOptSolver(abc.ABC):
 
         :param modules: list of optimization modules that should be taken into account.
         """
-        solver_part = self.__class__(env=self.env, goal=self.goal, modules=modules,
+        solver_part = self.__class__(env=env, goal=self.goal, modules=modules,
                                      t_planning=self.planning_horizon, config_name=self.config_name,
                                      is_logging=self.logger.is_logging)
 
@@ -299,7 +301,29 @@ class TrajOptSolver(abc.ABC):
         return z_opt_hard
 
     def _warm_start_encoding(self) -> torch.Tensor:
-        raise NotImplementedError
+        """Warm-Starting by accessing pre-computed solutions.
+
+        Query solution trajectory from set of pre-computed scenario, by matching the encoded scene
+        to the database of pre-computed scene encodings.
+        """
+        assert self.env.dt == mantrap.constants.ENV_DT_DEFAULT  # pre-computation only for default time-step
+        encoding = self.encode()
+
+        enc_file, db_file = mantrap.constants.WARM_START_PRE_COMPUTATION_FILE
+        enc_file = mantrap.utility.io.build_os_path(os.path.join("third_party", "warm_start", enc_file))
+        db_file = mantrap.utility.io.build_os_path(os.path.join("third_party", "warm_start", db_file))
+        encoding_db = torch.load(enc_file)
+        assert encoding.shape[-1] == encoding.numel()
+        warm_start_db = torch.load(db_file)
+        assert len(warm_start_db.shape) == 3
+        assert warm_start_db.shape[1] >= self.planning_horizon
+        assert warm_start_db.shape[2] == 2  # controls
+
+        # Due to the limited number of pre-computed scenarios (and since it is a single, batched computation)
+        # compare matching distance to all encoding (instead of using clustering).
+        encoding_distance = torch.norm(encoding_db - encoding, dim=1)
+        encoding_best_match = torch.argmin(encoding_distance)
+        return warm_start_db[encoding_best_match, :self.planning_horizon, :]
 
     ###########################################################################
     # Problem formulation - Formulation #######################################
