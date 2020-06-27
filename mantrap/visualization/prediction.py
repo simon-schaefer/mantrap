@@ -14,7 +14,7 @@ def visualize_prediction(
     ado_planned_wo: torch.Tensor = None,
     ado_histories: torch.Tensor = None,
     ego_goal: torch.Tensor = None,
-    legend: bool = False,
+    legend: bool = True,
     file_path: str = None,
     ax: plt.Axes = None
 ):
