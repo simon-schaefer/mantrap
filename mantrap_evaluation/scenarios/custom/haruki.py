@@ -6,7 +6,7 @@ import torch
 import mantrap_evaluation.scenarios.api
 
 
-def custom_haruki(env_type: mantrap.environment.base.GraphBasedEnvironment.__class__
+def custom_haruki(env_type: mantrap.environment.base.GraphBasedEnvironment.__class__, **env_kwargs
                   ) -> typing.Tuple[mantrap.environment.base.GraphBasedEnvironment,
                                     torch.Tensor,
                                     typing.Union[typing.Dict[str, torch.Tensor], None]]:
@@ -31,5 +31,5 @@ def custom_haruki(env_type: mantrap.environment.base.GraphBasedEnvironment.__cla
         ego_type=mantrap.agents.DoubleIntegratorDTAgent,
         ego_state=ego_state,
         ado_goals=ado_goals,
-
+        **env_kwargs
     ), ego_goal, None
