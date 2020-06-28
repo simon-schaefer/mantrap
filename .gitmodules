@@ -8,4 +8,5 @@
     branch = online_with_torch
 [submodule "third_party/sgan"]
 	path = third_party/sgan
-	url = https://github.com/agrimgupta92/sgan.git
+	url = https://github.com/simon-schaefer/sgan.git
+	branch = cpu
