@@ -159,7 +159,7 @@ class GraphBasedEnvironment(abc.ABC):
 
         :param ego_controls: ego control input (prediction_horizon, 2).
         :param num_samples: number of samples to return.
-        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, num_modes, 2).
                  if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_controls(ego_controls)
@@ -174,7 +174,7 @@ class GraphBasedEnvironment(abc.ABC):
 
         :param ego_trajectory: ego trajectory (prediction_horizon + 1, 5).
         :param num_samples: number of samples to return.
-        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, num_modes, 2).
                  if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
@@ -200,7 +200,7 @@ class GraphBasedEnvironment(abc.ABC):
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
         :param num_samples: number of samples to return.
-        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, num_modes, 2).
                  if no ado in scene, return None instead.
         """
         assert t_horizon > 0
@@ -227,7 +227,7 @@ class GraphBasedEnvironment(abc.ABC):
         """Predict the ado path distribution means based conditioned on robot controls.
 
         :param ego_controls: ego control input (prediction_horizon, 2).
-        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, num_modes, 2).
                  if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_controls(ego_controls)
@@ -240,7 +240,7 @@ class GraphBasedEnvironment(abc.ABC):
         """Predict the ado path samples based conditioned on robot trajectory.
 
         :param ego_trajectory: ego trajectory (prediction_horizon + 1, 5).
-        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, 2).
+        :return: predicted ado paths (num_ados, num_samples, prediction_horizon+1, num_modes, 2).
                  if no ado in scene, return None instead.
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
@@ -265,7 +265,7 @@ class GraphBasedEnvironment(abc.ABC):
         """Predict the unconditioned ado path distribution means (i.e. if no robot would be in the scene).
 
         :param t_horizon: prediction horizon, number of discrete time-steps.
-        :return: predicted ado paths (num_ados, num_samples, t_horizon+1, 2).
+        :return: predicted ado paths (num_ados, num_samples, t_horizon+1, num_modes, 2).
                  if no ado in scene, return None instead.
         """
         assert t_horizon > 0

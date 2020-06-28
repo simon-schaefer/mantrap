@@ -26,6 +26,7 @@ install:
   - echo "Python requirement installation"
   - pip install -r ops/requirements.txt
   - export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH
+  - pip install -r third_party/sgan/requirements.txt
   - pip install -r third_party/GenTrajectron/requirements.txt
 
   - echo "IPOPT installation"
@@ -63,8 +64,10 @@ install:
   - sudo apt-get install unzip
   - wget $RESSOURCES_URL -O ressoures.zip
   - unzip ressoures.zip
-  - mv mantrap/trajectron_models .
-  - mv mantrap/reachability .
+  - mv mantrap/trajectron_models .  # trajectron model
+  - mv mantrap/reachability .  # reachability values
+  - cd sgan  # sgan models
+  - bash scripts/download_model.sh
   - cd /home/travis/build/simon-schaefer/mantrap
 
 # command to run tests. 

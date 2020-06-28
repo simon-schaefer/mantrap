@@ -30,6 +30,10 @@ cp "${PROJECT_HOME}"/ops/setup.py "${PROJECT_HOME}"
 pip3 install -e . --quiet
 rm "${PROJECT_HOME}"/setup.py
 
+# Download sgan model.
+cd "${EXTERNAL_HOME}"/sgan || return
+bash scripts/download_model.sh
+
 # Create output directory.
 echo $'Building project structure ...'
 mkdir -p "${PROJECT_HOME}"/outputs

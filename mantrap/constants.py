@@ -59,6 +59,8 @@ POTENTIAL_FIELD_MAX_THETA = 30.0  # [deg] maximal attention angle to be influenc
 TRAJECTRON_MODEL = ("models_18_Jan_2020_01_42_46eth_rob", 1999)  # trajectron model file and iteration number.
 TRAJECTRON_DEFAULT_HISTORY_LENGTH = 5
 
+SGAN_MODEL = "models/sgan-models/eth_8_model.pt"
+
 #######################################
 # solver parameters ###################
 #######################################

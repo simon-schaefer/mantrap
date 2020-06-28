@@ -285,68 +285,12 @@ def test_trajectron_wo_prediction():
     assert mantrap.utility.shaping.check_ado_samples(samples_with, ados=env.num_ados, num_samples=5)
 
 
-###########################################################################
+##########################################################################
 # Test - SGAN Environment #################################################
-###########################################################################
-# def absolute_to_relative(trajectory: torch.Tensor) -> torch.Tensor:
-#     t_horizon, num_agents, dim = trajectory.shape
-#     trajectory_rel = trajectory - trajectory[0, :, :].unsqueeze(dim=0)
-#     trajectory_rel = trajectory_rel[1:, :, :] - trajectory_rel[:-1, :, :]
-#     return torch.cat((torch.zeros(1, num_agents, dim), trajectory_rel), dim=0)
+##########################################################################
+def test_sgan_sampling():
+    sgan = mantrap.environment.SGAN(ego_position=torch.zeros(2), ego_velocity=torch.rand(2))
+    sgan.add_ado(position=torch.tensor([4, 2]), velocity=torch.tensor([-1, -1]))
 
-
-###########################################################################
-# Test - ORCA Environment #################################################
-###########################################################################
-# Comparison to original implementation of ORCA which can be found in
-# external code directory and uses the following parameters:
-# orca_rad = 1.0
-# orca_dt = 10.0
-# sim_dt = 0.25
-# sim_speed_max = 4.0
-# @pytest.mark.xfail(raises=AssertionError)
-# def test_orca_single_agent():
-#     env = mantrap.environment.ORCAEnvironment(dt=0.25)
-#     env.add_ado(position=torch.zeros(2), velocity=torch.zeros(2), goal=torch.ones(2) * 4)
-#
-#     pos_expected = torch.tensor([[0, 0], [0.70710, 0.70710], [1.4142, 1.4142], [2.1213, 2.1213], [2.8284, 2.8284]])
-#     ado_trajectories = env.sample_wo_ego(t_horizon=pos_expected.shape[0])
-#     assert torch.isclose(torch.norm(ado_trajectories[0, 0, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)
-#
-#
-# @pytest.mark.xfail(raises=AssertionError)
-# def test_orca_two_agents():
-#     env = mantrap.environment.ORCAEnvironment(dt=0.25)
-#     env.add_ado(position=torch.tensor([-5, 0.1]), velocity=torch.zeros(2), goal=torch.tensor([5, 0]))
-#     env.add_ado(position=torch.tensor([5, -0.1]), velocity=torch.zeros(2), goal=torch.tensor([-5, 0]))
-#
-#     pos_expected = torch.tensor(
-#         [
-#             [
-#                 [-5, 0.1],
-#                 [-4.8998, 0.107995],
-#                 [-4.63883, 0.451667],
-#                 [-3.65957, 0.568928],
-#                 [-2.68357, 0.6858],
-#                 [-1.7121, 0.802128],
-#                 [-0.747214, 0.917669],
-#                 [0.207704, 1.03202],
-#                 [1.18529, 0.821493],
-#                 [2.16288, 0.61097],
-#             ],
-#             [
-#                 [5, -0.1],
-#                 [4.8998, -0.107995],
-#                 [4.63883, -0.451667],
-#                 [3.65957, -0.568928],
-#                 [2.68357, -0.6858],
-#                 [1.7121, -0.802128],
-#                 [0.747214, -0.917669],
-#                 [-0.207704, -1.03202],
-#                 [-1.18529, -0.821493],
-#                 [-2.16288, -0.61097],
-#             ],
-#         ]
-#     ).view(2, 1, -1, 2)
-#     ado_trajectories = env.sample_wo_ego(t_horizon=pos_expected.shape[2])
-#     assert torch.isclose(torch.norm(ado_trajectories[:, :, :, 0:2] - pos_expected), torch.zeros(1), atol=0.1)
+    samples = sgan.sample_wo_ego(t_horizon=5, num_samples=3)
+    assert mantrap.utility.shaping.check_ado_samples(samples,  num_samples=3, t_horizon=6)
