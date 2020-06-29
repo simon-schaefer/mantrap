@@ -9,8 +9,8 @@ Figure \ref{img:show_case} illustrates the qualitative difference between the pr
 \begin{center}
 \includegraphics[width=0.45\textwidth]{images/show_case_ipopt.png}
 \includegraphics[width=0.45\textwidth]{images/show_case_rrt.png}
-\caption{Direct comparison of generated trajectories by our approach (left) and \ac{RRT}$\star$ \cite{Karaman2011} (right)}
 \end{center}
+\caption{Direct comparison of generated trajectories by our approach (left) and \ac{RRT}$\star$ \cite{Karaman2011} (right)}
 \label{img:show_case}
 \end{figure}
 
@@ -18,13 +18,13 @@ Figure \ref{img:show_case} illustrates the qualitative difference between the pr
 The previously described qualitative benefits of the proposed approach can be underlined by quantitative results. The following experiments compare the quantitative results of the several planning algorithms, in the presence of 2 to 5 pedestrians in the scene and each one randomly created. 
 
 \subsection{Effect of number of Pedestrians}
-Figure \ref{img:runtime_num_pedestrian} illustrates the average algorithm's runtime for one trajectory optimization, in dependence of the number of pedestrian. While the proposed approach ("ipopt") runs with about 2 Hz, the runtime is notably independent from the number of pedestrians. This can be explained by the comprehensive usage of batching within the algorithm, including the prediction model, and the use of attention filters, which keep the number of considered pedestrians during optimization roughly constant.
+Figure \ref{img:runtime_num_pedestrian} illustrates the average algorithm's runtime for one trajectory optimization, in dependence of the number of pedestrian. While the proposed approach ("ipopt") runs with about 2 Hz, the runtime is notably depends only marginally on the number of pedestrians in the scene. This can be explained by the comprehensive usage of batching within the algorithm, including the prediction model, and the use of attention filters, which keep the number of considered pedestrians during optimization approximately constant.
 
 \begin{figure}[!ht]
 \begin{center}
 \includegraphics[width=\imgwidth]{images/runtime_peds.png}
-\caption{Impact of number of pedestrian on algorithm runtime [s].}
 \end{center}
+\caption{Impact of number of pedestrians (ados) on algorithm runtime [s].}
 \label{img:runtime_num_pedestrian}
 \end{figure}
 

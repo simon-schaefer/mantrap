@@ -142,14 +142,36 @@ Figure \ref{img:pcbw_encoding_latent} illustrates the spatial distribution of th
 \label{img:pcbw_encoding_manual}
 \end{figure}
 
-There are several strategies for pre-computation in terms of which prediction model is being used. While simplified models do not lack in prediction accuracy, they allow to solve more scenarios and thus better matching the online scenario. Hence, in evaluation \ac{PCBW}-P marks a pre-computation-based approach using the simplified Potential Field model, while \ac{PCBW}-T uses the Trajectron model. 
+\paragraph{\ac{SPMW}}
+It is straight-forward to see that the computational complexity of evaluating the interactive terms of the optimization, especially their gradients, is tightly-coupled  to the complexity of the underlying prediction model. 
+Thus, as an example, it is effortful to compute the gradient of the interactive objective with respect to the robot's trajectory for Trajectron \cite{Ivanovic2018}, but computationally light-weight to do so for the Social Forces environment \cite{Helbing1995}. Following this idea, the \ac{SPMW} method warm-starts the optimization by solving the same (full) optimization problem, but using a less complex environment. For the purpose of warm-starting, the Potential Field prediction model, as described in Section \ref{text:exp_particles}, has been developed. It is worth noting, that \ac{SPMW} enables us to not only improve the efficiency of the optimization, but also take advantage of prior knowledge. Therefore, the Potential Field model has been designed so that the pedestrian is only affected by the robot, when it is close to the pedestrian and in front of it. Consequently, the optimization is driven to a solution, in which the robot moves behind or in distance of each pedestrian.
 
-\paragraph{Evaluation} ...
+\paragraph{Evaluation}
+Table \ref{table:warm_start} quantitatively compares the exhibited warm-starting methods. 
+
+\begin{table}[!ht]
+\begin{center}
+\begin{tabular}{c|c|c|c|c|c|c}
+\bf Warm-Starting Method & \bf MPE & \bf RTD & \bf RCE & \bf ETT & \bf TGD & \bf MSD \\
+\hline
+SCW & 0.33 & 0.99 & 0.32 & 0.0 & 0.24 & 0.94 \\
+\hline
+PCBW & 0.29 & 0.98 & 0.51 & 0.0 & 0.26 & 1.16 \\
+\hline
+SMW & 0.21 & 0.98 & 0.55 & 0.0 & 0.27 & 1.24 \\ 
+\hline
+\rowcolor{our_color}
+GFW & 0.01 & 0.92 & 0.79 & 0.8 & 0.39 & 1.44 
+\end{tabular}
+\end{center}
+\caption{Quantitative comparison of several warm-starting methods by evaluating the performance of the underlying trajectory optimization.}
+\label{table:warm_start}
+\end{table}
 
 \subsection{Attention Methods}
 Section \ref{text:approach/runtime/filtering} has introduced the concept of attention for filtering the significant pedestrians for evaluating the interactive objective, to cut computational runtime. Next to the purposed euclidean-distance-based attention module there are several other methodologies for this purpose, out of which two more sophisticated options will be presented in the following:
 
-\paragraph{Forward Reachability}
+\paragraph{Forward Reachability Attention}
 Forward reachability generally determines the reachable set of an agent given its dynamics and some time-horizon $T_{FR}$. In opposite to back-ward reachability (\ac{HJR}), which has been introduced in Section \ref{text:approach/constraint/safety}, forward reachability merely regards one agent, instead of joint systems. Thereby, forward reachability deals with the problem of finding the set of all states that the agent can reach from a given set of states $\mathcal{L}$ at time $T_{FR}$. With dynamics $\dot{x} = f(x, u)$, the reachable set $\mathcal{X}_{FR}$ is determined as:
 
 \begin{equation}
@@ -160,7 +182,7 @@ For single- and double-integrator dynamics, the forward reachable set $\mathcal{
 \newline
 Consequently, the forward reachable set attention selects the pedestrian of which the reachable sets overlaps with the reachable set of the robot for the planning horizon $T_{FR} = T$. If the reachable sets do not overlap, it is not possible for the robot and some pedestrian $k$ to meet within the planning horizon. Then pedestrian $k$ can safely be neglected within the optimization.
 
-\paragraph{Proximate}
+\paragraph{Proximate Attention}
 The proximate attention module is re-using a concept, that is frequently used in game-theoretic crowd-navigation. Here, the problem is formulated as games between each robot-pedestrian-pair \cite{Bouzat2014}\cite{Nikolaidis2017}. Following this idea, the proximate attention module merely takes into account the pedestrian, which is closest to the robot (and within a pre-determined euclidean range).
 
 \begin{equation}
@@ -177,17 +199,18 @@ Using an euclidean-based attention dramatically reduces the average computationa
 \begin{tabular}{c|c|c|c|c|c|c|c}
 \bf Attention & \bf MPE & \bf RTD & \bf RCE & \bf ETT & \bf TGD & \bf MSD & \bf Mean Runtime [s] \\
 \hline
-proximate & 9.72 & 0.97 & 0.24 & 0.0 & 0.14 & 2.24 & 0.058 \\
+proximate & 9.72 & 0.97 & 0.24 & 0.28 & 0.14 & 2.24 & 0.058 \\
 \hline
-reachability & 9.36 & 0.98 & 0.26 & -0.28 & 0.13 & 2.24 & 0.68 \\
+reachability & 9.36 & 0.98 & 0.26 & 0.0 & 0.13 & 2.24 & 0.68 \\
 \hline
 \rowcolor{baseline_color}
-without & 9.92 & 0.97 & 0.30 & -0.24 & 0.14 & 2.23 & 0.77 \\ 
+without & 9.92 & 0.97 & 0.30 & 0.04 & 0.14 & 2.23 & 0.77 \\ 
 \hline
 \rowcolor{our_color}
-euclidean & 9.54 & 0.97 & 0.23 & 0.0 & 0.14 & 2.22 & 0.06
+euclidean & 9.54 & 0.97 & 0.23 & 0.28 & 0.14 & 2.22 & 0.06
 \end{tabular}
 \end{center}
+\caption{Quantitative comparison of several attention filters by evaluating the performance of the underlying trajectory optimization.}
 \label{table:attention}
 \end{table}
 
@@ -196,7 +219,7 @@ In fact, filtering non-significant agents may accelerate the overall optimizatio
 \begin{figure}[!ht]
 \begin{center}
 \includegraphics[width=\textwidth]{images/attention.png}
-\caption{Trajectory Optimization with different attention modules. From left to right: euclidean, closest, reachability and without the use of attention. For further information please have a look at \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/attention.ipynb}{attention notebook}.}
 \end{center}
+\caption{Trajectory Optimization with different attention modules. From left to right: euclidean, closest, reachability and without the use of attention. For further information please have a look at \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/attention.ipynb}{attention notebook}.}
 \label{img:attention}
 \end{figure}
