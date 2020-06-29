@@ -335,7 +335,7 @@ class TestRRTSolver:
         env.add_ado(position=torch.tensor([5, 0]), velocity=torch.tensor([0, 0]))
         goal = torch.tensor([8.0, 0.0])
         solver = mantrap.solver.baselines.RRTStarSolver(env, attention_module=attention_class, goal=goal,
-                                                        t_planning=100)
+                                                        t_planning=20)
 
         z_opt = solver.optimize(z0=torch.tensor([]), tag="test")
         ego_trajectory = solver.z_to_ego_trajectory(z_opt.detach().numpy())

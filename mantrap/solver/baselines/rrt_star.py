@@ -81,6 +81,9 @@ class RRTStarSolver(TrajOptSolver):
         ego_trajectory = self.env.ego.expand_trajectory(torch.tensor(path), dt=self.env.dt)
         ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
         ego_controls = self.env.ego.make_controls_feasible(controls=ego_controls)
+        if ego_controls.shape[0] < self.planning_horizon:
+            len_diff = self.planning_horizon - ego_controls.shape[0]
+            ego_controls = torch.cat((ego_controls, torch.zeros((len_diff, 2))), dim=0)
         return ego_controls[:self.planning_horizon, :], self.logger.log
 
     ###########################################################################
