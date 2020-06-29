@@ -45,6 +45,9 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
         # Start stopping conditions (runtime or number of iterations).
         sampling_start_time = time.time()
 
+        # Back-fall solution to avoid infinite looping.
+        z_back_fall = np.random.uniform(*self.z_bounds)
+
         # Then start searching loop for finding more optimal trajectories.
         z_iteration, obj_iteration, iteration, k = None, np.inf, 0, 0
         while True:
@@ -62,7 +65,9 @@ class SearchIntermediate(TrajOptSolver, abc.ABC):
             # Additionally check whether loop has terminated already, then do not reset these values,
             # because somehow the loop iterates one more time after breaking for `RandomSearch`.
             run_time = time.time() - sampling_start_time
-            if (is_finished or run_time > max_cpu_time) and z_iteration is not None:
+            if is_finished or run_time > max_cpu_time:
+                if z_iteration is None:
+                    z_iteration = z_back_fall
                 z_best = z_iteration.copy()
                 break
             # Update search iteration count.
