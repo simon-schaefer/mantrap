@@ -16,6 +16,7 @@ def visualize_prediction(
     ado_histories: torch.Tensor = None,
     ego_goal: torch.Tensor = None,
     legend: bool = False,
+    title: str = None,
     file_path: str = None,
     ax: plt.Axes = None
 ):
@@ -34,6 +35,7 @@ def visualize_prediction(
    :param ado_histories: ado history trajectory used instead of internally stored on (num_ados, -1, >=2).
     :param ego_goal: optimization robot goal state.
    :param legend: draw legend in paths plot (might be a mess for many agents).
+   :param title: plot title (none by default).
    :param file_path: storage path, if None return as HTML video object.
    :param ax: optionally the plot can be drawn in an already existing axis.
     """
@@ -86,10 +88,11 @@ def visualize_prediction(
 
         # Sample trajectory - Conditioned and unconditioned.
         if ado_planned is not None:
-            draw_samples(ado_planned[m_ado], name=ado_id, color=ado_color, ax=ax, alpha=0.8, marker=":")
+            draw_samples(ado_planned[m_ado], name=ado_id, color=ado_color, ax=ax, alpha=0.3, marker="-")
         if ado_planned_wo is not None:
-            draw_samples(ado_planned_wo[m_ado], name=f"{ado_id}_wo", color=ado_color, ax=ax, alpha=0.6, marker=":")
+            draw_samples(ado_planned_wo[m_ado], name=f"{ado_id}_wo", color=ado_color, ax=ax, alpha=0.3, marker=":")
 
     draw_trajectory_axis(env.axes, ax=ax, legend=legend)
-    ax.set_title(f"predictions")
+    if title is not None:
+        ax.set_title(title)
     return interactive_save_image(ax, file_path=file_path)

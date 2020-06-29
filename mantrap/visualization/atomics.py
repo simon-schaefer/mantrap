@@ -53,7 +53,7 @@ def draw_samples(samples: torch.Tensor, name: typing.Union[str, None], color: ty
         xs, ys = samples[i, :, 0, 0], samples[i, :, 0, 1]
         kwargs = {"label": name} if i == 0 else {}
         ax.plot(xs, ys, marker, color=color, alpha=alpha, **kwargs)
-        ax.plot(xs, ys, "o", color=color, alpha=alpha)  # time-step marker
+        # ax.plot(xs, ys, "o", color=color, alpha=alpha)  # time-step marker
     return ax
 
 
