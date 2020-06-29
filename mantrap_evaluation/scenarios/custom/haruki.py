@@ -19,10 +19,11 @@ def custom_haruki(env_type: mantrap.environment.base.GraphBasedEnvironment.__cla
     ego_goal = torch.tensor([7, -1])
     ado_histories = [torch.tensor([-7, -1, 2, 0, 0]),
                      torch.tensor([7, 3, -0.5, 0, 0]),
-                     torch.tensor([7, -2, -1, 1, 0])
+                     torch.tensor([7, -2, -1, 1, 0]),
+                     torch.tensor([-5, -5, 0.4, 0.01, 0])
                      ]
     ado_histories = [history.unsqueeze(dim=0) for history in ado_histories]  # shape (5) -> (1, 5)
-    ado_goals = [torch.tensor([7, -1]), torch.tensor([-7, 1]), torch.tensor([-7, 0])]
+    ado_goals = [torch.tensor([7, -1]), torch.tensor([-7, 1]), torch.tensor([-7, 0]), torch.tensor([6, -2])]
 
     return mantrap_evaluation.scenarios.api.create_environment(
         config_name="custom_haruki",

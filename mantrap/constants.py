@@ -106,8 +106,8 @@ CONSTRAINT_HJ_INTERPOLATION_METHOD = "linear"  # value function interpolation me
 CONSTRAINT_MIN_L2_DISTANCE = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 CONSTRAINT_VIOLATION_PRECISION = 1e-5  # allowed precision error when determining constraint violation.
 
-ATTENTION_EUCLIDEAN_RADIUS = 2.0  # [m] attention radius of ego for planning
-ATTENTION_CLOSEST_RADIUS = 2.0  # [m] attention radius of ego for planning
+ATTENTION_EUCLIDEAN_RADIUS = 4.0  # [m] attention radius of ego for planning
+ATTENTION_CLOSEST_RADIUS = 4.0  # [m] attention radius of ego for planning
 
 #######################################
 # visualization parameters ############
