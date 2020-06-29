@@ -145,3 +145,56 @@ Figure \ref{img:pcbw_encoding_latent} illustrates the spatial distribution of th
 There are several strategies for pre-computation in terms of which prediction model is being used. While simplified models do not lack in prediction accuracy, they allow to solve more scenarios and thus better matching the online scenario. Hence, in evaluation \ac{PCBW}-P marks a pre-computation-based approach using the simplified Potential Field model, while \ac{PCBW}-T uses the Trajectron model. 
 
 \paragraph{Evaluation} ...
+
+\subsection{Attention Methods}
+Section \ref{text:approach/runtime/filtering} has introduced the concept of attention for filtering the significant pedestrians for evaluating the interactive objective, to cut computational runtime. Next to the purposed euclidean-distance-based attention module there are several other methodologies for this purpose, out of which two more sophisticated options will be presented in the following:
+
+\paragraph{Forward Reachability}
+Forward reachability generally determines the reachable set of an agent given its dynamics and some time-horizon $T_{FR}$. In opposite to back-ward reachability (\ac{HJR}), which has been introduced in Section \ref{text:approach/constraint/safety}, forward reachability merely regards one agent, instead of joint systems. Thereby, forward reachability deals with the problem of finding the set of all states that the agent can reach from a given set of states $\mathcal{L}$ at time $T_{FR}$. With dynamics $\dot{x} = f(x, u)$, the reachable set $\mathcal{X}_{FR}$ is determined as:
+
+\begin{equation}
+\mathcal{X}_{FR} = \{x_T: \in u, \textit{ s.t. } x(\cdot) \textit{ satisfies } \dot{x} = f(x, u), x(0) \in \mathcal{L}; x(T_{FR}) = x_T\}
+\end{equation}
+ 
+For single- and double-integrator dynamics, the forward reachable set $\mathcal{X}_{FR}$ turns out to be a circle, due to their isotropy. The radius as well as its center point thereby depend on the initial state of the agent. Due to the ability of determining these sets analytically, the forward reachability-based attention filter is very computationally efficient to apply.
+\newline
+Consequently, the forward reachable set attention selects the pedestrian of which the reachable sets overlaps with the reachable set of the robot for the planning horizon $T_{FR} = T$. If the reachable sets do not overlap, it is not possible for the robot and some pedestrian $k$ to meet within the planning horizon. Then pedestrian $k$ can safely be neglected within the optimization.
+
+\paragraph{Proximate}
+The proximate attention module is re-using a concept, that is frequently used in game-theoretic crowd-navigation. Here, the problem is formulated as games between each robot-pedestrian-pair \cite{Bouzat2014}\cite{Nikolaidis2017}. Following this idea, the proximate attention module merely takes into account the pedestrian, which is closest to the robot (and within a pre-determined euclidean range).
+
+\begin{equation}
+\attention_{closest}(\x, \xped[k]) = \left( ||\x - \xped[k]||_2 > D_{Attention} \land \arg \min ||\x - \xped[k]||_2 \right)
+\end{equation}
+
+\paragraph{Evaluation}
+Table \ref{table:attention} and Figure \ref{img:attention} show the results of a Monte Carlo-based evaluation, averaged over 10 scenarios with 20 time-steps each. "Without" thereby refers to using the trajectory optimization without any attention. Due to its conservative safety estimate the reachability-based approach does not cut the computational effort at all, since hardly a pedestrian is removed from the robots attention. Using an euclidean-based attention dramatically reduces the average computational cost, since the interactive objective function does not have to be evaluated with respect to all surrounding pedestrians, or not at all, when no pedestrian is close to the robot. The effect of attention on computational effort is therefore two-fold: It decreases the average cost of objective/gradient evaluation and the number of required optimization iterations. Also, the derived trajectories do not necessarily perform worse in terms of interactive trajectory cost. 
+
+\begin{table}[!ht]
+\begin{center}
+\begin{tabular}{c|c|c|c|c|c|c|c}
+\bf Attention & \bf MPE & \bf RTD & \bf RCE & \bf ETT & \bf TGD & \bf MSD & \bf Mean Runtime [s] \\
+\hline
+euclidean & 9.72 & 0.97 & 0.24 & 0.0 & 0.14 & 2.24 & 0.058 \\
+\hline
+reachability & 9.36 & 0.98 & 0.26 & -0.28 & 0.13 & 2.24 & 0.68 \\
+\hline
+\rowcolor{baseline_color}
+without & 9.92 & 0.97 & 0.30 & -0.24 & 0.14 & 2.23 & 0.77 \\ 
+\hline
+\rowcolor{our_color}
+proximate & 9.54 & 0.97 & 0.23 & 0.0 & 0.14 & 2.22 & 0.06
+\end{tabular}
+\end{center}
+\label{table:attention}
+\end{table}
+
+In fact, filtering non-significant agents may accelerate the overall optimization by simplifying the trade-off between the interactive cost with respect to multiple pedestrians to minimizing the interactive cost of a single pedestrian. Figure \ref{img:attention} displays such a scenario. Here, the robot chooses to wait and follow behind the green (closest) pedestrian, which is clearly the least disturbing action with respect to this single agent. Regarding the impact the robots action has on all pedestrian, however, it seems to be more optimal to accelerate and increase the average distance to all pedestrians as quick as possible. Nonetheless, it turns out that the decision based on the single pedestrian is not only more computationally efficient, but also more globally (!) optimal with respect to all pedestrians (at least in this scenario). As explained in Section \ref{text:experiments/discussion} the purposed optimization formulation is prone to erroneous predictions; by reducing the number of pedestrians, which is taken into account, we hence also reduce the number of sources of misleading predictions.
+
+\begin{figure}[!ht]
+\begin{center}
+\includegraphics[width=\textwidth]{images/attention.png}
+\caption{Trajectory Optimization with different attention modules. From left to right: euclidean, closest, reachability and without the use of attention. For further information please have a look at \href{https://github.com/simon-schaefer/mantrap/blob/master/examples/attention.ipynb}{attention notebook}.}
+\end{center}
+\label{img:attention}
+\end{figure}
