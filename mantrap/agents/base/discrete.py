@@ -285,7 +285,7 @@ class DTAgent(abc.ABC):
         trajectory = torch.zeros((t_horizon, 5))
         t_start = float(self.state_with_time[-1])
         trajectory[:, 0:2] = mantrap.utility.maths.integrate_numerical(velocities_stretched, dt=dt, x0=self.position)
-        trajectory[:, 2:4] = torch.cat((torch.tensor(velocities_stretched), torch.zeros((1, 2))))
+        trajectory[:, 2:4] = torch.cat((velocities_stretched, torch.zeros((1, 2))))
         trajectory[:, -1] = torch.linspace(t_start, t_start + (t_horizon - 1) * dt, steps=t_horizon)
 
         assert mantrap.utility.shaping.check_ego_trajectory(trajectory, t_horizon=t_horizon)

@@ -164,6 +164,12 @@ class OptimizationLogger:
             return None
         log_types = [mantrap.constants.LT_OBJECTIVE, mantrap.constants.LT_CONSTRAINT]
 
+        # Check whether there are any logged values  in internal log (e.g. some baselines do not
+        # log objective/constraint values).
+        log_check = self.log_query(key_type=mantrap.constants.LT_OBJECTIVE)
+        if log_check is None:
+            return None
+
         # Save the optimization performance for every optimization step into logging file. Since the
         # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers
         # first using the `map(dtype, list)` function.
