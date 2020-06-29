@@ -252,6 +252,7 @@ class TrajOptSolver(abc.ABC):
         - encoding: query pre-computed solutions for scenario close to current one (using encoding).
         - soft: solve the same optimization process but use the hard and safety optimization modules.
         - potential: warm-start using full formulation of `PotentialFieldEnvironment`.
+        - zeros: no warm-start, assignment to zeros.
 
         :param method: method to use.
         :return: initial z values.
@@ -267,6 +268,10 @@ class TrajOptSolver(abc.ABC):
         elif method == mantrap.constants.WARM_START_POTENTIAL:
             env_warm_start = self.env.copy(env_type=mantrap.environment.PotentialFieldEnvironment)
             z_warm_start = self._warm_start_optimization(env=env_warm_start, modules=self.module_defaults())
+        elif method == mantrap.constants.WARM_START_ZEROS:
+            controls_zeros = torch.zeros((self.planning_horizon, 2))
+            z_warm_start = self.ego_controls_to_z(ego_controls=controls_zeros)
+            z_warm_start = torch.from_numpy(z_warm_start)
         else:
             raise ValueError(f"Invalid warm starting-method {method} !")
         logging.debug(f"solver [warm_start]: finished ...")
