@@ -115,6 +115,8 @@ class OptimizationLogger:
         if not self.is_logging:
             raise LookupError("For querying the `is_logging` flag must be activate before solving !")
         assert self.log is not None
+        if len(self.log.items()) == 0:
+            raise LookupError("For querying the `solve()` method have to be called before !")
         if iteration == "end":
             iteration = str(self._iteration)
         if key is None:
@@ -131,6 +133,10 @@ class OptimizationLogger:
         for key, values in self.log.items():
             if re.search(query, key) is not None:
                 results_dict[key] = values
+
+        # Check whether all the resulting values are None, then return None.
+        if all(x[0] is None for x in results_dict.values()):
+            return None
 
         # If only one element is in the dictionary, return not the dictionary but the item itself.
         # Otherwise go through arguments one by one and apply them.
@@ -149,17 +155,14 @@ class OptimizationLogger:
             raise ValueError(f"Undefined apply function for log query {apply_func} !")
         return results.squeeze(dim=0)
 
-    def log_store(self, csv_name: str = None, log_types: typing.List[str] = None
-                  ) -> typing.Union[pandas.DataFrame, None]:
-        """Store log for given keys `csv_log_keys` in CSV file.
+    def log_store(self, csv_name: str = None) -> typing.Union[pandas.DataFrame, None]:
+        """Store log for objective and constraints in CSV file (trajectories cannot be stored in DataFrame).
 
-        :param log_types: logging keys to write in output csv file.
         :param csv_name: name of csv file = `csv_name.logging.csv`.
         """
         if self.log is None:
             return None
-        if log_types is None:
-            log_types = [mantrap.constants.LT_OBJECTIVE, mantrap.constants.LT_CONSTRAINT]
+        log_types = [mantrap.constants.LT_OBJECTIVE, mantrap.constants.LT_CONSTRAINT]
 
         # Save the optimization performance for every optimization step into logging file. Since the
         # optimization log is `torch.Tensor` typed, it has to be mapped to a list of floating point numbers

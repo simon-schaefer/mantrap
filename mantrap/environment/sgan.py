@@ -69,7 +69,7 @@ class SGAN(GraphBasedEnvironment):
         :param history: ado state history (if None then just stacked current state).
         :param ado_kwargs: addition kwargs for ado initialization.
         """
-        if history is None:
+        if history is None or history.shape[0] == 1:
             position, velocity = position.float(), velocity.float()
             history = torch.stack([torch.cat(
                 (position + velocity * self.dt * t, velocity, torch.ones(1) * self.time + self.dt * t))

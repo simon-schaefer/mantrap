@@ -432,7 +432,7 @@ class DTAgent(abc.ABC):
     ###########################################################################
     # Operators ###############################################################
     ###########################################################################
-    def __eq__(self, other, check_class: bool = True):
+    def __eq__(self, other, check_class: bool = True, check_history: bool = True):
         """Two agents are considered as being identical when their current state and their complete state history are
         equal. However the agent's descriptive parameters such as its id are not part of this comparison, since they
         are initialized as random and not descriptive for the state an agent is in. Also the agent's class does not
@@ -442,7 +442,8 @@ class DTAgent(abc.ABC):
         if check_class:
             assert self.__class__ == other.__class__
         assert torch.all(torch.isclose(self.state_with_time, other.state_with_time))
-        assert torch.all(torch.isclose(self.history, other.history))
+        if check_history:
+            assert torch.all(torch.isclose(self.history, other.history))
         return True
 
     def sanity_check(self) -> bool:

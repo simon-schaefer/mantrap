@@ -52,7 +52,7 @@ class TrajOptSolver(abc.ABC):
         t_planning: int = mantrap.constants.SOLVER_HORIZON_DEFAULT,
         modules: typing.Union[typing.List[typing.Tuple], typing.List] = None,
         attention_module: mantrap.attention.AttentionModule.__class__ = None,
-        eval_env: mantrap.environment.base.GraphBasedEnvironment = None,
+        eval_env: mantrap.environment.base.GraphBasedEnvironment.__class__ = None,
         config_name: str = mantrap.constants.CONFIG_UNKNOWN,
         is_logging: bool = False,
         is_debug: bool = False,
@@ -69,7 +69,7 @@ class TrajOptSolver(abc.ABC):
 
         # Set planning and evaluation environment.
         self._env = env.copy()
-        self._eval_env = eval_env.copy() if eval_env is not None else env.copy()
+        self._eval_env = env.copy(env_type=eval_env) if eval_env is not None else env.copy()
         assert self._env.same_initial_conditions(other=self._eval_env)
         assert self._env.ego is not None
 
@@ -249,7 +249,7 @@ class TrajOptSolver(abc.ABC):
         """Compute warm-start for optimization decision variables z.
 
         - hard: solve the same optimization process but use the hard optimization modules only.
-        - encoding: ...
+        - encoding: query pre-computed solutions for scenario close to current one (using encoding).
         - soft: solve the same optimization process but use the hard and safety optimization modules.
         - potential: warm-start using full formulation of `PotentialFieldEnvironment`.
 
@@ -266,7 +266,7 @@ class TrajOptSolver(abc.ABC):
             z_warm_start = self._warm_start_optimization(env=self.env, modules=modules_soft)
         elif method == mantrap.constants.WARM_START_POTENTIAL:
             env_warm_start = self.env.copy(env_type=mantrap.environment.PotentialFieldEnvironment)
-            z_warm_start = self._warm_start_optimization(env=env_warm_start, modules=self.modules)
+            z_warm_start = self._warm_start_optimization(env=env_warm_start, modules=self.module_defaults())
         else:
             raise ValueError(f"Invalid warm starting-method {method} !")
         logging.debug(f"solver [warm_start]: finished ...")
@@ -332,8 +332,8 @@ class TrajOptSolver(abc.ABC):
     def module_defaults() -> typing.Union[typing.List[typing.Tuple], typing.List]:
         """List of optimization modules (objectives, constraint) and according dictionary
         of module kwargs, such as weight (for objectives), etc."""
-        return [(mantrap.modules.GoalNormModule, {"optimize_speed": False, "weight": 1.0}),
-                (mantrap.modules.InteractionProbabilityModule, {"weight": 1.0}),
+        return [(mantrap.modules.GoalNormModule, {"optimize_speed": False}),
+                mantrap.modules.InteractionProbabilityModule,
                 mantrap.modules.SpeedLimitModule,
                 mantrap.modules.HJReachabilityModule]
 
@@ -556,9 +556,48 @@ class TrajOptSolver(abc.ABC):
             ado_planned_wo=ado_planned_wo,
             ego_goal=self.goal,
             env=self.env,
-            file_path=output_format(name=f"{self.log_name}_{self.env.name}_scenes"),
+            file_path=output_format(name=f"{self.log_name}_{self.env.name}_scene_{iteration}"),
             **vis_kwargs
         )
+
+    def visualize_actual(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, as_video: bool = False, **vis_kwargs):
+        """Visualize actual trajectories over the solved time-steps, as simulated, in a single 2D plot.
+
+        :param tag: logging tag to plot, per default optimization tag.
+        :param as_video: output visualization as video over time-steps.
+        """
+        from mantrap.visualization import visualize_optimization, visualize_prediction
+        from mantrap.visualization.atomics import output_format
+
+        ego_actual = self.logger.log_query("actual", mantrap.constants.LT_EGO, tag=tag, apply_func="cat")
+        ado_actual = self.logger.log_query("actual", mantrap.constants.LT_ADO, tag=tag, apply_func="cat")
+        ado_planned_wo = self.logger.log_query("planned", mantrap.constants.LT_ADO_WO, tag=tag, apply_func="cat")
+
+        if as_video:
+            # Stretch actual trajectories to be in the shape of planned trajectories, with `t_planning = 1`.
+            ego_planned = ego_actual.unsqueeze(dim=1)[:-1]
+            ado_planned = ado_actual.permute(1, 0, 2, 3).view(-1, self.env.num_ados, 1, 1, 1, 5)[:-1]
+
+            return visualize_optimization(
+                ego_planned=ego_planned,
+                ado_actual=ado_actual,
+                ado_planned=ado_planned,
+                ado_planned_wo=ado_planned_wo,
+                ego_goal=self.goal,
+                env=self.env,
+                file_path=output_format(name=f"{self.log_name}_{self.env.name}_actual"),
+                **vis_kwargs
+            )
+
+        else:
+            return visualize_prediction(
+                ego_planned=ego_actual,
+                ado_actual=ado_actual,
+                ego_goal=self.goal,
+                env=self.env,
+                file_path=output_format(name=f"{self.log_name}_{self.env.name}_actual"),
+                **vis_kwargs
+            )
 
     ###########################################################################
     # Solver parameters #######################################################
@@ -566,10 +605,6 @@ class TrajOptSolver(abc.ABC):
     @property
     def env(self) -> mantrap.environment.base.GraphBasedEnvironment:
         return self._env
-
-    @env.setter
-    def env(self, env: mantrap.environment.base.GraphBasedEnvironment):
-        self._env = env
 
     @property
     def eval_env(self) -> mantrap.environment.base.GraphBasedEnvironment:

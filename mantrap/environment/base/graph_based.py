@@ -489,7 +489,7 @@ class GraphBasedEnvironment(abc.ABC):
 
         for ado in self.ados:
             other_ado_index = other.index_ado_id(ado_id=ado.id)
-            assert ado.__eq__(other.ados[other_ado_index], check_class=False)
+            assert ado.__eq__(other.ados[other_ado_index], check_class=False, check_history=False)
 
         return True
 

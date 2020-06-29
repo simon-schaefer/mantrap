@@ -108,7 +108,7 @@ class Trajectron(GraphBasedEnvironment):
         # user's intention, therefore stack several copies of this input state (position, velocity, time) in order
         # to create a history the Trajectron is used to deal with, while giving the incentive to predict a simple
         # "constant" continuation of this state as most likely prediction.
-        if history is None:
+        if history is None or history.shape[0] == 1:
             position, velocity = position.float(), velocity.float()
             history = torch.stack([torch.cat(
                 (position + velocity * self.dt * t, velocity, torch.ones(1) * self.time + self.dt * t))
