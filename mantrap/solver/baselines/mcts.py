@@ -5,7 +5,7 @@ import numpy as np
 import mantrap.constants
 import mantrap.modules
 
-from .base import SearchIntermediate
+from mantrap.solver.base import SearchIntermediate
 
 
 class MonteCarloTreeSearch(SearchIntermediate):

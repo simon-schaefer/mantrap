@@ -40,7 +40,7 @@ def scenario(
 # Tests - All Solvers #####################################################
 ###########################################################################
 @pytest.mark.parametrize("solver_class", [mantrap.solver.IPOPTSolver,
-                                          mantrap.solver.MonteCarloTreeSearch,
+                                          mantrap.solver.baselines.MonteCarloTreeSearch,
                                           mantrap.solver.baselines.RandomSearch])
 @pytest.mark.parametrize("env_class", environments)
 @pytest.mark.parametrize("attention_class", attentions)
@@ -227,7 +227,7 @@ class TestSolvers:
 # Test - Search Solver ####################################################
 ###########################################################################
 @pytest.mark.parametrize("solver_class", [mantrap.solver.baselines.RandomSearch,
-                                          mantrap.solver.MonteCarloTreeSearch])
+                                          mantrap.solver.baselines.MonteCarloTreeSearch])
 @pytest.mark.parametrize("env_class", environments)
 class TestSearchSolvers:
 
