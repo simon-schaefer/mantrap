@@ -4,7 +4,7 @@ import torch
 import mantrap.constants
 import mantrap.environment
 
-from .atomics import draw_trajectory_axis, draw_samples, draw_agent_representation, interactive_save_image
+from .atomics import draw_trajectory, draw_trajectory_axis, draw_samples, draw_agent, interactive_save_image
 
 
 def visualize_prediction(
@@ -12,9 +12,10 @@ def visualize_prediction(
     ego_planned: torch.Tensor = None,
     ado_planned: torch.Tensor = None,
     ado_planned_wo: torch.Tensor = None,
+    ado_actual: torch.Tensor = None,
     ado_histories: torch.Tensor = None,
     ego_goal: torch.Tensor = None,
-    legend: bool = True,
+    legend: bool = False,
     file_path: str = None,
     ax: plt.Axes = None
 ):
@@ -28,6 +29,7 @@ def visualize_prediction(
    :param env: simulation environment, just used statically here (e.g. to convert ids to agents, roll out
                trajectories, etc.).
    :param ego_planned: planned/optimized ego trajectory (t_horizon + 1, 5).
+   :param ado_actual: actual ado trajectories (num_ados, t_horizon + 1, 1, 5).
    :param ado_planned: according ado trajectory conditioned on ego_planned (num_ados, num_samples, t_horizon + 1, 1, 5).
    :param ado_histories: ado history trajectory used instead of internally stored on (num_ados, -1, >=2).
     :param ego_goal: optimization robot goal state.
@@ -38,6 +40,8 @@ def visualize_prediction(
     # Check inputs for validity in shape and matching sizes.
     if ego_planned is not None:
         assert mantrap.utility.shaping.check_ego_trajectory(ego_planned)
+    if ado_actual is not None:
+        assert mantrap.utility.shaping.check_ado_trajectories(ado_actual, ados=env.num_ados, num_modes=1)
     if ado_planned is not None:
         assert mantrap.utility.shaping.check_ado_samples(ado_planned, ados=env.num_ados)
     if ado_planned_wo is not None:
@@ -53,19 +57,11 @@ def visualize_prediction(
         plt.close('all')
         fig, ax = plt.subplots(figsize=(8, 8), constrained_layout=True)
 
-    # Check ado trajectories and decide whether to mainly plot the without trajectories or the conditioned
-    # trajectories (if they are defined).
-    ado_trajectory_main = None
-    if ado_planned is not None:
-        ado_trajectory_main = ado_planned.detach().clone()
-    elif ado_planned_wo is not None:
-        ado_trajectory_main = ado_planned_wo.detach().clone()
-
     # Plot ego trajectory.
     if ego_planned is not None:
         ego_color, ego_id = env.ego.color, env.ego.id
-        ax.plot(ego_planned[:, 0], ego_planned[:, 1], "-", color=ego_color, label=ego_id)
-        draw_agent_representation(ego_planned[0, 0:2], color=ego_color, name=ego_id, env_axes=env.axes, ax=ax)
+        draw_trajectory(ego_planned, is_robot=True, name=ego_id, color=ego_color, env_axes=env.axes, ax=ax)
+        draw_agent(ego_planned[0, 0:4], is_robot=True, color=ego_color, env_axes=env.axes, ax=ax)
 
     # Plot optimization goal state as a red cross.
     if ego_goal is not None:
@@ -75,22 +71,24 @@ def visualize_prediction(
     # Plot ado trajectories (forward and backward). Additionally plot the ado "side" trajectories, i.e.
     # the unconditioned prediction samples if both samples are defined.
     for m_ado, ado in enumerate(env.ados):
-
         ado_id, ado_color = ado.id, ado.color
+
+        # History - Ado internal or input ado history.
         ado_history = ado.history if ado_histories is None else ado_histories[m_ado, :, 0:2]
-        ax.plot(ado_history[:, 0], ado_history[:, 1], "-.", color=ado_color, label=f"{ado_id}_hist", alpha=0.8)
+        if len(ado_history) > 1:
+            ax.plot(ado_history[:, 0], ado_history[:, 1], "-.", color=ado_color, label=f"{ado_id}_hist", alpha=0.8)
+        draw_agent(ado_history[-1, :], is_robot=False, color=ado_color, env_axes=env.axes, ax=ax)
 
-        if ado_trajectory_main is not None:
-            ado_trajectory = ado_trajectory_main[m_ado]
-            ado_position = ado_trajectory[0, 0, 0, 0:2]
-            draw_samples(ado_trajectory, name=ado_id, color=ado_color, ax=ax, alpha=0.8, marker="-")
-        else:
-            ado_position = ado_history[-1, 0:2]
-        draw_agent_representation(ado_position, name=ado_id, color=ado_color, env_axes=env.axes, ax=ax)
+        # Actual trajectory - Miniature pedestrians.
+        if ado_actual is not None:
+            trajectory = ado_actual[m_ado, :, 0, :]
+            draw_trajectory(trajectory, name=ado_id, color=ado_color, env_axes=env.axes, ax=ax, is_robot=False)
 
-        if ado_planned is not None and ado_planned_wo is not None:
-            label = f"{ado_id}_wo"
-            draw_samples(ado_planned_wo[m_ado], name=label, color=ado_color, ax=ax, alpha=0.6, marker=":")
+        # Sample trajectory - Conditioned and unconditioned.
+        if ado_planned is not None:
+            draw_samples(ado_planned[m_ado], name=ado_id, color=ado_color, ax=ax, alpha=0.8, marker=":")
+        if ado_planned_wo is not None:
+            draw_samples(ado_planned_wo[m_ado], name=f"{ado_id}_wo", color=ado_color, ax=ax, alpha=0.6, marker=":")
 
     draw_trajectory_axis(env.axes, ax=ax, legend=legend)
     ax.set_title(f"predictions")

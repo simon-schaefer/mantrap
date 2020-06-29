@@ -17,7 +17,7 @@ def visualize_optimization(
     ado_planned_wo: torch.Tensor,
     env: mantrap.environment.base.GraphBasedEnvironment,
     ego_goal: torch.Tensor = None,
-    legend: bool = True,
+    legend: bool = False,
     frame_interval: float = mantrap.constants.VISUALIZATION_FRAME_DELAY,
     restart_delay: float = mantrap.constants.VISUALIZATION_RESTART_DELAY,
     file_path: str = None,
