@@ -81,8 +81,8 @@ class InteractionProbabilityModule(PureObjectiveModule):
         # We want to maximize the probability of the unconditioned trajectories in the conditioned
         # distribution, so we minimize its negative value.
         objective = - objective
-        #max_value = mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX
-        #objective = objective.clamp(-max_value, max_value)
+        max_value = mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX
+        objective = objective.clamp(-max_value, max_value)
         return objective
 
     def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:
@@ -101,7 +101,6 @@ class InteractionProbabilityModule(PureObjectiveModule):
         :param x: objective/constraint value in normal value range.
         :returns: normalized objective/constraint value in range [-1, 1].
         """
-        x = - np.sign(x) * np.log(np.abs(x + 1e-30))
         return x / mantrap.constants.OBJECTIVE_PROB_INTERACT_MAX
 
     def gradient_condition(self) -> bool:
