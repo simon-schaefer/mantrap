@@ -168,14 +168,16 @@ The proximate attention module is re-using a concept, that is frequently used in
 \end{equation}
 
 \paragraph{Evaluation}
-Table \ref{table:attention} and Figure \ref{img:attention} show the results of a Monte Carlo-based evaluation, averaged over 10 scenarios with 20 time-steps each. "Without" thereby refers to using the trajectory optimization without any attention. Due to its conservative safety estimate the reachability-based approach does not cut the computational effort at all, since hardly a pedestrian is removed from the robots attention. Using an euclidean-based attention dramatically reduces the average computational cost, since the interactive objective function does not have to be evaluated with respect to all surrounding pedestrians, or not at all, when no pedestrian is close to the robot. The effect of attention on computational effort is therefore two-fold: It decreases the average cost of objective/gradient evaluation and the number of required optimization iterations. Also, the derived trajectories do not necessarily perform worse in terms of interactive trajectory cost. 
+Table \ref{table:attention} and Figure \ref{img:attention} show the results of a Monte Carlo-based evaluation, averaged over 10 scenarios with 20 time-steps each. "Without" thereby refers to using the trajectory optimization without any attention. Due to its conservative safety estimate the reachability-based approach does not cut the computational effort at all, since hardly a pedestrian is removed from the robots attention. Conversely, the euclidean and proximate attention modules show very similar performance. In case of very cluttered scenarios (not shown here), the proximate attention sometimes leads to rapidly changing the related pedestrian, that might cause an "in-constant" robot movement. Hence, the euclidean module is the better overall choice.
+\newline
+Using an euclidean-based attention dramatically reduces the average computational cost, since the interactive objective function does not have to be evaluated with respect to all surrounding pedestrians, or not at all, when no pedestrian is close to the robot. The effect of attention on computational effort is therefore two-fold: It decreases the average cost of objective/gradient evaluation and the number of required optimization iterations. Also, the derived trajectories do not necessarily perform worse in terms of interactive trajectory cost. 
 
 \begin{table}[!ht]
 \begin{center}
 \begin{tabular}{c|c|c|c|c|c|c|c}
 \bf Attention & \bf MPE & \bf RTD & \bf RCE & \bf ETT & \bf TGD & \bf MSD & \bf Mean Runtime [s] \\
 \hline
-euclidean & 9.72 & 0.97 & 0.24 & 0.0 & 0.14 & 2.24 & 0.058 \\
+proximate & 9.72 & 0.97 & 0.24 & 0.0 & 0.14 & 2.24 & 0.058 \\
 \hline
 reachability & 9.36 & 0.98 & 0.26 & -0.28 & 0.13 & 2.24 & 0.68 \\
 \hline
@@ -183,7 +185,7 @@ reachability & 9.36 & 0.98 & 0.26 & -0.28 & 0.13 & 2.24 & 0.68 \\
 without & 9.92 & 0.97 & 0.30 & -0.24 & 0.14 & 2.23 & 0.77 \\ 
 \hline
 \rowcolor{our_color}
-proximate & 9.54 & 0.97 & 0.23 & 0.0 & 0.14 & 2.22 & 0.06
+euclidean & 9.54 & 0.97 & 0.23 & 0.0 & 0.14 & 2.22 & 0.06
 \end{tabular}
 \end{center}
 \label{table:attention}
