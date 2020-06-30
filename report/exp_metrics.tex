@@ -73,7 +73,7 @@ ETT = (\stepssolution - \stepssolution_{direct})\dt
 While most above metrics are explicitly related to the demands the derived solution trajectory poses on the robot, the underlying formulation's primary goal is to reduce the impact the robot's movement has on the "walking comfort" of the surrounding pedestrians. As reasoned in Section \ref{text:approach/objective/interactive}, comfort can be regarded as a function of their accelerational changes, which might occur due to the presence of the robot. The MPE takes account for this "comfort" by comparing the mean acceleration conditioned on the solution trajectory with the mean acceleration without the presence of the robot at all, averaged over the length of the solution trajectory $\stepssolution$ and the number of pedestrians in the scene:
 
 \begin{equation}
-MPE = \frac{1}{\stepssolution} \frac{1}{K} \sum_{i=0}^{\stepssolution} \sum_{k=0}^K ||\ddxped[k]_i - \ddxpedwo[k]_i||_2
+MPE = \frac{1}{\stepssolution} \frac{1}{K} \sum_{i=0}^{\stepssolution} \sum_{k=0}^K \frac{||\ddxped[k]_i - \ddxpedwo[k]_i||_2}{||\ddxpedwo[k]_i||_2}
 \end{equation}
 
 \paragraph{\ac{TGD}}

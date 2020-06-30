@@ -53,7 +53,7 @@ diff\_acc & 0.21 & 0.98 & 0.55 & 0.0 & 0.27 & 1.24 \\
 without & 0.31 & 1.0 & 0.27 & 0.0 & 0.23 & 1.08 \\ 
 \hline
 \rowcolor{our_color}
-projection & 0.01 & 0.92 & 0.79 & 0.8 & 0.39 & 1.44 
+projection & 0.18 & 0.92 & 0.79 & 0.8 & 0.39 & 1.44 
 \end{tabular}
 \end{center}
 \label{table:interactive_objective}
@@ -95,8 +95,8 @@ Figure \ref{img:hj_approx_bar} shows the logarithmic approximation error for sev
 The warm-starting method used in the underlying work simplifies the full trajectory optimization problem to a convex and efficiently computable sub-problem. This process has been described in Section \ref{text:approach/runtime/warm_starting}. This simplified formulation merely takes into account the goal objective as well as a physical constraint imposed by the robot, while neglecting any interaction between robot and pedestrian in the scene. It this way, not only pedestrian-target objectives are ignored, but also constraints enforcing a safe interaction. Despite being efficient to solve, it might return a solution estimate far from the real solution. For example, in the case of a densely crowded area, it might return a solution trajectory, passing very close to other pedestrians, which surely violates the safety constraints of the full formulation. Consequently, the runtime would not be reduced much, if at all. 
 \newline
 As previously pointed out, there is no simple way of warm-starting interior-point-based methods using preceding solutions. This difficulty motivates finding other warm-starting approaches designed explicitly for crowd-navigation. In the following several other concepts for warm-starting, the underlying optimization problem is introduced and baselined against the used method. The used method, which is solving a simplified, robot-focussed optimization problem, is thereby referred to as \ac{GFW}.
-\paragraph{
-\ac{SCW}} 
+
+\paragraph{\ac{SCW}} 
 SCW follows a similar idea as \ac{GFW}, which is using a simplified formulation of the full optimization problem (Problem \ref{problem:general}) as a wart-start. \ac{GFW}s formulation is thereby extended by the safety constraint $g_{HJR}(\cdot)$ to guarantee that the warm-starting solution is feasible with respect to the system's safety constraint. $g_{HJR}(\cdot)$ is by design independent from pedestrian predictions as well as, for the assumed agent dynamics, widely linear. As a result, \ac{SCW} not only accounts for interactions and feasibility of the warm-started solution trajectory in the full problem but also is comparably efficient to solve.
 
 \paragraph{\ac{PCBW}}
@@ -147,26 +147,7 @@ It is straightforward to see that the computational complexity of evaluating the
 Thus, as an example, it is effortful to compute the gradient of the interactive objective with respect to the robot's trajectory for Trajectron \cite{Ivanovic2018}, but computationally light-weight to do so for the Social Forces environment \cite{Helbing1995}. Following this idea, the \ac{SPMW} method warm-starts the optimization by solving the same (full) optimization problem and using a less complicated environment. The Potential Field prediction model, as described in Section \ref{text:exp_particles}, has been developed for warm-starting. It is worth noting that \ac{SPMW} enables us to improve the efficiency of the optimization and take advantage of prior knowledge. Therefore, the Potential Field model has been designed so that the pedestrian is only affected by the robot when it is close to the pedestrian and in front of it. Consequently, the optimization is driven to a solution in which the robot moves behind or in the distance of each pedestrian.
 
 \paragraph{Evaluation}
-Table \ref{table:warm_start} quantitatively compares the exhibited warm-starting methods. 
-
-\begin{table}[!ht]
-\begin{center}
-\begin{tabular}{c|c|c|c|c|c|c}
-\bf Warm-Starting Method & \bf MPE & \bf RTD & \bf RCE & \bf ETT & \bf TGD & \bf MSD \\
-\hline
-SCW & 0.33 & 0.99 & 0.32 & 0.0 & 0.24 & 0.94 \\
-\hline
-PCBW & 0.29 & 0.98 & 0.51 & 0.0 & 0.26 & 1.16 \\
-\hline
-SMW & 0.21 & 0.98 & 0.55 & 0.0 & 0.27 & 1.24 \\ 
-\hline
-\rowcolor{our_color}
-GFW & 0.01 & 0.92 & 0.79 & 0.8 & 0.39 & 1.44 
-\end{tabular}
-\end{center}
-\caption{Quantitative comparison of several warm-starting methods by evaluating the performance of the underlying trajectory optimization.}
-\label{table:warm_start}
-\end{table}
+Evaluating the performance of the exhibited warm-starting methodologies generally is hard, as for each warm-starting method a set of scenarios can be constructed, in which the resulting warm-started trajectory is very close to the optimal trajectory. As an example \ac{GFW} works well for sparse scenarios, with few pedestrians, while \ac{SCW} performs well, when the robot starts close to a pedestrian. However, in most cases the warm-starting methods decrease the average optimization runtime by $5-10 \%$, while not qualitatively affecting the shape of the solution trajectory. Empirically, \ac{SCW} seems to perform best. Automatically deciding the optimal warm-starting method for a given scenario, as e.g., by leveraging learning-based methods as in \cite{Banerjee2020}, is left for future work.
 
 \subsection{Attention Methods}
 Section \ref{text:approach/runtime/filtering} has introduced the concept of attention for filtering the significant pedestrians for evaluating the interactive objective and cutting computational runtime. Next to the purposed euclidean-distance-based attention module, there are several other methodologies for this purpose, out of which two more sophisticated options will be presented in the following:
