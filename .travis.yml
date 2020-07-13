@@ -67,7 +67,7 @@ install:
   - mv mantrap/trajectron_models .  # trajectron model
   - mv mantrap/reachability .  # reachability values
   - cd sgan  # sgan models
-  - bash scripts/download_model.sh
+  - bash scripts/download_models.sh
   - cd /home/travis/build/simon-schaefer/mantrap
 
 # command to run tests. 
