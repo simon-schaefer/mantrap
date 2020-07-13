@@ -10,7 +10,7 @@ import torch
 
 
 def evaluate(solver: mantrap.solver.base.TrajOptSolver, time_steps: int = 10, label: str = None,
-             num_tests: int = 10, **solve_kwargs
+             num_tests: int = 40, mean_df: bool = True, **solve_kwargs
              ) -> typing.Tuple[pandas.DataFrame, torch.Tensor, torch.Tensor]:
     """Evaluate the solver performance in current set configuration using MonteCarlo testing.
 
@@ -21,6 +21,7 @@ def evaluate(solver: mantrap.solver.base.TrajOptSolver, time_steps: int = 10, la
     :param time_steps: number of time-steps to solve for evaluation.
     :param label: label of evaluation in resulting data-frame, by default the log-name of the solver.
     :param num_tests: number of monte-carlo tests.
+    :param mean_df: return the mean data-frame over all experiments.
     :param solve_kwargs: additional kwargs for `solve()` method.s
     """
     label = solver.log_name if label is None else label
@@ -51,10 +52,14 @@ def evaluate(solver: mantrap.solver.base.TrajOptSolver, time_steps: int = 10, la
         eval_dict["runtime[s]"] = solve_time / time_steps
         eval_df = eval_df.append(pandas.DataFrame(eval_dict, index=[k]))
 
-    eval_df_mean = eval_df.mean().to_frame(name=label).transpose()
-    ego_trajectories = torch.stack(ego_trajectories)
-    ado_trajectories = torch.stack(ado_trajectories).transpose(0, 1)
-    return eval_df_mean, ego_trajectories, ado_trajectories
+    # ego_trajectories = torch.stack(ego_trajectories)
+    # ado_trajectories = torch.stack(ado_trajectories).transpose(0, 1)
+    # return eval_df_mean, ego_trajectories, ado_trajectories
+
+    if mean_df:
+        return eval_df.mean().to_frame(name=label).transpose(), None, None
+    else:
+        return eval_df, None, None
 
 
 #######################################################################################################################

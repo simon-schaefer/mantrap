@@ -74,7 +74,7 @@ class ORCASolver(TrajOptSolver):
         # to be quite low, < 0.1 s. Since the simulation runs quite fast, we can split the actual simulation
         # time-step in smaller sub-steps. This improves the result while being independent from the user-defined
         # simulation time-step, at a comparably low computational cost.
-        assert self.env.dt <= 0.1
+        # assert self.env.dt <= 0.1
 
         for t in range(self.planning_horizon):
             # Find set of line constraint for the robot to be safe. Important here is that uni-modality is assumed.

@@ -20,16 +20,16 @@ The previously described qualitative benefits of the proposed approach can be un
 \begin{table}[!ht]
 \begin{center}
 \begin{tabular}{c|c|c|c|c|c|c|c}
-\bf Method & \bf MPE & \bf RTD & \bf RCE & \bf ETT & \bf TGD & \bf MSD & \bf Mean Runtime [s] \\
+\bf Method & \bf MPE[\%] & \bf RTD & \bf RCE[\%] & \bf ETT & \bf TGD & \bf MSD & \bf MSR \\
 \hline
-\ac{MCTS} & 7.03 & 0.77 & 0.76 & 0.69 & 0.511 & 4.64 & 0.67 \\
+\ac{MCTS} & 104 & 0.77 & 125 & 0.69 & 0.511 & 4.64 & 0.67 \\
 \hline
-\ac{ORCA} & 6.86 & 0.70 & 0.97 & 0.0 & 0.35 & 3.68 & 0.028 \\
+\ac{ORCA} & 102 & 0.70 & 143 & 0.0 & 0.35 & 3.68 & 0.028 \\
 \hline
-\ac{RRT}$\star$ & 7.13 & 0.53 & 1.18 & 0.0 & 0.68 & 3.38 & 0.29 \\
+\ac{RRT}$\star$ & 105 & 193 & 1.18 & 0.0 & 0.68 & 3.38 & 0.29 \\
 \hline
 \rowcolor{our_color}
-\project & 6.78 & 0.93 & 0.61 & 0.38 & 0.30 & 4.51 & 0.28
+\project & 100 & 0.93 & 100 & 0.38 & 0.30 & 4.51 & 0.28
 \end{tabular}
 \end{center}
 \caption{Quantitative comparison of approach to several baseline methods.}
