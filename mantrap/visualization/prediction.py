@@ -15,6 +15,7 @@ def visualize_prediction(
     ado_actual: torch.Tensor = None,
     ado_histories: torch.Tensor = None,
     ego_goal: torch.Tensor = None,
+    display_wo: bool = True,
     legend: bool = False,
     title: str = None,
     file_path: str = None,
@@ -33,7 +34,8 @@ def visualize_prediction(
    :param ado_actual: actual ado trajectories (num_ados, t_horizon + 1, 1, 5).
    :param ado_planned: according ado trajectory conditioned on ego_planned (num_ados, num_samples, t_horizon + 1, 1, 5).
    :param ado_histories: ado history trajectory used instead of internally stored on (num_ados, -1, >=2).
-    :param ego_goal: optimization robot goal state.
+   :param ego_goal: optimization robot goal state.
+   :param display_wo: display ado-wo-trajectories.
    :param legend: draw legend in paths plot (might be a mess for many agents).
    :param title: plot title (none by default).
    :param file_path: storage path, if None return as HTML video object.
@@ -89,7 +91,7 @@ def visualize_prediction(
         # Sample trajectory - Conditioned and unconditioned.
         if ado_planned is not None:
             draw_samples(ado_planned[m_ado], name=ado_id, color=ado_color, ax=ax, alpha=0.3, marker="-")
-        if ado_planned_wo is not None:
+        if ado_planned_wo is not None and display_wo:
             draw_samples(ado_planned_wo[m_ado], name=f"{ado_id}_wo", color=ado_color, ax=ax, alpha=0.3, marker=":")
 
     draw_trajectory_axis(env.axes, ax=ax, legend=legend)

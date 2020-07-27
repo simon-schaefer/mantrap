@@ -229,7 +229,6 @@ class Trajectron(GraphBasedEnvironment):
             # Re-Map the node-id to the agent tags using within this project during initialization
             # (enforced to be identical except of type-tag during initialization).
             ado_id = self.agent_id_from_node(node)
-            m_ado = self.index_ado_id(ado_id)
 
             # Convert the distribution into the project-custom definition of a GMM, since some properties
             # as e.g. mean are not defined in gmm2d.py and since another shape format is used.
