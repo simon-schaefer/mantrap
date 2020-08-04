@@ -503,8 +503,8 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     def __intermediate_log(self, ego_trajectory: torch.Tensor, tag: str = mantrap.constants.TAG_OPTIMIZATION):
         if self.logger.is_logging:
-            ado_planned = self.env.sample_w_trajectory(ego_trajectory=ego_trajectory, num_samples=10)
-            ado_planned_wo = self.env.sample_wo_ego(t_horizon=ego_trajectory.shape[0] - 1, num_samples=10)
+            ado_planned = self.eval_env.sample_w_trajectory(ego_trajectory=ego_trajectory, num_samples=10)
+            ado_planned_wo = self.eval_env.sample_wo_ego(t_horizon=ego_trajectory.shape[0] - 1, num_samples=10)
             trajectory_log = {f"{mantrap.constants.LT_EGO}_planned": ego_trajectory,
                               f"{mantrap.constants.LT_ADO}_planned": ado_planned,
                               f"{mantrap.constants.LT_ADO_WO}_planned": ado_planned_wo}
@@ -513,11 +513,12 @@ class TrajOptSolver(abc.ABC):
     ###########################################################################
     # Visualization ###########################################################
     ###########################################################################
-    def visualize_scenes(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, **vis_kwargs):
+    def visualize_scenes(self, tag: str = mantrap.constants.TAG_OPTIMIZATION, save: bool = False, **vis_kwargs):
         """Visualize planned trajectory over full time-horizon as well as simulated ado reactions (i.e. their
         trajectories conditioned on the planned ego trajectory).
 
         :param tag: logging tag to plot, per default optimization tag.
+        :param save: save video (force-saving) as .gif file.
         """
         from mantrap.visualization.atomics import output_format
         from mantrap.visualization import visualize_optimization
@@ -535,7 +536,7 @@ class TrajOptSolver(abc.ABC):
             # ego_trials=[self._log[f"{tag}/ego_planned_{k}"] for k in range(self._iteration + 1)],
             ego_goal=self.goal,
             env=self.env,
-            file_path=output_format(f"{self.log_name}_{self.env.name}_scenes"),
+            file_path=output_format(f"{self.log_name}_{self.env.name}_scenes", force_save=save),
             **vis_kwargs
         )
 

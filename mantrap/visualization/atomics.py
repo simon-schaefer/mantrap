@@ -69,20 +69,22 @@ def draw_trajectory(trajectory: torch.Tensor, name: typing.Union[str, None], col
     return ax
 
 
-def draw_trajectory_axis(env_axes: typing.Tuple[typing.Tuple, typing.Tuple], ax: plt.Axes, legend: bool = True):
+def draw_trajectory_axis(env_axes: typing.Tuple[typing.Tuple, typing.Tuple],
+                         ax: plt.Axes, legend: bool = True, grid: bool = True):
     # Set axes limitations for x- and y-axis and add legend and grid to visualization.
     ax.set_xlim(*env_axes[0])
     ax.set_ylim(*env_axes[1])
-    ax.grid()
+    if grid:
+        ax.grid()
     if legend:
         ax.legend()
     return ax
 
 
-def output_format(name: str) -> typing.Union[str, None]:
+def output_format(name: str, force_save: bool = False) -> typing.Union[str, None]:
     from mantrap.utility.io import build_os_path, is_running_from_ipython
     interactive = is_running_from_ipython()
-    if not interactive:
+    if not interactive or force_save:
         output_path = build_os_path(mantrap.constants.VISUALIZATION_DIRECTORY, make_dir=True, free=False)
         output_path = os.path.join(output_path, name)
     else:

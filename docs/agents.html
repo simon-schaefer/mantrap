@@ -193,8 +193,10 @@ type has different dynamics (like single-integrator or Dubins Car) this method i
 <dl class="py method">
 <dt id="mantrap.agents.base.discrete.DTAgent.expand_trajectory">
 <code class="sig-name descname">expand_trajectory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">dt</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.agents.base.discrete.DTAgent.expand_trajectory" title="Permalink to this definition">¶</a></dt>
-<dd><p>Derive (position, orientation, velocity)-trajectory information from position data only, using naive
-discrete differentiation, i.e. v_i = (x_i+1 - x_i) / dt.</p>
+<dd><p>Derive (position, orientation, velocity)-trajectory information from position data only, using
+numerical differentiation, i.e. v_i = (x_i+1 - x_i) / dt.</p>
+<p>Since the path is not constrained to be dynamically infeasible, stretch it so that the maximal
+velocity is the maximally allowed velocity for the dynamics.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -640,7 +642,7 @@ is in fact infinite !</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.1.
     </div>
   </body>
 </html>

@@ -56,6 +56,26 @@
 <div class="section" id="module-mantrap_evaluation.metrics">
 <span id="metrics"></span><h2>Metrics<a class="headerlink" href="#module-mantrap_evaluation.metrics" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
+<dt id="mantrap_evaluation.metrics.evaluate">
+<code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">evaluate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">solver</span><span class="p">:</span> <span class="n"><a class="reference internal" href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver" title="mantrap.solver.base.trajopt.TrajOptSolver">mantrap.solver.base.trajopt.TrajOptSolver</a></span></em>, <em class="sig-param"><span class="n">time_steps</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">10</span></em>, <em class="sig-param"><span class="n">label</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">num_tests</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">40</span></em>, <em class="sig-param"><span class="n">mean_df</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">solve_kwargs</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>pandas.core.frame.DataFrame<span class="p">, </span>torch.Tensor<span class="p">, </span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap_evaluation.metrics.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the solver performance in current set configuration using MonteCarlo testing.</p>
+<p>For evaluation solve an N-step trajectory optimization problem, given additional solver-kwargs, which
+can be additionally passed. Then compute each metric value and return the results as <cite>pd.DataFrame</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solver</strong> – solver to evaluation (has to be of <cite>TrajOptSolver</cite> class).</p></li>
+<li><p><strong>time_steps</strong> – number of time-steps to solve for evaluation.</p></li>
+<li><p><strong>label</strong> – label of evaluation in resulting data-frame, by default the log-name of the solver.</p></li>
+<li><p><strong>num_tests</strong> – number of monte-carlo tests.</p></li>
+<li><p><strong>mean_df</strong> – return the mean data-frame over all experiments.</p></li>
+<li><p><strong>solve_kwargs</strong> – additional kwargs for <cite>solve()</cite> method.s</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt id="mantrap_evaluation.metrics.metric_ado_effort">
 <code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_ado_effort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ado_trajectories</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_ado_effort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine the ado’s additional control effort introduced by the ego.</p>
@@ -81,7 +101,7 @@ only based on the travel time from start to goad position is highly connected to
 Therefore the ratio of every ego velocity vector going in the goal direction is determined, and normalized by the
 number of time-steps.</p>
 <div class="math notranslate nohighlight">
-\[score = \dfrac{\sum_t \overrightarrow{s}_t * \overrightarrow{v}_t}{T}\]</div>
+\[score = \frac{\sum_t \overrightarrow{s}_t * \overrightarrow{v}_t}{T}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -97,9 +117,10 @@ number of time-steps.</p>
 <code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_ego_effort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">max_acceleration</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">2.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_ego_effort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine the ego’s control effort (acceleration).</p>
 <p>For calculating the control effort of the ego agent approximate the acceleration by assuming the acceleration
-between two points in discrete time t0 and t1 as linear, i.e. a_t = (v_t - v_{t-1}) / dt. For normalization
-then compare the determined acceleration with the maximal acceleration the agent maximally would be capable of.
-The ego_effort score then is the ratio between the actual requested and maximally possible control effort.</p>
+between two points in discrete time t0 and t1 as linear, i.e. a_t = (v_t - v_{t-1}) / dt. For normalize
+then compare the determined acceleration with the maximal possible control effort.</p>
+<div class="math notranslate nohighlight">
+\[score = \frac{\sum at}{\sum a_{max}}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -111,10 +132,43 @@ The ego_effort score then is the ratio between the actual requested and maximall
 </dd></dl>
 
 <dl class="py function">
+<dt id="mantrap_evaluation.metrics.metric_extra_time">
+<code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_extra_time</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_extra_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine extra time to reach goal destination compared to direct path.</p>
+<p>Compare the derived ego trajectory travel time with the time it would need to get to the goal, which is
+defined as the last point of the ego trajectory, directly. To compute the direct path, solve the simplified
+optimization formulation consisting of goal objective and dynamics constraints only. The parameters
+other than the goal position do not matter for solving this simplified formulation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>ego_trajectory</strong> – trajectory of ego (t_horizon, 5).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mantrap_evaluation.metrics.metric_final_distance">
+<code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_final_distance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_final_distance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the final distance between ego and its goal position.</p>
+<p>For normalize divide the final distance by the initial distance. Scores larger than 1 mean, that
+the robot is more distant from the goal than at the beginning.</p>
+<div class="math notranslate nohighlight">
+\[score = ||x_T - g||_2 / ||x_0 - g||_2\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_trajectory</strong> – trajectory of ego (t_horizon, 5).</p></li>
+<li><p><strong>goal</strong> – optimization goal state (may vary in size, but usually 2D position).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt id="mantrap_evaluation.metrics.metric_minimal_distance">
 <code class="sig-prename descclassname">mantrap_evaluation.metrics.</code><code class="sig-name descname">metric_minimal_distance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_trajectories</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">num_inter_points</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">100</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap_evaluation.metrics.metric_minimal_distance" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine the minimal distance between the robot and any agent.
-Therefore the function expects to get a robot trajectory and positions for every ado (ghost) at every point of time,
+<dd><p>Determine the minimal distance between the robot and any agent (minimal separation distance).</p>
+<p>Therefore the function expects to get a robot trajectory and positions for every ado at every point of time,
 to determine the minimal distance in the continuous time. In order to transform the discrete to continuous time
 trajectories it is assumed that the robot as well as the other agents move linearly, as a single integrator, i.e.
 neglecting accelerations, from one discrete time-step to another, so that it’s positions can be interpolated
@@ -148,8 +202,6 @@ bash download.bash
 it to the dictionary of scenarios in <code class="code docutils literal notranslate"><span class="pre">__init__.py</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">foo</span><span class="p">(</span>
     <span class="n">env_type</span><span class="p">:</span> <span class="n">mantrap</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">GraphBasedEnvironment</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span>
-    <span class="n">ego_type</span><span class="p">:</span> <span class="n">mantrap</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">DTAgent</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">=</span> <span class="n">mantrap</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">DoubleIntegratorDTAgent</span><span class="p">,</span>
-    <span class="n">num_modes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">mantrap</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">GraphBasedEnvironment</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]:</span>
 </pre></div>
 </div>
@@ -229,7 +281,7 @@ trajectories.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.1.
     </div>
   </body>
 </html>

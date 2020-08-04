@@ -102,7 +102,7 @@ a numpy array. Hence, not computing based on numpy arrays would just introduce a
 
 <dl class="py method">
 <dt id="mantrap.modules.base.optimization_module.OptimizationModule.compute_gradient_auto_grad">
-<em class="property">static </em><code class="sig-name descname">compute_gradient_auto_grad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.compute_gradient_auto_grad" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">compute_gradient_auto_grad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">grad_wrt</span><span class="p">:</span> <span class="n">torch.Tensor</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.compute_gradient_auto_grad" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute derivative of x with respect to grad_wrt.</p>
 <p>Compute the gradient/jacobian/etc. of some vector x with respect to some tensor <cite>grad_wrt</cite>
 using the PyTorch autograd, automatic differentiation package. Here we assume that both are
@@ -249,24 +249,12 @@ evaluation of the constraint function.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.base.optimization_module.OptimizationModule.constraint_core">
-<em class="property">abstract </em><code class="sig-name descname">constraint_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.constraint_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine constraint value core method.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.modules.base.optimization_module.OptimizationModule.constraint_limits">
-<code class="sig-name descname">constraint_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">, </span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.constraint_limits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Lower and upper bounds for constraint values.</p>
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.constraint_boundaries">
+<code class="sig-name descname">constraint_boundaries</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>List<span class="p">[</span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">]</span><span class="p">, </span>List<span class="p">[</span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.constraint_boundaries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute module constraint boundaries.</p>
+<p>Assuming that the limits of a constraint are constant over the full time horizon, only the (scalar)
+limits are specific to the module, while the boundaries, i.e. the stacked limits over the time-horizon
+are generally stacked (and normalized !) for any module.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -316,27 +304,45 @@ autograd library compute the jacobian matrix based on the constraints computatio
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.base.optimization_module.OptimizationModule.objective">
-<code class="sig-name descname">objective</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.objective" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine objective value for passed ego trajectory by calling the internal <cite>compute()</cite> method.</p>
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.jacobian_structure">
+<code class="sig-name descname">jacobian_structure</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>numpy.ndarray<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.jacobian_structure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the sparsity structure of the jacobian, i.e. the indices of non-zero elements.</p>
+<p>When not defined otherwise the jacobian structure is determined by determining the jacobian for
+some random input structure (and the current environment), so that the non-zero indices can be
+determined afterwards. However this way of computing the jacobian structure highly depends on
+efficient calculation of the jacobian matrix, and is therefore only available if the the
+<cite>compute_jacobian_analytically()</cite> function is defined.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
 <li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
 <li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>indices of non-zero elements of jacobian.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.base.optimization_module.OptimizationModule.objective_core">
-<em class="property">abstract </em><code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.objective_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine objective value core method.</p>
-<p>The objective value should be returned either as PyTorch tensor or <cite>None</cite>. It cannot be simplified as
-floating point number directly, as next to its value it is important to return the gradient function,
-when computing its gradient. When the objective is not defined, simply return <cite>None</cite>.</p>
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.normalize">
+<em class="property">abstract </em><code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize the objective/constraint value for improved optimization performance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – objective/constraint value in normal value range.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>normalized objective/constraint value in range [0, 1].</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.base.optimization_module.OptimizationModule.objective">
+<code class="sig-name descname">objective</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#mantrap.modules.base.optimization_module.OptimizationModule.objective" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine objective value for passed ego trajectory by calling the internal <cite>compute()</cite> method.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -386,19 +392,6 @@ a numpy array. Hence, not computing based on numpy arrays would just introduce a
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt id="mantrap.modules.base.pure_objective.PureObjectiveModule.constraint_core">
-<code class="sig-name descname">constraint_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.pure_objective.PureObjectiveModule.constraint_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returning <cite>None</cite> as an constraint automatically ends constraint and jacobian computation
-and returns default values (empty numpy array).</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.modules.base.pure_objective.PureObjectiveModule.constraint_limits">
-<code class="sig-name descname">constraint_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">, </span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.pure_objective.PureObjectiveModule.constraint_limits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Lower and upper bounds for constraint values.</p>
-</dd></dl>
-
 </dd></dl>
 
 </div>
@@ -437,13 +430,6 @@ a numpy array. Hence, not computing based on numpy arrays would just introduce a
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt id="mantrap.modules.base.pure_constraint.PureConstraintModule.objective_core">
-<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.base.pure_constraint.PureConstraintModule.objective_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returning <cite>None</cite> as an objective automatically ends objective and gradient computation
-and returns default values (zero).</p>
-</dd></dl>
-
 </dd></dl>
 
 </div>
@@ -454,7 +440,7 @@ and returns default values (zero).</p>
 <span id="goal-norm"></span><h3>Goal-Norm<a class="headerlink" href="#module-mantrap.modules.goal_norm" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.modules.goal_norm.GoalNormModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.goal_norm.</code><code class="sig-name descname">GoalNormModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">optimize_speed</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.5</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unsued</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.goal_norm.GoalNormModule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.goal_norm.</code><code class="sig-name descname">GoalNormModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">optimize_speed</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.5</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.goal_norm.GoalNormModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Objective based on goal distance of every point of planned robot trajectory.</p>
 <p>Next to avoiding interaction with other agents the robot should reach the goal state in a finite amount of
 time. Therefore the distance of every trajectory point to the goal state is taken to account, which is
@@ -512,22 +498,17 @@ should always hold.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.goal_norm.GoalNormModule.objective_core">
-<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.goal_norm.GoalNormModule.objective_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine objective value core method.</p>
-<p>To compute the goal-based objective simply take the L2 norm between all positions on the ego trajectory
-and the goal. To encounter the fact, that it is more important for the last position (last = position at
-the end of the planning horizon) to be close to the goal position than the first position, multiply with
-a strictly increasing importance distribution, cubic in this case.</p>
-<p>When the goal-velocity is included here, compute the speed as L2 norm per trajectory state. Then weight
-the speeds at every time by its distance to the goal, as explained in the description of this module.</p>
+<dt id="mantrap.modules.goal_norm.GoalNormModule.normalize">
+<code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.modules.goal_norm.GoalNormModule.normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize the objective/constraint value for improved optimization performance.</p>
+<p>Compute normalize factor as the maximal possible ego goal distance in the given
+environment (i.e. length of rectangular diagonal line).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-</ul>
+<dd class="field-odd"><p><strong>x</strong> – objective/constraint value in normal value range.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>normalized objective/constraint value in range [0, 1].</p>
 </dd>
 </dl>
 </dd></dl>
@@ -539,7 +520,7 @@ the speeds at every time by its distance to the goal, as explained in the descri
 <span id="goal-weighted"></span><h3>Goal-Weighted<a class="headerlink" href="#module-mantrap.modules.baselines.goal_weighted" title="Permalink to this headline">¶</a></h3>
 <dl class="py class">
 <dt id="mantrap.modules.baselines.goal_weighted.GoalWeightedModule">
-<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.goal_weighted.</code><code class="sig-name descname">GoalWeightedModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.goal_weighted.GoalWeightedModule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.goal_weighted.</code><code class="sig-name descname">GoalWeightedModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">goal</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.goal_weighted.GoalWeightedModule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Objective based on goal distance of every point of planned robot trajectory.</p>
 <p>This module merely serves as a baseline comparison for the <cite>GoalMeanModule</cite>, by using a weighted
 sum instead of the mean for combining the point-wise objectives. Following the idea that it is
@@ -560,27 +541,6 @@ a numpy array. Hence, not computing based on numpy arrays would just introduce a
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
 <li><p><strong>grad_wrt</strong> – vector w.r.t. which the gradient should be determined.</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.modules.baselines.goal_weighted.GoalWeightedModule.objective_core">
-<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.goal_weighted.GoalWeightedModule.objective_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine objective value core method.</p>
-<p>To compute the goal-based objective simply take the L2 norm between all positions on the ego trajectory
-and the goal. To encounter the fact, that it is more important for the last position (last = position at
-the end of the planning horizon) to be close to the goal position than the first position, multiply with
-a strictly increasing importance distribution, cubic in this case.</p>
-<p>When the goal-velocity is included here, compute the speed as L2 norm per trajectory state. Then weight
-the speeds at every time by its distance to the goal, as explained in the description of this module.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
 <li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
 <li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
 </ul>
@@ -641,16 +601,23 @@ resulting objective value must have a gradient as well.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.prob_interact.InteractionProbabilityModule.objective_core">
-<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.prob_interact.InteractionProbabilityModule.objective_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine objective value core method.</p>
+<dt id="mantrap.modules.prob_interact.InteractionProbabilityModule.normalize">
+<code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.modules.prob_interact.InteractionProbabilityModule.normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize the objective/constraint value for improved optimization performance.</p>
+<p>When the projected trajectory is very unlikely in the computed distribution, then the log likelihood
+grows to very large values, which would result in very un-balanced objectives. Therefore it is clamped.
+The objective value is clamped to some maximal value which enforces the resulting objective
+values to be in some range. And can hence serve as normalize factor. However it turned out that
+(linear) transformation are not sufficient to deal with the partly very small probability values
+that occur here, therefore we log the values.</p>
+<p>To perform it this “correction” on both the objective and gradient, the normalization function
+is used, not the objective core function itself (which is a little bit suboptimal but the only way).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-</ul>
+<dd class="field-odd"><p><strong>x</strong> – objective/constraint value in normal value range.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>normalized objective/constraint value in range [-1, 1].</p>
 </dd>
 </dl>
 </dd></dl>
@@ -663,8 +630,8 @@ resulting objective value must have a gradient as well.</p>
 <dl class="py class">
 <dt id="mantrap.modules.baselines.acc_interact.InteractionAccelerationModule">
 <em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.acc_interact.</code><code class="sig-name descname">InteractionAccelerationModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule" title="Permalink to this definition">¶</a></dt>
-<dd><p>Loss based on accelerational interaction between robot and ados.</p>
-<p>As a proxy for interaction based on the acceleration of every ado is computed in a (fictional) scene without an
+<dd><p>Loss based on difference of accelerations due to interaction between robot and ados.</p>
+<p>As a proxy for interaction based on the mean acceleration of every ado is computed in a (fictional) scene without an
 ego (robot) and compared to the actual occurring accelerations in the scene. As for autonomous driving the
 acceleration can be expressed “moving comfort”, since a change in acceleration, especially a sudden change like
 strong de-acceleration, decreases the comfort of the agent.</p>
@@ -672,18 +639,12 @@ strong de-acceleration, decreases the comfort of the agent.</p>
 effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
 that would occur, if the ego is not there from the beginning.</p>
 <div class="math notranslate nohighlight">
-\[objective = \sum_{T} \sum_{ados} || acc_{t,i} - acc_{t,i}^{wo} ||_2\]</div>
+\[objective = 1/T \sum_{T} \sum_{ados} || acc_{t,i} - acc_{t,i}^{wo} ||_2\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>env</strong> – environment for predicting the behaviour without interaction.</p>
 </dd>
 </dl>
-<dl class="py method">
-<dt id="mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.distribution_to_acceleration">
-<code class="sig-name descname">distribution_to_acceleration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dist_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>torch.distributions.distribution.Distribution<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.distribution_to_acceleration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute ado-wise accelerations from positional distribution dict mean values.</p>
-</dd></dl>
-
 <dl class="py method">
 <dt id="mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.gradient_condition">
 <code class="sig-name descname">gradient_condition</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.gradient_condition" title="Permalink to this definition">¶</a></dt>
@@ -696,22 +657,25 @@ resulting objective value must have a gradient as well.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.objective_core">
-<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.objective_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine objective value core method.</p>
-<p>To compute the objective value first predict the behaviour of all agents in the scene in the planning
-horizon, conditioned on the ego trajectory. Then compare the (mode-wise if multi-modal) means of
-the previously computed un-conditioned (see initialization) and the conditioned distribution, in
-terms of their second derivative, i.e. acceleration.</p>
+<dt id="mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.normalize">
+<code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize the objective/constraint value for improved optimization performance.</p>
+<p>The objective value is clamped to some maximal value which enforces the resulting objective
+values to be in some range. And can hence serve as normalize factor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-</ul>
+<dd class="field-odd"><p><strong>x</strong> – objective/constraint value in normal value range.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>normalized objective/constraint value in range [-1, 1].</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.summarize_distribution">
+<code class="sig-name descname">summarize_distribution</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dist_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>torch.distributions.distribution.Distribution<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.summarize_distribution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute ado-wise accelerations from velocity distribution dict mean values.</p>
 </dd></dl>
 
 </dd></dl>
@@ -722,49 +686,24 @@ terms of their second derivative, i.e. acceleration.</p>
 <dl class="py class">
 <dt id="mantrap.modules.baselines.pos_interact.InteractionPositionModule">
 <em class="property">class </em><code class="sig-prename descclassname">mantrap.modules.baselines.pos_interact.</code><code class="sig-name descname">InteractionPositionModule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">t_horizon</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">weight</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1.0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">unused</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.modules.baselines.pos_interact.InteractionPositionModule" title="Permalink to this definition">¶</a></dt>
-<dd><p>Loss based on positional interaction between robot and ados.</p>
-<p>As a proxy for interaction based on the position of every ado is computed in a (fictional) scene without an
+<dd><p>Loss based on difference of positions due to interaction between robot and ados.</p>
+<p>As a proxy for interaction based on the mean position of every ado is computed in a (fictional) scene without an
 ego (robot) and compared to the actual occurring positions in the scene, as in intuitive measure for the change
 the robot’s presence introduces to the scene.</p>
 <p>Re-Predicting it every time-step would be more correct, however it would also require a lot more computational
 effort (horizon times as much to be exact). Therefore merely the behavior of the ado without ego is computed
 that would occur, if the ego is not there from the beginning.</p>
 <div class="math notranslate nohighlight">
-\[objective = \sum_{T} \sum_{ados} || pos_{t,i} - pos_{t,i}^{wo} ||_2\]</div>
+\[objective = 1/T \sum_{T} \sum_{ados} || pos_{t,i} - pos_{t,i}^{wo} ||_2\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>env</strong> – solver’s environment environment for predicting the behaviour without interaction.</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="mantrap.modules.baselines.pos_interact.InteractionPositionModule.gradient_condition">
-<code class="sig-name descname">gradient_condition</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.modules.baselines.pos_interact.InteractionPositionModule.gradient_condition" title="Permalink to this definition">¶</a></dt>
-<dd><p>Condition for back-propagating through the objective/constraint in order to obtain the
-objective’s gradient vector/jacobian (numerically). If returns True and the ego_trajectory
-itself requires a gradient, the objective/constraint value, stored from the last computation
-(<cite>_current_</cite>-variables) has to require a gradient as well.</p>
-<p>If the internal environment is itself differentiable with respect to the ego (trajectory) input, the
-resulting objective value must have a gradient as well.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.modules.baselines.pos_interact.InteractionPositionModule.objective_core">
-<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.baselines.pos_interact.InteractionPositionModule.objective_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine objective value core method.</p>
-<p>To compute the objective value first predict the behaviour of all agents (and modes) in the scene in the
-planning horizon, conditioned on the ego trajectory. Then iterate over every ghost in the scene and
-find the deviation between the positions of a specific agent at the specific point in time conditioned
-on the ego trajectory and unconditioned. Multiply by the weights of the modes, in order to encounter for
-difference in importance between these modes.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-</ul>
-</dd>
-</dl>
+<dt id="mantrap.modules.baselines.pos_interact.InteractionPositionModule.summarize_distribution">
+<code class="sig-name descname">summarize_distribution</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dist_dict</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>str<span class="p">, </span>torch.distributions.distribution.Distribution<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#mantrap.modules.baselines.pos_interact.InteractionPositionModule.summarize_distribution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute ado-wise positions from velocity distribution dict mean values.</p>
 </dd></dl>
 
 </dd></dl>
@@ -808,34 +747,6 @@ is very straight-forward, by just applying the following formula:</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.control_limits.ControlLimitModule.constraint_core">
-<code class="sig-name descname">constraint_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.control_limits.ControlLimitModule.constraint_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine constraint value core method.</p>
-<p>The max control constraints simply are computed by transforming the given trajectory to control input
-(deterministic dynamics). Then take the norm over the “cartesian” axis to get the norm of the
-control input at every time-step.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.modules.control_limits.ControlLimitModule.constraint_limits">
-<code class="sig-name descname">constraint_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">, </span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.modules.control_limits.ControlLimitModule.constraint_limits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Lower and upper bounds for constraint values.</p>
-<p>The boundaries of this constraint depend on the exact implementation of the agent, however most agents
-are isotropic, so assuming to have equal control boundaries in both cartesian directions and also
-have its lower bound smaller or equal to zero, so that we can simplify the constraint to only have an
-upper bound (since the lower bound zero is anyways given and a norm is semi-positive).</p>
-</dd></dl>
-
-<dl class="py method">
 <dt id="mantrap.modules.control_limits.ControlLimitModule.gradient_condition">
 <code class="sig-name descname">gradient_condition</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.modules.control_limits.ControlLimitModule.gradient_condition" title="Permalink to this definition">¶</a></dt>
 <dd><p>Condition for back-propagating through the objective/constraint in order to obtain the
@@ -843,6 +754,39 @@ objective’s gradient vector/jacobian (numerically). If returns True and the eg
 itself requires a gradient, the objective/constraint value, stored from the last computation
 (<cite>_current_</cite>-variables) has to require a gradient as well.</p>
 <p>Since the ego trajectory directly depends on the controls, the gradient always exists.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.control_limits.ControlLimitModule.jacobian_structure">
+<code class="sig-name descname">jacobian_structure</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>numpy.ndarray<span class="p">]</span><a class="headerlink" href="#mantrap.modules.control_limits.ControlLimitModule.jacobian_structure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the sparsity structure of the jacobian, i.e. the indices of non-zero elements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
+<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>indices of non-zero elements of jacobian.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.control_limits.ControlLimitModule.normalize">
+<code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.modules.control_limits.ControlLimitModule.normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize the objective/constraint value for improved optimization performance.</p>
+<p>Use the maximally allowed controls as normalize factor, which are a property of the
+robot itself, that is stored in the internal environment representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – objective/constraint value in normal value range.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>normalized objective/constraint value in range [0, 1].</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -901,29 +845,6 @@ straight-forward. Using  the chain rule we get:</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.hj_reachibility.HJReachabilityModule.constraint_core">
-<code class="sig-name descname">constraint_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">enable_auto_grad</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule.constraint_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine constraint value core method.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
-<li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
-<li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
-<li><p><strong>enable_auto_grad</strong> – enable auto-grad to allow automatic backpropagation but slowing down
-computation (for debugging &amp; testing only).</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="mantrap.modules.hj_reachibility.HJReachabilityModule.constraint_limits">
-<code class="sig-name descname">constraint_limits</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">, </span>Optional<span class="p">[</span>float<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule.constraint_limits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Lower and upper bounds for constraint values.</p>
-</dd></dl>
-
-<dl class="py method">
 <dt id="mantrap.modules.hj_reachibility.HJReachabilityModule.gradient_condition">
 <code class="sig-name descname">gradient_condition</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule.gradient_condition" title="Permalink to this definition">¶</a></dt>
 <dd><p>Condition for back-propagating through the objective/constraint in order to obtain the
@@ -936,21 +857,32 @@ fitting, but they are not used here).</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="mantrap.modules.hj_reachibility.HJReachabilityModule.objective_core">
-<code class="sig-name descname">objective_core</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ego_trajectory</span><span class="p">:</span> <span class="n">torch.Tensor</span></em>, <em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>torch.Tensor<span class="p">]</span><a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule.objective_core" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine objective value core method.</p>
-<p>Since the module imposes soft constraints on the backward reachability value gradient, the
-objective value is introduced by the sum of slack variables, which is represented by
-<cite>sigma</cite> in constraint equation above. However soft constraints are dealt with automatically
-in the parent optimisation module class, therefore simply return <cite>None</cite> (no additional
-objective function) here.</p>
+<dt id="mantrap.modules.hj_reachibility.HJReachabilityModule.jacobian_structure">
+<code class="sig-name descname">jacobian_structure</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ado_ids</span><span class="p">:</span> <span class="n">List<span class="p">[</span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">tag</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>numpy.ndarray<span class="p">]</span><a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule.jacobian_structure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the sparsity structure of the jacobian, i.e. the indices of non-zero elements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ego_trajectory</strong> – planned ego trajectory (t_horizon, 5).</p></li>
 <li><p><strong>ado_ids</strong> – ghost ids which should be taken into account for computation.</p></li>
 <li><p><strong>tag</strong> – name of optimization call (name of the core).</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>indices of non-zero elements of jacobian.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="mantrap.modules.hj_reachibility.HJReachabilityModule.normalize">
+<code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>numpy.ndarray<span class="p">, </span>float<span class="p">]</span><a class="headerlink" href="#mantrap.modules.hj_reachibility.HJReachabilityModule.normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize the objective/constraint value for improved optimization performance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – objective/constraint value in normal value range.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>normalized objective/constraint value in range [0, 1].</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1071,7 +1003,7 @@ different pedestrian controls and computes the relative state for each of them.<
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.1.
     </div>
   </body>
 </html>

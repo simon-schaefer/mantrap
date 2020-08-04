@@ -58,6 +58,7 @@
  | <a href="#K"><strong>K</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
+ | <a href="#N"><strong>N</strong></a>
  | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
  | <a href="#R"><strong>R</strong></a>
@@ -76,6 +77,8 @@
       <li><a href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment.add_ado">add_ado() (mantrap.environment.base.graph_based.GraphBasedEnvironment method)</a>
 
       <ul>
+        <li><a href="environment.html#mantrap.environment.sgan.SGAN.add_ado">(mantrap.environment.sgan.SGAN method)</a>
+</li>
         <li><a href="environment.html#mantrap.environment.social_forces.SocialForcesEnvironment.add_ado">(mantrap.environment.social_forces.SocialForcesEnvironment method)</a>
 </li>
         <li><a href="environment.html#mantrap.environment.trajectron.Trajectron.add_ado">(mantrap.environment.trajectron.Trajectron method)</a>
@@ -125,7 +128,7 @@
         <li><a href="modules.html#mantrap.modules.goal_norm.GoalNormModule.compute_gradient_analytically">(mantrap.modules.goal_norm.GoalNormModule method)</a>
 </li>
       </ul></li>
-      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.compute_gradient_auto_grad">compute_gradient_auto_grad() (mantrap.modules.base.optimization_module.OptimizationModule static method)</a>
+      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.compute_gradient_auto_grad">compute_gradient_auto_grad() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 </li>
       <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.compute_jacobian_analytically">compute_jacobian_analytically() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 
@@ -137,36 +140,18 @@
         <li><a href="modules.html#mantrap.modules.hj_reachibility.HJReachabilityModule.compute_jacobian_analytically">(mantrap.modules.hj_reachibility.HJReachabilityModule method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.compute_objective">compute_objective() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 </li>
       <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.compute_violation">compute_violation() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 </li>
       <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.compute_violation_internal">compute_violation_internal() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.constraint">constraint() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 </li>
-      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.constraint_core">constraint_core() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
-
-      <ul>
-        <li><a href="modules.html#mantrap.modules.base.pure_objective.PureObjectiveModule.constraint_core">(mantrap.modules.base.pure_objective.PureObjectiveModule method)</a>
+      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.constraint_boundaries">constraint_boundaries() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 </li>
-        <li><a href="modules.html#mantrap.modules.control_limits.ControlLimitModule.constraint_core">(mantrap.modules.control_limits.ControlLimitModule method)</a>
-</li>
-        <li><a href="modules.html#mantrap.modules.hj_reachibility.HJReachabilityModule.constraint_core">(mantrap.modules.hj_reachibility.HJReachabilityModule method)</a>
-</li>
-      </ul></li>
-      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.constraint_limits">constraint_limits() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
-
-      <ul>
-        <li><a href="modules.html#mantrap.modules.base.pure_objective.PureObjectiveModule.constraint_limits">(mantrap.modules.base.pure_objective.PureObjectiveModule method)</a>
-</li>
-        <li><a href="modules.html#mantrap.modules.control_limits.ControlLimitModule.constraint_limits">(mantrap.modules.control_limits.ControlLimitModule method)</a>
-</li>
-        <li><a href="modules.html#mantrap.modules.hj_reachibility.HJReachabilityModule.constraint_limits">(mantrap.modules.hj_reachibility.HJReachabilityModule method)</a>
-</li>
-      </ul></li>
       <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.constraints">constraints() (mantrap.solver.base.trajopt.TrajOptSolver method)</a>
 </li>
       <li><a href="agents.html#mantrap.agents.base.discrete.DTAgent.control_limits">control_limits() (mantrap.agents.base.discrete.DTAgent method)</a>
@@ -211,7 +196,7 @@
         <li><a href="environment.html#mantrap.environment.trajectron.Trajectron.detach">(mantrap.environment.trajectron.Trajectron method)</a>
 </li>
       </ul></li>
-      <li><a href="modules.html#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.distribution_to_acceleration">distribution_to_acceleration() (mantrap.modules.baselines.acc_interact.InteractionAccelerationModule method)</a>
+      <li><a href="solver.html#mantrap.solver.baselines.orca.ORCASolver.LineConstraint.direction">direction() (mantrap.solver.baselines.orca.ORCASolver.LineConstraint property)</a>
 </li>
       <li><a href="agents.html#mantrap.agents.integrator_double.DoubleIntegratorDTAgent">DoubleIntegratorDTAgent (class in mantrap.agents.integrator_double)</a>
 </li>
@@ -239,10 +224,14 @@
 </li>
       <li><a href="attention.html#mantrap.attention.euclidean.EuclideanModule">EuclideanModule (class in mantrap.attention.euclidean)</a>
 </li>
+      <li><a href="evaluation.html#mantrap_evaluation.metrics.evaluate">evaluate() (in module mantrap_evaluation.metrics)</a>
+
+      <ul>
+        <li><a href="solver.html#mantrap.solver.base.search.SearchIntermediate.evaluate">(mantrap.solver.base.search.SearchIntermediate method)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="solver.html#mantrap.solver.base.search.SearchIntermediate.evaluate">evaluate() (mantrap.solver.base.search.SearchIntermediate method)</a>
-</li>
       <li><a href="agents.html#mantrap.agents.base.discrete.DTAgent.expand_state_vector">expand_state_vector() (mantrap.agents.base.discrete.DTAgent static method)</a>
 </li>
       <li><a href="agents.html#mantrap.agents.base.discrete.DTAgent.expand_trajectory">expand_trajectory() (mantrap.agents.base.discrete.DTAgent method)</a>
@@ -260,15 +249,13 @@
       <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.gradient">gradient() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 
       <ul>
-        <li><a href="solver.html#mantrap.solver.base.ipopt.IPOPTIntermediate.gradient">(mantrap.solver.base.ipopt.IPOPTIntermediate method)</a>
+        <li><a href="solver.html#mantrap.solver.ipopt.IPOPTSolver.gradient">(mantrap.solver.ipopt.IPOPTSolver method)</a>
 </li>
       </ul></li>
       <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.gradient_condition">gradient_condition() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 
       <ul>
         <li><a href="modules.html#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.gradient_condition">(mantrap.modules.baselines.acc_interact.InteractionAccelerationModule method)</a>
-</li>
-        <li><a href="modules.html#mantrap.modules.baselines.pos_interact.InteractionPositionModule.gradient_condition">(mantrap.modules.baselines.pos_interact.InteractionPositionModule method)</a>
 </li>
         <li><a href="modules.html#mantrap.modules.control_limits.ControlLimitModule.gradient_condition">(mantrap.modules.control_limits.ControlLimitModule method)</a>
 </li>
@@ -297,25 +284,19 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="solver.html#mantrap.solver.base.search.SearchIntermediate.initialize">initialize() (mantrap.solver.base.search.SearchIntermediate method)</a>
-
-      <ul>
-        <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.initialize">(mantrap.solver.base.trajopt.TrajOptSolver method)</a>
-</li>
-      </ul></li>
       <li><a href="agents.html#mantrap.agents.integrator_single.IntegratorDTAgent">IntegratorDTAgent (class in mantrap.agents.integrator_single)</a>
 </li>
       <li><a href="modules.html#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule">InteractionAccelerationModule (class in mantrap.modules.baselines.acc_interact)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules.html#mantrap.modules.baselines.pos_interact.InteractionPositionModule">InteractionPositionModule (class in mantrap.modules.baselines.pos_interact)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules.html#mantrap.modules.prob_interact.InteractionProbabilityModule">InteractionProbabilityModule (class in mantrap.modules.prob_interact)</a>
 </li>
       <li><a href="agents.html#mantrap.agents.base.discrete.DTAgent.inverse_dynamics">inverse_dynamics() (mantrap.agents.base.discrete.DTAgent method)</a>
 </li>
-      <li><a href="solver.html#mantrap.solver.base.ipopt.IPOPTIntermediate">IPOPTIntermediate (class in mantrap.solver.base.ipopt)</a>
+      <li><a href="solver.html#mantrap.solver.ipopt.IPOPTSolver">IPOPTSolver (class in mantrap.solver.ipopt)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -326,7 +307,17 @@
       <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.jacobian">jacobian() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
 
       <ul>
-        <li><a href="solver.html#mantrap.solver.base.ipopt.IPOPTIntermediate.jacobian">(mantrap.solver.base.ipopt.IPOPTIntermediate method)</a>
+        <li><a href="solver.html#mantrap.solver.ipopt.IPOPTSolver.jacobian">(mantrap.solver.ipopt.IPOPTSolver method)</a>
+</li>
+      </ul></li>
+      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.jacobian_structure">jacobian_structure() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
+
+      <ul>
+        <li><a href="modules.html#mantrap.modules.control_limits.ControlLimitModule.jacobian_structure">(mantrap.modules.control_limits.ControlLimitModule method)</a>
+</li>
+        <li><a href="modules.html#mantrap.modules.hj_reachibility.HJReachabilityModule.jacobian_structure">(mantrap.modules.hj_reachibility.HJReachabilityModule method)</a>
+</li>
+        <li><a href="solver.html#mantrap.solver.ipopt.IPOPTSolver.jacobian_structure">(mantrap.solver.ipopt.IPOPTSolver method)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -344,10 +335,6 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="agents.html#mantrap.agents.base.linear.LinearDTAgent">LinearDTAgent (class in mantrap.agents.base.linear)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.log_query">log_query() (mantrap.solver.base.trajopt.TrajOptSolver method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -425,6 +412,13 @@
 
       <ul>
         <li><a href="environment.html#module-mantrap.environment.base.particle">module</a>
+</li>
+      </ul></li>
+      <li>
+    mantrap.environment.sgan
+
+      <ul>
+        <li><a href="environment.html#module-mantrap.environment.sgan">module</a>
 </li>
       </ul></li>
       <li>
@@ -526,10 +520,10 @@
 </li>
       </ul></li>
       <li>
-    mantrap.solver.base.ipopt
+    mantrap.solver.base.logging
 
       <ul>
-        <li><a href="solver.html#module-mantrap.solver.base.ipopt">module</a>
+        <li><a href="solver.html#module-mantrap.solver.base.logging">module</a>
 </li>
       </ul></li>
       <li>
@@ -547,33 +541,40 @@
 </li>
       </ul></li>
       <li>
+    mantrap.solver.baselines.mcts
+
+      <ul>
+        <li><a href="solver.html#module-mantrap.solver.baselines.mcts">module</a>
+</li>
+      </ul></li>
+      <li>
+    mantrap.solver.baselines.orca
+
+      <ul>
+        <li><a href="solver.html#module-mantrap.solver.baselines.orca">module</a>
+</li>
+      </ul></li>
+      <li>
     mantrap.solver.baselines.random_search
 
       <ul>
         <li><a href="solver.html#module-mantrap.solver.baselines.random_search">module</a>
 </li>
       </ul></li>
-      <li>
-    mantrap.solver.mcts
-
-      <ul>
-        <li><a href="solver.html#module-mantrap.solver.mcts">module</a>
-</li>
-      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li>
-    mantrap.solver.sgrad
+    mantrap.solver.baselines.rrt_star
 
       <ul>
-        <li><a href="solver.html#module-mantrap.solver.sgrad">module</a>
+        <li><a href="solver.html#module-mantrap.solver.baselines.rrt_star">module</a>
 </li>
       </ul></li>
       <li>
-    mantrap.visualization.heat_map
+    mantrap.solver.ipopt
 
       <ul>
-        <li><a href="visualisation.html#module-mantrap.visualization.heat_map">module</a>
+        <li><a href="solver.html#module-mantrap.solver.ipopt">module</a>
 </li>
       </ul></li>
       <li>
@@ -610,6 +611,10 @@
 </li>
       <li><a href="evaluation.html#mantrap_evaluation.metrics.metric_ego_effort">metric_ego_effort() (in module mantrap_evaluation.metrics)</a>
 </li>
+      <li><a href="evaluation.html#mantrap_evaluation.metrics.metric_extra_time">metric_extra_time() (in module mantrap_evaluation.metrics)</a>
+</li>
+      <li><a href="evaluation.html#mantrap_evaluation.metrics.metric_final_distance">metric_final_distance() (in module mantrap_evaluation.metrics)</a>
+</li>
       <li><a href="evaluation.html#mantrap_evaluation.metrics.metric_minimal_distance">metric_minimal_distance() (in module mantrap_evaluation.metrics)</a>
 </li>
       <li>
@@ -635,6 +640,8 @@
         <li><a href="environment.html#module-mantrap.environment.base.graph_based">mantrap.environment.base.graph_based</a>
 </li>
         <li><a href="environment.html#module-mantrap.environment.base.particle">mantrap.environment.base.particle</a>
+</li>
+        <li><a href="environment.html#module-mantrap.environment.sgan">mantrap.environment.sgan</a>
 </li>
         <li><a href="environment.html#module-mantrap.environment.simplified.kalman">mantrap.environment.simplified.kalman</a>
 </li>
@@ -664,19 +671,21 @@
 </li>
         <li><a href="modules.html#module-mantrap.modules.prob_interact">mantrap.modules.prob_interact</a>
 </li>
-        <li><a href="solver.html#module-mantrap.solver.base.ipopt">mantrap.solver.base.ipopt</a>
+        <li><a href="solver.html#module-mantrap.solver.base.logging">mantrap.solver.base.logging</a>
 </li>
         <li><a href="solver.html#module-mantrap.solver.base.search">mantrap.solver.base.search</a>
 </li>
         <li><a href="solver.html#module-mantrap.solver.base.trajopt">mantrap.solver.base.trajopt</a>
 </li>
+        <li><a href="solver.html#module-mantrap.solver.baselines.mcts">mantrap.solver.baselines.mcts</a>
+</li>
+        <li><a href="solver.html#module-mantrap.solver.baselines.orca">mantrap.solver.baselines.orca</a>
+</li>
         <li><a href="solver.html#module-mantrap.solver.baselines.random_search">mantrap.solver.baselines.random_search</a>
 </li>
-        <li><a href="solver.html#module-mantrap.solver.mcts">mantrap.solver.mcts</a>
+        <li><a href="solver.html#module-mantrap.solver.baselines.rrt_star">mantrap.solver.baselines.rrt_star</a>
 </li>
-        <li><a href="solver.html#module-mantrap.solver.sgrad">mantrap.solver.sgrad</a>
-</li>
-        <li><a href="visualisation.html#module-mantrap.visualization.heat_map">mantrap.visualization.heat_map</a>
+        <li><a href="solver.html#module-mantrap.solver.ipopt">mantrap.solver.ipopt</a>
 </li>
         <li><a href="visualisation.html#module-mantrap.visualization.optimization">mantrap.visualization.optimization</a>
 </li>
@@ -690,21 +699,37 @@
       <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.module_defaults">module_defaults() (mantrap.solver.base.trajopt.TrajOptSolver static method)</a>
 
       <ul>
-        <li><a href="solver.html#mantrap.solver.baselines.random_search.RandomSearch.module_defaults">(mantrap.solver.baselines.random_search.RandomSearch static method)</a>
-</li>
-        <li><a href="solver.html#mantrap.solver.mcts.MonteCarloTreeSearch.module_defaults">(mantrap.solver.mcts.MonteCarloTreeSearch static method)</a>
-</li>
-        <li><a href="solver.html#mantrap.solver.sgrad.SGradSolver.module_defaults">(mantrap.solver.sgrad.SGradSolver static method)</a>
+        <li><a href="solver.html#mantrap.solver.baselines.orca.ORCASolver.module_defaults">(mantrap.solver.baselines.orca.ORCASolver static method)</a>
 </li>
       </ul></li>
-      <li><a href="solver.html#mantrap.solver.base.ipopt.IPOPTIntermediate.module_hard">module_hard() (mantrap.solver.base.ipopt.IPOPTIntermediate static method)</a>
+      <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.module_hard">module_hard() (mantrap.solver.base.trajopt.TrajOptSolver static method)</a>
 
       <ul>
-        <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.module_hard">(mantrap.solver.base.trajopt.TrajOptSolver static method)</a>
+        <li><a href="solver.html#mantrap.solver.ipopt.IPOPTSolver.module_hard">(mantrap.solver.ipopt.IPOPTSolver static method)</a>
 </li>
       </ul></li>
-      <li><a href="solver.html#mantrap.solver.mcts.MonteCarloTreeSearch">MonteCarloTreeSearch (class in mantrap.solver.mcts)</a>
+      <li><a href="solver.html#mantrap.solver.baselines.mcts.MonteCarloTreeSearch">MonteCarloTreeSearch (class in mantrap.solver.baselines.mcts)</a>
 </li>
+  </ul></td>
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.normalize">normalize() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
+
+      <ul>
+        <li><a href="modules.html#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.normalize">(mantrap.modules.baselines.acc_interact.InteractionAccelerationModule method)</a>
+</li>
+        <li><a href="modules.html#mantrap.modules.control_limits.ControlLimitModule.normalize">(mantrap.modules.control_limits.ControlLimitModule method)</a>
+</li>
+        <li><a href="modules.html#mantrap.modules.goal_norm.GoalNormModule.normalize">(mantrap.modules.goal_norm.GoalNormModule method)</a>
+</li>
+        <li><a href="modules.html#mantrap.modules.hj_reachibility.HJReachabilityModule.normalize">(mantrap.modules.hj_reachibility.HJReachabilityModule method)</a>
+</li>
+        <li><a href="modules.html#mantrap.modules.prob_interact.InteractionProbabilityModule.normalize">(mantrap.modules.prob_interact.InteractionProbabilityModule method)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -717,36 +742,28 @@
         <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.objective">(mantrap.solver.base.trajopt.TrajOptSolver method)</a>
 </li>
       </ul></li>
-      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule.objective_core">objective_core() (mantrap.modules.base.optimization_module.OptimizationModule method)</a>
+      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule">OptimizationModule (class in mantrap.modules.base.optimization_module)</a>
+</li>
+      <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.optimize">optimize() (mantrap.solver.base.trajopt.TrajOptSolver method)</a>
+</li>
+      <li><a href="solver.html#mantrap.solver.base.search.SearchIntermediate.optimize_core">optimize_core() (mantrap.solver.base.search.SearchIntermediate method)</a>
 
       <ul>
-        <li><a href="modules.html#mantrap.modules.base.pure_constraint.PureConstraintModule.objective_core">(mantrap.modules.base.pure_constraint.PureConstraintModule method)</a>
+        <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.optimize_core">(mantrap.solver.base.trajopt.TrajOptSolver method)</a>
 </li>
-        <li><a href="modules.html#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.objective_core">(mantrap.modules.baselines.acc_interact.InteractionAccelerationModule method)</a>
+        <li><a href="solver.html#mantrap.solver.baselines.orca.ORCASolver.optimize_core">(mantrap.solver.baselines.orca.ORCASolver method)</a>
 </li>
-        <li><a href="modules.html#mantrap.modules.baselines.goal_weighted.GoalWeightedModule.objective_core">(mantrap.modules.baselines.goal_weighted.GoalWeightedModule method)</a>
+        <li><a href="solver.html#mantrap.solver.baselines.rrt_star.RRTStarSolver.optimize_core">(mantrap.solver.baselines.rrt_star.RRTStarSolver method)</a>
 </li>
-        <li><a href="modules.html#mantrap.modules.baselines.pos_interact.InteractionPositionModule.objective_core">(mantrap.modules.baselines.pos_interact.InteractionPositionModule method)</a>
-</li>
-        <li><a href="modules.html#mantrap.modules.goal_norm.GoalNormModule.objective_core">(mantrap.modules.goal_norm.GoalNormModule method)</a>
-</li>
-        <li><a href="modules.html#mantrap.modules.hj_reachibility.HJReachabilityModule.objective_core">(mantrap.modules.hj_reachibility.HJReachabilityModule method)</a>
-</li>
-        <li><a href="modules.html#mantrap.modules.prob_interact.InteractionProbabilityModule.objective_core">(mantrap.modules.prob_interact.InteractionProbabilityModule method)</a>
+        <li><a href="solver.html#mantrap.solver.ipopt.IPOPTSolver.optimize_core">(mantrap.solver.ipopt.IPOPTSolver method)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules.html#mantrap.modules.base.optimization_module.OptimizationModule">OptimizationModule (class in mantrap.modules.base.optimization_module)</a>
+      <li><a href="solver.html#mantrap.solver.baselines.orca.ORCASolver">ORCASolver (class in mantrap.solver.baselines.orca)</a>
 </li>
-      <li><a href="solver.html#mantrap.solver.base.ipopt.IPOPTIntermediate.optimize_core">optimize_core() (mantrap.solver.base.ipopt.IPOPTIntermediate method)</a>
-
-      <ul>
-        <li><a href="solver.html#mantrap.solver.base.search.SearchIntermediate.optimize_core">(mantrap.solver.base.search.SearchIntermediate method)</a>
+      <li><a href="solver.html#mantrap.solver.baselines.orca.ORCASolver.LineConstraint">ORCASolver.LineConstraint (class in mantrap.solver.baselines.orca)</a>
 </li>
-        <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.optimize_core">(mantrap.solver.base.trajopt.TrajOptSolver method)</a>
-</li>
-      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -754,6 +771,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="environment.html#mantrap.environment.base.particle.ParticleEnvironment">ParticleEnvironment (class in mantrap.environment.base.particle)</a>
+</li>
+      <li><a href="solver.html#mantrap.solver.baselines.orca.ORCASolver.LineConstraint.point">point() (mantrap.solver.baselines.orca.ORCASolver.LineConstraint property)</a>
 </li>
       <li><a href="environment.html#mantrap.environment.simplified.potential_field.PotentialFieldEnvironment">PotentialFieldEnvironment (class in mantrap.environment.simplified.potential_field)</a>
 </li>
@@ -783,10 +802,10 @@
         <li><a href="agents.html#mantrap.agents.base.linear.LinearDTAgent.reachability_boundary">(mantrap.agents.base.linear.LinearDTAgent method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="attention.html#mantrap.attention.reachability.ReachabilityModule">ReachabilityModule (class in mantrap.attention.reachability)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="agents.html#mantrap.agents.base.discrete.DTAgent.reset">reset() (mantrap.agents.base.discrete.DTAgent method)</a>
 </li>
       <li><a href="agents.html#mantrap.agents.base.discrete.DTAgent.roll_trajectory">roll_trajectory() (mantrap.agents.base.discrete.DTAgent method)</a>
@@ -795,6 +814,8 @@
         <li><a href="agents.html#mantrap.agents.base.linear.LinearDTAgent.roll_trajectory">(mantrap.agents.base.linear.LinearDTAgent method)</a>
 </li>
       </ul></li>
+      <li><a href="solver.html#mantrap.solver.baselines.rrt_star.RRTStarSolver">RRTStarSolver (class in mantrap.solver.baselines.rrt_star)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -806,9 +827,17 @@
       <li><a href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_w_controls">sample_w_controls() (mantrap.environment.base.graph_based.GraphBasedEnvironment method)</a>
 </li>
       <li><a href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_w_trajectory">sample_w_trajectory() (mantrap.environment.base.graph_based.GraphBasedEnvironment method)</a>
+
+      <ul>
+        <li><a href="environment.html#mantrap.environment.sgan.SGAN.sample_w_trajectory">(mantrap.environment.sgan.SGAN method)</a>
 </li>
+      </ul></li>
       <li><a href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment.sample_wo_ego">sample_wo_ego() (mantrap.environment.base.graph_based.GraphBasedEnvironment method)</a>
+
+      <ul>
+        <li><a href="environment.html#mantrap.environment.sgan.SGAN.sample_wo_ego">(mantrap.environment.sgan.SGAN method)</a>
 </li>
+      </ul></li>
       <li><a href="agents.html#mantrap.agents.base.discrete.DTAgent.sanity_check">sanity_check() (mantrap.agents.base.discrete.DTAgent method)</a>
 
       <ul>
@@ -817,8 +846,10 @@
       </ul></li>
       <li><a href="solver.html#mantrap.solver.base.search.SearchIntermediate">SearchIntermediate (class in mantrap.solver.base.search)</a>
 </li>
-      <li><a href="solver.html#mantrap.solver.sgrad.SGradSolver">SGradSolver (class in mantrap.solver.sgrad)</a>
+      <li><a href="environment.html#mantrap.environment.sgan.SGAN">SGAN (class in mantrap.environment.sgan)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="environment.html#mantrap.environment.base.particle.ParticleEnvironment.simulate_particle">simulate_particle() (mantrap.environment.base.particle.ParticleEnvironment method)</a>
 
       <ul>
@@ -827,13 +858,9 @@
         <li><a href="environment.html#mantrap.environment.social_forces.SocialForcesEnvironment.simulate_particle">(mantrap.environment.social_forces.SocialForcesEnvironment method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="environment.html#mantrap.environment.social_forces.SocialForcesEnvironment">SocialForcesEnvironment (class in mantrap.environment.social_forces)</a>
 </li>
       <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.solve">solve() (mantrap.solver.base.trajopt.TrajOptSolver method)</a>
-</li>
-      <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.solver_hard">solver_hard() (mantrap.solver.base.trajopt.TrajOptSolver class method)</a>
 </li>
       <li><a href="modules.html#mantrap.modules.hj_reachibility.HJReachabilityModule.state_relative">state_relative() (mantrap.modules.hj_reachibility.HJReachabilityModule static method)</a>
 </li>
@@ -843,6 +870,12 @@
 </li>
       <li><a href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment.step_reset">step_reset() (mantrap.environment.base.graph_based.GraphBasedEnvironment method)</a>
 </li>
+      <li><a href="modules.html#mantrap.modules.baselines.acc_interact.InteractionAccelerationModule.summarize_distribution">summarize_distribution() (mantrap.modules.baselines.acc_interact.InteractionAccelerationModule method)</a>
+
+      <ul>
+        <li><a href="modules.html#mantrap.modules.baselines.pos_interact.InteractionPositionModule.summarize_distribution">(mantrap.modules.baselines.pos_interact.InteractionPositionModule method)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -879,25 +912,25 @@
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="visualisation.html#mantrap.visualization.heat_map.visualize_heat_map">visualize_heat_map() (in module mantrap.visualization.heat_map)</a>
-
-      <ul>
-        <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.visualize_heat_map">(mantrap.solver.base.trajopt.TrajOptSolver method)</a>
+      <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.visualize_actual">visualize_actual() (mantrap.solver.base.trajopt.TrajOptSolver method)</a>
 </li>
-      </ul></li>
       <li><a href="visualisation.html#mantrap.visualization.optimization.visualize_optimization">visualize_optimization() (in module mantrap.visualization.optimization)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="visualisation.html#mantrap.visualization.prediction.visualize_prediction">visualize_prediction() (in module mantrap.visualization.prediction)</a>
 
       <ul>
         <li><a href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction">(mantrap.environment.base.graph_based.GraphBasedEnvironment method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction_w_controls">visualize_prediction_w_controls() (mantrap.environment.base.graph_based.GraphBasedEnvironment method)</a>
+</li>
       <li><a href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment.visualize_prediction_wo_ego">visualize_prediction_wo_ego() (mantrap.environment.base.graph_based.GraphBasedEnvironment method)</a>
 </li>
       <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.visualize_scenes">visualize_scenes() (mantrap.solver.base.trajopt.TrajOptSolver method)</a>
+</li>
+      <li><a href="solver.html#mantrap.solver.base.trajopt.TrajOptSolver.visualize_step">visualize_step() (mantrap.solver.base.trajopt.TrajOptSolver method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -947,7 +980,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.1.
     </div>
   </body>
 </html>

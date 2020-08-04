@@ -51,7 +51,7 @@
 <span id="visualisation"></span><h1>Visualisation<a class="headerlink" href="#module-mantrap.visualization.prediction" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
 <dt id="mantrap.visualization.prediction.visualize_prediction">
-<code class="sig-prename descclassname">mantrap.visualization.prediction.</code><code class="sig-name descname">visualize_prediction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ego_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_planned_wo</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_histories</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">legend</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ax</span><span class="p">:</span> <span class="n">matplotlib.axes._axes.Axes</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.prediction.visualize_prediction" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">mantrap.visualization.prediction.</code><code class="sig-name descname">visualize_prediction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">env</span><span class="p">:</span> <span class="n"><a class="reference internal" href="environment.html#mantrap.environment.base.graph_based.GraphBasedEnvironment" title="mantrap.environment.base.graph_based.GraphBasedEnvironment">mantrap.environment.base.graph_based.GraphBasedEnvironment</a></span></em>, <em class="sig-param"><span class="n">ego_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_planned</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_planned_wo</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_actual</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ado_histories</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ego_goal</span><span class="p">:</span> <span class="n">torch.Tensor</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">display_wo</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">legend</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">title</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ax</span><span class="p">:</span> <span class="n">matplotlib.axes._axes.Axes</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.prediction.visualize_prediction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Visualize robot/ado trajectories and distributions.</p>
 <blockquote>
 <div><p>Draw trajectories in (quadratic) plot, thereby differentiate the actual trajectories from the
@@ -65,9 +65,13 @@ agents current positions.</p>
 <li><p><strong>env</strong> – simulation environment, just used statically here (e.g. to convert ids to agents, roll out
 trajectories, etc.).</p></li>
 <li><p><strong>ego_planned</strong> – planned/optimized ego trajectory (t_horizon + 1, 5).</p></li>
+<li><p><strong>ado_actual</strong> – actual ado trajectories (num_ados, t_horizon + 1, 1, 5).</p></li>
 <li><p><strong>ado_planned</strong> – according ado trajectory conditioned on ego_planned (num_ados, num_samples, t_horizon + 1, 1, 5).</p></li>
 <li><p><strong>ado_histories</strong> – ado history trajectory used instead of internally stored on (num_ados, -1, &gt;=2).</p></li>
+<li><p><strong>ego_goal</strong> – optimization robot goal state.</p></li>
+<li><p><strong>display_wo</strong> – display ado-wo-trajectories.</p></li>
 <li><p><strong>legend</strong> – draw legend in paths plot (might be a mess for many agents).</p></li>
+<li><p><strong>title</strong> – plot title (none by default).</p></li>
 <li><p><strong>file_path</strong> – storage path, if None return as HTML video object.</p></li>
 <li><p><strong>ax</strong> – optionally the plot can be drawn in an already existing axis.</p></li>
 </ul>
@@ -100,30 +104,6 @@ trajectories, etc.).</p></li>
 <li><p><strong>file_path</strong> – storage path, if None return as HTML video object.</p></li>
 <li><p><strong>frame_interval</strong> – video frame displaying time interval [ms].</p></li>
 <li><p><strong>restart_delay</strong> – video restart delay time interval [ms].</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="module-mantrap.visualization.heat_map"></span><dl class="py function">
-<dt id="mantrap.visualization.heat_map.visualize_heat_map">
-<code class="sig-prename descclassname">mantrap.visualization.heat_map.</code><code class="sig-name descname">visualize_heat_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">images</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em>, <em class="sig-param"><span class="n">bounds</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">, </span>Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">color_bounds</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">choices</span><span class="p">:</span> <span class="n">numpy.ndarray</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">resolution</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">title</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ax_labels</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>str<span class="p">, </span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_path</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#mantrap.visualization.heat_map.visualize_heat_map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Visualize the given images as heat-maps.</p>
-<p>The images are plotted as an animation (GIF) and labeled using the boundaries defined in <cite>bounds</cite>.
-Additionally, e.g. for the visualization of objective and constraint violation values, the “choices”
-made can be added to the plot, e.g. if the images are objective values in dependence on some optimization
-variable, then the variables chosen by the optimizer can be visualized.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>images</strong> – heat-map images to plot (#steps, Nx, Ny).</p></li>
-<li><p><strong>bounds</strong> – lower and upper bounds for image dimensions ((lower1, lower2), (upper1, upper2)).</p></li>
-<li><p><strong>color_bounds</strong> – min and max value for heat-map color-bar, a_min and a_max if None.</p></li>
-<li><p><strong>choices</strong> – chosen variables as described above (#steps, 2).</p></li>
-<li><p><strong>resolution</strong> – image resolution to convert discrete image grid points to bounds.</p></li>
-<li><p><strong>title</strong> – figure title, only steps-title if None.</p></li>
-<li><p><strong>ax_labels</strong> – axes labels tuple, no labels if None.</p></li>
-<li><p><strong>file_path</strong> – gif storage path (if None, then output is HTML5 video !).</p></li>
 </ul>
 </dd>
 </dl>
@@ -180,7 +160,7 @@ variable, then the variables chosen by the optimizer can be visualized.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Simon Schaefer.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.0.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.1.
     </div>
   </body>
 </html>

@@ -80,7 +80,7 @@ class OptimizationLogger:
         """
         if self.is_logging and self.log is not None:
             for key, value in kwargs.items():
-                log_key = f"{tag}/{key}_{self._iteration}"
+                log_key = f"{tag}/{key}_{self._iteration:02d}"
 
                 # If value is None, we assume (and check) that all previous values have been None
                 # and append another None to this chain of None's.

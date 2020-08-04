@@ -1,3 +1,5 @@
+import typing
+
 import matplotlib.pyplot as plt
 import torch
 
@@ -17,6 +19,8 @@ def visualize_prediction(
     ego_goal: torch.Tensor = None,
     display_wo: bool = True,
     legend: bool = False,
+    grid: bool = True,
+    figsize: typing.Tuple[int, int] = (8, 8),
     title: str = None,
     file_path: str = None,
     ax: plt.Axes = None
@@ -37,6 +41,8 @@ def visualize_prediction(
    :param ego_goal: optimization robot goal state.
    :param display_wo: display ado-wo-trajectories.
    :param legend: draw legend in paths plot (might be a mess for many agents).
+   :param grid: draw grid background (default = True).
+   :param figsize: figure size (default = quadratic (8, 8)), only used if no `ax` is given.
    :param title: plot title (none by default).
    :param file_path: storage path, if None return as HTML video object.
    :param ax: optionally the plot can be drawn in an already existing axis.
@@ -59,7 +65,7 @@ def visualize_prediction(
     # video, by deleting the previous frame content and overwrite it (within the `update()` function).
     if ax is None:
         plt.close('all')
-        fig, ax = plt.subplots(figsize=(8, 8), constrained_layout=True)
+        fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
 
     # Plot ego trajectory.
     if ego_planned is not None:
@@ -94,7 +100,7 @@ def visualize_prediction(
         if ado_planned_wo is not None and display_wo:
             draw_samples(ado_planned_wo[m_ado], name=f"{ado_id}_wo", color=ado_color, ax=ax, alpha=0.3, marker=":")
 
-    draw_trajectory_axis(env.axes, ax=ax, legend=legend)
+    draw_trajectory_axis(env.axes, ax=ax, legend=legend, grid=grid)
     if title is not None:
         ax.set_title(title)
     return interactive_save_image(ax, file_path=file_path)

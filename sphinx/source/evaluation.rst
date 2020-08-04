@@ -8,4 +8,4 @@ Metrics
 
 Dataset API
 ----------------------------
-.. include:: ../../mantrap_evaluation/datasets/README.rst
+.. include:: ../../mantrap_evaluation/scenarios/README.rst

@@ -6,27 +6,36 @@ Base Trajectory Solver (abstract)
 .. automodule:: mantrap.solver.base.trajopt
     :members:
 
-IPOPT - Solvers
----------------
-.. automodule:: mantrap.solver.base.ipopt
+.. automodule:: mantrap.solver.base.logging
     :members:
 
-S-GRAD-IPOPT
-~~~~~~~~~~~~
-.. automodule:: mantrap.solver.sgrad
-    :members:
-
-Search - Solvers
-----------------
 .. automodule:: mantrap.solver.base.search
     :members:
 
-Monte-Carlo-Tree-Search
-~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: mantrap.solver.mcts
+IPOPT
+------
+.. automodule:: mantrap.solver.ipopt
     :members:
 
-Random Search
-~~~~~~~~~~~~~~
+Solver Baselines
+----------------
+
+Baseline - MCTS
+~~~~~~~~~~~~~~~
+.. automodule:: mantrap.solver.baselines.mcts
+    :members:
+
+Baseline - ORCA
+~~~~~~~~~~~~~~~
+.. automodule:: mantrap.solver.baselines.orca
+    :members:
+
+Baseline - Search
+~~~~~~~~~~~~~~~~~
 .. automodule:: mantrap.solver.baselines.random_search
+    :members:
+
+Baseline - RRT Star
+~~~~~~~~~~~~~~~~~~~
+.. automodule:: mantrap.solver.baselines.rrt_star
     :members:

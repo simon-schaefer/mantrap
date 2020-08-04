@@ -30,3 +30,8 @@ Trajectron
 ----------------------------
  .. automodule:: mantrap.environment.trajectron
      :members:
+
+SGAN
+----------------------------
+ .. automodule:: mantrap.environment.sgan
+     :members:
