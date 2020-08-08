@@ -20,23 +20,42 @@ The previously described qualitative benefits of the proposed approach can be un
 \begin{table}[!ht]
 \begin{center}
 \begin{tabular}{c|c|c|c|c|c|c|c}
-\bf Method & \bf MPE[\%] & \bf RTD & \bf RCE[\%] & \bf ETT & \bf TGD & \bf MSD & \bf MSR \\
+\bf Method & \bf MPE & \bf RTD & \bf RCE & \bf ETT & \bf TGD & \bf MSD & \bf MSR \\
 \hline
-\ac{MCTS} & 104 & 0.77 & 125 & 0.69 & 0.511 & 4.64 & 0.67 \\
+\ac{MCTS} & 6.74 & 0.85 & 0.76 & 0.61 & 0.51 & 3.52 & 0.75 \\
 \hline
-\ac{ORCA} & 102 & 0.70 & 143 & 0.0 & 0.35 & 3.68 & 0.028 \\
+\ac{ORCA} & 6.54 & 0.86 & 0.98 & 0.38 & 0.18 & 3.31 & 0.026 \\
 \hline
-\ac{RRT}$\star$ & 105 & 193 & 1.18 & 0.0 & 0.68 & 3.38 & 0.29 \\
+\ac{RRT}$\star$ & 6.91 & 0.57 & 1.14 & 0.34 & 0.54 & 3.02 & 0.27 \\
 \hline
 \rowcolor{our_color}
-\project & 100 & 0.93 & 100 & 0.38 & 0.30 & 4.51 & 0.28
+\project & 6.56 & 0.94 & 0.55 & 0.00 & 0.35 & 3.65 & 0.34
 \end{tabular}
 \end{center}
 \caption{Quantitative comparison of approach to several baseline methods.}
 \label{table:baselines}
 \end{table}
 
-As shown in Table \ref{table:baselines}, the proposed algorithm outperforms the baseline methods in nearly all metrics. Although \ac{ORCA} performs surprisingly well, causing the second lowest mean pedestrian effort \ac{MPE}, behind \project, it fails keep the same safety distance as the solution trajectories derived using the proposed formulation. In fact, \project manages to find a solution that trade-offs efficiency with safety and intervention regarding the pedestrians better than all of the other approaches.  
+As shown in Table \ref{table:baselines}\footnote{The displayed MPE score is absolute, not related to the theoretical effort required without assuming any interaction.}, the proposed algorithm outperforms the baseline methods in nearly all metrics. Although \ac{ORCA} performs surprisingly well, causing the second lowest mean pedestrian effort \ac{MPE}, behind \project, it fails keep the same safety distance as the solution trajectories derived using the proposed formulation. In fact, \project manages to find a solution that trade-offs efficiency with safety and intervention regarding the pedestrians better than all of the other approaches.  
+
+\begin{figure}[!ht]
+\begin{center}
+\includegraphics[width=\imgwidth]{images/ego_ado_effort.png}
+\end{center}
+\caption{Average performance of proposed algorithm with respect to the ratio between robot and mean pedestrian effort, in comparison to baseline algorithms.}
+\label{img:ego_ado_effort}
+\end{figure}
+
+Surprisingly, the proposed approach manages to decrease both the induced pedestrian effort \ac{MPE} as well as the required control energy for the robot \ac{RCE}, in parallel. Consequently, as displayed in Figure \ref{img:ego_ado_effort}, the method outperforms all other baselines regarding both metrics. It turns out that the solution derived by the algorithm often is to wait for the nearby pedestrian to pass, to then start driving in the goal direction. This behavior leads to reducing the amount of required robot control effort, since the robot is merely standing still, as well as minimizes the interference with pedestrians at the same time. As a consequence, the robot requires more time to reach the goal, as shown in Figure \ref{img:extra_time_safety} (left). Additionally, the solution trajectory derived by the proposed algorithm is at least as safe in average, as the solution trajectories derived by other algorithms. This can be seen by the distribution of minimal distances between robot and any pedestrian at any time, which can be interpreted as safety distance (comp. Figure \ref{img:extra_time_safety} (right)). As shown, the proposed method ("ipopt") peaks at the largest (safety) distance.
+
+\begin{figure}[!ht]
+\begin{center}
+\includegraphics[width=0.4\textwidth]{images/extra_time.png}
+\includegraphics[width=0.4\textwidth]{images/minimal_distance.png}
+\end{center}
+\caption{Distribution of extra time the robots requires to reach the goal following the solution trajectory, compared to going straight to it (left) and distribution of minimal distance between robot and any pedestrian at any time (right), sorted by method.}
+\label{img:extra_time_safety}
+\end{figure}
 
 \subsection{Effect of number of Pedestrians}
 Figure \ref{img:runtime_num_pedestrian} illustrates the average algorithm's runtime for one trajectory optimization, depending on the number of pedestrians. While the proposed approach ("ipopt") runs with about 2-3 Hz in case of many pedestrians, the runtime is notably sub-linearly depends on the number of pedestrians in the scene. This can be explained by the widespread usage of batching within the algorithm, including the prediction model, and the use of attention filters, which keep the number of considered pedestrians during optimization approximately constant.

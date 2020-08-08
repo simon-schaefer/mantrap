@@ -215,9 +215,10 @@ class TestSolvers:
         # Query logging (last) and check compliance.
         obj_log_last = solver.logger.log_query(key_type=key_type, key=key, apply_func="last",
                                                tag=mantrap.constants.TAG_OPTIMIZATION)
+
         assert obj_log_last is not None
         for i in range(obj_log_last.numel()):
-            log_key = f"{key_type}_{key}_{i}"
+            log_key = f"{key_type}_{key}_{i:02d}"
             key_log_full = [k for k in obj_log_full.keys() if log_key in k]
             assert len(key_log_full) == 1
             assert torch.isclose(obj_log_last[i], obj_log_full[key_log_full[-1]][-1])

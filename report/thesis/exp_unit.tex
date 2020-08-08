@@ -1,7 +1,7 @@
 \section{Unit Experiments}
 \label{text:experiments/unit}
 
-\subsection{Horizon Weighting for Goal Objective Function}
+\subsection{Goal Objective Function}
 In Table \ref{table:goal_horizon_weighting}, the convergence speed of both the "unweighted" \ref{eq:goal_unweighted} and the "weighted" \ref{eq:goal_weighted} objective formulation are compared over 100 runs in a simplified setup, with no pedestrian in the scene and random assignments of the robot's initial and goat state. Weighting the cost terms non-uniformly over the horizon enables finding "trade-offs" of a locally higher cost for faster global convergence, such as gaining speed in a non-goal-direction at the beginning of the horizon but leads to a smaller cost at the end of it.
 
 \begin{table}[!ht]
@@ -19,7 +19,7 @@ Weighted & 9.58 & 5.86 \\
 \end{center}
 \end{table}
 
-\subsection{Alternatives to Interactive Objective Function}
+\subsection{Interactive Objective Function}
 Next to the interactive objective function $J_{int}(\cdot)$, described in Section \ref{text:approach/objective/interactive}, there are several other ways to formulate it. Instead of taking the full trajectory distribution into account for computing the distance measure between the unconditioned $\distwo[]$ and the conditioned trajectory distribution $\dist[]$, it can be approximated by computing the expected value over sample pairs. Consequently, the distance measure breaks down to a weighted sum over $L_2$-norms for each discrete time-step within the time horizon and for every trajectory pair, which are efficient to compute.
 
 \begin{equation}
@@ -70,7 +70,7 @@ The experiments show the effect of the interactive objective function: It trades
 \end{center}
 \end{figure}
 
-\subsection{HJR Value Function Approximation}
+\subsection{HJR Safety Constraint}
 The necessity and feasibility of approximating the \ac{HJR} value function have been motivated in Section \ref{text:approach/constraint/safety}. In the following several approximation methods are compared and evaluated.
 \newline 
 Figure \ref{img:hj_approx_bar} shows the logarithmic approximation error for several pre-computed grid sizes and using linear (as in \cite{Leung2020})) and Nearest Neighbor interpolation methods. LWPR (not shown here) has been tested as well but turned out to be infeasible for a large number of grid points.\footnote{For more information about the implementation of the LWPR value function approximation see \href{https://github.com/simon-schaefer/HJReachibility}{HJ-Reachability Toolbox} on GitHub.} The value function has been computed on a dense grid exactly, and point-wise compared with the grid interpolated approximations for computing the error metric. While linear interpolation widely outperforms Nearest Neighbor, as expected, the absolute error is tiny. As displayed in Figure \ref{img:hj_approx_hist}, the interpolation error is not uniform over all joint state axes, but larger for positional axes (which likely is due to the larger amount of non-linearity in position compared to velocity directions, compare Figure \ref{img:hj_value_function}). Therefore, the number of grid points have not been equally distributed over the axes, but biased to the positional axes (interior), while keeping the overall size of the grid constant.

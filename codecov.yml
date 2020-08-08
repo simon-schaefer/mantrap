@@ -1,5 +1,5 @@
 coverage:
-  range: 50..90 # coverage lower than 50 is red, higher than 90 green, between color code
+  range: 50..85 # coverage lower than 50 is red, higher than 85 green, between color code
 
   status:
     project:
@@ -11,5 +11,6 @@ coverage:
     changes: off
 
   ignore:
-    - "mantrap_evaluation/"
-    - "mantrap/visualization/"
+    - "mantrap_evaluation"
+    - "mantrap/visualization"
+    - "third_party"

@@ -173,7 +173,7 @@ def metric_ado_effort(env: mantrap.environment.base.GraphBasedEnvironment, ado_t
                 ado_acc_wo = torch.norm(ado_acc_wo)
 
                 # Accumulate L2 norm of difference in metric score.
-                effort_score += torch.norm(ado_acc - ado_acc_wo).detach()
+                effort_score += (torch.norm(ado_acc - ado_acc_wo)).detach()
 
     return float(effort_score) / num_ados / num_modes
 

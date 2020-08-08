@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Setup environment variables.
-PROJECT_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+PROJECT_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )/.."
 EXTERNAL_HOME="$PROJECT_HOME/third_party"
 VIRTUAL_ENV=".venv_mantrap"
 echo 'Setting up project ...'
@@ -20,9 +20,9 @@ source "${PROJECT_HOME}"/"${VIRTUAL_ENV}"/bin/activate
 # Install package requirements.
 echo $'Installing package requirements ...'
 cd "${PROJECT_HOME}" || return
-pip3 install -r "${PROJECT_HOME}"/ops/requirements.txt --quiet
-pip3 install -r "${EXTERNAL_HOME}"/sgan/requirements.txt --quiet
-pip3 install -r "${EXTERNAL_HOME}"/GenTrajectron/requirements.txt --quiet
+pip3 install -r "${PROJECT_HOME}"/ops/requirements.txt
+pip3 install -r "${EXTERNAL_HOME}"/sgan/requirements.txt
+pip3 install -r "${EXTERNAL_HOME}"/GenTrajectron/requirements.txt
 
 # Install project packages.
 echo $'Installing project packages ...'
