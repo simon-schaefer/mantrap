@@ -38,6 +38,8 @@ Next create a virtual environment for Python 3 and install all package requireme
 
 .. code-block:: bash
 
+   conda create --name mantrap python=3.6 -y
+   source activate mantrap
    source ops/setup.bash
 
 Afterwards install the NLP-solver `IPOPT <https://coin-or.github.io/Ipopt/>`_ and it's python wrapper which is called

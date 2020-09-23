@@ -7,6 +7,7 @@ IPOPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd "${IPOPT_PATH}" || return
 chmod u+x coinbrew
 brew install bash  # update bash version (>= 4.0)
+brew install pkg-config
 
 mkdir build
 ./coinbrew build Ipopt --prefix="${IPOPT_PATH}/build" --test --no-prompt
@@ -28,7 +29,6 @@ cd ..
 wget https://files.pythonhosted.org/packages/05/57/a7c5a86a8f899c5c109f30b8cdb278b64c43bd2ea04172cbfed721a98fac/ipopt-0.1.9.tar.gz
 tar -xzvf ipopt-0.1.9.tar.gz
 rm ipopt-0.1.9.tar.gz
-mv ipopt-0.1.9 cyipopt
 
-cd cyipopt || return
-python setup.py install
+cd ipopt-0.1.9 || return
+python3 setup.py install
