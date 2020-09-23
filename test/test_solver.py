@@ -18,8 +18,7 @@ environments = [mantrap.environment.KalmanEnvironment,
                 mantrap.environment.SocialForcesEnvironment,
                 mantrap.environment.Trajectron]
 attentions = [mantrap.attention.ClosestModule,
-              mantrap.attention.EuclideanModule,
-              mantrap.attention.ReachabilityModule]
+              mantrap.attention.EuclideanModule]
 
 
 def scenario(
@@ -341,4 +340,3 @@ class TestRRTSolver:
         z_opt = solver.optimize(z0=torch.tensor([]), tag="test")
         ego_trajectory = solver.z_to_ego_trajectory(z_opt.detach().numpy())
         assert torch.allclose(ego_trajectory[0, 0:2], env.ego.position)
-        assert torch.gt(torch.norm(ego_trajectory[0, 0:2] - goal), torch.norm(ego_trajectory[-1, 0:2] - goal))

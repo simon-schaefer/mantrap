@@ -27,7 +27,7 @@ PK_Y_AXIS = "y_axis"
 #######################################
 PED_SPEED_MAX = 2.5  # maximal agent velocity in [m/s] according to "Comfortable and maximum walking speed of
 # adults aged 20-79 years: reference values and determinants"
-PED_ACC_MAX = 2.0  # maximal agent acceleration in [m/s^2].
+PED_ACC_MAX = 20.0  # maximal agent acceleration in [m/s^2] (not used)
 ROBOT_SPEED_MAX = 2.0  # maximal robot velocity in [m/s].
 ROBOT_ACC_MAX = 2.0  # maximal robot acceleration in [m/s^2].
 
@@ -84,10 +84,10 @@ IPOPT_AUTOMATIC_JACOBIAN = "finite-difference-values"  # method for Jacobian app
 IPOPT_AUTOMATIC_HESSIAN = "limited-memory"  # method for Hessian approximation.
 
 SEARCH_MAX_CPU_TIME = 0.5  # [s] maximal CPU time of search algorithm.
-MCTS_NUMBER_BREADTH_SAMPLES = 5  # number of samples in breadth (i.e. z-values to estimate value from).
-MCTS_NUMBER_DEPTH_SAMPLES = 5  # number of samples in depth (i.e. trajectories to estimate value).
+MCTS_NUMBER_BREADTH_SAMPLES = 2  # number of samples in breadth (i.e. z-values to estimate value from).
+MCTS_NUMBER_DEPTH_SAMPLES = 2  # number of samples in depth (i.e. trajectories to estimate value).
 
-RRT_ITERATIONS = 600  # number of sampling iterations (in fact always iteration is looping condition).
+RRT_ITERATIONS = 1000  # number of sampling iterations (in fact always iteration is looping condition).
 RRT_PED_RADIUS = 1.0  # [m] minimal safety distance around pedestrian in RRT-path-planning.
 RRT_REWIRE_RADIUS = 10.0  # [m] radius of re-wiring nodes after new node has been added.
 RRT_GOAL_SAMPLING_PROBABILITY = 20.0  # probability of sampling and rewiring goal node.
@@ -97,7 +97,7 @@ ORCA_MAX_GOAL_DISTANCE = 0.5  # [m] maximal distance to goal to have zero prefer
 ORCA_SAFE_TIME = 0.8  # [s] time interval of guaranteed no collisions. The larger it is, the tighter the
 # constraints, but more deviating paths.
 
-OBJECTIVE_PROB_INTERACT_MAX = 30.0  # maximal value of projection probability log cost.
+OBJECTIVE_PROB_INTERACT_MAX = 120.0  # maximal value of projection probability log cost.
 OBJECTIVE_POS_INTERACT_MAX = 3.0  # maximal value of positional-distance cost.
 OBJECTIVE_VEL_INTERACT_MAX = 1.0  # maximal value of velocity-distance cost.
 OBJECTIVE_ACC_INTERACT_MAX = 1.0  # maximal value of acceleration-distance cost.
@@ -106,6 +106,7 @@ CONSTRAINT_HJ_MAT_FILE = "2D.mat"  # pre-computed value-/gradient grid mat file.
 CONSTRAINT_HJ_INTERPOLATION_METHOD = "linear"  # value function interpolation method (linear, nearest).
 CONSTRAINT_MIN_L2_DISTANCE = 0.5  # [m] minimal distance constraint between ego and every ado ghost
 CONSTRAINT_VIOLATION_PRECISION = 1e-5  # allowed precision error when determining constraint violation.
+CONSTRAINT_ELLIPSOID_NUM_MODES = 5  # number of modes taken into account for ellipsoid constraint.
 
 ATTENTION_EUCLIDEAN_RADIUS = 4.0  # [m] attention radius of ego for planning
 ATTENTION_CLOSEST_RADIUS = 4.0  # [m] attention radius of ego for planning

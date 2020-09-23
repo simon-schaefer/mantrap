@@ -2,11 +2,12 @@ import typing
 
 import matplotlib.pyplot as plt
 import torch
+import torch.distributions
 
 import mantrap.constants
 import mantrap.environment
 
-from .atomics import draw_trajectory, draw_trajectory_axis, draw_samples, draw_agent, interactive_save_image
+from .atomics import draw_gmm, draw_trajectory, draw_trajectory_axis, draw_samples, draw_agent, interactive_save_image
 
 
 def visualize_prediction(
@@ -15,13 +16,18 @@ def visualize_prediction(
     ado_planned: torch.Tensor = None,
     ado_planned_wo: torch.Tensor = None,
     ado_actual: torch.Tensor = None,
+    ado_pos_gmm: typing.Dict[str, torch.distributions.Distribution] = None,
     ado_histories: torch.Tensor = None,
     ego_goal: torch.Tensor = None,
+    num_modes: int = 5,
     display_wo: bool = True,
+    display_history: bool = True,
     legend: bool = False,
     grid: bool = True,
+    axis_labels: typing.Tuple[str, str] = None,
     figsize: typing.Tuple[int, int] = (8, 8),
     title: str = None,
+    fontsize: int = 20,
     file_path: str = None,
     ax: plt.Axes = None
 ):
@@ -37,12 +43,17 @@ def visualize_prediction(
    :param ego_planned: planned/optimized ego trajectory (t_horizon + 1, 5).
    :param ado_actual: actual ado trajectories (num_ados, t_horizon + 1, 1, 5).
    :param ado_planned: according ado trajectory conditioned on ego_planned (num_ados, num_samples, t_horizon + 1, 1, 5).
+   :param ado_pos_gmm: ado predicted pos. distribution (GMM) stored as dictionary mapping from ado_id to distribution.
    :param ado_histories: ado history trajectory used instead of internally stored on (num_ados, -1, >=2).
    :param ego_goal: optimization robot goal state.
+   :param num_modes: number of displayed modes for gmm-plot (default = 5).
    :param display_wo: display ado-wo-trajectories.
+   :param display_history: display ado-history trajectories.
    :param legend: draw legend in paths plot (might be a mess for many agents).
    :param grid: draw grid background (default = True).
    :param figsize: figure size (default = quadratic (8, 8)), only used if no `ax` is given.
+   :param fontsize: plot description font-size (default = 20).
+   :param axis_labels: x-y-labels as string (default = None).
    :param title: plot title (none by default).
    :param file_path: storage path, if None return as HTML video object.
    :param ax: optionally the plot can be drawn in an already existing axis.
@@ -85,7 +96,7 @@ def visualize_prediction(
 
         # History - Ado internal or input ado history.
         ado_history = ado.history if ado_histories is None else ado_histories[m_ado, :, 0:2]
-        if len(ado_history) > 1:
+        if len(ado_history) > 1 and display_history:
             ax.plot(ado_history[:, 0], ado_history[:, 1], "-.", color=ado_color, label=f"{ado_id}_hist", alpha=0.8)
         draw_agent(ado_history[-1, :], is_robot=False, color=ado_color, env_axes=env.axes, ax=ax)
 
@@ -100,7 +111,14 @@ def visualize_prediction(
         if ado_planned_wo is not None and display_wo:
             draw_samples(ado_planned_wo[m_ado], name=f"{ado_id}_wo", color=ado_color, ax=ax, alpha=0.3, marker=":")
 
+        # Distributions (conditioned).
+        if ado_pos_gmm is not None:
+            draw_gmm(ado_pos_gmm[ado_id], color=ado_color, ax=ax, alpha=0.2, num_modes=num_modes)
+
     draw_trajectory_axis(env.axes, ax=ax, legend=legend, grid=grid)
     if title is not None:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=fontsize, fontweight='bold')
+    if axis_labels is not None:
+        ax.set_xlabel(axis_labels[0], fontsize=fontsize)
+        ax.set_ylabel(axis_labels[1], fontsize=fontsize)
     return interactive_save_image(ax, file_path=file_path)

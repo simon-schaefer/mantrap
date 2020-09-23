@@ -160,7 +160,7 @@ class Trajectron(GraphBasedEnvironment):
     ###########################################################################
     # Simulation Graph ########################################################
     ###########################################################################
-    def _compute_distributions(self, ego_trajectory: torch.Tensor, **kwargs
+    def _compute_distributions(self, ego_trajectory: torch.Tensor, vel_dist: bool = True, **kwargs
                                ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a connected graph based on the ego's trajectory.
 
@@ -182,6 +182,7 @@ class Trajectron(GraphBasedEnvironment):
         log_pis.shape: (num_ados = 1, 1, t_horizon, num_modes)
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
@@ -215,7 +216,7 @@ class Trajectron(GraphBasedEnvironment):
             num_predicted_timesteps=t_horizon,
             num_samples=1,
             full_dist=True,
-            vel_dist=True,
+            vel_dist=vel_dist,
             robot_present_and_future=trajectory_w_acc
         )
 
@@ -229,10 +230,15 @@ class Trajectron(GraphBasedEnvironment):
             # Re-Map the node-id to the agent tags using within this project during initialization
             # (enforced to be identical except of type-tag during initialization).
             ado_id = self.agent_id_from_node(node)
+            i_ado = self.index_ado_id(ado_id=ado_id)
+
+            # Shift (relative) distribution to initial absolute position (if positional distribution).
+            mus = dist.mus.view(t_horizon, m, 2)  # t_horizon, num_modes, num_dims = 2 (= x, y)
+            if not vel_dist:  # positional distribution
+                mus += ado_states[i_ado, 0:2]
 
             # Convert the distribution into the project-custom definition of a GMM, since some properties
             # as e.g. mean are not defined in gmm2d.py and since another shape format is used.
-            mus = dist.mus.view(t_horizon, m, 2)   # t_horizon, num_modes, num_dims = 2 (= x, y)
             log_sigmas = dist.log_sigmas.view(t_horizon, m, 2)
             corrs = dist.corrs.view(t_horizon, m)
             log_pis = dist.log_pis.view(t_horizon, m)
@@ -241,7 +247,7 @@ class Trajectron(GraphBasedEnvironment):
 
         return dist_dict
 
-    def _compute_distributions_wo_ego(self, t_horizon: int, **kwargs
+    def _compute_distributions_wo_ego(self, t_horizon: int, vel_dist: bool = True, **kwargs
                                       ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a connected graph over `t_horizon` time-steps for ados only.
 
@@ -255,10 +261,11 @@ class Trajectron(GraphBasedEnvironment):
         to the borders of the environment and having nearly zero velocity.
 
         :param t_horizon: number of prediction time-steps.
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :return: dictionary over every state of every ado in the scene for t in [0, t_horizon].
         """
         pseudo_trajectory = self._pseudo_ego.unroll_trajectory(torch.zeros((t_horizon, 2)), dt=self.dt)
-        return self._compute_distributions(pseudo_trajectory, **kwargs)
+        return self._compute_distributions(pseudo_trajectory, vel_dist=vel_dist, **kwargs)
 
     def detach(self):
         """Detaching the whole graph (which is the whole neural network) might be hard. Therefore just rebuilt it

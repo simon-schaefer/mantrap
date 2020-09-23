@@ -119,7 +119,7 @@ class SocialForcesEnvironment(ParticleEnvironment):
             # The repulsive force between agents is the negative gradient of the other (beta -> alpha)
             # potential field. Therefore subtract the gradient of V w.r.t. the relative distance.
             force = torch.autograd.grad(v, relative_distance, create_graph=True)[0]
-            force = force.clamp(*particle.speed_limits())
+            force = force.clamp(*particle.speed_limits)
             if torch.any(torch.isnan(force)):  # TODO: why is nan rarely occurring here and how to deal with that ?
                 return torch.zeros(2)
             else:

@@ -85,7 +85,7 @@ class SGAN(GraphBasedEnvironment):
         """Predict the ado path samples based conditioned on robot trajectory.
 
         As described above the SGAN predictions are not conditioned on the ego trajectory. Consequently,
-        this method is equal to the `sample_wo_ego()` method.
+        this method is equal to the `sample_wo_ego()` method (including the ego agent).
 
         :param ego_trajectory: ego trajectory (prediction_horizon + 1, 5).
         :param num_samples: number of samples to return.
@@ -95,7 +95,11 @@ class SGAN(GraphBasedEnvironment):
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         assert self.sanity_check(check_ego=True)
         t_horizon = ego_trajectory.shape[0] - 1
-        return self.sample_wo_ego(t_horizon=t_horizon, num_samples=num_samples)
+
+        self.add_ado(self.ego.position, velocity=self.ego.velocity, history=self.ego.history)
+        samples = self.sample_wo_ego(t_horizon=t_horizon, num_samples=num_samples)
+        self._ados = self.ados[:-1]
+        return samples[:-1]
 
     def sample_wo_ego(self, t_horizon: int, num_samples: int = 1) -> typing.Union[torch.Tensor, None]:
         """Predict the unconditioned ado path samples (i.e. if no robot would be in the scene).
@@ -131,11 +135,11 @@ class SGAN(GraphBasedEnvironment):
     ###########################################################################
     # Simulation graph ########################################################
     ###########################################################################
-    def _compute_distributions(self, ego_trajectory: torch.Tensor, **kwargs
+    def _compute_distributions(self, ego_trajectory: torch.Tensor, vel_dist: bool = True, **kwargs
                                ) -> typing.Dict[str, torch.distributions.Distribution]:
         raise NotImplementedError
 
-    def _compute_distributions_wo_ego(self, t_horizon: int, **kwargs
+    def _compute_distributions_wo_ego(self, t_horizon: int, vel_dist: bool = True, **kwargs
                                       ) -> typing.Dict[str, torch.distributions.Distribution]:
         raise NotImplementedError
 

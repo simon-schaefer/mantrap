@@ -1,4 +1,3 @@
-import math
 import os
 import sys
 import typing
@@ -65,7 +64,7 @@ class RRTStarSolver(TrajOptSolver):
                       connect_circle_dist=mantrap.constants.RRT_REWIRE_RADIUS,
                       expand_dis=1.0, path_resolution=0.1,
                       goal_sample_rate=mantrap.constants.RRT_GOAL_SAMPLING_PROBABILITY)
-        path = rrt.planning(search_until_max_iter=True, animation=False)
+        path = rrt.planning(search_until_max_iter=False, animation=False)
 
         # Smooth resulting path and convert into custom format.
         if path is None:
@@ -73,18 +72,18 @@ class RRTStarSolver(TrajOptSolver):
         else:
             path = path_smoothing(path=path, max_iter=1000, obstacle_list=obstacles)
             path.reverse()  # returned list from goal -> start, so reverse it
-            path = [path[i] for i in range(len(path)) if i == 0 or
-                    math.hypot(path[i-1][0] - path[i][0], path[i-1][1] - path[i][1]) > 0.01]  # remove duplicates
 
         # Extract ego controls by converting the path to a trajectory, and transform the trajectory to
         # controls using the ego's internal dynamics.
-        ego_trajectory = self.env.ego.expand_trajectory(torch.tensor(path), dt=self.env.dt)
-        ego_controls = self.env.ego.roll_trajectory(ego_trajectory, dt=self.env.dt)
-        ego_controls = self.env.ego.make_controls_feasible(controls=ego_controls)
+        ego_controls = mantrap.agents.controller.p_ahead_controller(
+            agent=self.env.ego, path=torch.tensor(path),
+            max_sim_time=self.planning_horizon * self.env.dt, dtc=self.env.dt
+        )
+
         if ego_controls.shape[0] < self.planning_horizon:
             len_diff = self.planning_horizon - ego_controls.shape[0]
             ego_controls = torch.cat((ego_controls, torch.zeros((len_diff, 2))), dim=0)
-        return ego_controls[:self.planning_horizon, :], self.logger.log
+        return ego_controls, self.logger.log
 
     ###########################################################################
     # RRT Helpers #############################################################

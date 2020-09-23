@@ -1,4 +1,5 @@
 import abc
+import math
 import random
 import string
 import typing
@@ -264,7 +265,7 @@ class DTAgent(abc.ABC):
         """
         assert mantrap.utility.shaping.check_ego_path(path)
         assert dt > 0.0
-        _, v_max = self.speed_limits()
+        _, v_max = self.speed_limits
 
         # Determine velocities using numerical differentiation of the path.
         velocities = mantrap.utility.maths.derivative_numerical(path, dt=dt).detach().numpy()
@@ -275,9 +276,12 @@ class DTAgent(abc.ABC):
         velocities_stretched = [np.zeros(2, dtype=np.float32)]
         for velocity in velocities:
             velocity_norm = np.linalg.norm(velocity)
-            direction = velocity / velocity_norm
-            amount = int(np.ceil(velocity_norm / v_max))
-            velocities_stretched += [velocity_norm / amount * direction] * amount
+            if np.isclose(velocity_norm, 0.0):
+                velocities_stretched += [velocity]
+            else:
+                direction = velocity / velocity_norm
+                amount = int(np.ceil(velocity_norm / v_max))
+                velocities_stretched += [velocity_norm / amount * direction] * amount
         velocities_stretched = torch.tensor(velocities_stretched)
 
         # Create trajectory by integrating the stretched velocities.
@@ -364,6 +368,40 @@ class DTAgent(abc.ABC):
         controls_norm = self.control_norm(controls)
         controls_norm_clamped = controls_norm.clamp(lower, upper)
         return torch.div(controls, controls_norm.clamp(min=1e-6)) * controls_norm_clamped
+
+    def make_controls_feasible_scalar(self, control_x: float, control_y: float) -> typing.Tuple[float, float]:
+        """Make single control feasible by clipping them between its lower and upper boundaries. Return
+        the transformed feasible controls. Since this is basically clamping each direction separately,
+        the overall direction of the control input might be changed !!
+        """
+        lower, upper = self.control_limits()
+        control_norm = math.hypot(control_x, control_y)
+        control_norm_clamped = min(upper, max(lower, control_norm))
+
+        control_x = control_x / control_norm * control_norm_clamped
+        control_y = control_y / control_norm * control_norm_clamped
+        return control_x, control_y
+
+    ###########################################################################
+    # Agent control functions #################################################
+    ###########################################################################
+    @abc.abstractmethod
+    def go_to_point(
+        self,
+        state: typing.Tuple[float, float, float, float],
+        target_point: typing.Tuple[float, float],
+        speed: float,
+        dt: float
+    ) -> typing.Tuple[typing.Tuple[float, float, float, float], typing.Tuple[float, float]]:
+        """Determine and execute the controls for going for the given state to some target point with respect
+        to the internal dynamics.
+        :param state: pos_and_vel_only state vector i.e. (px, py, vx, vy) for starting state.
+        :param target_point: 2D target point (px, py).
+        :param speed: preferable speed for state update [m/s].
+        :param dt: update time interval [s].
+        :returns: updated state at t = t0 + dt and used (cardinal) control input.
+        """
+        raise NotImplementedError
 
     ###########################################################################
     # Reachability ############################################################
@@ -501,6 +539,7 @@ class DTAgent(abc.ABC):
     ###########################################################################
     # Agent properties ########################################################
     ###########################################################################
+    @property
     def speed_limits(self) -> typing.Tuple[float, float]:
         v_max = mantrap.constants.PED_SPEED_MAX if not self.is_robot else mantrap.constants.ROBOT_SPEED_MAX
         return -v_max, v_max

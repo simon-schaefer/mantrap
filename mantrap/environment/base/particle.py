@@ -97,7 +97,7 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
     ###########################################################################
     def _compute_distributions(self, ego_trajectory: typing.Union[typing.List, torch.Tensor],
                                num_particles: int = mantrap.constants.ENV_NUM_PARTICLES,
-                               **kwargs
+                               vel_dist: bool = True, **kwargs
                                ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a connected graph based on the ego's trajectory.
 
@@ -129,6 +129,7 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
         (https://stats.stackexchange.com/questions/186463/distribution-of-difference-between-two-normal-distributions).
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         if not all([x is None for x in ego_trajectory]):
@@ -175,12 +176,13 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
 
         # Transform mus and sigmas to velocity gaussian distribution objects dictionary
         # (hint: same order of ado_ids and ados() have been ensured in sanity_check() !).
-        dist_dict = {ado_id: torch.distributions.Normal(loc=mus[m_ado, :, :, 2:4], scale=sigmas[m_ado, :, :, :])
+        means = mus[:, :, :, 2:4] if vel_dist else mus[:, :, :, 0:2]
+        dist_dict = {ado_id: torch.distributions.Normal(loc=means[m_ado, :, :, :], scale=sigmas[m_ado, :, :, :])
                      for m_ado, ado_id in enumerate(self.ado_ids)}
 
         return dist_dict
 
-    def _compute_distributions_wo_ego(self, t_horizon: int, **kwargs
+    def _compute_distributions_wo_ego(self, t_horizon: int, vel_dist: bool = True, **kwargs
                                       ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a dictionary of velocity distributions for every ado as it would be without the presence
         of a robot in the scene.
@@ -189,10 +191,11 @@ class ParticleEnvironment(GraphBasedEnvironment, abc.ABC):
         of a robot in the scene, compute the one conditioned on the robot with a `None` trajectory.
 
         :param t_horizon: number of prediction time-steps.
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :kwargs: additional graph building arguments.
         :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
-        return self._compute_distributions(ego_trajectory=[None] * (t_horizon + 1), **kwargs)
+        return self._compute_distributions(ego_trajectory=[None] * (t_horizon + 1), vel_dist=vel_dist, **kwargs)
 
     ###########################################################################
     # Simulation parameters ###################################################

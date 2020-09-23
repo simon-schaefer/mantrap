@@ -9,6 +9,7 @@ chmod u+x coinbrew
 brew install bash  # update bash version (>= 4.0)
 brew install pkg-config
 
+echo ">>Building IPOPT"
 mkdir build
 ./coinbrew build Ipopt --prefix="${IPOPT_PATH}/build" --test --no-prompt
 ./coinbrew install Ipopt
@@ -19,6 +20,7 @@ export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:${IPOPT_PATH}/build/ThirdParty/Mumps/2.
 export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:${IPOPT_PATH}/build/ThirdParty/Metis/2.0"
 export DYLD_LIBRARY_PATH="${IPOPT_PATH}/build/lib"
 
+echo ">>PKG_CONFIG_PATH: "
 echo "${PKG_CONFIG_PATH}" || return
 
 # Install cyipopt following https://pypi.org/project/ipopt/
@@ -26,9 +28,11 @@ echo "${PKG_CONFIG_PATH}" || return
 # Then install by running
 cd ..
 
+echo ">>Building cyipopt"
 wget https://files.pythonhosted.org/packages/05/57/a7c5a86a8f899c5c109f30b8cdb278b64c43bd2ea04172cbfed721a98fac/ipopt-0.1.9.tar.gz
 tar -xzvf ipopt-0.1.9.tar.gz
 rm ipopt-0.1.9.tar.gz
 
-cd ipopt-0.1.9 || return
+mv ipopt-0.1.9 cyipopt
+cd cyipopt || return
 python3 setup.py install

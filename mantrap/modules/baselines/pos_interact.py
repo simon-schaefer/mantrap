@@ -1,6 +1,5 @@
 import typing
 
-import numpy as np
 import torch
 import torch.distributions
 
@@ -29,15 +28,17 @@ class InteractionPositionModule(InteractionAccelerationModule):
         super(InteractionPositionModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
         self._max_value = mantrap.constants.OBJECTIVE_POS_INTERACT_MAX
 
-    def summarize_distribution(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
-                               ) -> torch.Tensor:
+    def summarize_distribution(self, ego_trajectory: typing.Union[torch.Tensor, None]) -> torch.Tensor:
         """Compute ado-wise positions from velocity distribution dict mean values."""
-        _ , ado_states = self.env.states()
-        velocities = torch.zeros((self.env.num_ados, self.t_horizon, self.env.num_modes, 2))
+        if ego_trajectory is not None:
+            dist_dict = self.env.compute_distributions(ego_trajectory=ego_trajectory, vel_dist=False)
+        else:
+            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
+
+        positions = torch.zeros((self.env.num_ados, self.t_horizon, self.env.num_modes, 2))
         for ado_id, distribution in dist_dict.items():
             m_ado = self.env.index_ado_id(ado_id)
-            velocities[m_ado, :, :, :] = distribution.mean
-        positions = mantrap.utility.maths.integrate_numerical(velocities, dt=self.env.dt, x0=ado_states[:, 0:2])
+            positions[m_ado, :, :, :] = distribution.mean
         return positions
 
     ###########################################################################

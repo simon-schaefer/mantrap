@@ -34,8 +34,10 @@ def evaluate(solver: mantrap.solver.base.TrajOptSolver, time_steps: int = 10, la
         logging.info(f"Evaluation {label}: [{k}/{num_tests}] ...")
 
         start_time = time.time()
-        ego_trajectory_k, ado_trajectories_k = solver.solve(time_steps=time_steps, **solve_kwargs)
+        ego_trajectory_k, _ = solver.solve(time_steps=time_steps, **solve_kwargs)
         solve_time = time.time() - start_time
+
+        ado_trajectories_k = solver.env.predict_w_trajectory(ego_trajectory_k)
         ego_trajectories.append(ego_trajectory_k)
         ado_trajectories.append(ado_trajectories_k)
 
@@ -52,14 +54,13 @@ def evaluate(solver: mantrap.solver.base.TrajOptSolver, time_steps: int = 10, la
         eval_dict["runtime[s]"] = solve_time / time_steps
         eval_df = eval_df.append(pandas.DataFrame(eval_dict, index=[k]))
 
-    # ego_trajectories = torch.stack(ego_trajectories)
-    # ado_trajectories = torch.stack(ado_trajectories).transpose(0, 1)
-    # return eval_df_mean, ego_trajectories, ado_trajectories
+    ego_trajectories = torch.stack(ego_trajectories)
+    ado_trajectories = torch.stack(ado_trajectories).transpose(0, 1)
 
     if mean_df:
-        return eval_df.mean().to_frame(name=label).transpose(), None, None
+        return eval_df.mean().to_frame(name=label).transpose(), ego_trajectories, ado_trajectories
     else:
-        return eval_df, None, None
+        return eval_df, ego_trajectories, ado_trajectories
 
 
 #######################################################################################################################
@@ -140,6 +141,11 @@ def metric_ado_effort(env: mantrap.environment.base.GraphBasedEnvironment, ado_t
     numerically and compared to the acceleration of the according ado in a scene without ego robot. Then accumulate
     the acceleration differences for the final score.
 
+    Theoretically, the un-conditioned trajectories must be re-computed at every step. However, as every mode
+    combination is possible (although not uniformly probable), it would soon be very computationally expensive
+    to compute. For this reason the changes in the un-conditioned distribution with each environment step are neglected
+    and the accelerations (conditioned vs. un-conditioned) are compared on full trajectory level.
+
     :param ado_trajectories: trajectories of ados (num_ados, num_modes, t_horizon, 5).
     :param env: simulation environment (is copied within function, so not altered).
     """
@@ -152,28 +158,44 @@ def metric_ado_effort(env: mantrap.environment.base.GraphBasedEnvironment, ado_t
     # Copy environment to not alter passed env object when resetting its state. Also check whether the initial
     # state in the environment and the ado trajectory tensor are equal.
     env_metric = env.copy()
+    dt = env_metric.dt
     assert env_metric.same_initial_conditions(other=env)
 
+    # Predicting ado trajectories without interaction for current state.
+    ado_trajectories_wo = env_metric.predict_wo_ego(t_horizon=t_horizon - 1).detach()
+
+    # Accumulate L2 norm of difference of accelerations in metric score.
     effort_score = 0.0
     for m in range(num_ados):
-        for t in range(1, t_horizon):
-            # Reset environment to last ado states.
-            env_metric.step_reset(ego_next=None, ado_next=ado_trajectories[:, t - 1, 0, :])
+        for m_mode in range(num_modes):
+            ado_trajectory_wo = env.ados[m].expand_trajectory(ado_trajectories_wo[m, :, m_mode, :], dt=dt)
+            ado_trajectory = env.ados[m].expand_trajectory(ado_trajectories[m, :, m_mode, :], dt=dt)
 
-            # Predicting ado trajectories without interaction for current state.
-            ado_trajectory_wo = env_metric.predict_wo_ego(t_horizon=1).detach()
-            assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectory_wo, ados=num_ados, t_horizon=2)
+            ado_acc = mantrap.utility.maths.derivative_numerical(ado_trajectory[:, 2:4], dt=dt)
+            ado_acc_wo = mantrap.utility.maths.derivative_numerical(ado_trajectory_wo[:, 2:4], dt=dt)
+            effort_score += (torch.norm(ado_acc - ado_acc_wo)).detach()
 
-            # Determine acceleration difference between actual and without scene w.r.t. ados.
-            dt = env_metric.dt
-            for m_mode in range(num_modes):
-                ado_acc = mantrap.utility.maths.derivative_numerical(ado_trajectories[m, t-1:t+1, m_mode, 2:4], dt=dt)
-                ado_acc = torch.norm(ado_acc)
-                ado_acc_wo = mantrap.utility.maths.derivative_numerical(ado_trajectory_wo[m, 0:2, m_mode, 2:4], dt=dt)
-                ado_acc_wo = torch.norm(ado_acc_wo)
-
-                # Accumulate L2 norm of difference in metric score.
-                effort_score += (torch.norm(ado_acc - ado_acc_wo)).detach()
+    # effort_score = 0.0
+    # for m in range(num_ados):
+    #     for m_mode in range(num_modes):
+    #         ado_trajectory_m = env.ados[m].expand_trajectory(ado_trajectories[m, :, m_mode, :], dt=dt)
+    #
+    #         for t in range(1, t_horizon):
+    #             # Reset environment to last ado states.
+    #             env_metric.step_reset(ego_next=None, ado_next=ado_trajectory_m[t - 1, :])
+    #
+    #             # Predicting ado trajectories without interaction for current state.
+    #             ado_trajectory_wo = env_metric.predict_wo_ego(t_horizon=1).detach()  # mean
+    #             assert mantrap.utility.shaping.check_ado_trajectories(ado_trajectory_wo, ados=num_ados, t_horizon=2)
+    #
+    #             # Determine acceleration difference between actual and without scene w.r.t. ados.
+    #             ado_acc = mantrap.utility.maths.derivative_numerical(ado_trajectory_m[t-1:t+1, 2:4], dt=dt)
+    #             ado_acc = torch.norm(ado_acc)
+    #             ado_acc_wo = mantrap.utility.maths.derivative_numerical(ado_trajectory_wo[m, 0:2, m_mode, 2:4], dt=dt)
+    #             ado_acc_wo = torch.norm(ado_acc_wo)
+    #
+    #             # Accumulate L2 norm of difference in metric score.
+    #             effort_score += (torch.norm(ado_acc - ado_acc_wo)).detach()
 
     return float(effort_score) / num_ados / num_modes
 
@@ -239,6 +261,7 @@ def metric_extra_time(ego_trajectory: torch.Tensor, env: mantrap.environment.bas
     other than the goal position do not matter for solving this simplified formulation.
 
     :param ego_trajectory: trajectory of ego (t_horizon, 5).
+    :param env: solver environment for re-solving simplified task.
     """
     ego_trajectory = ego_trajectory.detach()
     assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory)

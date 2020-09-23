@@ -37,7 +37,7 @@ class KalmanEnvironment(GraphBasedEnvironment):
 
     def _compute_distributions(self, ego_trajectory: typing.Union[typing.List, torch.Tensor],
                                noise_additive: float = mantrap.constants.KALMAN_ADDITIVE_NOISE,
-                               **kwargs
+                               vel_dist: bool = True, **kwargs
                                ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a connected graph based on the ego's trajectory.
 
@@ -75,15 +75,17 @@ class KalmanEnvironment(GraphBasedEnvironment):
                 FT = torch.transpose(F, 0, 1)
                 Q = torch.eye(x_k1.numel()) * noise_additive
                 p_k1 = torch.eye(x_k1.numel()) * mantrap.constants.ENV_VAR_INITIAL
+                p_k1_d = p_k1.diagonal()
 
-                mus[0, 0, :] = x_k1[2:4]
-                sigmas[0, 0, :] = p_k1.diagonal()[2:4]
+                mus[0, 0, :] = x_k1[2:4] if vel_dist else x_k1[0:2]
+                sigmas[0, 0, :] = p_k1_d[2:4] if vel_dist else p_k1_d[0:2]
                 for t in range(t_horizon - 1):
                     x_k = torch.matmul(F, x_k1) + torch.matmul(B, u_constant)
                     p_k = torch.matmul(torch.matmul(F, p_k1), FT) + Q
+                    p_k_d = p_k.diagonal()
 
-                    mus[t + 1, 0, :] = x_k[2:4]
-                    sigmas[t + 1, 0, :] = p_k.diagonal()[2:4]
+                    mus[t + 1, 0, :] = x_k[2:4] if vel_dist else x_k[0:2]
+                    sigmas[t + 1, 0, :] = p_k_d[2:4] if vel_dist else p_k_d[0:2]
                     x_k1 = x_k
                     p_k1 = p_k
 
@@ -91,7 +93,7 @@ class KalmanEnvironment(GraphBasedEnvironment):
 
         return dist_dict
 
-    def _compute_distributions_wo_ego(self, t_horizon: int, **kwargs
+    def _compute_distributions_wo_ego(self, t_horizon: int, vel_dist: bool = True, **kwargs
                                       ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a dictionary of velocity distributions for every ado as it would be without the presence
         of a robot in the scene.
@@ -100,10 +102,11 @@ class KalmanEnvironment(GraphBasedEnvironment):
         are exactly the same.
 
         :param t_horizon: number of prediction time-steps.
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :kwargs: additional graph building arguments.
         :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
-        return self._compute_distributions(ego_trajectory=[None] * (t_horizon + 1), **kwargs)
+        return self._compute_distributions(ego_trajectory=[None] * (t_horizon + 1), vel_dist=vel_dist, **kwargs)
 
     ###########################################################################
     # Simulation parameters ###################################################

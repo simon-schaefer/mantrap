@@ -31,8 +31,7 @@ class InteractionAccelerationModule(PureObjectiveModule):
         super(InteractionAccelerationModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
         self._max_value = mantrap.constants.OBJECTIVE_ACC_INTERACT_MAX
         if env.num_ados > 0:
-            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
-            self._ado_accelerations_wo = self.summarize_distribution(dist_dict)
+            self._ado_accelerations_wo = self.summarize_distribution(ego_trajectory=None)
 
     def _objective_core(self, ego_trajectory: torch.Tensor, ado_ids: typing.List[str], tag: str
                         ) -> typing.Union[torch.Tensor, None]:
@@ -55,8 +54,7 @@ class InteractionAccelerationModule(PureObjectiveModule):
         # It is important to take all agents into account during the environment forward prediction step
         # (`compute_distributions()`) to not introduce possible behavioural changes into the forward prediction,
         # which occur due to a reduction of the agents in the scene.
-        dist_dict = self.env.compute_distributions(ego_trajectory=ego_trajectory)
-        acceleration = self.summarize_distribution(dist_dict)
+        acceleration = self.summarize_distribution(ego_trajectory)
 
         # Average of all ados that should be taken into account.
         cost = torch.zeros(1)
@@ -69,15 +67,20 @@ class InteractionAccelerationModule(PureObjectiveModule):
         # Clamp maximal value (minimal is zero anyways, due to L2-norm).
         return cost.clamp_max(self._max_value)
 
-    def summarize_distribution(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
-                               ) -> torch.Tensor:
+    def summarize_distribution(self, ego_trajectory: typing.Union[torch.Tensor, None]) -> torch.Tensor:
         """Compute ado-wise accelerations from velocity distribution dict mean values."""
+        if ego_trajectory is not None:
+            dist_dict = self.env.compute_distributions(ego_trajectory=ego_trajectory, vel_dist=True)
+        else:
+            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
+
         sample_length = self.env.num_modes * (self.t_horizon - 1)
         accelerations = torch.zeros((self.env.num_ados, sample_length, 2))
         for ado_id, distribution in dist_dict.items():
             m_ado = self.env.index_ado_id(ado_id)
             acc = mantrap.utility.maths.derivative_numerical(distribution.mean, dt=self.env.dt)
             accelerations[m_ado, :, :] = acc.view(-1, 2)
+
         return accelerations
 
     def normalize(self, x: typing.Union[np.ndarray, float]) -> typing.Union[np.ndarray, float]:

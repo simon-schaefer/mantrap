@@ -29,9 +29,13 @@ class InteractionVelocityModule(InteractionAccelerationModule):
         super(InteractionVelocityModule, self).__init__(env=env, t_horizon=t_horizon, weight=weight)
         self._max_value = mantrap.constants.OBJECTIVE_VEL_INTERACT_MAX
 
-    def summarize_distribution(self, dist_dict: typing.Dict[str, torch.distributions.Distribution]
-                               ) -> torch.Tensor:
+    def summarize_distribution(self, ego_trajectory: typing.Union[torch.Tensor, None]) -> torch.Tensor:
         """Compute ado-wise velocities from velocity distribution dict mean values."""
+        if ego_trajectory is not None:
+            dist_dict = self.env.compute_distributions(ego_trajectory=ego_trajectory, vel_dist=True)
+        else:
+            dist_dict = self.env.compute_distributions_wo_ego(t_horizon=self.t_horizon)
+
         sample_length = self.env.num_modes * self.t_horizon
         velocities = torch.zeros((self.env.num_ados, sample_length, 2))
         for ado_id, distribution in dist_dict.items():

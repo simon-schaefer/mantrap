@@ -1,5 +1,6 @@
 import abc
 import math
+import typing
 
 import torch
 import torch.distributions
@@ -41,11 +42,11 @@ class VGMM2D(torch.distributions.Distribution):
     """
     def __init__(self, mus: torch.Tensor, log_pis: torch.Tensor, log_sigmas: torch.Tensor, corrs: torch.Tensor):
         super(VGMM2D, self).__init__()
-        t_horizon, self.components = log_pis.shape
+        self.t_horizon, self.components = log_pis.shape
         self.dimensions = 2
-        assert mus.shape == (t_horizon, self.components, 2)
-        assert log_sigmas.shape == (t_horizon, self.components, 2)
-        assert corrs.shape == (t_horizon, self.components)
+        assert mus.shape == (self.t_horizon, self.components, 2)
+        assert log_sigmas.shape == (self.t_horizon, self.components, 2)
+        assert corrs.shape == (self.t_horizon, self.components)
 
         # Distribution parameters.
         self.log_pis = log_pis - torch.logsumexp(log_pis, dim=-1, keepdim=True)  # [..., N]
@@ -97,9 +98,21 @@ class VGMM2D(torch.distributions.Distribution):
         selector = torch.eye(self.components)[component_cat_samples].unsqueeze(dim=-1)
         return torch.sum(mvn_samples * selector, dim=-2, keepdim=True)
 
+    def modes_sorted(self) -> torch.Tensor:
+        return torch.argsort(self.log_pis)  # logarithm is strictly monotone!
+
+    def get_covariance_matrix(self):
+        cov = self.corrs * torch.prod(self.sigmas, dim=-1)
+        return torch.stack([torch.stack([self.sigmas[..., 0]**2, cov], dim=-1),
+                            torch.stack([cov, self.sigmas[..., 1]**2], dim=-1)], dim=-2)
+
     @property
-    def mean(self):
+    def mean(self) -> torch.Tensor:
         return self.mus
+
+    @property
+    def stddev(self) -> torch.Tensor:
+        return self.sigmas
 
 
 ###########################################################################
@@ -132,7 +145,6 @@ def integrate_numerical(x: torch.Tensor, dt: float, x0: torch.Tensor) -> torch.T
     """
     x_shape = x.shape
     x_size = len(x_shape)
-
 
     if x_size == 2:
         padding = torch.zeros((1, 2))

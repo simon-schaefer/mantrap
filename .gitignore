@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 *.egg-info/
 build/
+*.build
 .ipynb_checkpoints/
 
 # Compiled Object files
@@ -29,6 +30,7 @@ build/
 
 # Debugging, intermediate and documentation files.
 report/main.pdf
+examples/baseline/*.png
 *.aux
 *.bbl
 *.out
@@ -37,6 +39,7 @@ report/main.pdf
 *.blg
 *.synctex.gz
 outputs/
+*.pkl
 third_party/reachability/
 third_party/trajectron_models/
 
@@ -45,3 +48,5 @@ third_party/cyipopt/
 third_party/Ipopt/build/
 third_party/Ipopt/Ipopt/
 third_party/Ipopt/ThirdParty/
+
+

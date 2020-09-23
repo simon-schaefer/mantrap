@@ -115,33 +115,12 @@ def test_ado_effort(env_class: mantrap.environment.base.GraphBasedEnvironment.__
 
     # When the ado trajectories are exactly the same as predicting them without an ego, the score should be zero.
     ado_trajectories = env.predict_wo_ego(t_horizon=10)
-    ado_trajectories = expand_ado_trajectories(env=env, ado_trajectories=ado_trajectories)
     metric_score_wo = metric_ado_effort(ado_trajectories=ado_trajectories, env=env)
 
     # Otherwise it is very hard to predict the exact score, but we know it should be non-zero and positive.
     ado_trajectories = env.predict_w_controls(ego_controls=torch.ones((5, 2)))
-    ado_trajectories = expand_ado_trajectories(env=env, ado_trajectories=ado_trajectories)
     metric_score = metric_ado_effort(ado_trajectories=ado_trajectories, env=env)
     assert metric_score >= metric_score_wo * 0.5
-
-    # For testing the effect of re-predicting the ado trajectories without an ego for the current scene state we
-    # stack an altered ado trajectory tensor to another one with is exactly the same as without ego in the scene.
-    # When the environment is correctly reset at every time-step, then the only contribution to the ado effort comes
-    # from the first part of the ado trajectory (which was predicted with an ego agent in the scene). Therefore the
-    # score w.r.t. only the first part and for the combined ado trajectory should be the same.
-    env_test = env.copy()
-
-    ado_trajectory_1 = env.predict_w_controls(ego_controls=torch.ones(3, 2)).detach()
-    ado_trajectory_1 = expand_ado_trajectories(env=env, ado_trajectories=ado_trajectory_1)
-    metric_score_1 = metric_ado_effort(ado_trajectories=ado_trajectory_1, env=env)
-
-    env_test.step_reset(ego_next=None, ado_next=ado_trajectory_1[:, -1, 0, :])
-    ado_trajectory_2 = env_test.predict_wo_ego(t_horizon=4).detach()
-    ado_trajectory_2 = expand_ado_trajectories(env=env_test, ado_trajectories=ado_trajectory_2)
-    ado_trajectory_12 = torch.cat((ado_trajectory_1, ado_trajectory_2), dim=1)
-    ado_trajectory_12[0, :, 0, -1] = torch.linspace(0, 8 * env.dt, steps=9)
-    metric_score_12 = metric_ado_effort(ado_trajectories=ado_trajectory_12, env=env)
-    assert np.isclose(metric_score_1, metric_score_12, atol=1e-3)
 
 
 def test_final_distance():

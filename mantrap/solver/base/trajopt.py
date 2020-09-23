@@ -290,7 +290,7 @@ class TrajOptSolver(abc.ABC):
         """
         solver_part = self.__class__(env=env, goal=self.goal, modules=modules,
                                      t_planning=self.planning_horizon, config_name=self.config_name,
-                                     is_logging=self.logger.is_logging)
+                                     is_logging=self.logger.is_logging, is_debug=self.logger.is_debug)
 
         # As initial guess for this first optimization, without prior knowledge, going straight
         # from the current position to the goal with maximal control input is chosen.
@@ -337,7 +337,7 @@ class TrajOptSolver(abc.ABC):
     def module_defaults() -> typing.Union[typing.List[typing.Tuple], typing.List]:
         """List of optimization modules (objectives, constraint) and according dictionary
         of module kwargs, such as weight (for objectives), etc."""
-        return [(mantrap.modules.GoalNormModule, {"optimize_speed": False}),
+        return [mantrap.modules.GoalNormModule,
                 mantrap.modules.InteractionProbabilityModule,
                 mantrap.modules.SpeedLimitModule,
                 mantrap.modules.HJReachabilityModule]

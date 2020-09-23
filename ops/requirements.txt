@@ -8,6 +8,7 @@ jupyter  # visuatlization
 matplotlib  # visualization
 seaborn  # visualization
 sphinx  # documentation
+tqdm  # notebook progress
 
 Cython  # IPOPT dependency
 codecov  # code coverage

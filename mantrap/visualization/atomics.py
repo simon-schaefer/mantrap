@@ -4,10 +4,13 @@ import typing
 import matplotlib.animation
 import matplotlib.image
 import matplotlib.offsetbox
+import matplotlib.patches
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.distributions
 
+import mantrap.constants
 import mantrap.utility.io
 import mantrap.utility.shaping
 
@@ -37,10 +40,36 @@ def draw_agent(state: typing.Union[torch.Tensor, np.ndarray], color: typing.Unio
         if -np.pi/2 < orientation < np.pi/2:
             image = np.fliplr(image)
 
+    # Transparent white background.
+    color_norm = np.linalg.norm(image, axis=2)
+    for ix in range(image.shape[0]):
+        for iy in range(image.shape[1]):
+            color_norm = np.sum(image[ix, iy, :3])
+            image[ix, iy, -1] = 1.0 if color_norm < 2.0 else 0.0
+
     # Draw image in axes using `OffsetImage`.
     image_box = matplotlib.offsetbox.OffsetImage(image, zoom=scale)
     ab = matplotlib.offsetbox.AnnotationBbox(image_box, (state[0], state[1]), frameon=False)
     ax.add_artist(ab)
+
+    return ax
+
+
+def draw_gmm(distribution: torch.distributions.Distribution,
+             color: typing.Union[np.ndarray, str], ax: plt.Axes, alpha: float = 1.0, num_modes: int = 5):
+    """Draw positional distribution (GMM) as elliptic shapes, i.e. draw each Gaussian of the GMM as an
+    ellipse with the center as its mean and axes as its standard deviation. """
+    mean, var = distribution.mean, distribution.stddev
+    t_horizon, dist_modes, _ = mean.shape
+    if dist_modes < num_modes:
+        num_modes = dist_modes
+
+    for t in range(t_horizon):
+        for n_mode in range(num_modes):
+            xy = tuple(mean[t, n_mode, :].tolist())
+            wh = var[t, n_mode, :].tolist()
+            ellipse = matplotlib.patches.Ellipse(xy, width=wh[0], height=wh[1], alpha=alpha, color=color)
+            ax.add_patch(ellipse)
 
     return ax
 

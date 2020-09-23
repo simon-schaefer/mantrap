@@ -25,6 +25,7 @@ class OptimizationLogger:
         self._log = None
         self._iteration = None
         self._is_logging = is_logging
+        self._is_debug = is_debug
         self.set_logging_preferences(is_logging=is_debug)
 
     def increment(self):
@@ -201,3 +202,7 @@ class OptimizationLogger:
     @property
     def is_logging(self) -> bool:
         return self._is_logging
+
+    @property
+    def is_debug(self) -> bool:
+        return self._is_debug

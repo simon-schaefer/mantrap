@@ -359,7 +359,7 @@ class GraphBasedEnvironment(abc.ABC):
     ###########################################################################
     # Simulation graph ########################################################
     ###########################################################################
-    def compute_distributions(self, ego_trajectory: torch.Tensor, **kwargs
+    def compute_distributions(self, ego_trajectory: torch.Tensor, vel_dist: bool = True, **kwargs
                               ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a dictionary of velocity distributions for every ado as it would be with the presence
         of a robot in the scene.
@@ -370,17 +370,18 @@ class GraphBasedEnvironment(abc.ABC):
         be used for automatically differentiate between its inputs and outputs.
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :kwargs: additional graph building arguments.
         :return: dictionary over every state of every agent in the scene for t in [0, t_horizon].
         """
         assert mantrap.utility.shaping.check_ego_trajectory(ego_trajectory, pos_and_vel_only=True)
         assert self.ego is not None
-        dist_dict = self._compute_distributions(ego_trajectory=ego_trajectory, **kwargs)
+        dist_dict = self._compute_distributions(ego_trajectory=ego_trajectory, vel_dist=vel_dist, **kwargs)
         assert self.check_distribution(dist_dict, t_horizon=ego_trajectory.shape[0] - 1)
         return dist_dict
 
     @abc.abstractmethod
-    def _compute_distributions(self, ego_trajectory: torch.Tensor, **kwargs
+    def _compute_distributions(self, ego_trajectory: torch.Tensor, vel_dist: bool = True, **kwargs
                                ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a connected graph based on the ego's trajectory.
 
@@ -390,26 +391,28 @@ class GraphBasedEnvironment(abc.ABC):
         states and the inputted ego trajectory is determinable.
 
         :param ego_trajectory: ego's trajectory (t_horizon, 5).
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         raise NotImplementedError
 
-    def compute_distributions_wo_ego(self, t_horizon: int, **kwargs
+    def compute_distributions_wo_ego(self, t_horizon: int, vel_dist: bool = True, **kwargs
                                      ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a dictionary of velocity distributions for every ado as it would be without the presence
         of a robot in the scene.
 
         :param t_horizon: number of prediction time-steps.
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :kwargs: additional graph building arguments.
         :return: ado_id-keyed velocity distribution dictionary for times [0, t_horizon].
         """
         assert t_horizon > 0
-        dist_dict = self._compute_distributions_wo_ego(t_horizon, **kwargs)
+        dist_dict = self._compute_distributions_wo_ego(t_horizon, vel_dist=vel_dist, **kwargs)
         assert self.check_distribution(dist_dict, t_horizon=t_horizon)
         return dist_dict
 
     @abc.abstractmethod
-    def _compute_distributions_wo_ego(self, t_horizon: int, **kwargs
+    def _compute_distributions_wo_ego(self, t_horizon: int, vel_dist: bool = True, **kwargs
                                       ) -> typing.Dict[str, torch.distributions.Distribution]:
         """Build a connected graph over `t_horizon` time-steps for ados only (exclude robot).
 
@@ -419,6 +422,7 @@ class GraphBasedEnvironment(abc.ABC):
         states and the inputted ego trajectory is determinable.
 
         :param t_horizon: number of prediction time-steps.
+        :param vel_dist: return velocity (True) or positional distribution (False).
         :return: dictionary over every state of every ado in the scene for t in [0, t_horizon].
         """
         raise NotImplementedError
