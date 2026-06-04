@@ -1,5 +1,5 @@
-.. image:: https://travis-ci.com/simon-schaefer/mantrap.svg?branch=master
-   :target: https://travis-ci.com/simon-schaefer/mantrap
+.. image:: https://img.shields.io/badge/paper-PDF-orange.svg
+  :target: https://arxiv.org/abs/2012.01027
 
 .. image:: https://codecov.io/gh/simon-schaefer/mantrap/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/simon-schaefer/mantrap
